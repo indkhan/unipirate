@@ -1,0 +1,14 @@
+Ok so we decided to go for a basic thing for the MVP so we can actually finally make it
+The idea is : we just take users info and then we verify with anabin
+ Then after that we can display information for course options available to them
+So since there are a lot of universites we will only have initially the info for a limited number of unis
+We want to collect this information: 
+1) Deadline for applications 
+2) Semester
+3) Fees (semester contributions)
+4) Language requirements, admission requirements (A levels or Indian bullshit stuff)
+5) Course structure 
+6) How to apply (direct or uni assist or like what)
+7) Nc-fre i or not like admission criteria for the specific course
+Ok so for the display for now: Assuming the person searches up Ai courses and he can do a bachelors in germany
+we show the unis that offer any ai related course on the left and if he selects that particular uni we show all the courses that uni does related to ai and then he can select a particular course and we can show him the inofrmation for that course

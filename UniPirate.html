@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UniPirate · Bachelor's in Germany, charted.</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            paper: "oklch(0.985 0.006 85)",
+            "paper-deep": "oklch(0.97 0.008 85)",
+            navy: "oklch(0.32 0.08 258)",
+            "navy-dark": "oklch(0.24 0.08 258)",
+            "navy-mid": "oklch(0.42 0.09 258)",
+            ink: {
+              90: "oklch(0.18 0.012 255)",
+              85: "oklch(0.24 0.012 255)",
+              80: "oklch(0.3 0.012 255)",
+              70: "oklch(0.4 0.012 255)",
+              60: "oklch(0.48 0.012 255)",
+              55: "oklch(0.52 0.012 255)",
+              50: "oklch(0.58 0.012 255)",
+              40: "oklch(0.68 0.012 255)",
+              30: "oklch(0.78 0.012 255)",
+              20: "oklch(0.86 0.01 255)",
+              5: "oklch(0.95 0.006 85)",
+            },
+            line: "oklch(0.9 0.008 85)",
+          },
+          fontFamily: {
+            display: ["'Instrument Serif'", "serif"],
+            sans: ["Geist", "system-ui", "sans-serif"],
+            mono: ["'Geist Mono'", "monospace"],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      background: oklch(0.985 0.006 85);
+      font-family: 'Geist', system-ui, sans-serif;
+      color: oklch(0.18 0.012 255);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    body { font-feature-settings: 'ss01','cv11'; }
+    .line-clamp-2 {
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    ::selection { background: oklch(0.82 0.08 258 / 0.35); }
+    /* subtle paper grain */
+    body::before {
+      content: "";
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: radial-gradient(oklch(0.3 0.02 255 / 0.025) 1px, transparent 1px);
+      background-size: 3px 3px;
+      mix-blend-mode: multiply;
+    }
+    #app { position: relative; z-index: 1; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="data.js"></script>
+</head>
+
+<body>
+  <div id="app"></div>
+
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="ui.jsx"></script>
+  <script type="text/babel" src="pages-intro.jsx"></script>
+  <script type="text/babel" src="pages-recognition.jsx"></script>
+  <script type="text/babel" src="pages-finder.jsx"></script>
+
+  <script type="text/babel" data-presets="react">
+    const DEMO_PROFILE = {
+      country: "India",
+      qualification: "Indian Bachelor's (4-year, recognized university)",
+      grade: "78",
+      gradingScale: "Percentage (0–100)",
+      languageCert: "IELTS",
+      languageScore: "7.0",
+      prefLanguage: "English",
+    };
+
+    const BLANK_PROFILE = {
+      country: "",
+      qualification: "",
+      grade: "",
+      gradingScale: "",
+      languageCert: "",
+      languageScore: "",
+      prefLanguage: "Any",
+    };
+
+    function App() {
+      const [route, setRoute] = React.useState("landing"); // landing | onboarding | result | finder
+      const [profile, setProfile] = React.useState(() => {
+        try {
+          const raw = localStorage.getItem("unipirate:profile");
+          if (raw) return JSON.parse(raw);
+        } catch (_) {}
+        return BLANK_PROFILE;
+      });
+
+      React.useEffect(() => {
+        try {
+          localStorage.setItem("unipirate:profile", JSON.stringify(profile));
+        } catch (_) {}
+      }, [profile]);
+
+      const go = (r) => {
+        window.scrollTo({ top: 0, behavior: "instant" });
+        setRoute(r);
+      };
+
+      if (route === "landing") {
+        return (
+          <Landing
+            onStart={() => {
+              setProfile(BLANK_PROFILE);
+              go("onboarding");
+            }}
+            onDemo={() => {
+              setProfile(DEMO_PROFILE);
+              go("result");
+            }}
+          />
+        );
+      }
+      if (route === "onboarding") {
+        return (
+          <Onboarding
+            profile={profile}
+            setProfile={setProfile}
+            onSubmit={() => go("result")}
+            onBack={() => go("landing")}
+          />
+        );
+      }
+      if (route === "result") {
+        return (
+          <RecognitionResult
+            profile={profile}
+            onContinue={() => go("finder")}
+            onBack={() => go("landing")}
+            onEdit={() => go("onboarding")}
+          />
+        );
+      }
+      if (route === "finder") {
+        return (
+          <CourseFinder
+            profile={profile}
+            onBack={() => go("landing")}
+            onEditProfile={() => go("onboarding")}
+          />
+        );
+      }
+      return null;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("app"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
