@@ -4,19 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import { Button, Badge, Icon, StatusBadge, Stepper, cx } from '@/components/ui';
-import { RECOGNITION_RULES } from '@/lib/data';
+import { RECOGNITION_RULES, matchRecognition } from '@/lib/repo';
 import { loadProfile } from '@/lib/profile';
-
-function matchRecognition(profile, rules) {
-  if (!profile.country || !profile.qualification) return null;
-  let rule = rules.find(
-    (r) => r.country === profile.country && r.qualificationType === profile.qualification
-  );
-  if (rule) return rule;
-  rule = rules.find((r) => r.country === profile.country && r.qualificationType === 'Any');
-  if (rule) return rule;
-  return rules.find((r) => r.country === 'Other / Not listed') || null;
-}
 
 function truncate(s, n) {
   if (!s) return '';

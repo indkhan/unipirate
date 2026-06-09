@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import { Button, Badge, Icon, IconButton, Chip, Toggle, Stepper, cx } from '@/components/ui';
-import { UNIVERSITIES, COURSES } from '@/lib/data';
+import { UNIVERSITIES, COURSES } from '@/lib/repo';
 import { loadProfile } from '@/lib/profile';
 
 export default function FinderPage() {

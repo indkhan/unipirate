@@ -8,7 +8,7 @@ import {
 } from '@/components/ui';
 import {
   COUNTRIES, QUALIFICATIONS_BY_COUNTRY, GRADING_SCALES, LANGUAGE_CERTS,
-} from '@/lib/data';
+} from '@/lib/repo';
 import { loadProfile, saveProfile, BLANK_PROFILE } from '@/lib/profile';
 
 function inferSuffix(scale) {
