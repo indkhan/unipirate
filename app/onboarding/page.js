@@ -1,0 +1,234 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import TopNav from '@/components/TopNav';
+import {
+  Button, Badge, Icon, Field, Select, TextInput, Segmented, Chip, Stepper, cx,
+} from '@/components/ui';
+import {
+  COUNTRIES, QUALIFICATIONS_BY_COUNTRY, GRADING_SCALES, LANGUAGE_CERTS,
+} from '@/lib/data';
+import { loadProfile, saveProfile, BLANK_PROFILE } from '@/lib/profile';
+
+function inferSuffix(scale) {
+  if (!scale) return '';
+  if (scale.startsWith('Percentage')) return '%';
+  if (scale.startsWith('CGPA out of 10')) return '/ 10';
+  if (scale.startsWith('CGPA out of 4')) return '/ 4';
+  if (scale.startsWith('German')) return '/ 6.0';
+  if (scale.startsWith('IB')) return '/ 45';
+  return '';
+}
+
+function scoreHint(cert) {
+  if (!cert) return null;
+  return (
+    {
+      IELTS: 'Overall band, e.g. 6.5',
+      'TOEFL (iBT)': 'Total score, e.g. 95',
+      TestDaF: 'Per section, e.g. 4×4',
+      DSH: 'Level, e.g. DSH-2',
+      'None / planning to take': 'You can still continue.',
+    }[cert] || null
+  );
+}
+
+function scorePlaceholder(cert) {
+  return (
+    {
+      IELTS: '6.5',
+      'TOEFL (iBT)': '95',
+      TestDaF: '4×4',
+      DSH: 'DSH-2',
+      'None / planning to take': '—',
+    }[cert] || 'Score'
+  );
+}
+
+function SectionHeader({ n, title, subtitle }) {
+  return (
+    <div className="flex items-baseline gap-4 mb-5">
+      <span
+        className="text-[12px] uppercase tracking-[0.18em] text-ink-40"
+        style={{ fontFeatureSettings: "'tnum'" }}
+      >
+        {n}
+      </span>
+      <div>
+        <div
+          className="text-[20px] text-ink-90 leading-tight"
+          style={{ fontFamily: "'Instrument Serif', serif" }}
+        >
+          {title}
+        </div>
+        <div className="text-[12.5px] text-ink-50">{subtitle}</div>
+      </div>
+    </div>
+  );
+}
+
+function Divider() {
+  return <div className="my-8 border-t border-line" />;
+}
+
+export default function OnboardingPage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState(BLANK_PROFILE);
+
+  useEffect(() => {
+    setProfile(loadProfile());
+  }, []);
+
+  useEffect(() => {
+    saveProfile(profile);
+  }, [profile]);
+
+  const update = (patch) => setProfile((p) => ({ ...p, ...patch }));
+  const country = profile.country;
+  const availableQuals = country ? QUALIFICATIONS_BY_COUNTRY[country] || [] : [];
+
+  const canSubmit =
+    profile.country &&
+    profile.qualification &&
+    profile.grade !== '' &&
+    profile.gradingScale &&
+    profile.languageCert;
+
+  return (
+    <div className="min-h-screen bg-paper">
+      <TopNav />
+      <main className="max-w-[920px] mx-auto px-6 md:px-10 pt-10 pb-24">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
+          <div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/')}
+              icon={<Icon name="arrowLeft" size={14} />}
+            >
+              Back
+            </Button>
+            <h1
+              className="text-[40px] md:text-[48px] text-ink-90 leading-[1.05] mt-3"
+              style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: '-0.02em' }}
+            >
+              Tell us about your background.
+            </h1>
+            <p className="text-ink-60 mt-2 max-w-[560px] text-[14.5px] leading-[1.55]">
+              We use this to match against a curated set of anabin-style rules. Nothing is stored on a server.
+            </p>
+          </div>
+          <Stepper steps={['Profile', 'Recognition', 'Courses']} current={0} />
+        </div>
+
+        <div className="rounded-xl border border-line bg-white p-6 md:p-8">
+          <SectionHeader n="01" title="Education" subtitle="Where and what you studied." />
+          <div className="grid md:grid-cols-2 gap-5">
+            <Field label="Country of education" required hint="Where you earned your most recent qualification.">
+              <Select
+                value={profile.country}
+                onChange={(v) => update({ country: v, qualification: '' })}
+                options={COUNTRIES}
+                placeholder="Select a country"
+              />
+            </Field>
+            <Field
+              label="Qualification type"
+              required
+              hint={country ? 'Pick the closest match.' : 'Select a country first.'}
+            >
+              <Select
+                value={profile.qualification}
+                onChange={(v) => update({ qualification: v })}
+                options={availableQuals}
+                placeholder={country ? 'Select a qualification' : '—'}
+              />
+            </Field>
+            <Field label="Grade / percentage" required hint="Your overall result, as a number.">
+              <TextInput
+                type="number"
+                value={profile.grade}
+                onChange={(v) => update({ grade: v })}
+                placeholder="e.g. 78"
+                suffix={inferSuffix(profile.gradingScale)}
+              />
+            </Field>
+            <Field label="Grading scale" required hint="Matches your result to a German equivalent.">
+              <Select
+                value={profile.gradingScale}
+                onChange={(v) => update({ gradingScale: v })}
+                options={GRADING_SCALES}
+                placeholder="Select scale"
+              />
+            </Field>
+          </div>
+
+          <Divider />
+
+          <SectionHeader n="02" title="Language" subtitle="Which tests have you taken, or plan to?" />
+          <div className="grid md:grid-cols-2 gap-5">
+            <Field label="Primary language certificate" required>
+              <div className="flex flex-wrap gap-2">
+                {LANGUAGE_CERTS.map((c) => (
+                  <Chip
+                    key={c}
+                    active={profile.languageCert === c}
+                    onClick={() => update({ languageCert: c })}
+                  >
+                    {c}
+                  </Chip>
+                ))}
+              </div>
+            </Field>
+            <Field
+              label="Score"
+              hint={scoreHint(profile.languageCert)}
+              optional={profile.languageCert === 'None / planning to take'}
+            >
+              <TextInput
+                value={profile.languageScore}
+                onChange={(v) => update({ languageScore: v })}
+                placeholder={scorePlaceholder(profile.languageCert)}
+              />
+            </Field>
+          </div>
+
+          <Divider />
+
+          <SectionHeader n="03" title="Target" subtitle="What you're applying for." />
+          <div className="grid md:grid-cols-2 gap-5">
+            <Field label="Target degree level" hint="MVP supports bachelor's only.">
+              <Segmented
+                value="Bachelor's"
+                onChange={() => {}}
+                options={["Bachelor's", { value: 'ms', label: "Master's (soon)" }]}
+              />
+            </Field>
+            <Field label="Preferred instruction language" hint="We'll emphasize matching programs later.">
+              <Segmented
+                value={profile.prefLanguage || 'Any'}
+                onChange={(v) => update({ prefLanguage: v })}
+                options={['Any', 'German', 'English']}
+              />
+            </Field>
+          </div>
+
+          <div className="flex items-center justify-between pt-8 mt-2 border-t border-line">
+            <div className="text-[12px] text-ink-50 leading-snug max-w-[360px]">
+              Tip: you can come back and adjust your profile anytime — recognition updates live.
+            </div>
+            <Button
+              size="lg"
+              onClick={() => router.push('/result')}
+              disabled={!canSubmit}
+              icon={<Icon name="arrowRight" size={16} />}
+            >
+              Check recognition
+            </Button>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
