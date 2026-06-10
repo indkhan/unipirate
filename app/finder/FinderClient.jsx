@@ -6,6 +6,8 @@ import TopNav from '@/components/TopNav';
 import { Button, Badge, Icon, IconButton, Chip, Toggle, Stepper, cx } from '@/components/ui';
 import { loadProfile } from '@/lib/profile';
 import TrackButton from '@/components/TrackButton';
+import { toGermanGrade, ncVerdict } from '@/lib/nc';
+import { GRADE_CONVERSION } from '@/lib/seed-data';
 
 export default function FinderClient({ universities, courses }) {
   const router = useRouter();
@@ -497,6 +499,8 @@ function CourseDetailDrawer({ course, university, profile, onClose }) {
             />
           </div>
 
+          <NcMatch course={course} profile={profile} />
+
           <DetailSection title="Admission requirements">{course.admissionRequirements}</DetailSection>
           <DetailSection title="Language requirements">{course.languageRequirements}</DetailSection>
           <DetailSection title="Course structure">{course.courseStructure}</DetailSection>
@@ -542,6 +546,44 @@ function CourseDetailDrawer({ course, university, profile, onClose }) {
         }
       `}</style>
     </div>
+  );
+}
+
+function NcMatch({ course, profile }) {
+  const germanGrade = profile?.grade
+    ? toGermanGrade(
+        profile.grade,
+        { qualificationType: profile.qualification, gradingScale: profile.gradingScale },
+        GRADE_CONVERSION
+      )
+    : null;
+  const ncNum = course.ncValueNum ?? (course.ncValue ? parseFloat(course.ncValue) : null);
+  const verdict = ncVerdict({
+    course: { nc_free: course.ncFree, nc_value: Number.isFinite(ncNum) ? ncNum : null, nc_year: course.ncYear },
+    germanGrade,
+  });
+  const tone =
+    { open: 'emerald', strong: 'emerald', borderline: 'amber', unlikely: 'coral' }[verdict.tier] || 'slate';
+
+  return (
+    <section className="mt-8 rounded-xl border border-line bg-white p-6">
+      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+        <h3 className="text-[19px] text-ink-90" style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: '-0.01em' }}>
+          Your admission chance
+        </h3>
+        <Badge tone={tone}>{verdict.label}</Badge>
+      </div>
+      <p className="text-[14px] text-ink-70 leading-[1.65]">{verdict.detail}</p>
+      {!profile?.grade && (
+        <p className="text-[12.5px] text-ink-50 mt-2">
+          Add your grade in your <a href="/onboarding" className="text-navy hover:underline">profile</a> to see a personalized match.
+        </p>
+      )}
+      <p className="text-[11.5px] text-ink-45 mt-3 leading-snug">
+        NC is last year’s closing grade — not a guaranteed cut-off. It shifts yearly and some seats go via other
+        quotas. Always confirm on the university’s official page.
+      </p>
+    </section>
   );
 }
 
