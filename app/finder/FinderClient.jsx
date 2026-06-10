@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import { Button, Badge, Icon, IconButton, Chip, Toggle, Stepper, cx } from '@/components/ui';
 import { loadProfile } from '@/lib/profile';
+import TrackButton from '@/components/TrackButton';
 
 export default function FinderClient({ universities, courses }) {
   const router = useRouter();
@@ -181,6 +182,7 @@ export default function FinderClient({ universities, courses }) {
         <CourseDetailDrawer
           course={openCourse}
           university={universities.find((u) => u.id === openCourse.universityId)}
+          profile={profile}
           onClose={() => setOpenCourse(null)}
         />
       )}
@@ -437,7 +439,7 @@ function EmptyState({ onClear }) {
   );
 }
 
-function CourseDetailDrawer({ course, university, onClose }) {
+function CourseDetailDrawer({ course, university, profile, onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -459,9 +461,7 @@ function CourseDetailDrawer({ course, university, onClose }) {
             <div className="text-[12.5px] text-ink-60">{university.short}</div>
           </div>
           <div className="flex items-center gap-2">
-            <IconButton aria-label="Save" onClick={() => {}}>
-              <Icon name="bookmark" size={15} />
-            </IconButton>
+            <TrackButton course={course} university={university} profile={profile} />
             <IconButton aria-label="Close" onClick={onClose}>
               <Icon name="close" size={15} />
             </IconButton>
