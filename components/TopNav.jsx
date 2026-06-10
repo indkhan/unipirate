@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Logo, Badge, Icon, cx } from './ui';
+import { Logo, cx } from './ui';
+import AuthControls from './AuthControls';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Overview' },
@@ -34,9 +35,7 @@ export default function TopNav() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Badge tone="neutral">
-            <Icon name="sparkle" size={11} /> Demo
-          </Badge>
+          <AuthControls />
         </div>
       </div>
     </header>
