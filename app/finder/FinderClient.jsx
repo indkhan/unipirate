@@ -431,8 +431,14 @@ function EmptyState({ onClear }) {
         <p className="text-[13.5px] text-ink-60 mt-2">
           Try broadening the language, removing the NC-free toggle, or clearing the search.
         </p>
-        <div className="mt-5">
+        <div className="mt-5 flex items-center justify-center gap-3">
           <Button onClick={onClear}>Clear filters</Button>
+          <a
+            href="/request"
+            className="text-[13px] text-navy font-medium hover:underline inline-flex items-center gap-1"
+          >
+            Request a university <Icon name="arrowRight" size={12} />
+          </a>
         </div>
       </div>
     </div>
