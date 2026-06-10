@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import {
-  Button, Badge, Icon, Field, Select, TextInput, Segmented, Chip, Stepper, cx,
+  Button, Badge, Icon, Field, Select, TextInput, Segmented, Chip, Toggle, Stepper, cx,
 } from '@/components/ui';
 import {
   COUNTRIES, QUALIFICATIONS_BY_COUNTRY, GRADING_SCALES, LANGUAGE_CERTS,
 } from '@/lib/repo';
-import { loadProfile, saveProfile, loadProfileDb, saveProfileDb, BLANK_PROFILE } from '@/lib/profile';
+import {
+  loadProfile, saveProfile, loadProfileDb, saveProfileDb, BLANK_PROFILE,
+  A_LEVEL_LETTERS, aLevelAverage, parseALevels, serializeALevels,
+} from '@/lib/profile';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 
 function inferSuffix(scale) {
@@ -118,6 +121,34 @@ export default function OnboardingPage() {
   }
   const country = profile.country;
   const availableQuals = country ? QUALIFICATIONS_BY_COUNTRY[country] || [] : [];
+  const isALevel = profile.qualification === 'GCE A-Levels';
+  const isIB = profile.qualification === 'IB Diploma';
+
+  // Switching qualification clears any grade entry tied to the old type.
+  const selectQualification = (v) =>
+    update({
+      qualification: v,
+      grade: '',
+      gradingScale: v === 'IB Diploma' ? 'IB points (0–45)' : v === 'GCE A-Levels' ? 'A-Level grades' : '',
+      aLevelGrades: '',
+      ibHlMath: false,
+      ibHlScience: false,
+    });
+
+  // A-Level: up to 4 { subject, grade } rows backed by the JSON field.
+  const aLevelRows = (() => {
+    const rows = parseALevels(profile.aLevelGrades);
+    while (rows.length < 4) rows.push({ subject: '', grade: '' });
+    return rows.slice(0, 4);
+  })();
+  const setALevelRow = (i, patch) => {
+    const rows = aLevelRows.map((r, idx) => (idx === i ? { ...r, ...patch } : r));
+    update({
+      aLevelGrades: serializeALevels(rows),
+      grade: aLevelAverage(rows),
+      gradingScale: 'A-Level grades',
+    });
+  };
 
   const canSubmit =
     profile.country &&
@@ -167,32 +198,95 @@ export default function OnboardingPage() {
             <Field
               label="Qualification type"
               required
-              hint={country ? 'Pick the closest match.' : 'Select a country first.'}
+              hint={country ? 'A-Levels and IB are available from any country.' : 'Select a country first.'}
             >
               <Select
                 value={profile.qualification}
-                onChange={(v) => update({ qualification: v })}
+                onChange={selectQualification}
                 options={availableQuals}
                 placeholder={country ? 'Select a qualification' : '—'}
               />
             </Field>
-            <Field label="Grade / percentage" required hint="Your overall result, as a number.">
-              <TextInput
-                type="number"
-                value={profile.grade}
-                onChange={(v) => update({ grade: v })}
-                placeholder="e.g. 78"
-                suffix={inferSuffix(profile.gradingScale)}
-              />
-            </Field>
-            <Field label="Grading scale" required hint="Matches your result to a German equivalent.">
-              <Select
-                value={profile.gradingScale}
-                onChange={(v) => update({ gradingScale: v })}
-                options={GRADING_SCALES}
-                placeholder="Select scale"
-              />
-            </Field>
+
+            {/* A-Levels: per-subject name + grade (best 3–4). */}
+            {isALevel && (
+              <Field
+                label="A-Level subjects & grades"
+                required
+                hint="Enter your best 3–4 subjects with their grades. We map A*=6 … E=1 to a German equivalent."
+                className="md:col-span-2"
+              >
+                <div className="space-y-2.5">
+                  {aLevelRows.map((row, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_120px] gap-3">
+                      <TextInput
+                        value={row.subject}
+                        onChange={(v) => setALevelRow(i, { subject: v })}
+                        placeholder={`Subject ${i + 1}${i >= 3 ? ' (optional)' : ''} — e.g. Mathematics`}
+                      />
+                      <Select
+                        value={row.grade}
+                        onChange={(v) => setALevelRow(i, { grade: v })}
+                        options={A_LEVEL_LETTERS}
+                        placeholder="Grade"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </Field>
+            )}
+
+            {/* IB: total points + Higher-Level subject flags. */}
+            {isIB && (
+              <>
+                <Field label="IB total points" required hint="Out of 45. Diploma minimum is 24.">
+                  <TextInput
+                    type="number"
+                    value={profile.grade}
+                    onChange={(v) => update({ grade: v, gradingScale: 'IB points (0–45)' })}
+                    placeholder="e.g. 36"
+                    suffix="/ 45"
+                  />
+                </Field>
+                <Field label="Higher-Level subjects" hint="Determines general vs subject-restricted access.">
+                  <div className="flex flex-col gap-2.5 pt-2">
+                    <Toggle
+                      value={profile.ibHlMath}
+                      onChange={(v) => update({ ibHlMath: v })}
+                      label="HL Mathematics"
+                    />
+                    <Toggle
+                      value={profile.ibHlScience}
+                      onChange={(v) => update({ ibHlScience: v })}
+                      label="HL natural science (Bio / Chem / Physics)"
+                    />
+                  </div>
+                </Field>
+              </>
+            )}
+
+            {/* Default: numeric grade + grading scale. */}
+            {!isALevel && !isIB && (
+              <>
+                <Field label="Grade / percentage" required hint="Your overall result, as a number.">
+                  <TextInput
+                    type="number"
+                    value={profile.grade}
+                    onChange={(v) => update({ grade: v })}
+                    placeholder="e.g. 78"
+                    suffix={inferSuffix(profile.gradingScale)}
+                  />
+                </Field>
+                <Field label="Grading scale" required hint="Matches your result to a German equivalent.">
+                  <Select
+                    value={profile.gradingScale}
+                    onChange={(v) => update({ gradingScale: v })}
+                    options={GRADING_SCALES}
+                    placeholder="Select scale"
+                  />
+                </Field>
+              </>
+            )}
           </div>
 
           <Divider />

@@ -196,3 +196,74 @@ test('match + resolve: India 12th <70% uses below variant', () => {
   assert.equal(r.below, true);
   assert.match(r.headline, /Studienkolleg/i);
 });
+
+// --- universal qualifications (A-Levels / IB, country-agnostic) ---
+test('matchRecognitionRule: A-Levels match the country-agnostic rule regardless of country', () => {
+  const m = matchRecognitionRule(
+    { country: 'Pakistan', qualification: 'GCE A-Levels' },
+    RECOGNITION_RULES
+  );
+  assert.equal(m.country, 'Any');
+  assert.equal(m.qualification_type, 'GCE A-Levels');
+  assert.equal(m.needs_aps, false); // A-Level holders skip APS even from APS countries
+  assert.equal(m.status, 'H+ (subject-restricted)');
+});
+
+test('matchRecognitionRule: exact country rule still wins over universal', () => {
+  const m = matchRecognitionRule(
+    { country: 'India', qualification: 'Standard 12th (CBSE/ICSE/State Board)' },
+    RECOGNITION_RULES
+  );
+  assert.equal(m.country, 'India');
+});
+
+test('matchRecognitionRule: India JEE Advanced exact match needs APS', () => {
+  const m = matchRecognitionRule(
+    { country: 'India', qualification: 'JEE Advanced (qualified)' },
+    RECOGNITION_RULES
+  );
+  assert.equal(m.country, 'India');
+  assert.equal(m.needs_aps, true);
+  assert.equal(m.status, 'H+ (subject-restricted)');
+});
+
+// --- IB Higher-Level subject gating ---
+const ibRule = RECOGNITION_RULES.find(
+  (r) => r.country === 'Any' && r.qualification_type === 'IB Diploma'
+);
+
+test('resolveRecognition: IB with HL Maths + HL science -> general H+', () => {
+  const r = resolveRecognition(ibRule, { ibHlMath: true, ibHlScience: true });
+  assert.equal(r.status, 'H+');
+  assert.equal(r.below, false);
+});
+
+test('resolveRecognition: IB missing a HL science -> subject-restricted', () => {
+  const r = resolveRecognition(ibRule, { ibHlMath: true, ibHlScience: false });
+  assert.equal(r.status, 'H+ (subject-restricted)');
+  assert.equal(r.below, true);
+});
+
+test('resolveRecognition: IB also reads snake_case profile flags', () => {
+  const r = resolveRecognition(ibRule, { ib_hl_math: true, ib_hl_science: true });
+  assert.equal(r.status, 'H+');
+});
+
+// --- A-Level grade conversion ---
+test('toGermanGrade: A-Level average 5.0 (AAA) -> 1.6', () => {
+  const g = toGermanGrade(
+    5,
+    { qualificationType: 'GCE A-Levels', gradingScale: 'A-Level grades' },
+    GRADE_CONVERSION
+  );
+  assert.equal(g, 1.6); // 1 + 3*(6-5)/(6-1) = 1.6
+});
+
+test('toGermanGrade: A-Level all A* (6.0) clamps to 1.0', () => {
+  const g = toGermanGrade(
+    6,
+    { qualificationType: 'GCE A-Levels', gradingScale: 'A-Level grades' },
+    GRADE_CONVERSION
+  );
+  assert.equal(g, 1.0);
+});
