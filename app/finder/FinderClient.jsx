@@ -1,95 +1,125 @@
-// Course finder — 3-panel layout with search, filters, universities, courses, and detail drawer.
+'use client';
 
-function CourseFinder({ profile, onBack, onEditProfile }) {
-  const { UNIVERSITIES, COURSES } = window.UNIPIRATE_DATA;
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import TopNav from '@/components/TopNav';
+import { Button, Badge, Icon, IconButton, Chip, Toggle, Stepper, cx } from '@/components/ui';
+import { loadProfile } from '@/lib/profile';
+import TrackButton from '@/components/TrackButton';
+import { toGermanGrade, ncVerdict } from '@/lib/nc';
+import { GRADE_CONVERSION } from '@/lib/seed-data';
 
-  const [query, setQuery] = React.useState("");
-  const [semester, setSemester] = React.useState("Any");
-  const [language, setLanguage] = React.useState(
-    profile?.prefLanguage && profile.prefLanguage !== "Any" ? profile.prefLanguage : "Any"
-  );
-  const [ncFreeOnly, setNcFreeOnly] = React.useState(false);
-  const [selectedUni, setSelectedUni] = React.useState(UNIVERSITIES[0].id);
-  const [openCourse, setOpenCourse] = React.useState(null);
-  const [mobileView, setMobileView] = React.useState("unis"); // unis | courses
+export default function FinderClient({ universities, courses }) {
+  const router = useRouter();
+  const [profile, setProfile] = useState(null);
+  const [query, setQuery] = useState('');
+  const [semester, setSemester] = useState('Any');
+  const [language, setLanguage] = useState('Any');
+  const [ncFreeOnly, setNcFreeOnly] = useState(false);
+  const [selectedUni, setSelectedUni] = useState(universities[0]?.id);
+  const [openCourse, setOpenCourse] = useState(null);
+  const [mobileView, setMobileView] = useState('unis');
 
-  // Filter courses
-  const matchesFilters = (c) => {
+  useEffect(() => {
+    const p = loadProfile();
+    setProfile(p);
+    if (p?.prefLanguage && p.prefLanguage !== 'Any') {
+      setLanguage(p.prefLanguage);
+    }
+  }, []);
+
+  // Derived filtering — memoized so it only recomputes when the data or a
+  // filter changes (matters once the catalog is DB-backed and larger).
+  const { filteredCourses, countsByUni, universitiesWithMatches } = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (q) {
-      const hay = (c.name + " " + (c.keywords || []).join(" ") + " " + (c.summary || "")).toLowerCase();
-      if (!hay.includes(q)) return false;
+    const matches = (c) => {
+      if (q) {
+        const hay = (c.name + ' ' + (c.keywords || []).join(' ') + ' ' + (c.summary || '')).toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (semester !== 'Any') {
+        if (semester === 'Winter' && !/winter|both/i.test(c.semester)) return false;
+        if (semester === 'Summer' && !/summer|both/i.test(c.semester)) return false;
+      }
+      if (language !== 'Any') {
+        if (language === 'German' && !/german/i.test(c.language)) return false;
+        if (language === 'English' && !/english/i.test(c.language)) return false;
+        if (language === 'Mixed' && !/mixed/i.test(c.language)) return false;
+      }
+      if (ncFreeOnly && !c.ncFree) return false;
+      return true;
+    };
+    const filtered = courses.filter(matches);
+    const counts = {};
+    filtered.forEach((c) => {
+      counts[c.universityId] = (counts[c.universityId] || 0) + 1;
+    });
+    return {
+      filteredCourses: filtered,
+      countsByUni: counts,
+      universitiesWithMatches: universities.filter((u) => (counts[u.id] || 0) > 0),
+    };
+  }, [courses, universities, query, semester, language, ncFreeOnly]);
+
+  // Keep the selected uni valid as filters change.
+  useEffect(() => {
+    if (universitiesWithMatches.length && !universitiesWithMatches.find((u) => u.id === selectedUni)) {
+      setSelectedUni(universitiesWithMatches[0].id);
     }
-    if (semester !== "Any") {
-      if (semester === "Winter" && !/winter|both/i.test(c.semester)) return false;
-      if (semester === "Summer" && !/summer|both/i.test(c.semester)) return false;
-    }
-    if (language !== "Any") {
-      if (language === "German" && !/german/i.test(c.language)) return false;
-      if (language === "English" && !/english/i.test(c.language)) return false;
-      if (language === "Mixed" && !/mixed/i.test(c.language)) return false;
-    }
-    if (ncFreeOnly && !c.ncFree) return false;
-    return true;
-  };
+  }, [universitiesWithMatches, selectedUni]);
 
-  const filteredCourses = COURSES.filter(matchesFilters);
-  const countsByUni = {};
-  filteredCourses.forEach((c) => {
-    countsByUni[c.universityId] = (countsByUni[c.universityId] || 0) + 1;
-  });
-
-  const universitiesWithMatches = UNIVERSITIES.filter((u) => (countsByUni[u.id] || 0) > 0);
-  const universitiesToShow = universitiesWithMatches.length ? universitiesWithMatches : [];
-
-  // Auto-select first uni with matches
-  React.useEffect(() => {
-    if (universitiesToShow.length && !universitiesToShow.find((u) => u.id === selectedUni)) {
-      setSelectedUni(universitiesToShow[0].id);
-    }
-  }, [query, semester, language, ncFreeOnly]);
-
-  const coursesForSelected = filteredCourses.filter((c) => c.universityId === selectedUni);
-  const selectedUniObj = UNIVERSITIES.find((u) => u.id === selectedUni);
-
+  const coursesForSelected = useMemo(
+    () => filteredCourses.filter((c) => c.universityId === selectedUni),
+    [filteredCourses, selectedUni]
+  );
+  const selectedUniObj = universities.find((u) => u.id === selectedUni);
   const totalCourses = filteredCourses.length;
-  const totalUnis = universitiesToShow.length;
+  const totalUnis = universitiesWithMatches.length;
 
   const clearFilters = () => {
-    setQuery("");
-    setSemester("Any");
-    setLanguage("Any");
+    setQuery('');
+    setSemester('Any');
+    setLanguage('Any');
     setNcFreeOnly(false);
   };
 
   return (
     <div className="min-h-screen bg-paper flex flex-col">
-      <TopNav current="finder" onHome={onBack} />
+      <TopNav />
 
-      {/* Sub-header w/ context */}
       <div className="border-b border-line bg-paper">
         <div className="max-w-[1500px] mx-auto px-6 md:px-10 py-5">
           <div className="flex items-end justify-between flex-wrap gap-4">
             <div>
               <div className="text-[11.5px] uppercase tracking-[0.18em] text-ink-40 mb-1">
-                Course finder · Bachelor's
+                Course finder · Bachelor&apos;s
               </div>
               <h1
                 className="text-[28px] md:text-[34px] text-ink-90 leading-tight"
-                style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.015em" }}
+                style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: '-0.015em' }}
               >
                 {totalCourses} programs across {totalUnis} universities.
               </h1>
             </div>
             <div className="flex items-center gap-3">
-              <ProfileChip profile={profile} onEdit={onEditProfile} />
-              <Stepper steps={["Profile", "Recognition", "Courses"]} current={2} />
+              {profile?.country && (
+                <button
+                  onClick={() => router.push('/onboarding')}
+                  className="hidden lg:inline-flex items-center gap-2 h-9 px-3 rounded-md border border-line bg-paper hover:border-navy/40 text-[12px] text-ink-70"
+                >
+                  <Icon name="user" size={13} />
+                  <span>{profile.country}</span>
+                  <span className="text-ink-40">·</span>
+                  <span>{profile.languageCert}</span>
+                  <Icon name="sliders" size={12} className="text-ink-40" />
+                </button>
+              )}
+              <Stepper steps={['Profile', 'Recognition', 'Courses']} current={2} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filter bar */}
       <FilterBar
         query={query}
         setQuery={setQuery}
@@ -102,44 +132,39 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
         onClear={clearFilters}
       />
 
-      {/* Mobile view toggle */}
       <div className="md:hidden px-6 py-3 border-b border-line bg-paper flex gap-2">
-        <Chip active={mobileView === "unis"} onClick={() => setMobileView("unis")}>
+        <Chip active={mobileView === 'unis'} onClick={() => setMobileView('unis')}>
           Universities ({totalUnis})
         </Chip>
-        <Chip active={mobileView === "courses"} onClick={() => setMobileView("courses")}>
+        <Chip active={mobileView === 'courses'} onClick={() => setMobileView('courses')}>
           Courses ({coursesForSelected.length})
         </Chip>
       </div>
 
-      {/* Main 2-panel area */}
       <div className="flex-1 max-w-[1500px] mx-auto w-full px-0 md:px-10 md:py-6">
         <div className="md:grid md:grid-cols-12 md:gap-6">
-          {/* Left: university list */}
           <aside
             className={cx(
-              "md:col-span-4 lg:col-span-4 xl:col-span-3",
-              mobileView === "unis" ? "block" : "hidden md:block"
+              'md:col-span-4 lg:col-span-4 xl:col-span-3',
+              mobileView === 'unis' ? 'block' : 'hidden md:block'
             )}
           >
             <UniList
-              universities={universitiesToShow}
-              allUniversities={UNIVERSITIES}
+              universities={universitiesWithMatches}
               counts={countsByUni}
               selectedId={selectedUni}
               onSelect={(id) => {
                 setSelectedUni(id);
-                setMobileView("courses");
+                setMobileView('courses');
               }}
               empty={totalCourses === 0}
             />
           </aside>
 
-          {/* Right: course panel */}
           <section
             className={cx(
-              "md:col-span-8 lg:col-span-8 xl:col-span-9 md:pr-0",
-              mobileView === "courses" ? "block" : "hidden md:block"
+              'md:col-span-8 lg:col-span-8 xl:col-span-9 md:pr-0',
+              mobileView === 'courses' ? 'block' : 'hidden md:block'
             )}
           >
             {totalCourses === 0 ? (
@@ -155,11 +180,11 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
         </div>
       </div>
 
-      {/* Detail drawer */}
       {openCourse && (
         <CourseDetailDrawer
           course={openCourse}
-          university={UNIVERSITIES.find((u) => u.id === openCourse.universityId)}
+          university={universities.find((u) => u.id === openCourse.universityId)}
+          profile={profile}
           onClose={() => setOpenCourse(null)}
         />
       )}
@@ -167,42 +192,12 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
   );
 }
 
-function ProfileChip({ profile, onEdit }) {
-  if (!profile || !profile.country) return null;
-  return (
-    <button
-      onClick={onEdit}
-      className="hidden lg:inline-flex items-center gap-2 h-9 px-3 rounded-md border border-line bg-paper hover:border-navy/40 text-[12px] text-ink-70"
-    >
-      <Icon name="user" size={13} />
-      <span>{profile.country}</span>
-      <span className="text-ink-40">·</span>
-      <span>{profile.languageCert}</span>
-      <Icon name="sliders" size={12} className="text-ink-40" />
-    </button>
-  );
-}
-
-function FilterBar({
-  query,
-  setQuery,
-  semester,
-  setSemester,
-  language,
-  setLanguage,
-  ncFreeOnly,
-  setNcFreeOnly,
-  onClear,
-}) {
+function FilterBar({ query, setQuery, semester, setSemester, language, setLanguage, ncFreeOnly, setNcFreeOnly, onClear }) {
   return (
     <div className="border-b border-line bg-white/60 sticky top-16 z-20 backdrop-blur">
       <div className="max-w-[1500px] mx-auto px-6 md:px-10 py-3.5 flex flex-wrap items-center gap-3">
         <div className="flex-1 min-w-[220px] relative">
-          <Icon
-            name="search"
-            size={15}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-50"
-          />
+          <Icon name="search" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-50" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -212,17 +207,12 @@ function FilterBar({
         </div>
 
         <div className="hidden md:flex items-center gap-2">
-          <Badge tone="navy">Bachelor's</Badge>
+          <Badge tone="navy">Bachelor&apos;s</Badge>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <FilterPill label="Semester" value={semester} onChange={setSemester} options={["Any", "Winter", "Summer"]} />
-          <FilterPill
-            label="Language"
-            value={language}
-            onChange={setLanguage}
-            options={["Any", "German", "English", "Mixed"]}
-          />
+          <FilterPill label="Semester" value={semester} onChange={setSemester} options={['Any', 'Winter', 'Summer']} />
+          <FilterPill label="Language" value={language} onChange={setLanguage} options={['Any', 'German', 'English', 'Mixed']} />
           <div className="px-3 h-9 rounded-md border border-line bg-paper inline-flex items-center">
             <Toggle value={ncFreeOnly} onChange={setNcFreeOnly} label="NC-free only" />
           </div>
@@ -237,14 +227,14 @@ function FilterBar({
 }
 
 function FilterPill({ label, value, onChange, options }) {
-  const [open, setOpen] = React.useState(false);
-  const ref = React.useRef(null);
-  React.useEffect(() => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
     const h = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, []);
 
   return (
@@ -252,10 +242,10 @@ function FilterPill({ label, value, onChange, options }) {
       <button
         onClick={() => setOpen((o) => !o)}
         className={cx(
-          "h-9 px-3 rounded-md border text-[12.5px] inline-flex items-center gap-2 transition-colors",
-          value !== "Any"
-            ? "border-navy/40 bg-navy/5 text-navy"
-            : "border-line bg-paper text-ink-70 hover:border-ink-30"
+          'h-9 px-3 rounded-md border text-[12.5px] inline-flex items-center gap-2 transition-colors',
+          value !== 'Any'
+            ? 'border-navy/40 bg-navy/5 text-navy'
+            : 'border-line bg-paper text-ink-70 hover:border-ink-30'
         )}
       >
         <span className="text-ink-50 text-[11.5px]">{label}</span>
@@ -269,13 +259,10 @@ function FilterPill({ label, value, onChange, options }) {
           {options.map((o) => (
             <button
               key={o}
-              onClick={() => {
-                onChange(o);
-                setOpen(false);
-              }}
+              onClick={() => { onChange(o); setOpen(false); }}
               className={cx(
-                "w-full text-left px-3 py-2 rounded-[4px] text-[13px]",
-                o === value ? "bg-navy/8 text-navy" : "text-ink-80 hover:bg-ink-5"
+                'w-full text-left px-3 py-2 rounded-[4px] text-[13px]',
+                o === value ? 'bg-navy/8 text-navy' : 'text-ink-80 hover:bg-ink-5'
               )}
             >
               {o}
@@ -308,17 +295,15 @@ function UniList({ universities, counts, selectedId, onSelect, empty }) {
                   <button
                     onClick={() => onSelect(u.id)}
                     className={cx(
-                      "w-full text-left rounded-lg border p-4 transition-colors",
+                      'w-full text-left rounded-lg border p-4 transition-colors',
                       active
-                        ? "border-navy bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_6px_16px_-10px_oklch(0.3_0.05_255/0.25)]"
-                        : "border-line bg-white/60 hover:bg-white hover:border-navy/30"
+                        ? 'border-navy bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_6px_16px_-10px_oklch(0.3_0.05_255/0.25)]'
+                        : 'border-line bg-white/60 hover:bg-white hover:border-navy/30'
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-[14px] text-ink-90 font-medium leading-tight">
-                          {u.short}
-                        </div>
+                        <div className="text-[14px] text-ink-90 font-medium leading-tight">{u.short}</div>
                         <div className="text-[11.5px] text-ink-50 mt-0.5 flex items-center gap-1">
                           <Icon name="pin" size={11} />
                           {u.city}
@@ -326,8 +311,8 @@ function UniList({ universities, counts, selectedId, onSelect, empty }) {
                       </div>
                       <span
                         className={cx(
-                          "inline-flex items-center justify-center h-6 min-w-6 px-1.5 rounded-full text-[11px] font-medium",
-                          active ? "bg-navy text-paper" : "bg-ink-5 text-ink-60"
+                          'inline-flex items-center justify-center h-6 min-w-6 px-1.5 rounded-full text-[11px] font-medium',
+                          active ? 'bg-navy text-paper' : 'bg-ink-5 text-ink-60'
                         )}
                       >
                         {count}
@@ -335,11 +320,10 @@ function UniList({ universities, counts, selectedId, onSelect, empty }) {
                     </div>
                     <div className="mt-2.5 flex flex-wrap gap-1.5">
                       <Badge tone="neutral" className="!text-[10.5px]">
-                        {/* portal short */}
-                        {u.portalType.includes("uni-assist") ? "uni-assist" : "direct"}
+                        {u.portalType.includes('uni-assist') ? 'uni-assist' : 'direct'}
                       </Badge>
                       <Badge tone="neutral" className="!text-[10.5px]">
-                        {u.semesterContribution.replace(" / semester", "/sem")}
+                        {u.semesterContribution.replace(' / semester', '/sem')}
                       </Badge>
                     </div>
                   </button>
@@ -361,7 +345,7 @@ function CoursesPanel({ university, courses, onOpen }) {
           <div>
             <div
               className="text-[26px] md:text-[30px] text-ink-90 leading-tight"
-              style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.015em" }}
+              style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: '-0.015em' }}
             >
               {university.name}
             </div>
@@ -400,15 +384,11 @@ function CourseCard({ course, onOpen }) {
       <div className="flex items-start justify-between gap-3">
         <div
           className="text-[18px] text-ink-90 leading-snug"
-          style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.01em" }}
+          style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: '-0.01em' }}
         >
           {course.name}
         </div>
-        <Icon
-          name="chevronRight"
-          size={16}
-          className="text-ink-40 group-hover:text-navy transition-colors mt-1"
-        />
+        <Icon name="chevronRight" size={16} className="text-ink-40 group-hover:text-navy transition-colors mt-1" />
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
         <Badge tone="navy">{course.degree}</Badge>
@@ -421,7 +401,7 @@ function CourseCard({ course, onOpen }) {
         {course.ncFree ? (
           <Badge tone="emerald">NC-free</Badge>
         ) : (
-          <Badge tone="amber">NC {course.ncValue ? `· ${course.ncValue}` : ""}</Badge>
+          <Badge tone="amber">NC {course.ncValue ? `· ${course.ncValue}` : ''}</Badge>
         )}
       </div>
       <p className="mt-3 text-[13px] text-ink-60 leading-[1.55] line-clamp-2">{course.summary}</p>
@@ -453,47 +433,43 @@ function EmptyState({ onClear }) {
         <p className="text-[13.5px] text-ink-60 mt-2">
           Try broadening the language, removing the NC-free toggle, or clearing the search.
         </p>
-        <div className="mt-5">
+        <div className="mt-5 flex items-center justify-center gap-3">
           <Button onClick={onClear}>Clear filters</Button>
+          <a
+            href="/request"
+            className="text-[13px] text-navy font-medium hover:underline inline-flex items-center gap-1"
+          >
+            Request a university <Icon name="arrowRight" size={12} />
+          </a>
         </div>
       </div>
     </div>
   );
 }
 
-// =================== Course Detail Drawer ===================
-
-function CourseDetailDrawer({ course, university, onClose }) {
-  React.useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
+function CourseDetailDrawer({ course, university, profile, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
     return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
     };
   }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div
-        className="flex-1 bg-ink-90/35 backdrop-blur-[2px]"
-        onClick={onClose}
-        aria-label="Close"
-      />
-      <div className="w-full md:w-[720px] lg:w-[840px] bg-paper h-full overflow-auto animate-[slide-in_200ms_ease-out] shadow-[-10px_0_40px_-10px_oklch(0.2_0.05_255/0.2)]">
-        {/* Head */}
+      <div className="flex-1 bg-ink-90/35 backdrop-blur-[2px]" onClick={onClose} aria-label="Close" />
+      <div className="w-full md:w-[720px] lg:w-[840px] bg-paper h-full overflow-auto shadow-[-10px_0_40px_-10px_oklch(0.2_0.05_255/0.2)]"
+        style={{ animation: 'slide-in 200ms ease-out' }}>
         <div className="sticky top-0 z-10 bg-paper/95 backdrop-blur border-b border-line px-7 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Badge tone="navy">{course.degree}</Badge>
             <div className="text-[12.5px] text-ink-60">{university.short}</div>
           </div>
           <div className="flex items-center gap-2">
-            <IconButton aria-label="Save" onClick={() => {}}>
-              <Icon name="bookmark" size={15} />
-            </IconButton>
+            <TrackButton course={course} university={university} profile={profile} />
             <IconButton aria-label="Close" onClick={onClose}>
               <Icon name="close" size={15} />
             </IconButton>
@@ -501,41 +477,37 @@ function CourseDetailDrawer({ course, university, onClose }) {
         </div>
 
         <div className="px-7 pt-7 pb-10">
-          {/* Title block */}
           <div className="text-[11.5px] uppercase tracking-[0.18em] text-ink-40 mb-2">
             {university.name} · {university.city}
           </div>
           <h2
             className="text-[38px] md:text-[44px] text-ink-90 leading-[1.05]"
-            style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.02em" }}
+            style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: '-0.02em' }}
           >
             {course.name}
           </h2>
           <p className="mt-3 text-[15px] text-ink-70 leading-[1.6] max-w-[620px]">{course.summary}</p>
 
-          {/* Quick facts */}
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
             <Fact label="Degree" value={course.degree} />
             <Fact label="Language" value={course.language} />
             <Fact label="Semester" value={course.semester} />
             <Fact
               label="NC"
-              value={course.ncFree ? "NC-free" : course.ncValue || "Restricted"}
-              tone={course.ncFree ? "emerald" : "amber"}
+              value={course.ncFree ? 'NC-free' : course.ncValue || 'Restricted'}
+              tone={course.ncFree ? 'emerald' : 'amber'}
             />
           </div>
 
-          {/* Sections */}
+          <NcMatch course={course} profile={profile} />
+
           <DetailSection title="Admission requirements">{course.admissionRequirements}</DetailSection>
           <DetailSection title="Language requirements">{course.languageRequirements}</DetailSection>
           <DetailSection title="Course structure">{course.courseStructure}</DetailSection>
           <DetailSection title="How to apply">{course.howToApply}</DetailSection>
 
-          {/* University strip */}
           <div className="mt-8 rounded-xl border border-line bg-white p-6">
-            <div className="text-[11.5px] uppercase tracking-[0.18em] text-ink-40 mb-4">
-              About the university
-            </div>
+            <div className="text-[11.5px] uppercase tracking-[0.18em] text-ink-40 mb-4">About the university</div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Stat label="Portal" value={university.portalType} />
               <Stat label="Deadlines" value={university.generalDeadlines} />
@@ -545,21 +517,16 @@ function CourseDetailDrawer({ course, university, onClose }) {
             <p className="text-[13px] text-ink-60 mt-4 leading-[1.6]">{university.blurb}</p>
           </div>
 
-          {/* Deadline & apply */}
           <div className="mt-6 rounded-xl border border-navy/15 bg-navy/[0.035] p-6 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <div className="text-[11.5px] uppercase tracking-[0.18em] text-navy/70 mb-1">
-                Application deadline
-              </div>
+              <div className="text-[11.5px] uppercase tracking-[0.18em] text-navy/70 mb-1">Application deadline</div>
               <div
                 className="text-[24px] text-ink-90 leading-tight"
                 style={{ fontFamily: "'Instrument Serif', serif" }}
               >
                 {course.applicationDeadline}
               </div>
-              <div className="text-[12.5px] text-ink-60 mt-1">
-                Applies via {university.portalType}
-              </div>
+              <div className="text-[12.5px] text-ink-60 mt-1">Applies via {university.portalType}</div>
             </div>
             <Button size="lg" icon={<Icon name="external" size={14} />}>
               Open application
@@ -568,7 +535,7 @@ function CourseDetailDrawer({ course, university, onClose }) {
 
           <div className="mt-8 text-[11.5px] text-ink-50 leading-snug">
             Information is curated for this MVP. Always double-check dates, tests, and fees on the
-            university's official page before applying.
+            university&apos;s official page before applying.
           </div>
         </div>
       </div>
@@ -582,13 +549,51 @@ function CourseDetailDrawer({ course, university, onClose }) {
   );
 }
 
+function NcMatch({ course, profile }) {
+  const germanGrade = profile?.grade
+    ? toGermanGrade(
+        profile.grade,
+        { qualificationType: profile.qualification, gradingScale: profile.gradingScale },
+        GRADE_CONVERSION
+      )
+    : null;
+  const ncNum = course.ncValueNum ?? (course.ncValue ? parseFloat(course.ncValue) : null);
+  const verdict = ncVerdict({
+    course: { nc_free: course.ncFree, nc_value: Number.isFinite(ncNum) ? ncNum : null, nc_year: course.ncYear },
+    germanGrade,
+  });
+  const tone =
+    { open: 'emerald', strong: 'emerald', borderline: 'amber', unlikely: 'coral' }[verdict.tier] || 'slate';
+
+  return (
+    <section className="mt-8 rounded-xl border border-line bg-white p-6">
+      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+        <h3 className="text-[19px] text-ink-90" style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: '-0.01em' }}>
+          Your admission chance
+        </h3>
+        <Badge tone={tone}>{verdict.label}</Badge>
+      </div>
+      <p className="text-[14px] text-ink-70 leading-[1.65]">{verdict.detail}</p>
+      {!profile?.grade && (
+        <p className="text-[12.5px] text-ink-50 mt-2">
+          Add your grade in your <a href="/onboarding" className="text-navy hover:underline">profile</a> to see a personalized match.
+        </p>
+      )}
+      <p className="text-[11.5px] text-ink-45 mt-3 leading-snug">
+        NC is last year’s closing grade — not a guaranteed cut-off. It shifts yearly and some seats go via other
+        quotas. Always confirm on the university’s official page.
+      </p>
+    </section>
+  );
+}
+
 function Fact({ label, value, tone }) {
   return (
     <div className="rounded-lg border border-line bg-white p-4">
       <div className="text-[10.5px] uppercase tracking-[0.15em] text-ink-40 mb-1.5">{label}</div>
       <div className="text-[14px] text-ink-90 leading-tight">{value}</div>
-      {tone === "emerald" && <div className="mt-2"><Badge tone="emerald">Open admission</Badge></div>}
-      {tone === "amber" && <div className="mt-2"><Badge tone="amber">Restricted</Badge></div>}
+      {tone === 'emerald' && <div className="mt-2"><Badge tone="emerald">Open admission</Badge></div>}
+      {tone === 'amber' && <div className="mt-2"><Badge tone="amber">Restricted</Badge></div>}
     </div>
   );
 }
@@ -607,7 +612,7 @@ function DetailSection({ title, children }) {
     <section className="mt-8">
       <h3
         className="text-[19px] text-ink-90 mb-2"
-        style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.01em" }}
+        style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: '-0.01em' }}
       >
         {title}
       </h3>
@@ -615,5 +620,3 @@ function DetailSection({ title, children }) {
     </section>
   );
 }
-
-Object.assign(window, { CourseFinder });

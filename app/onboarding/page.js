@@ -8,8 +8,9 @@ import {
 } from '@/components/ui';
 import {
   COUNTRIES, QUALIFICATIONS_BY_COUNTRY, GRADING_SCALES, LANGUAGE_CERTS,
-} from '@/lib/data';
-import { loadProfile, saveProfile, BLANK_PROFILE } from '@/lib/profile';
+} from '@/lib/repo';
+import { loadProfile, saveProfile, loadProfileDb, saveProfileDb, BLANK_PROFILE } from '@/lib/profile';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 
 function inferSuffix(scale) {
   if (!scale) return '';
@@ -75,16 +76,46 @@ function Divider() {
 export default function OnboardingPage() {
   const router = useRouter();
   const [profile, setProfile] = useState(BLANK_PROFILE);
+  const [userId, setUserId] = useState(null);
 
+  // Load the profile: from the DB when signed in, else from localStorage.
   useEffect(() => {
-    setProfile(loadProfile());
+    let active = true;
+    (async () => {
+      if (isSupabaseConfigured()) {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getUser();
+        const uid = data?.user?.id ?? null;
+        if (!active) return;
+        setUserId(uid);
+        if (uid) {
+          const dbProfile = await loadProfileDb(supabase, uid);
+          if (!active) return;
+          if (dbProfile) {
+            setProfile(dbProfile);
+            return;
+          }
+        }
+      }
+      if (active) setProfile(loadProfile());
+    })();
+    return () => { active = false; };
   }, []);
 
+  // Mirror to localStorage so anon browsing + the result page stay in sync.
   useEffect(() => {
     saveProfile(profile);
   }, [profile]);
 
   const update = (patch) => setProfile((p) => ({ ...p, ...patch }));
+
+  async function handleSubmit() {
+    saveProfile(profile);
+    if (userId && isSupabaseConfigured()) {
+      await saveProfileDb(createClient(), userId, profile);
+    }
+    router.push('/result');
+  }
   const country = profile.country;
   const availableQuals = country ? QUALIFICATIONS_BY_COUNTRY[country] || [] : [];
 
@@ -116,7 +147,7 @@ export default function OnboardingPage() {
               Tell us about your background.
             </h1>
             <p className="text-ink-60 mt-2 max-w-[560px] text-[14.5px] leading-[1.55]">
-              We use this to match against a curated set of anabin-style rules. Nothing is stored on a server.
+              We use this to match against curated anabin-based rules. Signed in, it’s saved to your account; otherwise it stays in your browser.
             </p>
           </div>
           <Stepper steps={['Profile', 'Recognition', 'Courses']} current={0} />
@@ -220,7 +251,7 @@ export default function OnboardingPage() {
             </div>
             <Button
               size="lg"
-              onClick={() => router.push('/result')}
+              onClick={handleSubmit}
               disabled={!canSubmit}
               icon={<Icon name="arrowRight" size={16} />}
             >
