@@ -6,8 +6,9 @@ import {
   toGermanGrade,
   ncVerdict,
   resolveRecognition,
+  matchRecognitionRule,
 } from '../lib/nc.js';
-import { RECOGNITION_RULES, GRADE_CONVERSION } from '../scripts/seed-data.mjs';
+import { RECOGNITION_RULES, GRADE_CONVERSION } from '../lib/seed-data.js';
 
 test('roundGrade rounds to one decimal', () => {
   assert.equal(roundGrade(2.343), 2.3);
@@ -151,4 +152,47 @@ test('resolveRecognition: rule without threshold passes through', () => {
   const r = resolveRecognition(malaysiaStpm, { grade: '3.5', grading_scale: 'CGPA out of 4' });
   assert.equal(r.status, 'H+');
   assert.equal(r.below, false);
+});
+
+// --- rule matching ---
+test('matchRecognitionRule: exact India 12th match', () => {
+  const m = matchRecognitionRule(
+    { country: 'India', qualification: 'Standard 12th (CBSE/ICSE/State Board)' },
+    RECOGNITION_RULES
+  );
+  assert.equal(m.country, 'India');
+  assert.equal(m.needs_aps, true);
+});
+
+test('matchRecognitionRule: unknown country -> Other/Not listed', () => {
+  const m = matchRecognitionRule(
+    { country: 'Narnia', qualification: 'Wizardry' },
+    RECOGNITION_RULES
+  );
+  assert.equal(m.country, 'Other / Not listed');
+  assert.equal(m.status, 'UNCLEAR');
+});
+
+test('matchRecognitionRule: incomplete profile -> null', () => {
+  assert.equal(matchRecognitionRule({ country: 'India' }, RECOGNITION_RULES), null);
+});
+
+test('match + resolve: India 12th >=70% stays H- but uses base messaging', () => {
+  const m = matchRecognitionRule(
+    { country: 'India', qualification: 'Standard 12th (CBSE/ICSE/State Board)' },
+    RECOGNITION_RULES
+  );
+  const r = resolveRecognition(m, { grade: '75', grading_scale: 'Percentage (0–100)' });
+  assert.equal(r.below, false);
+  assert.match(r.explanation, /70%/);
+});
+
+test('match + resolve: India 12th <70% uses below variant', () => {
+  const m = matchRecognitionRule(
+    { country: 'India', qualification: 'Standard 12th (CBSE/ICSE/State Board)' },
+    RECOGNITION_RULES
+  );
+  const r = resolveRecognition(m, { grade: '60', grading_scale: 'Percentage (0–100)' });
+  assert.equal(r.below, true);
+  assert.match(r.headline, /Studienkolleg/i);
 });

@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { UNIVERSITIES, COURSES } from '../lib/data.js';
-import { RECOGNITION_RULES, GRADE_CONVERSION, COUNTRY_PLAYBOOKS } from './seed-data.mjs';
+import { RECOGNITION_RULES, GRADE_CONVERSION, COUNTRY_PLAYBOOKS } from '../lib/seed-data.js';
 import { applyMethod, parseNc } from './transforms.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

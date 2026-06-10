@@ -3,9 +3,26 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
-import { Button, Badge, Icon, StatusBadge, Stepper, cx } from '@/components/ui';
-import { RECOGNITION_RULES, matchRecognition } from '@/lib/repo';
-import { loadProfile } from '@/lib/profile';
+import { Button, Badge, Icon, Stepper } from '@/components/ui';
+import { RECOGNITION_RULES } from '@/lib/seed-data';
+import { matchRecognitionRule, resolveRecognition } from '@/lib/nc';
+import { loadProfile, loadProfileDb } from '@/lib/profile';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+
+const TONE = {
+  'H+': 'emerald',
+  'H+ (subject-restricted)': 'emerald',
+  'H+/-': 'amber',
+  'H-': 'coral',
+  UNCLEAR: 'slate',
+};
+const TITLE = {
+  'H+': 'Direct access',
+  'H+ (subject-restricted)': 'Direct access (subject-restricted)',
+  'H+/-': 'Conditional access',
+  'H-': 'Not sufficient on its own',
+  UNCLEAR: 'Manual check recommended',
+};
 
 function truncate(s, n) {
   if (!s) return '';
@@ -16,12 +33,7 @@ function InfoCard({ kicker, title, body }) {
   return (
     <div className="rounded-xl border border-line bg-white p-6 md:p-8 h-full">
       <div className="flex items-baseline gap-4 mb-4">
-        <span
-          className="text-[12px] uppercase tracking-[0.18em] text-ink-40"
-          style={{ fontFeatureSettings: "'tnum'" }}
-        >
-          {kicker}
-        </span>
+        <span className="text-[12px] uppercase tracking-[0.18em] text-ink-40">{kicker}</span>
         <div className="text-[22px] text-ink-90" style={{ fontFamily: "'Instrument Serif', serif" }}>
           {title}
         </div>
@@ -31,20 +43,17 @@ function InfoCard({ kicker, title, body }) {
   );
 }
 
-function ActionList({ links }) {
+function ActionList({ links = [] }) {
   const kindIcon = { aps: 'check', kolleg: 'book', apply: 'external', manual: 'info' };
-  const kindLabel = {
-    aps: 'APS info',
-    kolleg: 'Studienkolleg',
-    apply: 'Application portal',
-    manual: 'Manual check',
-  };
+  const kindLabel = { aps: 'APS info', kolleg: 'Studienkolleg', apply: 'Application portal', manual: 'Reference' };
   return (
     <div className="space-y-2">
       {links.map((l, i) => (
         <a
           key={i}
           href={l.href}
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex items-center justify-between gap-3 rounded-md border border-line bg-paper px-4 py-3 hover:border-navy/40 hover:bg-white transition-colors"
         >
           <div className="flex items-center gap-3">
@@ -66,14 +75,37 @@ function ActionList({ links }) {
 export default function ResultPage() {
   const router = useRouter();
   const [profile, setProfile] = useState(null);
+  const [rules, setRules] = useState(RECOGNITION_RULES);
 
   useEffect(() => {
-    setProfile(loadProfile());
+    let active = true;
+    (async () => {
+      if (isSupabaseConfigured()) {
+        const supabase = createClient();
+        const [{ data: userData }, { data: ruleRows }] = await Promise.all([
+          supabase.auth.getUser(),
+          supabase.from('recognition_rules').select('*'),
+        ]);
+        if (!active) return;
+        if (ruleRows?.length) setRules(ruleRows);
+        const uid = userData?.user?.id;
+        if (uid) {
+          const dbProfile = await loadProfileDb(supabase, uid);
+          if (active && dbProfile) {
+            setProfile(dbProfile);
+            return;
+          }
+        }
+      }
+      if (active) setProfile(loadProfile());
+    })();
+    return () => { active = false; };
   }, []);
 
   if (!profile) return null;
 
-  const rule = matchRecognition(profile, RECOGNITION_RULES);
+  const matched = matchRecognitionRule(profile, rules);
+  const rule = matched ? resolveRecognition(matched, profile) : null;
 
   if (!rule) {
     return (
@@ -89,16 +121,8 @@ export default function ResultPage() {
     );
   }
 
-  const tone =
-    rule.status === 'H+' ? 'emerald' : rule.status === 'H' ? 'amber' : rule.status === 'H-' ? 'coral' : 'slate';
-
-  const statusTitle =
-    {
-      'H+': 'Direct access',
-      H: 'Conditional recognition',
-      'H-': 'Not sufficient on its own',
-      UNCLEAR: 'Manual check recommended',
-    }[rule.status] || '';
+  const tone = TONE[rule.status] || 'slate';
+  const statusTitle = TITLE[rule.status] || rule.status;
 
   return (
     <div className="min-h-screen bg-paper">
@@ -136,6 +160,7 @@ export default function ResultPage() {
                 <Badge tone="neutral">
                   <Icon name="book" size={11} /> {truncate(profile.qualification, 40)}
                 </Badge>
+                {rule.needs_aps && <Badge tone="navy">APS required</Badge>}
               </div>
               <div
                 className="text-[30px] md:text-[36px] text-ink-90 leading-[1.1]"
@@ -150,60 +175,63 @@ export default function ResultPage() {
             <div className="md:col-span-4 flex md:justify-end">
               <div className="inline-flex flex-col items-center gap-3 p-5 rounded-lg border border-line bg-paper min-w-[180px]">
                 <div className="text-[10.5px] uppercase tracking-[0.18em] text-ink-40">Status code</div>
-                <StatusBadge status={rule.status} size="lg" />
-                <div className="text-[11.5px] text-ink-50 text-center leading-snug max-w-[160px]">
-                  Curated from anabin-style rules · MVP dataset
+                <div className="text-[26px] text-ink-90" style={{ fontFamily: "'Instrument Serif', serif" }}>
+                  {rule.status}
                 </div>
+                {rule.anabin_url && (
+                  <a
+                    href={rule.anabin_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[12px] text-navy font-medium inline-flex items-center gap-1 hover:underline"
+                  >
+                    Verify on anabin <Icon name="external" size={11} />
+                  </a>
+                )}
               </div>
             </div>
           </div>
         </div>
+
+        {/* APS callout */}
+        {rule.needs_aps && (
+          <div className="mt-4 rounded-xl border border-navy/15 bg-navy/[0.035] p-5 flex items-start gap-3">
+            <span className="h-7 w-7 shrink-0 rounded-md bg-navy/10 text-navy inline-flex items-center justify-center">
+              <Icon name="check" size={14} />
+            </span>
+            <div className="text-[13.5px] text-ink-75 leading-[1.6]">
+              <b className="text-ink-90">APS certificate is mandatory</b> for applicants from your country — start
+              this early, it’s required before you can apply to universities or a Studienkolleg.
+            </div>
+          </div>
+        )}
 
         {/* Info cards */}
         <div className="grid md:grid-cols-2 gap-4 mt-4">
           <InfoCard
             kicker="01"
             title="What this means"
-            body={
-              rule.status === 'H+'
-                ? "You have direct university entrance qualification for bachelor's programs in Germany (subject to program-level admission)."
-                : rule.status === 'H'
-                ? 'You have conditional access — most programs will require an extra step like a Studienkolleg or a specific score threshold.'
-                : rule.status === 'H-'
-                ? 'Your qualification on its own does not grant direct access. Plan for a Studienkolleg or an additional year of study.'
-                : "Your combination isn't in our curated dataset. That doesn't rule you out — it means you should verify directly with anabin or uni-assist."
-            }
+            body={rule.explanation}
           />
           <InfoCard
             kicker="02"
             title="Recommended actions"
-            body={<ActionList links={rule.actionLinks} />}
+            body={<ActionList links={rule.action_links} />}
           />
         </div>
 
         {/* Next steps */}
         <div className="rounded-xl border border-line bg-white p-6 md:p-8 mt-4">
           <div className="flex items-baseline gap-4 mb-5">
-            <span
-              className="text-[12px] uppercase tracking-[0.18em] text-ink-40"
-              style={{ fontFeatureSettings: "'tnum'" }}
-            >
-              03
-            </span>
-            <div
-              className="text-[22px] text-ink-90"
-              style={{ fontFamily: "'Instrument Serif', serif" }}
-            >
+            <span className="text-[12px] uppercase tracking-[0.18em] text-ink-40">03</span>
+            <div className="text-[22px] text-ink-90" style={{ fontFamily: "'Instrument Serif', serif" }}>
               Next steps
             </div>
           </div>
           <ol className="space-y-3">
-            {rule.nextSteps.map((s, i) => (
+            {(rule.next_steps || []).map((s, i) => (
               <li key={i} className="flex gap-4 items-start">
-                <span
-                  className="mt-0.5 h-6 w-6 shrink-0 rounded-full border border-line bg-paper inline-flex items-center justify-center text-[11px] text-ink-60"
-                  style={{ fontFeatureSettings: "'tnum'" }}
-                >
+                <span className="mt-0.5 h-6 w-6 shrink-0 rounded-full border border-line bg-paper inline-flex items-center justify-center text-[11px] text-ink-60">
                   {i + 1}
                 </span>
                 <span className="text-[14px] text-ink-80 leading-[1.6]">{s}</span>
@@ -213,15 +241,16 @@ export default function ResultPage() {
         </div>
 
         <div className="mt-8 flex items-center justify-between flex-wrap gap-3">
-          <div className="text-[12px] text-ink-50 max-w-[520px] leading-snug">
-            This is an MVP recommendation based on curated rules. Always verify with the official anabin
-            database and your target university before applying.
+          <div className="text-[12px] text-ink-50 max-w-[560px] leading-snug">
+            This is guidance based on curated anabin-based rules — not an official decision. Only the university,
+            uni-assist, or anabin can confirm your case. Always verify on the
+            {' '}
+            <a href={rule.anabin_url || 'https://anabin.kmk.org/anabin.html'} target="_blank" rel="noopener noreferrer" className="text-navy hover:underline">
+              official anabin database
+            </a>{' '}
+            before applying.
           </div>
-          <Button
-            size="lg"
-            onClick={() => router.push('/finder')}
-            icon={<Icon name="arrowRight" size={16} />}
-          >
+          <Button size="lg" onClick={() => router.push('/finder')} icon={<Icon name="arrowRight" size={16} />}>
             Continue to course finder
           </Button>
         </div>
