@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import {
@@ -13,7 +13,7 @@ import {
   loadProfile, saveProfile, loadProfileDb, saveProfileDb, BLANK_PROFILE,
   A_LEVEL_LETTERS, aLevelAverage, parseALevels, serializeALevels,
 } from '@/lib/profile';
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 
 function inferSuffix(scale) {
   if (!scale) return '';
@@ -78,35 +78,31 @@ function Divider() {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { userId, loading: authLoading, supabase } = useAuth();
   const [profile, setProfile] = useState(BLANK_PROFILE);
-  const [userId, setUserId] = useState(null);
+  const initialized = useRef(false);
 
   // Load the profile. localStorage holds the latest edits from this session, so
   // it wins; the DB copy is only used to restore on a fresh device/session.
   useEffect(() => {
+    const local = loadProfile();
+    // Show local immediately on mount — reading it before the mirror effect
+    // can clobber storage, and so anon users never wait on auth. The init ref
+    // keeps a later re-run (when auth resolves) from stomping in-progress edits.
+    if (!initialized.current) {
+      initialized.current = true;
+      setProfile(local);
+    }
+    if (authLoading) return; // DB restore waits until we know who's signed in
+    const hasLocal = !!(local && local.country && local.qualification);
+    if (hasLocal || !userId || !supabase) return;
     let active = true;
     (async () => {
-      const local = loadProfile(); // read before the mirror effect can clobber it
-      const hasLocal = !!(local && local.country && local.qualification);
-      if (isSupabaseConfigured()) {
-        const supabase = createClient();
-        const { data } = await supabase.auth.getUser();
-        const uid = data?.user?.id ?? null;
-        if (!active) return;
-        setUserId(uid);
-        if (!hasLocal && uid) {
-          const dbProfile = await loadProfileDb(supabase, uid);
-          if (!active) return;
-          if (dbProfile) {
-            setProfile(dbProfile);
-            return;
-          }
-        }
-      }
-      if (active) setProfile(local);
+      const dbProfile = await loadProfileDb(supabase, userId);
+      if (active && dbProfile) setProfile(dbProfile);
     })();
     return () => { active = false; };
-  }, []);
+  }, [authLoading, userId, supabase]);
 
   // Mirror to localStorage so anon browsing + the result page stay in sync.
   useEffect(() => {
@@ -117,8 +113,8 @@ export default function OnboardingPage() {
 
   async function handleSubmit() {
     saveProfile(profile); // always persist locally first — result reads this
-    if (userId && isSupabaseConfigured()) {
-      const { error } = await saveProfileDb(createClient(), userId, profile);
+    if (userId && supabase) {
+      const { error } = await saveProfileDb(supabase, userId, profile);
       if (error) {
         // Don't strand the user: localStorage already has the latest, and the
         // result page reads from there. Surface for diagnosis (e.g. a missing

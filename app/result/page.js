@@ -7,7 +7,7 @@ import { Button, Badge, Icon, Stepper } from '@/components/ui';
 import { RECOGNITION_RULES } from '@/lib/seed-data';
 import { matchRecognitionRule, resolveRecognition, mergeRecognitionRules } from '@/lib/nc';
 import { loadProfile, loadProfileDb } from '@/lib/profile';
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 
 const TONE = {
   'H+': 'emerald',
@@ -74,41 +74,47 @@ function ActionList({ links = [] }) {
 
 export default function ResultPage() {
   const router = useRouter();
+  const { userId, loading: authLoading, supabase } = useAuth();
   const [profile, setProfile] = useState(null);
   const [rules, setRules] = useState(RECOGNITION_RULES);
 
+  // Recognition rules are public — fetch them independently of auth.
   useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+    supabase
+      .from('recognition_rules')
+      .select('*')
+      .then(({ data }) => {
+        if (active && data?.length) setRules(mergeRecognitionRules(data, RECOGNITION_RULES));
+      });
+    return () => { active = false; };
+  }, [supabase]);
+
+  // Resolve which profile to display once we know who's signed in.
+  // Arriving from a profile edit (?from=onboarding) → trust the just-saved
+  // localStorage copy. A plain navbar/direct visit → read the DB as the source
+  // of truth (falling back to localStorage only when there's none).
+  useEffect(() => {
+    if (authLoading) return;
     let active = true;
     (async () => {
-      // Arriving from a profile edit (?from=onboarding) → trust the just-saved
-      // localStorage copy. A plain navbar/direct visit → read the DB as the
-      // source of truth (falling back to localStorage only when there's none).
       const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
       const fromProfile = params?.get('from') === 'onboarding';
       const local = loadProfile();
       const hasLocal = !!(local && local.country && local.qualification);
 
-      if (isSupabaseConfigured()) {
-        const supabase = createClient();
-        const [{ data: userData }, { data: ruleRows }] = await Promise.all([
-          supabase.auth.getUser(),
-          supabase.from('recognition_rules').select('*'),
-        ]);
-        if (!active) return;
-        if (ruleRows?.length) setRules(mergeRecognitionRules(ruleRows, RECOGNITION_RULES));
-        const uid = userData?.user?.id;
-        if (uid && (!fromProfile || !hasLocal)) {
-          const dbProfile = await loadProfileDb(supabase, uid);
-          if (active && dbProfile) {
-            setProfile(dbProfile);
-            return;
-          }
+      if (userId && supabase && (!fromProfile || !hasLocal)) {
+        const dbProfile = await loadProfileDb(supabase, userId);
+        if (active && dbProfile) {
+          setProfile(dbProfile);
+          return;
         }
       }
       if (active) setProfile(local);
     })();
     return () => { active = false; };
-  }, []);
+  }, [authLoading, userId, supabase]);
 
   if (!profile) return null;
 

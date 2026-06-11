@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import TopNav from '@/components/TopNav';
 import { Button, Icon, Field, TextInput } from '@/components/ui';
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 
 export default function RequestPage() {
+  const { userId, configured, supabase } = useAuth();
   const [uniName, setUniName] = useState('');
   const [daadUrl, setDaadUrl] = useState('');
   const [text, setText] = useState('');
@@ -13,20 +14,16 @@ export default function RequestPage() {
   const [done, setDone] = useState(false);
   const [err, setErr] = useState(null);
 
-  const configured = isSupabaseConfigured();
-
   async function onSubmit(e) {
     e.preventDefault();
     setErr(null);
     setBusy(true);
     try {
-      const supabase = createClient();
-      const { data: userData } = await supabase.auth.getUser();
       const { error } = await supabase.from('uni_requests').insert({
         uni_name: uniName,
         daad_url: daadUrl || null,
         pasted_text: text || null,
-        user_id: userData?.user?.id ?? null,
+        user_id: userId,
       });
       if (error) throw error;
       setDone(true);
