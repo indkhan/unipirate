@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import { Button, Badge, Icon, Stepper } from '@/components/ui';
 import { RECOGNITION_RULES } from '@/lib/seed-data';
-import { matchRecognitionRule, resolveRecognition } from '@/lib/nc';
+import { matchRecognitionRule, resolveRecognition, mergeRecognitionRules } from '@/lib/nc';
 import { loadProfile, loadProfileDb } from '@/lib/profile';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 
@@ -80,6 +80,14 @@ export default function ResultPage() {
   useEffect(() => {
     let active = true;
     (async () => {
+      // Arriving from a profile edit (?from=onboarding) → trust the just-saved
+      // localStorage copy. A plain navbar/direct visit → read the DB as the
+      // source of truth (falling back to localStorage only when there's none).
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const fromProfile = params?.get('from') === 'onboarding';
+      const local = loadProfile();
+      const hasLocal = !!(local && local.country && local.qualification);
+
       if (isSupabaseConfigured()) {
         const supabase = createClient();
         const [{ data: userData }, { data: ruleRows }] = await Promise.all([
@@ -87,9 +95,9 @@ export default function ResultPage() {
           supabase.from('recognition_rules').select('*'),
         ]);
         if (!active) return;
-        if (ruleRows?.length) setRules(ruleRows);
+        if (ruleRows?.length) setRules(mergeRecognitionRules(ruleRows, RECOGNITION_RULES));
         const uid = userData?.user?.id;
-        if (uid) {
+        if (uid && (!fromProfile || !hasLocal)) {
           const dbProfile = await loadProfileDb(supabase, uid);
           if (active && dbProfile) {
             setProfile(dbProfile);
@@ -97,7 +105,7 @@ export default function ResultPage() {
           }
         }
       }
-      if (active) setProfile(loadProfile());
+      if (active) setProfile(local);
     })();
     return () => { active = false; };
   }, []);

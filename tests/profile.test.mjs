@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { profileToRow, profileFromRow, DEMO_PROFILE } from '../lib/profile.js';
+import {
+  profileToRow, profileFromRow, DEMO_PROFILE,
+  aLevelAverage, parseALevels, serializeALevels,
+} from '../lib/profile.js';
 
 test('profileToRow maps camelCase -> snake_case', () => {
   const row = profileToRow(DEMO_PROFILE);
@@ -46,4 +49,67 @@ test('row <-> profile roundtrip preserves values', () => {
 
 test('DEMO_PROFILE qualification matches a curated India rule string', () => {
   assert.equal(DEMO_PROFILE.qualification, 'Standard 12th (CBSE/ICSE/State Board)');
+});
+
+test('profileToRow maps new A-Level / IB fields', () => {
+  const row = profileToRow({
+    country: 'India',
+    qualification: 'IB Diploma',
+    aLevelGrades: 'A,A,B',
+    ibHlMath: true,
+    ibHlScience: false,
+  });
+  assert.equal(row.a_level_grades, 'A,A,B');
+  assert.equal(row.ib_hl_math, true);
+  assert.equal(row.ib_hl_science, false);
+});
+
+test('profileFromRow maps new A-Level / IB fields with boolean coercion', () => {
+  const p = profileFromRow({ a_level_grades: 'A*,A', ib_hl_math: true, ib_hl_science: null });
+  assert.equal(p.aLevelGrades, 'A*,A');
+  assert.equal(p.ibHlMath, true);
+  assert.equal(p.ibHlScience, false);
+});
+
+test('aLevelAverage: best subjects map A*=6 … E=1', () => {
+  assert.equal(aLevelAverage(['A', 'A', 'B']), '4.67'); // (5+5+4)/3
+  assert.equal(aLevelAverage(['A*', 'A*', 'A*']), '6');
+  assert.equal(aLevelAverage('A,B,C,'), '4'); // (5+4+3)/3, trailing empty ignored
+  assert.equal(aLevelAverage([]), '');
+  assert.equal(aLevelAverage(['X']), ''); // invalid letters ignored
+});
+
+test('aLevelAverage: works on { subject, grade } rows and JSON strings', () => {
+  const rows = [
+    { subject: 'Mathematics', grade: 'A' },
+    { subject: 'Physics', grade: 'A' },
+    { subject: 'Chemistry', grade: 'B' },
+  ];
+  assert.equal(aLevelAverage(rows), '4.67');
+  assert.equal(aLevelAverage(JSON.stringify(rows)), '4.67');
+});
+
+test('serializeALevels: keeps any row with a subject OR grade, drops empty rows', () => {
+  const json = serializeALevels([
+    { subject: 'Mathematics', grade: 'A' },
+    { subject: 'Physics', grade: '' }, // kept — subject typed before grade
+    { subject: '', grade: 'B' },
+    { subject: '', grade: '' }, // dropped — fully empty
+  ]);
+  const parsed = JSON.parse(json);
+  assert.equal(parsed.length, 3);
+  assert.deepEqual(parsed[0], { subject: 'Mathematics', grade: 'A' });
+  assert.deepEqual(parsed[1], { subject: 'Physics', grade: '' });
+  assert.deepEqual(parsed[2], { subject: '', grade: 'B' });
+});
+
+test('parseALevels: round-trips JSON and reads the legacy comma format', () => {
+  const rows = [{ subject: 'Biology', grade: 'A*' }, { subject: 'Chemistry', grade: 'A' }];
+  assert.deepEqual(parseALevels(serializeALevels(rows)), rows);
+  // legacy: bare letters, no subject names
+  assert.deepEqual(parseALevels('A,B'), [
+    { subject: '', grade: 'A' },
+    { subject: '', grade: 'B' },
+  ]);
+  assert.deepEqual(parseALevels(''), []);
 });

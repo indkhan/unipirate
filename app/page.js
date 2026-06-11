@@ -53,7 +53,7 @@ export default function LandingPage() {
 
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-[12.5px] text-ink-50">
               <span className="inline-flex items-center gap-1.5">
-                <Icon name="check" size={13} /> No sign-up
+                <Icon name="check" size={13} /> Up-to-date
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Icon name="check" size={13} /> Manually curated

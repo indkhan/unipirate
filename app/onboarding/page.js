@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import {
-  Button, Badge, Icon, Field, Select, TextInput, Segmented, Chip, Stepper, cx,
+  Button, Badge, Icon, Field, Select, TextInput, Segmented, Chip, Toggle, Stepper, cx,
 } from '@/components/ui';
 import {
   COUNTRIES, QUALIFICATIONS_BY_COUNTRY, GRADING_SCALES, LANGUAGE_CERTS,
 } from '@/lib/repo';
-import { loadProfile, saveProfile, loadProfileDb, saveProfileDb, BLANK_PROFILE } from '@/lib/profile';
+import {
+  loadProfile, saveProfile, loadProfileDb, saveProfileDb, BLANK_PROFILE,
+  A_LEVEL_LETTERS, aLevelAverage, parseALevels, serializeALevels,
+} from '@/lib/profile';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 
 function inferSuffix(scale) {
@@ -78,17 +81,20 @@ export default function OnboardingPage() {
   const [profile, setProfile] = useState(BLANK_PROFILE);
   const [userId, setUserId] = useState(null);
 
-  // Load the profile: from the DB when signed in, else from localStorage.
+  // Load the profile. localStorage holds the latest edits from this session, so
+  // it wins; the DB copy is only used to restore on a fresh device/session.
   useEffect(() => {
     let active = true;
     (async () => {
+      const local = loadProfile(); // read before the mirror effect can clobber it
+      const hasLocal = !!(local && local.country && local.qualification);
       if (isSupabaseConfigured()) {
         const supabase = createClient();
         const { data } = await supabase.auth.getUser();
         const uid = data?.user?.id ?? null;
         if (!active) return;
         setUserId(uid);
-        if (uid) {
+        if (!hasLocal && uid) {
           const dbProfile = await loadProfileDb(supabase, uid);
           if (!active) return;
           if (dbProfile) {
@@ -97,7 +103,7 @@ export default function OnboardingPage() {
           }
         }
       }
-      if (active) setProfile(loadProfile());
+      if (active) setProfile(local);
     })();
     return () => { active = false; };
   }, []);
@@ -110,14 +116,56 @@ export default function OnboardingPage() {
   const update = (patch) => setProfile((p) => ({ ...p, ...patch }));
 
   async function handleSubmit() {
-    saveProfile(profile);
+    saveProfile(profile); // always persist locally first — result reads this
     if (userId && isSupabaseConfigured()) {
-      await saveProfileDb(createClient(), userId, profile);
+      const { error } = await saveProfileDb(createClient(), userId, profile);
+      if (error) {
+        // Don't strand the user: localStorage already has the latest, and the
+        // result page reads from there. Surface for diagnosis (e.g. a missing
+        // migration column rejects the whole row).
+        console.error('[onboarding] profile DB save failed:', error.message || error);
+      }
     }
-    router.push('/result');
+    // ?from=onboarding signals the result page to trust the just-saved local
+    // profile; a plain navbar visit to /result reads the DB instead.
+    router.push('/result?from=onboarding');
   }
   const country = profile.country;
   const availableQuals = country ? QUALIFICATIONS_BY_COUNTRY[country] || [] : [];
+  const isALevel = profile.qualification === 'GCE A-Levels';
+  const isIB = profile.qualification === 'IB Diploma';
+
+  // Switching qualification clears any grade entry tied to the old type and
+  // pre-selects the natural grading scale for that qualification.
+  const SCALE_FOR_QUAL = {
+    'IB Diploma': 'IB points (0–45)',
+    'GCE A-Levels': 'A-Level grades',
+    'Studienkolleg (completed)': 'German scale (1.0–6.0)',
+  };
+  const selectQualification = (v) =>
+    update({
+      qualification: v,
+      grade: '',
+      gradingScale: SCALE_FOR_QUAL[v] || '',
+      aLevelGrades: '',
+      ibHlMath: false,
+      ibHlScience: false,
+    });
+
+  // A-Level: up to 4 { subject, grade } rows backed by the JSON field.
+  const aLevelRows = (() => {
+    const rows = parseALevels(profile.aLevelGrades);
+    while (rows.length < 4) rows.push({ subject: '', grade: '' });
+    return rows.slice(0, 4);
+  })();
+  const setALevelRow = (i, patch) => {
+    const rows = aLevelRows.map((r, idx) => (idx === i ? { ...r, ...patch } : r));
+    update({
+      aLevelGrades: serializeALevels(rows),
+      grade: aLevelAverage(rows),
+      gradingScale: 'A-Level grades',
+    });
+  };
 
   const canSubmit =
     profile.country &&
@@ -167,32 +215,95 @@ export default function OnboardingPage() {
             <Field
               label="Qualification type"
               required
-              hint={country ? 'Pick the closest match.' : 'Select a country first.'}
+              hint={country ? 'A-Levels and IB are available from any country.' : 'Select a country first.'}
             >
               <Select
                 value={profile.qualification}
-                onChange={(v) => update({ qualification: v })}
+                onChange={selectQualification}
                 options={availableQuals}
                 placeholder={country ? 'Select a qualification' : '—'}
               />
             </Field>
-            <Field label="Grade / percentage" required hint="Your overall result, as a number.">
-              <TextInput
-                type="number"
-                value={profile.grade}
-                onChange={(v) => update({ grade: v })}
-                placeholder="e.g. 78"
-                suffix={inferSuffix(profile.gradingScale)}
-              />
-            </Field>
-            <Field label="Grading scale" required hint="Matches your result to a German equivalent.">
-              <Select
-                value={profile.gradingScale}
-                onChange={(v) => update({ gradingScale: v })}
-                options={GRADING_SCALES}
-                placeholder="Select scale"
-              />
-            </Field>
+
+            {/* A-Levels: per-subject name + grade (best 3–4). */}
+            {isALevel && (
+              <Field
+                label="A-Level subjects & grades"
+                required
+                hint="Enter your best 3–4 subjects with their grades. We map A*=6 … E=1 to a German equivalent."
+                className="md:col-span-2"
+              >
+                <div className="space-y-2.5">
+                  {aLevelRows.map((row, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_120px] gap-3">
+                      <TextInput
+                        value={row.subject}
+                        onChange={(v) => setALevelRow(i, { subject: v })}
+                        placeholder={`Subject ${i + 1}${i >= 3 ? ' (optional)' : ''} — e.g. Mathematics`}
+                      />
+                      <Select
+                        value={row.grade}
+                        onChange={(v) => setALevelRow(i, { grade: v })}
+                        options={A_LEVEL_LETTERS}
+                        placeholder="Grade"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </Field>
+            )}
+
+            {/* IB: total points + Higher-Level subject flags. */}
+            {isIB && (
+              <>
+                <Field label="IB total points" required hint="Out of 45. Diploma minimum is 24.">
+                  <TextInput
+                    type="number"
+                    value={profile.grade}
+                    onChange={(v) => update({ grade: v, gradingScale: 'IB points (0–45)' })}
+                    placeholder="e.g. 36"
+                    suffix="/ 45"
+                  />
+                </Field>
+                <Field label="Higher-Level subjects" hint="Determines general vs subject-restricted access.">
+                  <div className="flex flex-col gap-2.5 pt-2">
+                    <Toggle
+                      value={profile.ibHlMath}
+                      onChange={(v) => update({ ibHlMath: v })}
+                      label="HL Mathematics"
+                    />
+                    <Toggle
+                      value={profile.ibHlScience}
+                      onChange={(v) => update({ ibHlScience: v })}
+                      label="HL natural science (Bio / Chem / Physics)"
+                    />
+                  </div>
+                </Field>
+              </>
+            )}
+
+            {/* Default: numeric grade + grading scale. */}
+            {!isALevel && !isIB && (
+              <>
+                <Field label="Grade / percentage" required hint="Your overall result, as a number.">
+                  <TextInput
+                    type="number"
+                    value={profile.grade}
+                    onChange={(v) => update({ grade: v })}
+                    placeholder="e.g. 78"
+                    suffix={inferSuffix(profile.gradingScale)}
+                  />
+                </Field>
+                <Field label="Grading scale" required hint="Matches your result to a German equivalent.">
+                  <Select
+                    value={profile.gradingScale}
+                    onChange={(v) => update({ gradingScale: v })}
+                    options={GRADING_SCALES}
+                    placeholder="Select scale"
+                  />
+                </Field>
+              </>
+            )}
           </div>
 
           <Divider />

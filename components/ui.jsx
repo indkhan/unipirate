@@ -178,9 +178,9 @@ export function StatusBadge({ status, size = 'md' }) {
   );
 }
 
-export function Field({ label, hint, error, children, required, optional }) {
+export function Field({ label, hint, error, children, required, optional, className }) {
   return (
-    <label className="block">
+    <label className={cx('block', className)}>
       <div className="flex items-baseline justify-between mb-1.5">
         <span className="text-[12.5px] font-medium text-ink-80 tracking-[0.005em]">
           {label}

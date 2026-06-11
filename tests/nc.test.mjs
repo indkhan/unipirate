@@ -7,6 +7,7 @@ import {
   ncVerdict,
   resolveRecognition,
   matchRecognitionRule,
+  mergeRecognitionRules,
 } from '../lib/nc.js';
 import { RECOGNITION_RULES, GRADE_CONVERSION } from '../lib/seed-data.js';
 
@@ -177,6 +178,33 @@ test('matchRecognitionRule: incomplete profile -> null', () => {
   assert.equal(matchRecognitionRule({ country: 'India' }, RECOGNITION_RULES), null);
 });
 
+// --- merge: stale DB + static fallback (fixes Saudi+A-Level showing UNCLEAR) ---
+test('mergeRecognitionRules: stale DB without universal rules still resolves A-Levels', () => {
+  // Simulate a DB seeded before A-Levels/IB existed (only the old country rows).
+  const staleDb = RECOGNITION_RULES.filter((r) => r.country !== 'Any');
+  const merged = mergeRecognitionRules(staleDb, RECOGNITION_RULES);
+  const m = matchRecognitionRule({ country: 'Saudi Arabia', qualification: 'GCE A-Levels' }, merged);
+  assert.equal(m.country, 'Any');
+  assert.equal(m.status, 'H+ (subject-restricted)');
+  assert.equal(m.needs_aps, false);
+});
+
+test('mergeRecognitionRules: DB row wins over static for the same key', () => {
+  const db = [
+    { country: 'India', qualification_type: 'Standard 12th (CBSE/ICSE/State Board)', status: 'H+' },
+  ];
+  const merged = mergeRecognitionRules(db, RECOGNITION_RULES);
+  const india12 = merged.filter(
+    (r) => r.country === 'India' && r.qualification_type === 'Standard 12th (CBSE/ICSE/State Board)'
+  );
+  assert.equal(india12.length, 1); // not duplicated
+  assert.equal(india12[0].status, 'H+'); // DB override kept
+});
+
+test('mergeRecognitionRules: empty DB falls back to static', () => {
+  assert.equal(mergeRecognitionRules([], RECOGNITION_RULES), RECOGNITION_RULES);
+});
+
 test('match + resolve: India 12th >=70% stays H- but uses base messaging', () => {
   const m = matchRecognitionRule(
     { country: 'India', qualification: 'Standard 12th (CBSE/ICSE/State Board)' },
@@ -195,4 +223,104 @@ test('match + resolve: India 12th <70% uses below variant', () => {
   const r = resolveRecognition(m, { grade: '60', grading_scale: 'Percentage (0–100)' });
   assert.equal(r.below, true);
   assert.match(r.headline, /Studienkolleg/i);
+});
+
+// --- universal qualifications (A-Levels / IB, country-agnostic) ---
+test('matchRecognitionRule: A-Levels match the country-agnostic rule regardless of country', () => {
+  const m = matchRecognitionRule(
+    { country: 'Pakistan', qualification: 'GCE A-Levels' },
+    RECOGNITION_RULES
+  );
+  assert.equal(m.country, 'Any');
+  assert.equal(m.qualification_type, 'GCE A-Levels');
+  assert.equal(m.needs_aps, false); // A-Level holders skip APS even from APS countries
+  assert.equal(m.status, 'H+ (subject-restricted)');
+});
+
+test('matchRecognitionRule: exact country rule still wins over universal', () => {
+  const m = matchRecognitionRule(
+    { country: 'India', qualification: 'Standard 12th (CBSE/ICSE/State Board)' },
+    RECOGNITION_RULES
+  );
+  assert.equal(m.country, 'India');
+});
+
+test('matchRecognitionRule: India JEE Advanced exact match needs APS', () => {
+  const m = matchRecognitionRule(
+    { country: 'India', qualification: 'JEE Advanced (qualified)' },
+    RECOGNITION_RULES
+  );
+  assert.equal(m.country, 'India');
+  assert.equal(m.needs_aps, true);
+  assert.equal(m.status, 'H+ (subject-restricted)');
+});
+
+test('matchRecognitionRule: Saudi A-Levels -> universal rule, direct, no APS', () => {
+  const m = matchRecognitionRule(
+    { country: 'Saudi Arabia', qualification: 'GCE A-Levels' },
+    RECOGNITION_RULES
+  );
+  assert.equal(m.country, 'Any');
+  assert.equal(m.needs_aps, false);
+  assert.equal(m.status, 'H+ (subject-restricted)');
+});
+
+test('matchRecognitionRule: Studienkolleg is universal H+ for any country, no APS', () => {
+  for (const country of ['India', 'Saudi Arabia', 'Pakistan', 'China']) {
+    const m = matchRecognitionRule(
+      { country, qualification: 'Studienkolleg (completed)' },
+      RECOGNITION_RULES
+    );
+    assert.equal(m.qualification_type, 'Studienkolleg (completed)', country);
+    assert.equal(m.status, 'H+', country);
+    assert.equal(m.needs_aps, false, country);
+  }
+});
+
+test('APS is required only for India and China qualifications', () => {
+  const apsCountries = new Set(
+    RECOGNITION_RULES.filter((r) => r.needs_aps).map((r) => r.country)
+  );
+  assert.deepEqual([...apsCountries].sort(), ['China', 'India']);
+});
+
+// --- IB Higher-Level subject gating ---
+const ibRule = RECOGNITION_RULES.find(
+  (r) => r.country === 'Any' && r.qualification_type === 'IB Diploma'
+);
+
+test('resolveRecognition: IB with HL Maths + HL science -> general H+', () => {
+  const r = resolveRecognition(ibRule, { ibHlMath: true, ibHlScience: true });
+  assert.equal(r.status, 'H+');
+  assert.equal(r.below, false);
+});
+
+test('resolveRecognition: IB missing a HL science -> subject-restricted', () => {
+  const r = resolveRecognition(ibRule, { ibHlMath: true, ibHlScience: false });
+  assert.equal(r.status, 'H+ (subject-restricted)');
+  assert.equal(r.below, true);
+});
+
+test('resolveRecognition: IB also reads snake_case profile flags', () => {
+  const r = resolveRecognition(ibRule, { ib_hl_math: true, ib_hl_science: true });
+  assert.equal(r.status, 'H+');
+});
+
+// --- A-Level grade conversion ---
+test('toGermanGrade: A-Level average 5.0 (AAA) -> 1.6', () => {
+  const g = toGermanGrade(
+    5,
+    { qualificationType: 'GCE A-Levels', gradingScale: 'A-Level grades' },
+    GRADE_CONVERSION
+  );
+  assert.equal(g, 1.6); // 1 + 3*(6-5)/(6-1) = 1.6
+});
+
+test('toGermanGrade: A-Level all A* (6.0) clamps to 1.0', () => {
+  const g = toGermanGrade(
+    6,
+    { qualificationType: 'GCE A-Levels', gradingScale: 'A-Level grades' },
+    GRADE_CONVERSION
+  );
+  assert.equal(g, 1.0);
 });
