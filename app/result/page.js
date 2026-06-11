@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import { Button, Badge, Icon, Stepper } from '@/components/ui';
 import { RECOGNITION_RULES } from '@/lib/seed-data';
-import { matchRecognitionRule, resolveRecognition } from '@/lib/nc';
+import { matchRecognitionRule, resolveRecognition, mergeRecognitionRules } from '@/lib/nc';
 import { loadProfile, loadProfileDb } from '@/lib/profile';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 
@@ -80,8 +80,11 @@ export default function ResultPage() {
   useEffect(() => {
     let active = true;
     (async () => {
-      // localStorage holds the profile just edited in onboarding (mirrored on
-      // every change), so it wins over the DB copy which may lag a failed save.
+      // Arriving from a profile edit (?from=onboarding) → trust the just-saved
+      // localStorage copy. A plain navbar/direct visit → read the DB as the
+      // source of truth (falling back to localStorage only when there's none).
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const fromProfile = params?.get('from') === 'onboarding';
       const local = loadProfile();
       const hasLocal = !!(local && local.country && local.qualification);
 
@@ -92,15 +95,13 @@ export default function ResultPage() {
           supabase.from('recognition_rules').select('*'),
         ]);
         if (!active) return;
-        if (ruleRows?.length) setRules(ruleRows);
-        if (!hasLocal) {
-          const uid = userData?.user?.id;
-          if (uid) {
-            const dbProfile = await loadProfileDb(supabase, uid);
-            if (active && dbProfile) {
-              setProfile(dbProfile);
-              return;
-            }
+        if (ruleRows?.length) setRules(mergeRecognitionRules(ruleRows, RECOGNITION_RULES));
+        const uid = userData?.user?.id;
+        if (uid && (!fromProfile || !hasLocal)) {
+          const dbProfile = await loadProfileDb(supabase, uid);
+          if (active && dbProfile) {
+            setProfile(dbProfile);
+            return;
           }
         }
       }

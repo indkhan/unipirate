@@ -7,6 +7,7 @@ import {
   ncVerdict,
   resolveRecognition,
   matchRecognitionRule,
+  mergeRecognitionRules,
 } from '../lib/nc.js';
 import { RECOGNITION_RULES, GRADE_CONVERSION } from '../lib/seed-data.js';
 
@@ -175,6 +176,33 @@ test('matchRecognitionRule: unknown country -> Other/Not listed', () => {
 
 test('matchRecognitionRule: incomplete profile -> null', () => {
   assert.equal(matchRecognitionRule({ country: 'India' }, RECOGNITION_RULES), null);
+});
+
+// --- merge: stale DB + static fallback (fixes Saudi+A-Level showing UNCLEAR) ---
+test('mergeRecognitionRules: stale DB without universal rules still resolves A-Levels', () => {
+  // Simulate a DB seeded before A-Levels/IB existed (only the old country rows).
+  const staleDb = RECOGNITION_RULES.filter((r) => r.country !== 'Any');
+  const merged = mergeRecognitionRules(staleDb, RECOGNITION_RULES);
+  const m = matchRecognitionRule({ country: 'Saudi Arabia', qualification: 'GCE A-Levels' }, merged);
+  assert.equal(m.country, 'Any');
+  assert.equal(m.status, 'H+ (subject-restricted)');
+  assert.equal(m.needs_aps, false);
+});
+
+test('mergeRecognitionRules: DB row wins over static for the same key', () => {
+  const db = [
+    { country: 'India', qualification_type: 'Standard 12th (CBSE/ICSE/State Board)', status: 'H+' },
+  ];
+  const merged = mergeRecognitionRules(db, RECOGNITION_RULES);
+  const india12 = merged.filter(
+    (r) => r.country === 'India' && r.qualification_type === 'Standard 12th (CBSE/ICSE/State Board)'
+  );
+  assert.equal(india12.length, 1); // not duplicated
+  assert.equal(india12[0].status, 'H+'); // DB override kept
+});
+
+test('mergeRecognitionRules: empty DB falls back to static', () => {
+  assert.equal(mergeRecognitionRules([], RECOGNITION_RULES), RECOGNITION_RULES);
 });
 
 test('match + resolve: India 12th >=70% stays H- but uses base messaging', () => {

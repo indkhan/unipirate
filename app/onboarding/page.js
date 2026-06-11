@@ -126,7 +126,9 @@ export default function OnboardingPage() {
         console.error('[onboarding] profile DB save failed:', error.message || error);
       }
     }
-    router.push('/result');
+    // ?from=onboarding signals the result page to trust the just-saved local
+    // profile; a plain navbar visit to /result reads the DB instead.
+    router.push('/result?from=onboarding');
   }
   const country = profile.country;
   const availableQuals = country ? QUALIFICATIONS_BY_COUNTRY[country] || [] : [];
