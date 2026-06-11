@@ -81,17 +81,20 @@ export default function OnboardingPage() {
   const [profile, setProfile] = useState(BLANK_PROFILE);
   const [userId, setUserId] = useState(null);
 
-  // Load the profile: from the DB when signed in, else from localStorage.
+  // Load the profile. localStorage holds the latest edits from this session, so
+  // it wins; the DB copy is only used to restore on a fresh device/session.
   useEffect(() => {
     let active = true;
     (async () => {
+      const local = loadProfile(); // read before the mirror effect can clobber it
+      const hasLocal = !!(local && local.country && local.qualification);
       if (isSupabaseConfigured()) {
         const supabase = createClient();
         const { data } = await supabase.auth.getUser();
         const uid = data?.user?.id ?? null;
         if (!active) return;
         setUserId(uid);
-        if (uid) {
+        if (!hasLocal && uid) {
           const dbProfile = await loadProfileDb(supabase, uid);
           if (!active) return;
           if (dbProfile) {
@@ -100,7 +103,7 @@ export default function OnboardingPage() {
           }
         }
       }
-      if (active) setProfile(loadProfile());
+      if (active) setProfile(local);
     })();
     return () => { active = false; };
   }, []);
@@ -113,9 +116,15 @@ export default function OnboardingPage() {
   const update = (patch) => setProfile((p) => ({ ...p, ...patch }));
 
   async function handleSubmit() {
-    saveProfile(profile);
+    saveProfile(profile); // always persist locally first — result reads this
     if (userId && isSupabaseConfigured()) {
-      await saveProfileDb(createClient(), userId, profile);
+      const { error } = await saveProfileDb(createClient(), userId, profile);
+      if (error) {
+        // Don't strand the user: localStorage already has the latest, and the
+        // result page reads from there. Surface for diagnosis (e.g. a missing
+        // migration column rejects the whole row).
+        console.error('[onboarding] profile DB save failed:', error.message || error);
+      }
     }
     router.push('/result');
   }
@@ -124,12 +133,18 @@ export default function OnboardingPage() {
   const isALevel = profile.qualification === 'GCE A-Levels';
   const isIB = profile.qualification === 'IB Diploma';
 
-  // Switching qualification clears any grade entry tied to the old type.
+  // Switching qualification clears any grade entry tied to the old type and
+  // pre-selects the natural grading scale for that qualification.
+  const SCALE_FOR_QUAL = {
+    'IB Diploma': 'IB points (0–45)',
+    'GCE A-Levels': 'A-Level grades',
+    'Studienkolleg (completed)': 'German scale (1.0–6.0)',
+  };
   const selectQualification = (v) =>
     update({
       qualification: v,
       grade: '',
-      gradingScale: v === 'IB Diploma' ? 'IB points (0–45)' : v === 'GCE A-Levels' ? 'A-Level grades' : '',
+      gradingScale: SCALE_FOR_QUAL[v] || '',
       aLevelGrades: '',
       ibHlMath: false,
       ibHlScience: false,

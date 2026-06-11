@@ -80,6 +80,11 @@ export default function ResultPage() {
   useEffect(() => {
     let active = true;
     (async () => {
+      // localStorage holds the profile just edited in onboarding (mirrored on
+      // every change), so it wins over the DB copy which may lag a failed save.
+      const local = loadProfile();
+      const hasLocal = !!(local && local.country && local.qualification);
+
       if (isSupabaseConfigured()) {
         const supabase = createClient();
         const [{ data: userData }, { data: ruleRows }] = await Promise.all([
@@ -88,16 +93,18 @@ export default function ResultPage() {
         ]);
         if (!active) return;
         if (ruleRows?.length) setRules(ruleRows);
-        const uid = userData?.user?.id;
-        if (uid) {
-          const dbProfile = await loadProfileDb(supabase, uid);
-          if (active && dbProfile) {
-            setProfile(dbProfile);
-            return;
+        if (!hasLocal) {
+          const uid = userData?.user?.id;
+          if (uid) {
+            const dbProfile = await loadProfileDb(supabase, uid);
+            if (active && dbProfile) {
+              setProfile(dbProfile);
+              return;
+            }
           }
         }
       }
-      if (active) setProfile(loadProfile());
+      if (active) setProfile(local);
     })();
     return () => { active = false; };
   }, []);

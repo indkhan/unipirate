@@ -227,6 +227,35 @@ test('matchRecognitionRule: India JEE Advanced exact match needs APS', () => {
   assert.equal(m.status, 'H+ (subject-restricted)');
 });
 
+test('matchRecognitionRule: Saudi A-Levels -> universal rule, direct, no APS', () => {
+  const m = matchRecognitionRule(
+    { country: 'Saudi Arabia', qualification: 'GCE A-Levels' },
+    RECOGNITION_RULES
+  );
+  assert.equal(m.country, 'Any');
+  assert.equal(m.needs_aps, false);
+  assert.equal(m.status, 'H+ (subject-restricted)');
+});
+
+test('matchRecognitionRule: Studienkolleg is universal H+ for any country, no APS', () => {
+  for (const country of ['India', 'Saudi Arabia', 'Pakistan', 'China']) {
+    const m = matchRecognitionRule(
+      { country, qualification: 'Studienkolleg (completed)' },
+      RECOGNITION_RULES
+    );
+    assert.equal(m.qualification_type, 'Studienkolleg (completed)', country);
+    assert.equal(m.status, 'H+', country);
+    assert.equal(m.needs_aps, false, country);
+  }
+});
+
+test('APS is required only for India and China qualifications', () => {
+  const apsCountries = new Set(
+    RECOGNITION_RULES.filter((r) => r.needs_aps).map((r) => r.country)
+  );
+  assert.deepEqual([...apsCountries].sort(), ['China', 'India']);
+});
+
 // --- IB Higher-Level subject gating ---
 const ibRule = RECOGNITION_RULES.find(
   (r) => r.country === 'Any' && r.qualification_type === 'IB Diploma'
