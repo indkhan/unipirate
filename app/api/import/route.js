@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { extractDaadId, extractLabeledFields, PARSER_VERSION } from '@/lib/import/parse';
-import { validateImport } from '@/lib/import/validate';
+import { extractDaadId, extractLabeledFields, ALL_FIELD_KEYS, PARSER_VERSION } from '@/lib/import/parse';
+import { validateImport, substringGate } from '@/lib/import/validate';
+import { extractFieldsLLM } from '@/lib/import/gemini';
 import { detectApplyMethod } from '@/lib/import/portal';
 import { sha256Hex } from '@/lib/import/hash';
 import { buildImportChecklist } from '@/lib/import/checklist';
@@ -73,6 +74,26 @@ export async function POST(req) {
     );
   }
 
+  // Per-field LLM fallback: only fields the regex pass missed, plus the
+  // low-confidence title heuristics. Every LLM value re-runs the substring
+  // gate — a value not literally present in the paste is dropped.
+  let llmExtra = null;
+  const llmTargets = ALL_FIELD_KEYS.filter((k) => {
+    const src = rawFields[k]?.source;
+    return !src || src === 'regex-heuristic';
+  });
+  if (llmTargets.length) {
+    const llm = await extractFieldsLLM(text, llmTargets);
+    if (llm) {
+      for (const [key, value] of Object.entries(llm.fields)) {
+        if (value && substringGate(value, text)) {
+          rawFields[key] = { value, source: 'llm' };
+        }
+      }
+      llmExtra = llm.extra ? { notes: llm.extra } : null;
+    }
+  }
+
   const v = validateImport(rawFields, text);
   if (!v.ok) {
     return json({ error: 'validation', details: v.errors, warnings: v.warnings }, 422);
@@ -103,6 +124,7 @@ export async function POST(req) {
     city: effectiveValue(v.fields, 'city'),
     apply_method: applyMethod,
     parsed_json: { fields: v.fields, warnings: v.warnings },
+    llm_extra: llmExtra,
     checklist_json: checklist,
     parser_version: PARSER_VERSION,
     created_by: user.id,
@@ -122,5 +144,6 @@ export async function POST(req) {
     warnings: v.warnings,
     applyMethod: row.apply_method,
     checklist,
+    llmExtra,
   });
 }

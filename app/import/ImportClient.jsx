@@ -265,6 +265,18 @@ function ReviewScreen({ result, supabase, onBack }) {
         })}
       </div>
 
+      {result.llmExtra?.notes && (
+        <div className="mt-6 rounded-md border border-navy/15 bg-navy/[0.03] p-4">
+          <div className="text-[11.5px] uppercase tracking-[0.15em] text-navy/70 mb-1.5">
+            AI notes — unverified
+          </div>
+          <p className="text-[13px] text-ink-70 leading-[1.6]">{result.llmExtra.notes}</p>
+          <p className="mt-2 text-[11.5px] text-ink-45">
+            Spotted by AI, not checked against the official page. Verify before relying on it.
+          </p>
+        </div>
+      )}
+
       {result.checklist?.length > 0 && (
         <section className="mt-8 rounded-xl border border-line bg-white p-6">
           <h2 className="text-[19px] text-ink-90 mb-1" style={{ fontFamily: "'Instrument Serif', serif" }}>
