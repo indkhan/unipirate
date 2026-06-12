@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: '/onboarding', label: 'Profile' },
   { href: '/result', label: 'Recognition' },
   { href: '/finder', label: 'Course finder' },
+  { href: '/import', label: 'Import' },
 ];
 
 export default function TopNav() {
