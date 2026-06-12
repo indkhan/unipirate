@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Button, Badge, Icon, Field, TextInput, cx } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
+import TrackButton from '@/components/TrackButton';
+import { loadProfile } from '@/lib/profile';
 
 // Field metadata for the review screen. Keys match parsed_json.fields.
 const FIELD_META = [
@@ -57,7 +59,7 @@ export default function ImportClient({ initialImports }) {
         return;
       }
       if (data.already) {
-        setAlready(data.existing);
+        setAlready(data);
         return;
       }
       setResult(data);
@@ -115,19 +117,7 @@ export default function ImportClient({ initialImports }) {
         the details, you review them, and our team verifies before it joins the catalog.
       </p>
 
-      {already && (
-        <div className="mt-6 rounded-xl border border-navy/20 bg-navy/[0.04] p-5 text-[14px] text-ink-80">
-          <div className="flex items-center gap-2 font-medium text-navy">
-            <Icon name="check" size={15} /> Already in our catalog
-          </div>
-          <p className="mt-1 text-[13px] text-ink-60">
-            {already.course_name} · {already.uni_name} has been verified already — no need to import it again.
-          </p>
-          <a href="/finder" className="mt-3 inline-flex items-center gap-1 text-[13px] text-navy font-medium hover:underline">
-            Find it in the course finder <Icon name="arrowRight" size={12} />
-          </a>
-        </div>
-      )}
+      {already && <AlreadyInCatalog payload={already} />}
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <Field label="DAAD program page URL" required hint="Use the English page: …/international-programmes/en/detail/…">
@@ -172,6 +162,52 @@ export default function ImportClient({ initialImports }) {
             ))}
           </ul>
         </section>
+      )}
+    </div>
+  );
+}
+
+function AlreadyInCatalog({ payload }) {
+  const { existing, course, university } = payload;
+  const profile = typeof window !== 'undefined' ? loadProfile() : null;
+  return (
+    <div className="mt-6 rounded-xl border border-navy/20 bg-navy/[0.04] p-5">
+      <div className="flex items-center gap-2 text-[14px] font-medium text-navy">
+        <Icon name="check" size={15} /> Already in our catalog
+      </div>
+      <p className="mt-1 text-[13px] text-ink-60">
+        This program has been verified already — track it straight away instead of importing again.
+      </p>
+      {course ? (
+        <div className="mt-4 rounded-lg border border-line bg-white p-4 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="text-[16px] text-ink-90" style={{ fontFamily: "'Instrument Serif', serif" }}>
+              {course.name}
+            </div>
+            <div className="mt-1 text-[12.5px] text-ink-55">
+              {university?.name}
+              {university?.city ? ` · ${university.city}` : ''}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {course.degree && <Badge tone="navy">{course.degree}</Badge>}
+              {course.language && <Badge tone="neutral">{course.language}</Badge>}
+              {course.applicationDeadline && (
+                <Badge tone="amber">Deadline · {course.applicationDeadline}</Badge>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <TrackButton course={course} university={university} profile={profile} />
+            <a href="/finder" className="text-[13px] text-navy font-medium hover:underline inline-flex items-center gap-1">
+              Open finder <Icon name="arrowRight" size={12} />
+            </a>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-2 text-[13px] text-ink-60">
+          {existing.course_name} · {existing.uni_name} —{' '}
+          <a href="/finder" className="text-navy hover:underline">find it in the course finder</a>.
+        </p>
       )}
     </div>
   );
@@ -244,11 +280,23 @@ function ReviewScreen({ result, supabase, onBack }) {
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
         {FIELD_META.map((m) => {
           const source = result.fields[m.key]?.source ?? 'not_found';
+          const edited = values[m.key] !== parsedValue(m.key);
           return (
             <div key={m.key} className={cx(m.long && 'md:col-span-2')}>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-[12px] text-ink-60 font-medium">{m.label}</label>
-                <SourceBadge source={source} />
+                <span className="inline-flex items-center gap-2">
+                  {edited && (
+                    <button
+                      type="button"
+                      onClick={() => setValues((v) => ({ ...v, [m.key]: parsedValue(m.key) }))}
+                      className="text-[11px] text-ink-45 hover:text-navy underline-offset-2 hover:underline"
+                    >
+                      restore parsed
+                    </button>
+                  )}
+                  <SourceBadge source={source} />
+                </span>
               </div>
               {m.long ? (
                 <textarea

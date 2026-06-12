@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { extractDaadId, extractLabeledFields, ALL_FIELD_KEYS, PARSER_VERSION } from '@/lib/import/parse';
 import { validateImport, substringGate } from '@/lib/import/validate';
-import { extractFieldsLLM } from '@/lib/import/gemini';
+import { extractFieldsLLM, rephraseChecklist } from '@/lib/import/gemini';
 import { detectApplyMethod } from '@/lib/import/portal';
 import { sha256Hex } from '@/lib/import/hash';
 import { buildImportChecklist } from '@/lib/import/checklist';
+import { mapCourse, mapUniversity } from '@/lib/repo/map';
 
 // POST /api/import — parse a pasted DAAD detail page and store it as the
 // user's private import. Uses the cookie-bound anon client so RLS owns
@@ -54,16 +55,32 @@ export async function POST(req) {
     .maybeSingle();
   if (pubErr) return json({ error: pubErr.message }, 500);
   if (pub) {
-    let courseSlug = null;
+    // Hand back the catalog entry (mapped to the UI course/university shape)
+    // so the client can render it with a working TrackButton.
+    let course = null;
+    let university = null;
     if (pub.course_id) {
-      const { data: course } = await supabase
+      const { data: courseRow } = await supabase
         .from('courses')
-        .select('slug')
+        .select('*')
         .eq('id', pub.course_id)
         .maybeSingle();
-      courseSlug = course?.slug ?? null;
+      if (courseRow) {
+        const { data: uniRow } = await supabase
+          .from('universities')
+          .select('*')
+          .eq('id', courseRow.university_id)
+          .maybeSingle();
+        university = uniRow ? mapUniversity(uniRow) : null;
+        course = mapCourse(courseRow, uniRow ? { [uniRow.id]: uniRow.slug } : {});
+      }
     }
-    return json({ already: true, existing: { ...pub, courseSlug } });
+    return json({
+      already: true,
+      existing: { ...pub, courseSlug: course?.id ?? null },
+      course,
+      university,
+    });
   }
 
   const { fields: rawFields, germanPage } = extractLabeledFields(text);
@@ -108,11 +125,13 @@ export async function POST(req) {
     .select('country')
     .eq('id', user.id)
     .maybeSingle();
-  const checklist = buildImportChecklist({
-    country: profile?.country,
-    applyMethod: applyMethod || 'other',
-    deadlineText: effectiveValue(v.fields, 'application_deadline'),
-  });
+  const checklist = await rephraseChecklist(
+    buildImportChecklist({
+      country: profile?.country,
+      applyMethod: applyMethod || 'other',
+      deadlineText: effectiveValue(v.fields, 'application_deadline'),
+    })
+  );
 
   const row = {
     daad_id: daadId,
