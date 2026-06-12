@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { buildApplicationSteps } from '@/lib/track-steps';
+import { withDeadline, inferDeadlineISO } from '@/lib/import/checklist';
 import { Button, Icon } from './ui';
 
 // Track a course as an application. Only works with a live DB (course.dbId)
@@ -50,10 +51,10 @@ export default function TrackButton({ course, university, profile }) {
         .select('id')
         .single();
       if (error) throw error;
-      const steps = buildApplicationSteps(profile?.country, university?.applyMethod).map((s) => ({
-        ...s,
-        tracked_app_id: app.id,
-      }));
+      const steps = withDeadline(
+        buildApplicationSteps(profile?.country, university?.applyMethod),
+        inferDeadlineISO(course.applicationDeadline)
+      ).map((s) => ({ ...s, tracked_app_id: app.id }));
       if (steps.length) await supabase.from('application_steps').insert(steps);
       setTracked(true);
     } catch (e) {

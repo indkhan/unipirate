@@ -4,6 +4,7 @@ import { extractDaadId, extractLabeledFields, PARSER_VERSION } from '@/lib/impor
 import { validateImport } from '@/lib/import/validate';
 import { detectApplyMethod } from '@/lib/import/portal';
 import { sha256Hex } from '@/lib/import/hash';
+import { buildImportChecklist } from '@/lib/import/checklist';
 
 // POST /api/import — parse a pasted DAAD detail page and store it as the
 // user's private import. Uses the cookie-bound anon client so RLS owns
@@ -77,6 +78,21 @@ export async function POST(req) {
     return json({ error: 'validation', details: v.errors, warnings: v.warnings }, 422);
   }
 
+  const applyMethod = detectApplyMethod(effectiveValue(v.fields, 'submit_to') || '');
+
+  // Checklist preview: templates own steps + dates; personalized with the
+  // user's country playbook when their profile has one.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('country')
+    .eq('id', user.id)
+    .maybeSingle();
+  const checklist = buildImportChecklist({
+    country: profile?.country,
+    applyMethod: applyMethod || 'other',
+    deadlineText: effectiveValue(v.fields, 'application_deadline'),
+  });
+
   const row = {
     daad_id: daadId,
     raw_url: url,
@@ -85,8 +101,9 @@ export async function POST(req) {
     course_name: effectiveValue(v.fields, 'course_name'),
     uni_name: effectiveValue(v.fields, 'uni_name'),
     city: effectiveValue(v.fields, 'city'),
-    apply_method: detectApplyMethod(effectiveValue(v.fields, 'submit_to') || ''),
+    apply_method: applyMethod,
     parsed_json: { fields: v.fields, warnings: v.warnings },
+    checklist_json: checklist,
     parser_version: PARSER_VERSION,
     created_by: user.id,
   };
@@ -104,5 +121,6 @@ export async function POST(req) {
     fields: v.fields,
     warnings: v.warnings,
     applyMethod: row.apply_method,
+    checklist,
   });
 }

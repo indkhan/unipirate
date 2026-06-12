@@ -9,6 +9,7 @@ import { extractDaadId, extractLabeledFields, ALL_FIELD_KEYS } from '../lib/impo
 import { validateImport, dateGate } from '../lib/import/validate.js';
 import { detectApplyMethod } from '../lib/import/portal.js';
 import { sha256Hex } from '../lib/import/hash.js';
+import { inferDeadlineISO, buildImportChecklist, withDeadline } from '../lib/import/checklist.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const raw = readFileSync(join(here, 'fixtures', 'daad-sample.txt'), 'utf8');
@@ -104,6 +105,28 @@ check('empty → null', detectApplyMethod('') === null);
 console.log('\n=== german page detection ===');
 const deText = ['Abschluss', 'Master of Science', 'Studienort', 'Ingolstadt', 'Unterrichtssprache', 'Englisch', 'Bewerbungsfrist', '15. Juli'].join('\n');
 check('german paste flagged', extractLabeledFields(deText).germanPage === true);
+
+console.log('\n=== checklist ===');
+const cl = buildImportChecklist({
+  country: 'India',
+  applyMethod: 'direct',
+  deadlineText: '15 July for the following winter semester',
+  today,
+});
+check('checklist non-empty', cl.length > 0);
+check('sort_order sequential', cl.every((s, i) => s.sort_order === i));
+const applyStep = cl.find((s) => /apply directly/i.test(s.label));
+check('apply step gets deadline', applyStep?.due_date === '2026-07-15', `got: ${applyStep?.due_date}`);
+const docsStep = cl.find((s) => /documents ready/i.test(s.label));
+check('docs-ready step 14 days before', docsStep?.due_date === '2026-07-01', `got: ${docsStep?.due_date}`);
+const clUA = buildImportChecklist({ country: 'India', applyMethod: 'uni-assist', deadlineText: '15 July', today });
+check('uni-assist account step present', clUA.some((s) => /uni-assist account/i.test(s.label)));
+check('uni-assist fee step present', clUA.some((s) => /handling fee/i.test(s.label)));
+const clNoDate = buildImportChecklist({ country: 'India', applyMethod: 'direct', deadlineText: 'rolling', today });
+check('no deadline → no due dates', clNoDate.every((s) => !s.due_date));
+check('inferDeadlineISO', inferDeadlineISO('15 July', today) === '2026-07-15');
+const wd = withDeadline([{ label: 'Apply via uni-assist' }, { label: 'Get visa' }], '2026-07-15');
+check('withDeadline targets apply step only', wd[0].due_date === '2026-07-15' && !wd[1].due_date);
 
 console.log('\n=== hash ===');
 check('sha256 stable', sha256Hex('abc') === 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');

@@ -265,6 +265,34 @@ function ReviewScreen({ result, supabase, onBack }) {
         })}
       </div>
 
+      {result.checklist?.length > 0 && (
+        <section className="mt-8 rounded-xl border border-line bg-white p-6">
+          <h2 className="text-[19px] text-ink-90 mb-1" style={{ fontFamily: "'Instrument Serif', serif" }}>
+            Your application plan
+          </h2>
+          <p className="text-[12.5px] text-ink-50 mb-4">
+            Generated from the application method and deadline. Added to your dashboard when you track this course.
+          </p>
+          <ol className="space-y-2">
+            {result.checklist.map((step, i) => (
+              <li key={i} className="flex items-start justify-between gap-3 text-[13.5px] text-ink-80">
+                <span className="flex items-start gap-2.5">
+                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink-5 text-[11px] text-ink-60">
+                    {i + 1}
+                  </span>
+                  {step.label}
+                </span>
+                {step.due_date && (
+                  <Badge tone="amber" className="shrink-0">
+                    due {step.due_date}
+                  </Badge>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       {err && <div className="mt-4 text-[13px] text-red-600">{err}</div>}
 
       <div className="mt-6 flex items-center gap-3">
