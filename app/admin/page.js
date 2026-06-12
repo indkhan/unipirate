@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import TopNav from '@/components/TopNav';
 import AdminClient from '@/components/AdminClient';
+import AdminImportsQueue from '@/components/AdminImportsQueue';
 
 function Shell({ children }) {
   return (
@@ -35,9 +36,14 @@ export default async function AdminPage() {
     );
   }
 
-  const [{ data: requests }, { data: universities }] = await Promise.all([
+  const [{ data: requests }, { data: universities }, { data: imports }] = await Promise.all([
     supabase.from('uni_requests').select('*').eq('status', 'pending').order('created_at', { ascending: true }),
     supabase.from('universities').select('id, slug, name').order('name'),
+    supabase
+      .from('imported_programs')
+      .select('*')
+      .neq('status', 'public')
+      .order('created_at', { ascending: true }),
   ]);
 
   return (
@@ -48,6 +54,7 @@ export default async function AdminPage() {
       >
         Admin · moderation.
       </h1>
+      <AdminImportsQueue initialImports={imports || []} universities={universities || []} adminId={user.id} />
       <AdminClient initialRequests={requests || []} universities={universities || []} />
     </Shell>
   );
