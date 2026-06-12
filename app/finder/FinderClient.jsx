@@ -322,9 +322,11 @@ function UniList({ universities, counts, selectedId, onSelect, empty }) {
                       <Badge tone="neutral" className="!text-[10.5px]">
                         {u.portalType.includes('uni-assist') ? 'uni-assist' : 'direct'}
                       </Badge>
-                      <Badge tone="neutral" className="!text-[10.5px]">
-                        {u.semesterContribution.replace(' / semester', '/sem')}
-                      </Badge>
+                      {u.semesterContribution && (
+                        <Badge tone="neutral" className="!text-[10.5px]">
+                          {u.semesterContribution.replace(' / semester', '/sem')}
+                        </Badge>
+                      )}
                     </div>
                   </button>
                 </li>
