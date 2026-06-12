@@ -1,42 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { Badge, Icon, Button } from './ui';
 
 export default function AuthControls() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setReady(true);
-      return;
-    }
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data?.user ?? null);
-      setReady(true);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ?? null);
-    });
-    return () => sub?.subscription?.unsubscribe();
-  }, []);
+  const { user, loading, configured, supabase } = useAuth();
 
   async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    setUser(null);
+    await supabase.auth.signOut(); // onAuthStateChange clears the shared user
     router.push('/');
     router.refresh();
   }
 
   // Before Supabase is configured, keep the original demo badge.
-  if (!isSupabaseConfigured()) {
+  if (!configured) {
     return (
       <Badge tone="neutral">
         <Icon name="sparkle" size={11} /> Demo
@@ -44,7 +24,7 @@ export default function AuthControls() {
     );
   }
 
-  if (!ready) return <div className="h-9 w-20" aria-hidden />;
+  if (loading) return <div className="h-9 w-20" aria-hidden />;
 
   if (user) {
     return (

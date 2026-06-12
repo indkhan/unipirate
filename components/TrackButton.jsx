@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { buildApplicationSteps } from '@/lib/track-steps';
 import { Button, Icon } from './ui';
 
@@ -10,38 +10,32 @@ import { Button, Icon } from './ui';
 // and a signed-in user; otherwise it shows a sign-in prompt or hides.
 export default function TrackButton({ course, university, profile }) {
   const router = useRouter();
-  const [userId, setUserId] = useState(null);
-  const [ready, setReady] = useState(false);
+  const { userId, loading: authLoading, configured, supabase } = useAuth();
+  const available = configured && !!course?.dbId;
+
+  // Whether this course is already tracked, and which user we resolved it for
+  // (so we can show a spinner-free "checking" gate without setState-in-effect).
   const [tracked, setTracked] = useState(false);
+  const [checkedFor, setCheckedFor] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  const available = isSupabaseConfigured() && !!course?.dbId;
-
   useEffect(() => {
-    if (!available) {
-      setReady(true);
-      return;
-    }
+    if (!available || authLoading || !userId) return;
     let active = true;
-    const supabase = createClient();
     (async () => {
-      const { data } = await supabase.auth.getUser();
-      const uid = data?.user?.id ?? null;
-      if (!active) return;
-      setUserId(uid);
-      if (uid) {
-        const { data: existing } = await supabase
-          .from('tracked_applications')
-          .select('id')
-          .eq('user_id', uid)
-          .eq('course_id', course.dbId)
-          .maybeSingle();
-        if (active) setTracked(!!existing);
+      const { data: existing } = await supabase
+        .from('tracked_applications')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('course_id', course.dbId)
+        .maybeSingle();
+      if (active) {
+        setTracked(!!existing);
+        setCheckedFor(userId);
       }
-      if (active) setReady(true);
     })();
     return () => { active = false; };
-  }, [available, course?.dbId]);
+  }, [available, authLoading, userId, course?.dbId, supabase]);
 
   async function onTrack() {
     if (!userId) {
@@ -50,7 +44,6 @@ export default function TrackButton({ course, university, profile }) {
     }
     setBusy(true);
     try {
-      const supabase = createClient();
       const { data: app, error } = await supabase
         .from('tracked_applications')
         .insert({ user_id: userId, course_id: course.dbId })
@@ -70,7 +63,9 @@ export default function TrackButton({ course, university, profile }) {
     }
   }
 
-  if (!available || !ready) return null;
+  // Hide until tracking is possible and (for signed-in users) the lookup is done.
+  if (!available || authLoading) return null;
+  if (userId && checkedFor !== userId) return null;
 
   if (tracked) {
     return (

@@ -456,7 +456,7 @@ function CourseDetailDrawer({ course, university, profile, onClose }) {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = '';
     };
-  }, []);
+  }, [onClose]);
 
   return (
     <div className="fixed inset-0 z-50 flex">

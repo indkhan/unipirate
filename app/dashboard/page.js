@@ -6,6 +6,7 @@ import { matchRecognitionRule, resolveRecognition } from '@/lib/nc';
 import { profileFromRow } from '@/lib/profile';
 import TopNav from '@/components/TopNav';
 import StepChecklist from '@/components/StepChecklist';
+import ProgressChecklist from '@/components/ProgressChecklist';
 import { Button, Badge, Icon } from '@/components/ui';
 
 const TONE = {
@@ -95,6 +96,16 @@ export default async function DashboardPage() {
               </Link>
             </div>
           )}
+        </div>
+
+        {/* Progress / to-do checklist */}
+        <div className="mt-8">
+          <ProgressChecklist
+            profile={profile}
+            verdict={verdict}
+            initialOverrides={profileRow?.checklist_overrides || {}}
+            variant="dashboard"
+          />
         </div>
 
         {/* Tracked applications */}
