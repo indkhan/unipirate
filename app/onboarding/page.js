@@ -4,14 +4,17 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
 import {
-  Button, Badge, Icon, Field, Select, TextInput, Segmented, Chip, Toggle, Stepper, cx,
+  Button, Icon, Field, Select, TextInput, Segmented, Toggle, Stepper, cx,
 } from '@/components/ui';
 import {
-  COUNTRIES, QUALIFICATIONS_BY_COUNTRY, GRADING_SCALES, LANGUAGE_CERTS,
+  COUNTRIES, QUALIFICATIONS_BY_COUNTRY, GRADING_SCALES, LANGUAGE_TEST_OPTIONS,
 } from '@/lib/repo';
 import {
   loadProfile, saveProfile, loadProfileDb, saveProfileDb, BLANK_PROFILE,
   A_LEVEL_LETTERS, aLevelAverage, parseALevels, serializeALevels,
+  LANG_STATUS_OPTIONS, primaryLanguageCert,
+  loadChecklistOverridesDb, loadChecklistOverridesLocal,
+  saveChecklistOverridesDb, saveChecklistOverridesLocal,
 } from '@/lib/profile';
 import { useAuth } from '@/lib/auth-context';
 
@@ -111,8 +114,31 @@ export default function OnboardingPage() {
 
   const update = (patch) => setProfile((p) => ({ ...p, ...patch }));
 
-  async function handleSubmit() {
+  // Checklist overrides ({ itemKey: 'in_process' }) — lets the user mark grade
+  // as "waiting for results" here and have it reflected on the dashboard/result.
+  const [overrides, setOverrides] = useState({});
+  useEffect(() => {
+    if (authLoading) return;
+    let active = true;
+    (async () => {
+      if (userId && supabase) {
+        const db = await loadChecklistOverridesDb(supabase, userId);
+        if (active && db) setOverrides(db);
+      } else if (active) {
+        setOverrides(loadChecklistOverridesLocal());
+      }
+    })();
+    return () => { active = false; };
+  }, [authLoading, userId, supabase]);
+
+  function persistOverrides(next) {
+    if (userId && supabase) saveChecklistOverridesDb(supabase, userId, next);
+    else saveChecklistOverridesLocal(next);
+  }
+
+  async function persistAll() {
     saveProfile(profile); // always persist locally first — result reads this
+    persistOverrides(overrides);
     if (userId && supabase) {
       const { error } = await saveProfileDb(supabase, userId, profile);
       if (error) {
@@ -122,6 +148,10 @@ export default function OnboardingPage() {
         console.error('[onboarding] profile DB save failed:', error.message || error);
       }
     }
+  }
+
+  async function handleSubmit() {
+    await persistAll();
     // ?from=onboarding signals the result page to trust the just-saved local
     // profile; a plain navbar visit to /result reads the DB instead.
     router.push('/result?from=onboarding');
@@ -163,12 +193,44 @@ export default function OnboardingPage() {
     });
   };
 
-  const canSubmit =
-    profile.country &&
-    profile.qualification &&
-    profile.grade !== '' &&
-    profile.gradingScale &&
-    profile.languageCert;
+  // The only hard requirement to leave onboarding: country + qualification.
+  const canContinue = !!(profile.country && profile.qualification);
+
+  // What we call the result for the chosen qualification.
+  const gradeNoun = isALevel ? 'A-Level grades' : isIB ? 'IB points' : 'grade';
+
+  // Grade "waiting for results" flag → marks the grade checklist item in-process.
+  // A-Levels live under the 'alevel' item; everything else under 'grade'.
+  const gradeKey = isALevel ? 'alevel' : 'grade';
+  const gradeWaiting = overrides[gradeKey] === 'in_process';
+  function setGradeWaiting(waiting) {
+    // Waiting and an entered grade are contradictory — clear the grade fields
+    // when the user says they don't have results yet.
+    if (waiting) update({ grade: '', aLevelGrades: '' });
+    setOverrides((prev) => {
+      const next = { ...prev };
+      if (waiting) next[gradeKey] = 'in_process';
+      else delete next[gradeKey];
+      persistOverrides(next);
+      return next;
+    });
+  }
+
+  // Language certificates: a list of { cert, score, status }. Mirror the primary
+  // one into the legacy single-cert fields so other reads stay correct.
+  const languageCerts = profile.languageCerts || [];
+  function setLanguageCerts(list) {
+    const primary = primaryLanguageCert(list);
+    update({ languageCerts: list, languageCert: primary?.cert || '', languageScore: primary?.score || '' });
+  }
+  const addCert = () => setLanguageCerts([...languageCerts, { cert: '', score: '', status: 'planning' }]);
+  const updateCert = (i, patch) => {
+    const merged = { ...languageCerts[i], ...patch };
+    // A score only makes sense once you actually hold the certificate.
+    if (merged.status !== 'done') merged.score = '';
+    setLanguageCerts(languageCerts.map((c, idx) => (idx === i ? merged : c)));
+  };
+  const removeCert = (i) => setLanguageCerts(languageCerts.filter((_, idx) => idx !== i));
 
   return (
     <div className="min-h-screen bg-paper">
@@ -179,7 +241,7 @@ export default function OnboardingPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/overview')}
               icon={<Icon name="arrowLeft" size={14} />}
             >
               Back
@@ -222,10 +284,9 @@ export default function OnboardingPage() {
             </Field>
 
             {/* A-Levels: per-subject name + grade (best 3–4). */}
-            {isALevel && (
+            {isALevel && !gradeWaiting && (
               <Field
                 label="A-Level subjects & grades"
-                required
                 hint="Enter your best 3–4 subjects with their grades. We map A*=6 … E=1 to a German equivalent."
                 className="md:col-span-2"
               >
@@ -252,16 +313,22 @@ export default function OnboardingPage() {
             {/* IB: total points + Higher-Level subject flags. */}
             {isIB && (
               <>
-                <Field label="IB total points" required hint="Out of 45. Diploma minimum is 24.">
-                  <TextInput
-                    type="number"
-                    value={profile.grade}
-                    onChange={(v) => update({ grade: v, gradingScale: 'IB points (0–45)' })}
-                    placeholder="e.g. 36"
-                    suffix="/ 45"
-                  />
-                </Field>
-                <Field label="Higher-Level subjects" hint="Determines general vs subject-restricted access.">
+                {!gradeWaiting && (
+                  <Field label="IB total points" hint="Out of 45. Diploma minimum is 24.">
+                    <TextInput
+                      type="number"
+                      value={profile.grade}
+                      onChange={(v) => update({ grade: v, gradingScale: 'IB points (0–45)' })}
+                      placeholder="e.g. 36"
+                      suffix="/ 45"
+                    />
+                  </Field>
+                )}
+                <Field
+                  label="Higher-Level subjects"
+                  hint="Determines general vs subject-restricted access."
+                  className={gradeWaiting ? 'md:col-span-2' : undefined}
+                >
                   <div className="flex flex-col gap-2.5 pt-2">
                     <Toggle
                       value={profile.ibHlMath}
@@ -279,9 +346,9 @@ export default function OnboardingPage() {
             )}
 
             {/* Default: numeric grade + grading scale. */}
-            {!isALevel && !isIB && (
+            {!isALevel && !isIB && !gradeWaiting && (
               <>
-                <Field label="Grade / percentage" required hint="Your overall result, as a number.">
+                <Field label="Grade / percentage" hint="Your overall result, as a number.">
                   <TextInput
                     type="number"
                     value={profile.grade}
@@ -290,7 +357,7 @@ export default function OnboardingPage() {
                     suffix={inferSuffix(profile.gradingScale)}
                   />
                 </Field>
-                <Field label="Grading scale" required hint="Matches your result to a German equivalent.">
+                <Field label="Grading scale" hint="Matches your result to a German equivalent.">
                   <Select
                     value={profile.gradingScale}
                     onChange={(v) => update({ gradingScale: v })}
@@ -300,36 +367,96 @@ export default function OnboardingPage() {
                 </Field>
               </>
             )}
+
+            {/* Waiting for results — grade entry hidden. */}
+            {gradeWaiting && profile.qualification && (
+              <div className="md:col-span-2 rounded-lg border border-line border-dashed bg-paper px-4 py-3 text-[13px] text-ink-60">
+                Waiting for your {gradeNoun} — add them later from your dashboard. Recognition still works from your country and qualification.
+              </div>
+            )}
           </div>
+
+          {/* No final result yet → mark the grade as "in process" and continue. */}
+          {profile.qualification && (
+            <div className="mt-5">
+              <Toggle
+                value={gradeWaiting}
+                onChange={setGradeWaiting}
+                label="I don't have my final result yet — waiting for results"
+              />
+              {gradeWaiting && (
+                <div className="text-[11.5px] text-ink-50 mt-1.5 leading-snug">
+                  Your {gradeNoun} will show as “In process” on your dashboard until you add them.
+                </div>
+              )}
+            </div>
+          )}
 
           <Divider />
 
-          <SectionHeader n="02" title="Language" subtitle="Which tests have you taken, or plan to?" />
-          <div className="grid md:grid-cols-2 gap-5">
-            <Field label="Primary language certificate" required>
-              <div className="flex flex-wrap gap-2">
-                {LANGUAGE_CERTS.map((c) => (
-                  <Chip
-                    key={c}
-                    active={profile.languageCert === c}
-                    onClick={() => update({ languageCert: c })}
-                  >
-                    {c}
-                  </Chip>
-                ))}
+          <SectionHeader n="02" title="Language" subtitle="Tests you've taken or plan to — add as many as you need." />
+          <div className="space-y-3">
+            {languageCerts.length === 0 && (
+              <div className="text-[13px] text-ink-50">
+                No certificates yet — add one now, or come back later.
               </div>
-            </Field>
-            <Field
-              label="Score"
-              hint={scoreHint(profile.languageCert)}
-              optional={profile.languageCert === 'None / planning to take'}
-            >
-              <TextInput
-                value={profile.languageScore}
-                onChange={(v) => update({ languageScore: v })}
-                placeholder={scorePlaceholder(profile.languageCert)}
-              />
-            </Field>
+            )}
+            {languageCerts.map((c, i) => (
+              <div
+                key={i}
+                className="rounded-lg border border-line bg-paper p-4 grid md:grid-cols-12 gap-3 items-start"
+              >
+                <div className="md:col-span-4">
+                  <Field label="Certificate">
+                    <Select
+                      value={c.cert}
+                      onChange={(v) => updateCert(i, { cert: v })}
+                      options={LANGUAGE_TEST_OPTIONS}
+                      placeholder="Select test"
+                    />
+                  </Field>
+                </div>
+                <div className="md:col-span-3">
+                  {c.status === 'done' ? (
+                    <Field label="Score" hint={scoreHint(c.cert)}>
+                      <TextInput
+                        value={c.score}
+                        onChange={(v) => updateCert(i, { score: v })}
+                        placeholder={scorePlaceholder(c.cert)}
+                      />
+                    </Field>
+                  ) : (
+                    <Field label="Score">
+                      <div className="h-11 flex items-center text-[12.5px] text-ink-40">
+                        Add once you have results
+                      </div>
+                    </Field>
+                  )}
+                </div>
+                <div className="md:col-span-4">
+                  <Field label="Status">
+                    <Segmented
+                      value={c.status}
+                      onChange={(v) => updateCert(i, { status: v })}
+                      options={LANG_STATUS_OPTIONS}
+                    />
+                  </Field>
+                </div>
+                <div className="md:col-span-1 flex md:justify-end md:pt-7">
+                  <button
+                    type="button"
+                    onClick={() => removeCert(i)}
+                    aria-label="Remove certificate"
+                    className="h-9 w-9 inline-flex items-center justify-center rounded-md text-ink-40 hover:text-[oklch(0.55_0.17_25)] hover:bg-ink-5"
+                  >
+                    <Icon name="close" size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            <Button variant="secondary" size="sm" onClick={addCert} icon={<Icon name="arrowRight" size={14} />}>
+              Add a certificate
+            </Button>
           </div>
 
           <Divider />
@@ -352,14 +479,14 @@ export default function OnboardingPage() {
             </Field>
           </div>
 
-          <div className="flex items-center justify-between pt-8 mt-2 border-t border-line">
+          <div className="flex items-center justify-between flex-wrap gap-4 pt-8 mt-2 border-t border-line">
             <div className="text-[12px] text-ink-50 leading-snug max-w-[360px]">
-              Tip: you can come back and adjust your profile anytime — recognition updates live.
+              Tip: country + qualification is enough to continue — add grades and language now or later.
             </div>
             <Button
               size="lg"
               onClick={handleSubmit}
-              disabled={!canSubmit}
+              disabled={!canContinue}
               icon={<Icon name="arrowRight" size={16} />}
             >
               Check recognition

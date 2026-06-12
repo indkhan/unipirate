@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import TopNav from '@/components/TopNav';
+import ProgressChecklist from '@/components/ProgressChecklist';
 import { Button, Badge, Icon, Stepper } from '@/components/ui';
 import { RECOGNITION_RULES } from '@/lib/seed-data';
 import { matchRecognitionRule, resolveRecognition, mergeRecognitionRules } from '@/lib/nc';
@@ -252,6 +253,11 @@ export default function ResultPage() {
               </li>
             ))}
           </ol>
+        </div>
+
+        {/* Gated progress — what to finish, and what each unlocks */}
+        <div className="mt-4">
+          <ProgressChecklist profile={profile} verdict={rule} variant="eligibility" />
         </div>
 
         <div className="mt-8 flex items-center justify-between flex-wrap gap-3">
