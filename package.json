@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "node scripts/seed.mjs",
+    "test:parser": "node scripts/test-import-parser.mjs",
     "test": "node --test \"tests/*.test.mjs\""
   },
   "dependencies": {
