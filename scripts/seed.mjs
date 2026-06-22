@@ -80,8 +80,10 @@ async function run() {
       summary: c.summary,
     };
   });
-  const { error: cErr } = await db.from('courses').upsert(courseRows, { onConflict: 'slug' });
-  if (cErr) throw cErr;
+  if (courseRows.length) {
+    const { error: cErr } = await db.from('courses').upsert(courseRows, { onConflict: 'slug' });
+    if (cErr) throw cErr;
+  }
 
   // 3) Recognition rules
   const { error: rErr } = await db

@@ -37,18 +37,7 @@ test('parseNc: non-numeric NC keeps label, null value', () => {
   assert.equal(r.nc_value_label, 'Portfolio + interview');
 });
 
-test('every course maps to a real university slug', () => {
-  const slugs = new Set(UNIVERSITIES.map((u) => u.id));
-  for (const c of COURSES) {
-    assert.ok(slugs.has(c.universityId), `course ${c.id} -> unknown uni ${c.universityId}`);
-  }
-});
-
-test('every course produces a valid apply-free / NC shape', () => {
-  for (const c of COURSES) {
-    const r = parseNc(c);
-    if (!c.ncFree && c.ncValue && /\d/.test(c.ncValue)) {
-      assert.equal(typeof r.nc_value, 'number');
-    }
-  }
+test('the static curated course catalog is empty', () => {
+  assert.deepEqual(COURSES, []);
+  assert.ok(UNIVERSITIES.length > 0);
 });
