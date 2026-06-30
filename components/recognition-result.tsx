@@ -1,6 +1,19 @@
-// Recognition result page + recognition matching logic
+"use client"
 
-function matchRecognition(profile, rules) {
+import type { ReactNode } from "react"
+import { useRouter } from "next/navigation"
+import { useProfile } from "@/components/profile-provider"
+import {
+  data,
+  type ActionLink,
+  type RecognitionRule,
+  type RecognitionStatus,
+} from "@/lib/data"
+import type { Profile } from "@/lib/profile"
+import { SiteHeader } from "@/components/site-header"
+import { Badge, type BadgeTone, Button, Icon, type IconName, StatusBadge, Stepper } from "@/components/ui"
+
+function matchRecognition(profile: Profile, rules: RecognitionRule[]) {
     if (!profile.country || !profile.qualification) return null;
     // Exact match on country + qualification
     let rule = rules.find(
@@ -14,25 +27,26 @@ function matchRecognition(profile, rules) {
     return rules.find((r) => r.country === "Other / Not listed") || null;
   }
   
-  function RecognitionResult({ profile, onContinue, onBack, onEdit }) {
-    const { RECOGNITION_RULES } = window.UNIPIRATE_DATA;
-    const rule = matchRecognition(profile, RECOGNITION_RULES);
+  export function RecognitionResult() {
+    const router = useRouter()
+    const { profile } = useProfile()
+    const rule = matchRecognition(profile, data.recognitionRules)
   
     if (!rule) {
       return (
         <div className="min-h-screen bg-paper">
-          <TopNav current="result" onHome={onBack} />
+          <SiteHeader />
           <main className="max-w-[920px] mx-auto px-6 py-16 text-center text-ink-60">
             Please complete your profile first.
             <div className="mt-4">
-              <Button onClick={onEdit}>Go to profile</Button>
+              <Button onClick={() => router.push("/profile")}>Go to profile</Button>
             </div>
           </main>
         </div>
       );
     }
   
-    const tone =
+    const tone: BadgeTone =
       rule.status === "H+"
         ? "emerald"
         : rule.status === "H"
@@ -41,26 +55,26 @@ function matchRecognition(profile, rules) {
         ? "coral"
         : "slate";
   
-    const statusTitle =
+    const statusTitle = (
       {
         "H+": "Direct access",
         H: "Conditional recognition",
         "H-": "Not sufficient on its own",
         UNCLEAR: "Manual check recommended",
-      }[rule.status] || "";
+      } satisfies Record<RecognitionStatus, string>
+    )[rule.status]
   
     return (
       <div className="min-h-screen bg-paper">
-        <TopNav current="result" onHome={onBack} />
+        <SiteHeader />
         <main className="max-w-[1040px] mx-auto px-6 md:px-10 pt-10 pb-24">
           <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
             <div>
-              <Button variant="ghost" size="sm" onClick={onEdit} icon={<Icon name="arrowLeft" size={14} />}>
+              <Button variant="ghost" size="sm" onClick={() => router.push("/profile")} icon={<Icon name="arrowLeft" size={14} />}>
                 Edit profile
               </Button>
               <h1
-                className="text-[40px] md:text-[48px] text-ink-90 leading-[1.05] mt-3"
-                style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.02em" }}
+                className="font-display text-[40px] md:text-[48px] text-ink-90 leading-[1.05] tracking-[-0.02em] mt-3"
               >
                 Your recognition result.
               </h1>
@@ -82,8 +96,7 @@ function matchRecognition(profile, rules) {
                   </Badge>
                 </div>
                 <div
-                  className="text-[30px] md:text-[36px] text-ink-90 leading-[1.1]"
-                  style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.015em" }}
+                  className="font-display text-[30px] md:text-[36px] text-ink-90 leading-[1.1] tracking-[-0.015em]"
                 >
                   {rule.headline}
                 </div>
@@ -135,8 +148,7 @@ function matchRecognition(profile, rules) {
                 03
               </span>
               <div
-                className="text-[22px] text-ink-90"
-                style={{ fontFamily: "'Instrument Serif', serif" }}
+                className="font-display text-[22px] text-ink-90"
               >
                 Next steps
               </div>
@@ -161,7 +173,7 @@ function matchRecognition(profile, rules) {
               This is an MVP recommendation based on curated rules. Always verify with the official anabin
               database and your target university before applying.
             </div>
-            <Button size="lg" onClick={onContinue} icon={<Icon name="arrowRight" size={16} />}>
+            <Button size="lg" onClick={() => router.push("/courses")} icon={<Icon name="arrowRight" size={16} />}>
               Continue to course finder
             </Button>
           </div>
@@ -170,7 +182,15 @@ function matchRecognition(profile, rules) {
     );
   }
   
-  function InfoCard({ kicker, title, body }) {
+  function InfoCard({
+    kicker,
+    title,
+    body,
+  }: {
+    kicker: string
+    title: string
+    body: ReactNode
+  }) {
     return (
       <div className="rounded-xl border border-line bg-white p-6 md:p-8 h-full">
         <div className="flex items-baseline gap-4 mb-4">
@@ -180,7 +200,7 @@ function matchRecognition(profile, rules) {
           >
             {kicker}
           </span>
-          <div className="text-[22px] text-ink-90" style={{ fontFamily: "'Instrument Serif', serif" }}>
+          <div className="font-display text-[22px] text-ink-90">
             {title}
           </div>
         </div>
@@ -189,14 +209,14 @@ function matchRecognition(profile, rules) {
     );
   }
   
-  function ActionList({ links }) {
-    const kindIcon = {
+  function ActionList({ links }: { links: ActionLink[] }) {
+    const kindIcon: Record<ActionLink["kind"], IconName> = {
       aps: "check",
       kolleg: "book",
       apply: "external",
       manual: "info",
     };
-    const kindLabel = {
+    const kindLabel: Record<ActionLink["kind"], string> = {
       aps: "APS info",
       kolleg: "Studienkolleg",
       apply: "Application portal",
@@ -212,11 +232,11 @@ function matchRecognition(profile, rules) {
           >
             <div className="flex items-center gap-3">
               <span className="h-7 w-7 rounded-md bg-navy/8 text-navy inline-flex items-center justify-center">
-                <Icon name={kindIcon[l.kind] || "external"} size={14} />
+                <Icon name={kindIcon[l.kind]} size={14} />
               </span>
               <div>
                 <div className="text-[13.5px] text-ink-90 font-medium">{l.label}</div>
-                <div className="text-[11.5px] text-ink-50">{kindLabel[l.kind] || "External"}</div>
+                <div className="text-[11.5px] text-ink-50">{kindLabel[l.kind]}</div>
               </div>
             </div>
             <Icon name="external" size={14} className="text-ink-50" />
@@ -226,10 +246,9 @@ function matchRecognition(profile, rules) {
     );
   }
   
-  function truncate(s, n) {
+  function truncate(s: string, n: number) {
     if (!s) return "";
     return s.length > n ? s.slice(0, n - 1) + "…" : s;
   }
   
-  Object.assign(window, { RecognitionResult });
   

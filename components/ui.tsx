@@ -1,10 +1,11 @@
-// Shared primitives for UniPirate. Loaded as Babel JSX.
-// Globals: Logo, Badge, StatusBadge, Chip, Button, IconButton, Field, Select, Stepper, Compass, ProgressDots, cx
+import type { ButtonHTMLAttributes, ReactNode, SVGProps } from "react"
+import { Fragment } from "react"
+import type { RecognitionStatus } from "@/lib/data"
 
-const cx = (...xs) => xs.filter(Boolean).join(" ");
+export const cx = (...xs: Array<string | false | null | undefined>) => xs.filter(Boolean).join(" ")
 
 // ---------- Compass logo (original, minimal) ----------
-function Compass({ size = 24, stroke = 1.4 }) {
+export function Compass({ size = 24, stroke = 1.4 }: { size?: number; stroke?: number }) {
   return (
     <svg
       width={size}
@@ -27,7 +28,7 @@ function Compass({ size = 24, stroke = 1.4 }) {
   );
 }
 
-function Logo({ compact = false }) {
+export function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
       <div className="text-navy">
@@ -36,8 +37,7 @@ function Logo({ compact = false }) {
       {!compact && (
         <div className="flex items-baseline gap-1.5">
           <span
-            className="text-[22px] leading-none text-navy"
-            style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.01em" }}
+            className="font-display text-[22px] leading-none text-navy tracking-[-0.01em]"
           >
             UniPirate
           </span>
@@ -49,7 +49,21 @@ function Logo({ compact = false }) {
 }
 
 // ---------- Button ----------
-function Button({ children, variant = "primary", size = "md", onClick, className, type = "button", disabled, icon }) {
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: "primary" | "secondary" | "ghost" | "link"
+  size?: "sm" | "md" | "lg"
+  icon?: ReactNode
+}
+
+export function Button({
+  children,
+  variant = "primary",
+  size = "md",
+  className,
+  type = "button",
+  icon,
+  ...props
+}: ButtonProps) {
   const sizes = {
     sm: "h-9 px-3.5 text-[13px]",
     md: "h-11 px-5 text-[14px]",
@@ -66,8 +80,7 @@ function Button({ children, variant = "primary", size = "md", onClick, className
   return (
     <button
       type={type}
-      onClick={onClick}
-      disabled={disabled}
+      {...props}
       className={cx(
         "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed",
         sizes[size],
@@ -81,12 +94,15 @@ function Button({ children, variant = "primary", size = "md", onClick, className
   );
 }
 
-function IconButton({ children, onClick, className, "aria-label": label }) {
+export function IconButton({
+  children,
+  className,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       type="button"
-      aria-label={label}
-      onClick={onClick}
+      {...props}
       className={cx(
         "inline-flex items-center justify-center h-9 w-9 rounded-md border border-line bg-paper hover:border-navy/40 hover:bg-white text-ink-70 transition-colors",
         className
@@ -98,7 +114,17 @@ function IconButton({ children, onClick, className, "aria-label": label }) {
 }
 
 // ---------- Badges & chips ----------
-function Badge({ children, tone = "neutral", className }) {
+export type BadgeTone = "neutral" | "navy" | "emerald" | "amber" | "coral" | "slate"
+
+export function Badge({
+  children,
+  tone = "neutral",
+  className,
+}: {
+  children: ReactNode
+  tone?: BadgeTone
+  className?: string
+}) {
   const tones = {
     neutral: "bg-ink-5 text-ink-70 border-line",
     navy: "bg-navy/8 text-navy border-navy/15",
@@ -120,7 +146,17 @@ function Badge({ children, tone = "neutral", className }) {
   );
 }
 
-function Chip({ children, active, onClick, icon }) {
+export function Chip({
+  children,
+  active = false,
+  onClick,
+  icon,
+}: {
+  children: ReactNode
+  active?: boolean
+  onClick?: () => void
+  icon?: ReactNode
+}) {
   return (
     <button
       type="button"
@@ -138,14 +174,23 @@ function Chip({ children, active, onClick, icon }) {
   );
 }
 
-function StatusBadge({ status, size = "md" }) {
-  const map = {
+export function StatusBadge({
+  status,
+  size = "md",
+}: {
+  status: RecognitionStatus
+  size?: "sm" | "md" | "lg"
+}) {
+  const map: Record<
+    RecognitionStatus,
+    { tone: "emerald" | "amber" | "coral" | "slate"; label: string; title: string }
+  > = {
     "H+": { tone: "emerald", label: "H+", title: "Direct access" },
     H: { tone: "amber", label: "H", title: "Conditional" },
     "H-": { tone: "coral", label: "H−", title: "Not sufficient on its own" },
     UNCLEAR: { tone: "slate", label: "?", title: "Unclear" },
   };
-  const m = map[status] || map.UNCLEAR;
+  const m = map[status]
   const tones = {
     emerald: "bg-[oklch(0.58_0.14_150)] text-white ring-[oklch(0.58_0.14_150)]/20",
     amber: "bg-[oklch(0.72_0.14_75)] text-[oklch(0.22_0.05_75)] ring-[oklch(0.72_0.14_75)]/25",
@@ -161,11 +206,10 @@ function StatusBadge({ status, size = "md" }) {
     <span
       title={m.title}
       className={cx(
-        "inline-flex items-center justify-center font-semibold rounded-md ring-4",
+        "font-display inline-flex items-center justify-center font-semibold rounded-md ring-4 tracking-[-0.01em]",
         tones[m.tone],
         sizes[size]
       )}
-      style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.01em" }}
     >
       {m.label}
     </span>
@@ -173,7 +217,21 @@ function StatusBadge({ status, size = "md" }) {
 }
 
 // ---------- Form fields ----------
-function Field({ label, hint, error, children, required, optional }) {
+export function Field({
+  label,
+  hint,
+  error,
+  children,
+  required,
+  optional,
+}: {
+  label: string
+  hint?: ReactNode
+  error?: ReactNode
+  children: ReactNode
+  required?: boolean
+  optional?: boolean
+}) {
   return (
     <label className="block">
       <div className="flex items-baseline justify-between mb-1.5">
@@ -190,7 +248,19 @@ function Field({ label, hint, error, children, required, optional }) {
   );
 }
 
-function Select({ value, onChange, options, placeholder }) {
+export type SelectOption = string | { value: string; label: string }
+
+export function Select({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string
+  onChange: (value: string) => void
+  options: SelectOption[]
+  placeholder?: string
+}) {
   return (
     <div className="relative">
       <select
@@ -224,7 +294,21 @@ function Select({ value, onChange, options, placeholder }) {
   );
 }
 
-function TextInput({ value, onChange, placeholder, type = "text", suffix, prefix }) {
+export function TextInput({
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  suffix,
+  prefix,
+}: {
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  type?: string
+  suffix?: string
+  prefix?: string
+}) {
   return (
     <div className="relative flex items-center">
       {prefix && <span className="absolute left-3.5 text-ink-50 text-[13px]">{prefix}</span>}
@@ -245,7 +329,15 @@ function TextInput({ value, onChange, placeholder, type = "text", suffix, prefix
   );
 }
 
-function Segmented({ value, onChange, options }) {
+export function Segmented({
+  value,
+  onChange,
+  options,
+}: {
+  value: string
+  onChange: (value: string) => void
+  options: SelectOption[]
+}) {
   return (
     <div className="inline-flex p-1 rounded-md border border-line bg-ink-5/50 gap-0.5">
       {options.map((o) => {
@@ -272,7 +364,15 @@ function Segmented({ value, onChange, options }) {
   );
 }
 
-function Toggle({ value, onChange, label }) {
+export function Toggle({
+  value,
+  onChange,
+  label,
+}: {
+  value: boolean
+  onChange: (value: boolean) => void
+  label: string
+}) {
   return (
     <button
       type="button"
@@ -298,14 +398,14 @@ function Toggle({ value, onChange, label }) {
 }
 
 // ---------- Stepper / progress ----------
-function Stepper({ steps, current }) {
+export function Stepper({ steps, current }: { steps: string[]; current: number }) {
   return (
     <div className="flex items-center gap-3">
       {steps.map((s, i) => {
         const done = i < current;
         const active = i === current;
         return (
-          <React.Fragment key={s}>
+          <Fragment key={s}>
             <div className="flex items-center gap-2">
               <span
                 className={cx(
@@ -326,7 +426,7 @@ function Stepper({ steps, current }) {
               <span className={cx("text-[12px] font-medium", active ? "text-ink-90" : "text-ink-50")}>{s}</span>
             </div>
             {i < steps.length - 1 && <span className="h-px w-6 bg-line" />}
-          </React.Fragment>
+          </Fragment>
         );
       })}
     </div>
@@ -334,8 +434,40 @@ function Stepper({ steps, current }) {
 }
 
 // ---------- Small utility icons (inline SVG; no emoji) ----------
-function Icon({ name, size = 16, stroke = 1.75, className }) {
-  const common = {
+export type IconName =
+  | "search"
+  | "arrowRight"
+  | "arrowLeft"
+  | "close"
+  | "external"
+  | "check"
+  | "pin"
+  | "calendar"
+  | "globe"
+  | "layers"
+  | "filter"
+  | "book"
+  | "tag"
+  | "sparkle"
+  | "gauge"
+  | "user"
+  | "sliders"
+  | "chevronRight"
+  | "bookmark"
+  | "info"
+
+export function Icon({
+  name,
+  size = 16,
+  stroke = 1.75,
+  className,
+}: {
+  name: IconName
+  size?: number
+  stroke?: number
+  className?: string
+}) {
+  const common: SVGProps<SVGSVGElement> = {
     width: size,
     height: size,
     viewBox: "0 0 24 24",
@@ -346,7 +478,7 @@ function Icon({ name, size = 16, stroke = 1.75, className }) {
     strokeLinejoin: "round",
     className,
   };
-  const paths = {
+  const paths: Record<IconName, ReactNode> = {
     search: (
       <>
         <circle cx="11" cy="11" r="7" />
@@ -435,39 +567,3 @@ function Icon({ name, size = 16, stroke = 1.75, className }) {
   };
   return <svg {...common}>{paths[name]}</svg>;
 }
-
-window.UniPirateUI = {
-  cx,
-  Compass,
-  Logo,
-  Button,
-  IconButton,
-  Badge,
-  Chip,
-  StatusBadge,
-  Field,
-  Select,
-  TextInput,
-  Segmented,
-  Toggle,
-  Stepper,
-  Icon,
-};
-
-Object.assign(window, {
-  cx,
-  Compass,
-  Logo,
-  Button,
-  IconButton,
-  Badge,
-  Chip,
-  StatusBadge,
-  Field,
-  Select,
-  TextInput,
-  Segmented,
-  Toggle,
-  Stepper,
-  Icon,
-});

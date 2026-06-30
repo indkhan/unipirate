@@ -1,20 +1,49 @@
-// Landing + Onboarding pages
+"use client"
 
-function Landing({ onStart, onDemo }) {
+import { useRouter } from "next/navigation"
+import { useProfile } from "@/components/profile-provider"
+import { SiteHeader } from "@/components/site-header"
+import { data, hasDataset } from "@/lib/data"
+import { blankProfile, type Profile } from "@/lib/profile"
+import {
+  Badge,
+  Button,
+  Chip,
+  Compass,
+  Field,
+  Icon,
+  type IconName,
+  Segmented,
+  Select,
+  Stepper,
+  TextInput,
+  StatusBadge,
+} from "@/components/ui"
+
+export function Landing() {
+    const router = useRouter()
+    const { setProfile } = useProfile()
+
+    const startProfile = () => {
+      setProfile(blankProfile)
+      router.push("/profile")
+    }
+
     return (
       <div className="min-h-screen bg-paper">
-        <TopNav current="home" />
+        <SiteHeader />
         <main className="max-w-[1200px] mx-auto px-6 md:px-10 pt-10 md:pt-16 pb-24">
           {/* Hero */}
           <div className="grid md:grid-cols-12 gap-10 items-start">
             <div className="md:col-span-7">
               <Badge tone="navy" className="mb-5">
                 <span className="h-1.5 w-1.5 rounded-full bg-navy mr-1" />
-                MVP · curated data for 10 German universities
+                {hasDataset
+                  ? `MVP · curated data for ${data.universities.length} German universities`
+                  : "UI shell · dataset not configured"}
               </Badge>
               <h1
-                className="text-ink-90 leading-[1.02] text-[52px] md:text-[72px]"
-                style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.02em" }}
+                className="font-display text-ink-90 leading-[1.02] tracking-[-0.02em] text-[52px] md:text-[72px]"
               >
                 Chart your course to a
                 <br />
@@ -26,11 +55,16 @@ function Landing({ onStart, onDemo }) {
               </p>
   
               <div className="mt-8 flex flex-wrap gap-3">
-                <Button size="lg" onClick={onStart} icon={<Icon name="arrowRight" size={16} />}>
+                <Button size="lg" onClick={startProfile} icon={<Icon name="arrowRight" size={16} />}>
                   Start your profile
                 </Button>
-                <Button size="lg" variant="secondary" onClick={onDemo}>
-                  Explore demo data
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  onClick={() => router.push("/recognition")}
+                  disabled={!hasDataset}
+                >
+                  {hasDataset ? "Explore demo data" : "Demo data unavailable"}
                 </Button>
               </div>
   
@@ -59,15 +93,14 @@ function Landing({ onStart, onDemo }) {
               <div>
                 <div className="text-[11.5px] uppercase tracking-[0.18em] text-ink-40 mb-2">How it works</div>
                 <h2
-                  className="text-[32px] md:text-[38px] text-ink-90 leading-tight"
-                  style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.01em" }}
+                  className="font-display text-[32px] md:text-[38px] text-ink-90 leading-tight tracking-[-0.01em]"
                 >
                   Three steps, one afternoon.
                 </h2>
               </div>
             </div>
             <div className="grid md:grid-cols-3 gap-4">
-              {[
+              {([
                 {
                   n: "01",
                   t: "Add your background",
@@ -86,7 +119,7 @@ function Landing({ onStart, onDemo }) {
                   d: "Filter by language, semester and NC. Open a course for full admission details.",
                   icon: "layers",
                 },
-              ].map((s) => (
+              ] as Array<{ n: string; t: string; d: string; icon: IconName }>).map((s) => (
                 <div
                   key={s.n}
                   className="rounded-lg border border-line bg-white p-6 hover:border-navy/30 transition-colors"
@@ -103,8 +136,7 @@ function Landing({ onStart, onDemo }) {
                     </div>
                   </div>
                   <div
-                    className="text-[22px] text-ink-90 mb-2 leading-tight"
-                    style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.01em" }}
+                    className="font-display text-[22px] text-ink-90 mb-2 leading-tight tracking-[-0.01em]"
                   >
                     {s.t}
                   </div>
@@ -146,8 +178,7 @@ function Landing({ onStart, onDemo }) {
               <div>
                 <div className="text-[11px] uppercase tracking-[0.15em] text-ink-40 mb-2">Result</div>
                 <div
-                  className="text-[22px] text-ink-90 leading-tight"
-                  style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.01em" }}
+                  className="font-display text-[22px] text-ink-90 leading-tight tracking-[-0.01em]"
                 >
                   Direct university access
                 </div>
@@ -179,41 +210,6 @@ function Landing({ onStart, onDemo }) {
     );
   }
   
-  function TopNav({ current, onHome }) {
-    return (
-      <header className="border-b border-line bg-paper/80 backdrop-blur sticky top-0 z-30">
-        <div className="max-w-[1400px] mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
-          <button onClick={onHome} className="flex items-center">
-            <Logo />
-          </button>
-          <nav className="hidden md:flex items-center gap-1 text-[13px]">
-            {[
-              { k: "home", l: "Overview" },
-              { k: "profile", l: "Profile" },
-              { k: "result", l: "Recognition" },
-              { k: "finder", l: "Course finder" },
-            ].map((i) => (
-              <span
-                key={i.k}
-                className={cx(
-                  "px-3 py-2 rounded-md",
-                  current === i.k ? "text-ink-90 bg-ink-5" : "text-ink-50"
-                )}
-              >
-                {i.l}
-              </span>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
-            <Badge tone="neutral">
-              <Icon name="sparkle" size={11} /> Demo
-            </Badge>
-          </div>
-        </div>
-      </header>
-    );
-  }
-  
   function Footer() {
     return (
       <footer className="mt-24 pt-8 border-t border-line flex flex-wrap items-center justify-between gap-3 text-[12px] text-ink-50">
@@ -222,7 +218,7 @@ function Landing({ onStart, onDemo }) {
           <span>UniPirate · frontend MVP</span>
         </div>
         <div className="flex items-center gap-5">
-          <span>Curated recognition data</span>
+          <span>Typed recognition data</span>
           <span>No affiliation with anabin, APS, or uni-assist</span>
         </div>
       </footer>
@@ -231,28 +227,34 @@ function Landing({ onStart, onDemo }) {
   
   // =================== ONBOARDING ===================
   
-  function Onboarding({ profile, setProfile, onSubmit, onBack }) {
-    const { COUNTRIES, QUALIFICATIONS_BY_COUNTRY, GRADING_SCALES, LANGUAGE_CERTS } = window.UNIPIRATE_DATA;
+  export function Onboarding() {
+    const router = useRouter()
+    const { profile, setProfile } = useProfile()
+    const {
+      countries,
+      qualificationsByCountry,
+      gradingScales,
+      languageCertificates,
+    } = data
   
-    const update = (patch) => setProfile({ ...profile, ...patch });
+    const update = (patch: Partial<Profile>) => setProfile({ ...profile, ...patch })
     const country = profile.country;
-    const availableQuals = country ? QUALIFICATIONS_BY_COUNTRY[country] || [] : [];
+    const availableQuals = country ? qualificationsByCountry[country] || [] : [];
   
     const canSubmit =
       profile.country && profile.qualification && profile.grade !== "" && profile.gradingScale && profile.languageCert;
   
     return (
       <div className="min-h-screen bg-paper">
-        <TopNav current="profile" onHome={onBack} />
+        <SiteHeader />
         <main className="max-w-[920px] mx-auto px-6 md:px-10 pt-10 pb-24">
           <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
             <div>
-              <Button variant="ghost" size="sm" onClick={onBack} icon={<Icon name="arrowLeft" size={14} />}>
+              <Button variant="ghost" size="sm" onClick={() => router.push("/")} icon={<Icon name="arrowLeft" size={14} />}>
                 Back
               </Button>
               <h1
-                className="text-[40px] md:text-[48px] text-ink-90 leading-[1.05] mt-3"
-                style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.02em" }}
+                className="font-display text-[40px] md:text-[48px] text-ink-90 leading-[1.05] tracking-[-0.02em] mt-3"
               >
                 Tell us about your background.
               </h1>
@@ -264,6 +266,11 @@ function Landing({ onStart, onDemo }) {
           </div>
   
           <div className="rounded-xl border border-line bg-white p-6 md:p-8">
+            {!hasDataset && (
+              <div className="mb-7 rounded-lg border border-navy/15 bg-navy/[0.035] px-4 py-3 text-[13px] text-ink-70">
+                The admissions dataset is not configured yet. The form is shown as a UI preview.
+              </div>
+            )}
             {/* Section 1 */}
             <SectionHeader n="01" title="Education" subtitle="Where and what you studied." />
             <div className="grid md:grid-cols-2 gap-5">
@@ -271,7 +278,7 @@ function Landing({ onStart, onDemo }) {
                 <Select
                   value={profile.country}
                   onChange={(v) => update({ country: v, qualification: "" })}
-                  options={COUNTRIES}
+                  options={countries}
                   placeholder="Select a country"
                 />
               </Field>
@@ -300,7 +307,7 @@ function Landing({ onStart, onDemo }) {
                 <Select
                   value={profile.gradingScale}
                   onChange={(v) => update({ gradingScale: v })}
-                  options={GRADING_SCALES}
+                  options={gradingScales}
                   placeholder="Select scale"
                 />
               </Field>
@@ -313,7 +320,7 @@ function Landing({ onStart, onDemo }) {
             <div className="grid md:grid-cols-2 gap-5">
               <Field label="Primary language certificate" required>
                 <div className="flex flex-wrap gap-2">
-                  {LANGUAGE_CERTS.map((c) => (
+                  {languageCertificates.map((c) => (
                     <Chip
                       key={c}
                       active={profile.languageCert === c}
@@ -352,7 +359,7 @@ function Landing({ onStart, onDemo }) {
               <Field label="Preferred instruction language" hint="We'll emphasize matching programs later.">
                 <Segmented
                   value={profile.prefLanguage || "Any"}
-                  onChange={(v) => update({ prefLanguage: v })}
+                  onChange={(v) => update({ prefLanguage: v as Profile["prefLanguage"] })}
                   options={["Any", "German", "English"]}
                 />
               </Field>
@@ -364,7 +371,7 @@ function Landing({ onStart, onDemo }) {
               </div>
               <Button
                 size="lg"
-                onClick={onSubmit}
+                onClick={() => router.push("/recognition")}
                 disabled={!canSubmit}
                 icon={<Icon name="arrowRight" size={16} />}
               >
@@ -377,7 +384,15 @@ function Landing({ onStart, onDemo }) {
     );
   }
   
-  function SectionHeader({ n, title, subtitle }) {
+  function SectionHeader({
+    n,
+    title,
+    subtitle,
+  }: {
+    n: string
+    title: string
+    subtitle: string
+  }) {
     return (
       <div className="flex items-baseline gap-4 mb-5">
         <span
@@ -388,8 +403,7 @@ function Landing({ onStart, onDemo }) {
         </span>
         <div>
           <div
-            className="text-[20px] text-ink-90 leading-tight"
-            style={{ fontFamily: "'Instrument Serif', serif" }}
+            className="font-display text-[20px] text-ink-90 leading-tight"
           >
             {title}
           </div>
@@ -403,7 +417,7 @@ function Landing({ onStart, onDemo }) {
     return <div className="my-8 border-t border-line" />;
   }
   
-  function inferSuffix(scale) {
+  function inferSuffix(scale: string) {
     if (!scale) return "";
     if (scale.startsWith("Percentage")) return "%";
     if (scale.startsWith("CGPA out of 10")) return "/ 10";
@@ -413,7 +427,7 @@ function Landing({ onStart, onDemo }) {
     return "";
   }
   
-  function scoreHint(cert) {
+  function scoreHint(cert: string) {
     if (!cert) return null;
     return (
       {
@@ -426,7 +440,7 @@ function Landing({ onStart, onDemo }) {
     );
   }
   
-  function scorePlaceholder(cert) {
+  function scorePlaceholder(cert: string) {
     return (
       {
         IELTS: "6.5",
@@ -438,5 +452,4 @@ function Landing({ onStart, onDemo }) {
     );
   }
   
-  Object.assign(window, { Landing, Onboarding, TopNav, Footer });
   

@@ -1,20 +1,30 @@
-// Course finder — 3-panel layout with search, filters, universities, courses, and detail drawer.
+"use client"
 
-function CourseFinder({ profile, onBack, onEditProfile }) {
-    const { UNIVERSITIES, COURSES } = window.UNIPIRATE_DATA;
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react"
+import { useRouter } from "next/navigation"
+import { useProfile } from "@/components/profile-provider"
+import { data, hasDataset, type Course, type University } from "@/lib/data"
+import type { Profile } from "@/lib/profile"
+import { SiteHeader } from "@/components/site-header"
+import { Badge, Button, Chip, cx, Icon, IconButton, Stepper, Toggle } from "@/components/ui"
+
+export function CourseFinder() {
+    const router = useRouter()
+    const { profile } = useProfile()
+    const { universities, courses } = data
   
-    const [query, setQuery] = React.useState("");
-    const [semester, setSemester] = React.useState("Any");
-    const [language, setLanguage] = React.useState(
+    const [query, setQuery] = useState("");
+    const [semester, setSemester] = useState("Any");
+    const [language, setLanguage] = useState(
       profile?.prefLanguage && profile.prefLanguage !== "Any" ? profile.prefLanguage : "Any"
     );
-    const [ncFreeOnly, setNcFreeOnly] = React.useState(false);
-    const [selectedUni, setSelectedUni] = React.useState(UNIVERSITIES[0].id);
-    const [openCourse, setOpenCourse] = React.useState(null);
-    const [mobileView, setMobileView] = React.useState("unis"); // unis | courses
+    const [ncFreeOnly, setNcFreeOnly] = useState(false);
+    const [selectedUni, setSelectedUni] = useState(universities[0]?.id ?? "");
+    const [openCourse, setOpenCourse] = useState<Course | null>(null);
+    const [mobileView, setMobileView] = useState<"unis" | "courses">("unis");
   
     // Filter courses
-    const matchesFilters = (c) => {
+    const matchesFilters = (c: Course) => {
       const q = query.trim().toLowerCase();
       if (q) {
         const hay = (c.name + " " + (c.keywords || []).join(" ") + " " + (c.summary || "")).toLowerCase();
@@ -33,24 +43,21 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
       return true;
     };
   
-    const filteredCourses = COURSES.filter(matchesFilters);
-    const countsByUni = {};
+    const filteredCourses = courses.filter(matchesFilters);
+    const countsByUni: Record<string, number> = {};
     filteredCourses.forEach((c) => {
       countsByUni[c.universityId] = (countsByUni[c.universityId] || 0) + 1;
     });
   
-    const universitiesWithMatches = UNIVERSITIES.filter((u) => (countsByUni[u.id] || 0) > 0);
+    const universitiesWithMatches = universities.filter((u) => (countsByUni[u.id] || 0) > 0);
     const universitiesToShow = universitiesWithMatches.length ? universitiesWithMatches : [];
   
-    // Auto-select first uni with matches
-    React.useEffect(() => {
-      if (universitiesToShow.length && !universitiesToShow.find((u) => u.id === selectedUni)) {
-        setSelectedUni(universitiesToShow[0].id);
-      }
-    }, [query, semester, language, ncFreeOnly]);
+    const effectiveSelectedUni = universitiesToShow.some((u) => u.id === selectedUni)
+      ? selectedUni
+      : universitiesToShow[0]?.id ?? ""
   
-    const coursesForSelected = filteredCourses.filter((c) => c.universityId === selectedUni);
-    const selectedUniObj = UNIVERSITIES.find((u) => u.id === selectedUni);
+    const coursesForSelected = filteredCourses.filter((c) => c.universityId === effectiveSelectedUni);
+    const selectedUniObj = universities.find((u) => u.id === effectiveSelectedUni);
   
     const totalCourses = filteredCourses.length;
     const totalUnis = universitiesToShow.length;
@@ -64,7 +71,7 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
   
     return (
       <div className="min-h-screen bg-paper flex flex-col">
-        <TopNav current="finder" onHome={onBack} />
+        <SiteHeader />
   
         {/* Sub-header w/ context */}
         <div className="border-b border-line bg-paper">
@@ -75,14 +82,13 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
                   Course finder · Bachelor's
                 </div>
                 <h1
-                  className="text-[28px] md:text-[34px] text-ink-90 leading-tight"
-                  style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.015em" }}
+                  className="font-display text-[28px] md:text-[34px] text-ink-90 leading-tight tracking-[-0.015em]"
                 >
                   {totalCourses} programs across {totalUnis} universities.
                 </h1>
               </div>
               <div className="flex items-center gap-3">
-                <ProfileChip profile={profile} onEdit={onEditProfile} />
+                <ProfileChip profile={profile} onEdit={() => router.push("/profile")} />
                 <Stepper steps={["Profile", "Recognition", "Courses"]} current={2} />
               </div>
             </div>
@@ -124,9 +130,8 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
             >
               <UniList
                 universities={universitiesToShow}
-                allUniversities={UNIVERSITIES}
                 counts={countsByUni}
-                selectedId={selectedUni}
+                selectedId={effectiveSelectedUni}
                 onSelect={(id) => {
                   setSelectedUni(id);
                   setMobileView("courses");
@@ -156,10 +161,10 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
         </div>
   
         {/* Detail drawer */}
-        {openCourse && (
+        {openCourse && universities.find((u) => u.id === openCourse.universityId) && (
           <CourseDetailDrawer
             course={openCourse}
-            university={UNIVERSITIES.find((u) => u.id === openCourse.universityId)}
+            university={universities.find((u) => u.id === openCourse.universityId)!}
             onClose={() => setOpenCourse(null)}
           />
         )}
@@ -167,7 +172,7 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
     );
   }
   
-  function ProfileChip({ profile, onEdit }) {
+  function ProfileChip({ profile, onEdit }: { profile: Profile; onEdit: () => void }) {
     if (!profile || !profile.country) return null;
     return (
       <button
@@ -183,6 +188,18 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
     );
   }
   
+  type FilterBarProps = {
+    query: string
+    setQuery: Dispatch<SetStateAction<string>>
+    semester: string
+    setSemester: Dispatch<SetStateAction<string>>
+    language: string
+    setLanguage: Dispatch<SetStateAction<string>>
+    ncFreeOnly: boolean
+    setNcFreeOnly: Dispatch<SetStateAction<boolean>>
+    onClear: () => void
+  }
+
   function FilterBar({
     query,
     setQuery,
@@ -193,7 +210,7 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
     ncFreeOnly,
     setNcFreeOnly,
     onClear,
-  }) {
+  }: FilterBarProps) {
     return (
       <div className="border-b border-line bg-white/60 sticky top-16 z-20 backdrop-blur">
         <div className="max-w-[1500px] mx-auto px-6 md:px-10 py-3.5 flex flex-wrap items-center gap-3">
@@ -236,12 +253,22 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
     );
   }
   
-  function FilterPill({ label, value, onChange, options }) {
-    const [open, setOpen] = React.useState(false);
-    const ref = React.useRef(null);
-    React.useEffect(() => {
-      const h = (e) => {
-        if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+  function FilterPill({
+    label,
+    value,
+    onChange,
+    options,
+  }: {
+    label: string
+    value: string
+    onChange: (value: string) => void
+    options: string[]
+  }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+      const h = (e: MouseEvent) => {
+        if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
       };
       document.addEventListener("mousedown", h);
       return () => document.removeEventListener("mousedown", h);
@@ -287,7 +314,19 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
     );
   }
   
-  function UniList({ universities, counts, selectedId, onSelect, empty }) {
+  function UniList({
+    universities,
+    counts,
+    selectedId,
+    onSelect,
+    empty,
+  }: {
+    universities: University[]
+    counts: Record<string, number>
+    selectedId: string
+    onSelect: (id: string) => void
+    empty: boolean
+  }) {
     return (
       <div className="md:sticky md:top-[148px]">
         <div className="px-6 md:px-0 py-4 md:py-0">
@@ -353,15 +392,22 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
     );
   }
   
-  function CoursesPanel({ university, courses, onOpen }) {
+  function CoursesPanel({
+    university,
+    courses,
+    onOpen,
+  }: {
+    university: University
+    courses: Course[]
+    onOpen: (course: Course) => void
+  }) {
     return (
       <div className="px-6 md:px-0 py-4 md:py-0">
         <div className="mb-5">
           <div className="flex items-baseline justify-between flex-wrap gap-2">
             <div>
               <div
-                className="text-[26px] md:text-[30px] text-ink-90 leading-tight"
-                style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.015em" }}
+                className="font-display text-[26px] md:text-[30px] text-ink-90 leading-tight tracking-[-0.015em]"
               >
                 {university.name}
               </div>
@@ -391,7 +437,7 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
     );
   }
   
-  function CourseCard({ course, onOpen }) {
+  function CourseCard({ course, onOpen }: { course: Course; onOpen: () => void }) {
     return (
       <button
         onClick={onOpen}
@@ -399,8 +445,7 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
       >
         <div className="flex items-start justify-between gap-3">
           <div
-            className="text-[18px] text-ink-90 leading-snug"
-            style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.01em" }}
+            className="font-display text-[18px] text-ink-90 leading-snug tracking-[-0.01em]"
           >
             {course.name}
           </div>
@@ -437,7 +482,7 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
     );
   }
   
-  function EmptyState({ onClear }) {
+  function EmptyState({ onClear }: { onClear: () => void }) {
     return (
       <div className="px-6 md:px-0 py-10 md:py-16">
         <div className="mx-auto max-w-[460px] text-center">
@@ -445,13 +490,14 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
             <Icon name="search" size={20} />
           </div>
           <div
-            className="mt-4 text-[22px] text-ink-90"
-            style={{ fontFamily: "'Instrument Serif', serif" }}
+            className="font-display mt-4 text-[22px] text-ink-90"
           >
-            No matches with these filters.
+            {hasDataset ? "No matches with these filters." : "Course data is not configured."}
           </div>
           <p className="text-[13.5px] text-ink-60 mt-2">
-            Try broadening the language, removing the NC-free toggle, or clearing the search.
+            {hasDataset
+              ? "Try broadening the language, removing the NC-free toggle, or clearing the search."
+              : "Add reviewed universities and courses in lib/data.ts to enable the finder."}
           </p>
           <div className="mt-5">
             <Button onClick={onClear}>Clear filters</Button>
@@ -463,9 +509,17 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
   
   // =================== Course Detail Drawer ===================
   
-  function CourseDetailDrawer({ course, university, onClose }) {
-    React.useEffect(() => {
-      const onKey = (e) => {
+  function CourseDetailDrawer({
+    course,
+    university,
+    onClose,
+  }: {
+    course: Course
+    university: University
+    onClose: () => void
+  }) {
+    useEffect(() => {
+      const onKey = (e: KeyboardEvent) => {
         if (e.key === "Escape") onClose();
       };
       document.addEventListener("keydown", onKey);
@@ -474,7 +528,7 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
         document.removeEventListener("keydown", onKey);
         document.body.style.overflow = "";
       };
-    }, []);
+    }, [onClose]);
   
     return (
       <div className="fixed inset-0 z-50 flex">
@@ -506,8 +560,7 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
               {university.name} · {university.city}
             </div>
             <h2
-              className="text-[38px] md:text-[44px] text-ink-90 leading-[1.05]"
-              style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.02em" }}
+              className="font-display text-[38px] md:text-[44px] text-ink-90 leading-[1.05] tracking-[-0.02em]"
             >
               {course.name}
             </h2>
@@ -552,8 +605,7 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
                   Application deadline
                 </div>
                 <div
-                  className="text-[24px] text-ink-90 leading-tight"
-                  style={{ fontFamily: "'Instrument Serif', serif" }}
+                  className="font-display text-[24px] text-ink-90 leading-tight"
                 >
                   {course.applicationDeadline}
                 </div>
@@ -582,7 +634,15 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
     );
   }
   
-  function Fact({ label, value, tone }) {
+  function Fact({
+    label,
+    value,
+    tone,
+  }: {
+    label: string
+    value: string
+    tone?: "emerald" | "amber"
+  }) {
     return (
       <div className="rounded-lg border border-line bg-white p-4">
         <div className="text-[10.5px] uppercase tracking-[0.15em] text-ink-40 mb-1.5">{label}</div>
@@ -593,7 +653,7 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
     );
   }
   
-  function Stat({ label, value }) {
+  function Stat({ label, value }: { label: string; value: string }) {
     return (
       <div>
         <div className="text-[10.5px] uppercase tracking-[0.15em] text-ink-40">{label}</div>
@@ -602,12 +662,11 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
     );
   }
   
-  function DetailSection({ title, children }) {
+  function DetailSection({ title, children }: { title: string; children: string }) {
     return (
       <section className="mt-8">
         <h3
-          className="text-[19px] text-ink-90 mb-2"
-          style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-0.01em" }}
+          className="font-display text-[19px] text-ink-90 mb-2 tracking-[-0.01em]"
         >
           {title}
         </h3>
@@ -616,5 +675,4 @@ function CourseFinder({ profile, onBack, onEditProfile }) {
     );
   }
   
-  Object.assign(window, { CourseFinder });
   
