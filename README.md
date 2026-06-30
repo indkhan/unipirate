@@ -14,7 +14,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-The App Router exposes `/`, `/profile`, `/recognition`, and `/courses`.
+The App Router exposes `/`, `/dashboard`, `/profile`, `/recognition`, and `/courses`.
 
 ## Validate
 

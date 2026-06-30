@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { useRouter } from "next/navigation"
 import { useProfile } from "@/components/profile-provider"
+import { useSavedCourses } from "@/components/use-saved-courses"
 import { data, hasDataset, type Course, type University } from "@/lib/data"
 import type { Profile } from "@/lib/profile"
 import { SiteHeader } from "@/components/site-header"
@@ -11,6 +12,7 @@ import { Badge, Button, Chip, cx, Icon, IconButton, Stepper, Toggle } from "@/co
 export function CourseFinder() {
     const router = useRouter()
     const { profile } = useProfile()
+    const savedCourses = useSavedCourses()
     const { universities, courses } = data
   
     const [query, setQuery] = useState("");
@@ -58,6 +60,9 @@ export function CourseFinder() {
   
     const coursesForSelected = filteredCourses.filter((c) => c.universityId === effectiveSelectedUni);
     const selectedUniObj = universities.find((u) => u.id === effectiveSelectedUni);
+    const openUniversity = openCourse
+      ? universities.find((u) => u.id === openCourse.universityId)
+      : undefined
   
     const totalCourses = filteredCourses.length;
     const totalUnis = universitiesToShow.length;
@@ -161,10 +166,12 @@ export function CourseFinder() {
         </div>
   
         {/* Detail drawer */}
-        {openCourse && universities.find((u) => u.id === openCourse.universityId) && (
+        {openCourse && openUniversity && (
           <CourseDetailDrawer
             course={openCourse}
-            university={universities.find((u) => u.id === openCourse.universityId)!}
+            university={openUniversity}
+            saved={savedCourses.isSaved(openCourse.id)}
+            onToggleSaved={() => savedCourses.toggle(openCourse, openUniversity)}
             onClose={() => setOpenCourse(null)}
           />
         )}
@@ -512,10 +519,14 @@ export function CourseFinder() {
   function CourseDetailDrawer({
     course,
     university,
+    saved,
+    onToggleSaved,
     onClose,
   }: {
     course: Course
     university: University
+    saved: boolean
+    onToggleSaved: () => void
     onClose: () => void
   }) {
     useEffect(() => {
@@ -545,7 +556,11 @@ export function CourseFinder() {
               <div className="text-[12.5px] text-ink-60">{university.short}</div>
             </div>
             <div className="flex items-center gap-2">
-              <IconButton aria-label="Save" onClick={() => {}}>
+              <IconButton
+                aria-label={saved ? "Remove saved course" : "Save course"}
+                onClick={onToggleSaved}
+                className={saved ? "border-navy/30 bg-navy/8 text-navy" : undefined}
+              >
                 <Icon name="bookmark" size={15} />
               </IconButton>
               <IconButton aria-label="Close" onClick={onClose}>

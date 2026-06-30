@@ -6,6 +6,7 @@ import { Badge, cx, Icon, Logo } from "@/components/ui"
 
 const links = [
   { label: "Overview", href: "/" },
+  { label: "Dashboard", href: "/dashboard" },
   { label: "Profile", href: "/profile" },
   { label: "Recognition", href: "/recognition" },
   { label: "Course finder", href: "/courses" },
