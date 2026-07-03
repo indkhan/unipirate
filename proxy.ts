@@ -1,11 +1,12 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { env } from "@/lib/env";
+import { getClientEnv } from "@/lib/env";
 
 // Refreshes the Supabase auth session on every matched request and redirects
 // unauthenticated users away from protected routes.
 export default async function proxy(request: NextRequest) {
+  const env = getClientEnv();
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

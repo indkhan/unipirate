@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/db/server";
 
+export const dynamic = "force-dynamic";
+
 async function signOut() {
   "use server";
   const supabase = await createClient();

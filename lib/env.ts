@@ -24,9 +24,13 @@ const runtimeEnv = {
   RESEND_API_KEY: process.env.RESEND_API_KEY,
 };
 
-// Server-only vars are validated only on the server; in the browser they are
-// absent by design. The cast keeps one `env` object with full typing —
-// accessing a server var from client code returns undefined, so don't.
-export const env = (
-  typeof window === "undefined" ? serverSchema : clientSchema
-).parse(runtimeEnv) as z.infer<typeof serverSchema>;
+export type ClientEnv = z.infer<typeof clientSchema>;
+export type ServerEnv = z.infer<typeof serverSchema>;
+
+export function getClientEnv(): ClientEnv {
+  return clientSchema.parse(runtimeEnv);
+}
+
+export function getServerEnv(): ServerEnv {
+  return serverSchema.parse(runtimeEnv);
+}
