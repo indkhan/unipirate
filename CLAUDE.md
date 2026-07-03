@@ -39,6 +39,7 @@ docs/           mvp.md, research-findings.md, design.md — READ THESE FIRST
    only where review_status='approved'; `rules` public-read where status != 'draft'.
 7. Money amounts, deadlines, and fees are data with a verified date — never
    hardcoded in components.
+8. There is application.md which contains how the application works so if you add something remove something or edit somethind modify  application.md as well 
 
 ## Conventions
 - Server Components by default; 'use client' only when interactive.
