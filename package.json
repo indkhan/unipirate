@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "email:test": "tsx --env-file=.env.local scripts/send-test-email.ts"
+    "email:test": "tsx --env-file=.env.local scripts/send-test-email.ts",
+    "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "db:types": "supabase gen types typescript --linked > lib/db/database.types.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
@@ -36,6 +38,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "shadcn": "^4.12.0",
+    "supabase": "^2.109.0",
     "tailwindcss": "^4",
     "tsx": "^4.19.0",
     "typescript": "^5",
