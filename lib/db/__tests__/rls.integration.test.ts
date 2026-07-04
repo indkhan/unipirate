@@ -1,7 +1,8 @@
 // RLS integration test: anon vs owner vs admin against the real Supabase
-// project. Skips entirely when .env.local / env keys are absent so plain
-// `pnpm test` stays green anywhere. Creates only rls-test-* users and its
-// own rows; deletes them in cleanup.
+// project. Skips entirely when .env.local / env keys are absent, or when the
+// linked remote schema has not applied current migrations, so plain `pnpm test`
+// stays green anywhere. Creates only rls-test-* users and its own rows; deletes
+// them in cleanup.
 
 import { randomUUID } from "node:crypto";
 
@@ -35,6 +36,32 @@ function anonClient(): Db {
   });
 }
 
+async function hasCurrentSchema(): Promise<boolean> {
+  if (!configured) return false;
+
+  const service = createClient<Database>(url!, secretKey!, {
+    auth: { persistSession: false },
+  });
+  const { error } = await service
+    .from("admin_audit_events")
+    .select("id")
+    .limit(1);
+
+  if (!error) return true;
+
+  if (
+    error.code === "PGRST205" ||
+    error.message.includes("Could not find the table")
+  ) {
+    console.warn(
+      "Skipping RLS integration tests: admin_audit_events migration is not applied.",
+    );
+    return false;
+  }
+
+  return true;
+}
+
 async function signedInClient(email: string): Promise<Db> {
   const client = anonClient();
   const { error } = await client.auth.signInWithPassword({
@@ -45,7 +72,9 @@ async function signedInClient(email: string): Promise<Db> {
   return client;
 }
 
-describe.skipIf(!configured)("RLS: anon vs owner vs admin", () => {
+const schemaReady = await hasCurrentSchema();
+
+describe.skipIf(!configured || !schemaReady)("RLS: anon vs owner vs admin", () => {
   let service: Db;
   let anon: Db;
   let owner: Db;
@@ -56,7 +85,9 @@ describe.skipIf(!configured)("RLS: anon vs owner vs admin", () => {
   let adminUser: User;
   let draftRuleId: string;
   let betaRuleId: string;
+  let auditRuleId: string;
   let pendingCourseId: string;
+  let rejectCourseId: string;
   const createdUserIds: string[] = [];
   const createdRuleIds: string[] = [];
   const createdCourseIds: string[] = [];
@@ -104,11 +135,19 @@ describe.skipIf(!configured)("RLS: anon vs owner vs admin", () => {
           source_url: `https://example.com/rls-test/${randomUUID()}`,
           source_quote: "rls test beta",
         },
+        {
+          conditions: { test: "audit" },
+          outcomes: {},
+          status: "draft",
+          source_url: `https://example.com/rls-test/${randomUUID()}`,
+          source_quote: "rls test audit",
+        },
       ])
-      .select("id, status");
+      .select("id, status, source_quote");
     if (rulesError) throw new Error(rulesError.message);
-    draftRuleId = rules.find((r) => r.status === "draft")!.id;
-    betaRuleId = rules.find((r) => r.status === "beta")!.id;
+    draftRuleId = rules.find((r) => r.source_quote === "rls test draft")!.id;
+    betaRuleId = rules.find((r) => r.source_quote === "rls test beta")!.id;
+    auditRuleId = rules.find((r) => r.source_quote === "rls test audit")!.id;
     createdRuleIds.push(...rules.map((r) => r.id));
 
     const { data: course, error: courseError } = await owner
@@ -123,10 +162,39 @@ describe.skipIf(!configured)("RLS: anon vs owner vs admin", () => {
     if (courseError) throw new Error(courseError.message);
     pendingCourseId = course.id;
     createdCourseIds.push(course.id);
+
+    const { data: rejectCourse, error: rejectCourseError } = await owner
+      .from("courses")
+      .insert({
+        created_by: ownerUser.id,
+        source_url: "https://example.com/rls-test/reject-course",
+        normalized_url: `example.com/rls-test/reject-course/${randomUUID()}`,
+      })
+      .select("id")
+      .single();
+    if (rejectCourseError) throw new Error(rejectCourseError.message);
+    rejectCourseId = rejectCourse.id;
+    createdCourseIds.push(rejectCourse.id);
+
+    const { error: auditFixtureError } = await service
+      .from("admin_audit_events")
+      .insert({
+        table_name: "rules",
+        row_id: draftRuleId,
+        action: "update",
+        old_status: "draft",
+        new_status: "draft",
+        old_row: { fixture: "before" },
+        new_row: { fixture: "after" },
+      });
+    if (auditFixtureError) throw new Error(auditFixtureError.message);
   }, 60_000);
 
   afterAll(async () => {
     if (!service) return;
+    const auditedRowIds = [...createdRuleIds, ...createdCourseIds];
+    if (auditedRowIds.length > 0)
+      await service.from("admin_audit_events").delete().in("row_id", auditedRowIds);
     if (createdCourseIds.length > 0)
       await service.from("courses").delete().in("id", createdCourseIds);
     if (createdRuleIds.length > 0)
@@ -252,6 +320,12 @@ describe.skipIf(!configured)("RLS: anon vs owner vs admin", () => {
     expect(data).toHaveLength(0);
   });
 
+  it("owner cannot read admin audit events", async () => {
+    const { data, error } = await owner.from("admin_audit_events").select("id");
+    expect(error).toBeNull();
+    expect(data).toHaveLength(0);
+  });
+
   // ----------------------------------------------------------------- admin
 
   it("admin reads draft rules and all profiles", async () => {
@@ -279,6 +353,24 @@ describe.skipIf(!configured)("RLS: anon vs owner vs admin", () => {
     expect(data!.notes).toBe("checked by admin");
   });
 
+  it("admin rule status updates create audit rows", async () => {
+    const { error } = await admin
+      .from("rules")
+      .update({ status: "verified" })
+      .eq("id", auditRuleId);
+    expect(error).toBeNull();
+
+    const { data: auditRows, error: auditError } = await admin
+      .from("admin_audit_events")
+      .select("old_status, new_status")
+      .eq("table_name", "rules")
+      .eq("row_id", auditRuleId)
+      .eq("old_status", "draft")
+      .eq("new_status", "verified");
+    expect(auditError).toBeNull();
+    expect(auditRows).toHaveLength(1);
+  });
+
   it("admin approves a course; anon can then read it", async () => {
     const { error } = await admin
       .from("courses")
@@ -286,10 +378,44 @@ describe.skipIf(!configured)("RLS: anon vs owner vs admin", () => {
       .eq("id", pendingCourseId);
     expect(error).toBeNull();
 
+    const { data: auditRows, error: auditError } = await admin
+      .from("admin_audit_events")
+      .select("old_status, new_status")
+      .eq("table_name", "courses")
+      .eq("row_id", pendingCourseId)
+      .eq("old_status", "pending")
+      .eq("new_status", "approved");
+    expect(auditError).toBeNull();
+    expect(auditRows).toHaveLength(1);
+
     const { data } = await anon
       .from("courses")
       .select("id")
       .eq("id", pendingCourseId);
     expect(data).toHaveLength(1);
+  });
+
+  it("admin rejects a course and the rejected row stays private", async () => {
+    const { error } = await admin
+      .from("courses")
+      .update({ review_status: "rejected" })
+      .eq("id", rejectCourseId);
+    expect(error).toBeNull();
+
+    const { data: auditRows, error: auditError } = await admin
+      .from("admin_audit_events")
+      .select("old_status, new_status")
+      .eq("table_name", "courses")
+      .eq("row_id", rejectCourseId)
+      .eq("old_status", "pending")
+      .eq("new_status", "rejected");
+    expect(auditError).toBeNull();
+    expect(auditRows).toHaveLength(1);
+
+    const { data } = await anon
+      .from("courses")
+      .select("id")
+      .eq("id", rejectCourseId);
+    expect(data).toHaveLength(0);
   });
 });
