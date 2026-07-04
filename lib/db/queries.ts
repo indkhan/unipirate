@@ -6,7 +6,7 @@ import type {
   TablesInsert,
 } from "@/lib/db/database.types";
 
-type Db = SupabaseClient<Database>;
+type Db = Pick<SupabaseClient<Database>, "from">;
 
 function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {
   if (result.error) throw new Error(result.error.message);

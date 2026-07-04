@@ -387,6 +387,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      admin_audit_events: {
+        Row: {
+          id: string;
+          actor_user_id: string | null;
+          table_name: string;
+          row_id: string;
+          action: string;
+          old_status: string | null;
+          new_status: string | null;
+          old_row: Json;
+          new_row: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          actor_user_id?: string | null;
+          table_name: string;
+          row_id: string;
+          action: string;
+          old_status?: string | null;
+          new_status?: string | null;
+          old_row: Json;
+          new_row: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          actor_user_id?: string | null;
+          table_name?: string;
+          row_id?: string;
+          action?: string;
+          old_status?: string | null;
+          new_status?: string | null;
+          old_row?: Json;
+          new_row?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
