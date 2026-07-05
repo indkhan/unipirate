@@ -1,0 +1,209 @@
+.shell {
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 440px;
+  padding: 0 16px 64px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 640px;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.pendingBanner {
+  background: var(--signal-tint);
+  border: 1px solid rgba(154, 98, 0, 0.35);
+  border-radius: var(--radius-control);
+  padding: 10px 14px;
+  font: var(--text-body-sm);
+  color: var(--signal);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.courseName {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(22px, 4vw, 26px);
+  line-height: 1.2;
+}
+
+.university {
+  font: var(--text-body);
+  color: var(--ink-secondary);
+}
+
+.sectionLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.factRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.factRow:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.factLabel {
+  font: var(--text-body-sm);
+  color: var(--ink-secondary);
+  flex: none;
+}
+
+.factValue {
+  font: var(--text-body-sm);
+  font-weight: 600;
+  text-align: right;
+}
+
+.sourceCard {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sourceButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: var(--radius-control);
+  background: var(--route-blue);
+  color: var(--ink-inverse);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  transition: background-color var(--dur-1) var(--ease);
+}
+
+.sourceButton:hover {
+  background: var(--route-blue-hover);
+}
+
+.sourceMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+.deadline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.deadline:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.deadlineText {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--signal);
+}
+
+.deadlineHeader {
+  font: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.requirements {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.requirements li {
+  font: var(--text-body-sm);
+  color: var(--ink);
+  padding-left: 22px;
+  position: relative;
+}
+
+.requirements li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1.5px solid var(--line-strong);
+}
+
+.emptyNote {
+  font: var(--text-body-sm);
+  color: var(--ink-secondary);
+}

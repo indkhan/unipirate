@@ -66,6 +66,16 @@ export async function getMyCourses(
   );
 }
 
+/** RLS decides visibility: approved → everyone, pending → owner/admin only. */
+export async function getCourseById(
+  db: Db,
+  id: string,
+): Promise<Tables<"courses"> | null> {
+  return unwrap(
+    await db.from("courses").select().eq("id", id).maybeSingle(),
+  );
+}
+
 export async function getCourseByNormalizedUrl(
   db: Db,
   normalizedUrl: string,

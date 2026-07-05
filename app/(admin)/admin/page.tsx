@@ -346,7 +346,12 @@ function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
 
       <div className="mt-3 grid gap-3">
         {courses.map((course) => {
-          const highlighted = course.extraction_method === "ai";
+          // Per-field-group extraction method — AI-filled groups need human eyes.
+          const groups = (course.field_extraction ?? {}) as Record<
+            string,
+            string
+          >;
+          const ai = (group: string) => groups[group] === "ai";
 
           return (
             <article key={course.id} className="rounded-lg border p-3">
@@ -389,32 +394,37 @@ function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
                 <CourseField
                   label="Name"
                   value={course.name ?? ""}
-                  highlighted={highlighted}
+                  highlighted={ai("core")}
+                />
+                <CourseField
+                  label="University"
+                  value={course.university_name ?? ""}
+                  highlighted={ai("core")}
                 />
                 <CourseField
                   label="Degree"
                   value={course.degree ?? ""}
-                  highlighted={highlighted}
+                  highlighted={ai("core")}
                 />
                 <CourseField
                   label="Language"
                   value={course.language ?? ""}
-                  highlighted={highlighted}
+                  highlighted={ai("core")}
                 />
                 <CourseField
                   label="Tuition"
                   value={compactJson(course.tuition)}
-                  highlighted={highlighted}
+                  highlighted={ai("tuition")}
                 />
                 <CourseField
                   label="Deadlines"
                   value={compactJson(course.deadlines)}
-                  highlighted={highlighted}
+                  highlighted={ai("deadlines")}
                 />
                 <CourseField
                   label="Requirements"
                   value={compactJson(course.requirements)}
-                  highlighted={highlighted}
+                  highlighted={ai("requirements")}
                 />
               </dl>
             </article>
