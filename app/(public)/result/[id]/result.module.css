@@ -409,6 +409,31 @@
   color: var(--ink-inverse);
 }
 
+.share {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.share button {
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: 0 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--route-blue);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.share button:hover {
+  border-color: var(--route-blue);
+  background: var(--route-blue-tint);
+}
+
 .conversion h2 {
   font-size: 20px;
   line-height: 1.2;
@@ -495,6 +520,11 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .publicBanner:only-child,
+  .betaBanner:only-child {
+    grid-column: 1 / -1;
+  }
+
   .grid {
     max-width: none;
     grid-template-columns: minmax(0, 3fr) minmax(340px, 2fr);
@@ -521,6 +551,10 @@
     display: inline;
   }
 
+  .share button {
+    font-size: 14px;
+  }
+
   .station {
     min-height: 45px;
   }
@@ -529,4 +563,3 @@
     font-size: 16px;
   }
 }
-

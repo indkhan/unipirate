@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import type { Citation, Profile, Result } from "@/lib/engine/evaluate";
 
+import { SignupResultLink } from "./result-client";
 import styles from "./result.module.css";
 import {
   buildRoute,
@@ -187,9 +188,15 @@ export function ConversionCard({
           ? "Create a free account to keep your checklist and verified result."
           : "Your school and marks may give you a different result."}
       </p>
-      <Link className={styles.primaryAction} href={href}>
-        {owner ? "Save my path" : "Check my eligibility"}
-      </Link>
+      {owner ? (
+        <SignupResultLink checkId={checkId} href={href}>
+          Save my path
+        </SignupResultLink>
+      ) : (
+        <Link className={styles.primaryAction} href={href}>
+          Check my eligibility
+        </Link>
+      )}
     </section>
   );
 }
@@ -213,4 +220,3 @@ export function BetaBanner({ profile }: { profile: Profile }) {
     </div>
   );
 }
-

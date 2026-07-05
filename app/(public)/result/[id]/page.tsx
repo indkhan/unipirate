@@ -8,6 +8,7 @@ import { createClient } from "@/lib/db/server";
 import type { Profile, Result } from "@/lib/engine/evaluate";
 
 import { ClaimOnReturn } from "./claim-on-return";
+import { ResultAnalytics, ShareControls } from "./result-client";
 import {
   BetaBanner,
   ConversionCard,
@@ -71,6 +72,12 @@ export default async function ResultPage({
 
   return (
     <main className={styles.page}>
+      <ResultAnalytics
+        checkId={id}
+        viewer={viewer}
+        country={profile.certificateCountry ?? profile.nationality ?? null}
+        path={result.path}
+      />
       <div className={styles.shell}>
         <header className={styles.header}>
           <Link className={styles.brand} href="/">UniPirate</Link>
@@ -95,6 +102,7 @@ export default async function ResultPage({
           <div className={styles.secondary}>
             <DocumentsCard result={result} viewer={viewer} />
             <TimelineCard profile={profile} />
+            <ShareControls checkId={id} />
             <ConversionCard checkId={id} viewer={viewer} />
           </div>
         </div>
@@ -106,4 +114,3 @@ export default async function ResultPage({
     </main>
   );
 }
-

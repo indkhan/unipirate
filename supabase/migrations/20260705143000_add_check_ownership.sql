@@ -17,4 +17,4 @@ alter table public.checks
 revoke select on table public.checks from anon, authenticated;
 grant select (id, profile, result, created_at) on table public.checks
   to anon, authenticated;
-
+grant all on table public.checks to service_role;
