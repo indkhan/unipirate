@@ -171,8 +171,16 @@ export async function insertCheck(
 export async function getCheck(
   db: Db,
   id: string,
-): Promise<Tables<"checks"> | null> {
-  return unwrap(await db.from("checks").select().eq("id", id).maybeSingle());
+): Promise<
+  Pick<Tables<"checks">, "id" | "profile" | "result" | "created_at"> | null
+> {
+  return unwrap(
+    await db
+      .from("checks")
+      .select("id, profile, result, created_at")
+      .eq("id", id)
+      .maybeSingle(),
+  );
 }
 
 // ------------------------------------------------------------------ reports

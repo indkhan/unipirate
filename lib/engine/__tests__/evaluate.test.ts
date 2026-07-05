@@ -368,6 +368,46 @@ describe("engine behavior", () => {
     });
     const r = evaluate(minimalProfile, [s1, s2]);
     expect(r.steps).toEqual(["first", "middle", "later"]);
+    expect(r.citations.find((c) => c.ruleId === "s1")?.supports).toEqual([
+      "steps",
+    ]);
+  });
+
+  it("citations retain verification status and merge supported result keys", () => {
+    const rule = baseRule({
+      id: "multi-outcome",
+      status: "beta",
+      outcomes: {
+        path: "direct",
+        aps: "required",
+        documents: ["APS certificate"],
+      },
+    });
+    const r = evaluate(minimalProfile, [rule]);
+    expect(r.citations).toContainEqual(
+      expect.objectContaining({
+        ruleId: "multi-outcome",
+        status: "beta",
+        supports: ["path", "aps", "documents"],
+      }),
+    );
+  });
+
+  it("conflicting verdict citations identify the disputed result key", () => {
+    const a = baseRule({ id: "a", outcomes: { path: "direct" } });
+    const b = baseRule({ id: "b", outcomes: { path: "studienkolleg" } });
+    const r = evaluate(minimalProfile, [a, b]);
+    expect(r.path).toBe("unknown");
+    expect(r.citations.map((c) => c.supports)).toEqual([["path"], ["path"]]);
+    expect(r.unknowns.some((unknown) => /conflicting rules/i.test(unknown))).toBe(
+      true,
+    );
+  });
+
+  it("unknown results without a matching rule never receive a verified citation", () => {
+    const r = evaluate(minimalProfile, []);
+    expect(r.path).toBe("unknown");
+    expect(r.citations).toEqual([]);
   });
 
   it("IB without full diploma → honest unknown for alternative routes", () => {

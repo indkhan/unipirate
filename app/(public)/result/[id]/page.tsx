@@ -1,11 +1,30 @@
-// ponytail: deliberately unstyled stub — Session 5 designs this page from
-// design/Result.dc.html. It only proves the shareable record round-trips.
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
 import { getCheck } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
-import type { Result } from "@/lib/engine/evaluate";
+import type { Profile, Result } from "@/lib/engine/evaluate";
+
+import { ClaimOnReturn } from "./claim-on-return";
+import { ResultAnalytics, ShareControls } from "./result-client";
+import {
+  BetaBanner,
+  ConversionCard,
+  DocumentsCard,
+  PublicBanner,
+  RouteCard,
+  TimelineCard,
+  UnknownsCard,
+  VerdictCard,
+} from "./result-components";
+import styles from "./result.module.css";
+import {
+  isBetaCountry,
+  profileSummary,
+  type ViewerVariant,
+} from "./result-model";
 
 export const dynamic = "force-dynamic";
 
@@ -13,92 +32,85 @@ export const metadata = {
   title: "Your result — UniPirate",
 };
 
-const PATH_LABELS: Record<Result["path"], string> = {
-  direct: "Direct admission",
-  subject_restricted: "Direct admission (subject-restricted)",
-  studienkolleg: "Studienkolleg first, then university",
-  insufficient: "Not eligible with this profile",
-  unknown: "Not determined yet — see the open questions below",
-};
+async function viewerFor(checkId: string): Promise<ViewerVariant> {
+  const db = await createClient();
+  const token = (await cookies()).get(ownerCookieName(checkId))?.value;
+  const { data, error } = await db.rpc(
+    "result_viewer",
+    {
+      p_check_id: checkId,
+      p_token_hash: token ? hashOwnerToken(token) : null,
+    } as never,
+  );
+  if (error) return "public";
+  if (data === "anonymous_owner" || data === "claimed_owner") return data;
+  return "public";
+}
 
 export default async function ResultPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ claim?: string }>;
 }) {
   const { id } = await params;
+  const shouldClaim = (await searchParams).claim === "1";
   const db = await createClient();
   const check = await getCheck(db, id);
   if (!check) notFound();
-  const result = check.result as Result;
+
+  const result = check.result as unknown as Result;
+  const profile = check.profile as unknown as Profile;
+  const viewer = await viewerFor(id);
+  const resultDate = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(check.created_at));
 
   return (
-    <main style={{ maxWidth: 640, margin: "0 auto", padding: "32px 16px" }}>
-      <h1>Your path to a German university</h1>
-      <p>
-        <strong>Path:</strong> {PATH_LABELS[result.path]}
-      </p>
-      <ul>
-        <li>APS certificate: {result.aps.replace("_", " ")}</li>
-        <li>TestAS: {result.testAS.replace("_", " ")}</li>
-        <li>dMAT: {result.dMAT.replace("_", " ")}</li>
-      </ul>
+    <main className={styles.page}>
+      <ResultAnalytics
+        checkId={id}
+        viewer={viewer}
+        country={profile.certificateCountry ?? profile.nationality ?? null}
+        path={result.path}
+      />
+      <div className={styles.shell}>
+        <header className={styles.header}>
+          <Link className={styles.brand} href="/">UniPirate</Link>
+          <span className={styles.headerMeta}>Result · {resultDate}</span>
+        </header>
 
-      {result.steps.length > 0 && (
-        <>
-          <h2>Your steps</h2>
-          <ol>
-            {result.steps.map((s) => (
-              <li key={s}>{s}</li>
-            ))}
-          </ol>
-        </>
-      )}
+        {shouldClaim && <ClaimOnReturn checkId={id} />}
 
-      {result.documents.length > 0 && (
-        <>
-          <h2>Documents you will need</h2>
-          <ul>
-            {result.documents.map((d) => (
-              <li key={d}>{d}</li>
-            ))}
-          </ul>
-        </>
-      )}
+        {(viewer === "public" || isBetaCountry(profile)) && (
+          <div className={styles.banners}>
+            {viewer === "public" && <PublicBanner />}
+            {isBetaCountry(profile) && <BetaBanner profile={profile} />}
+          </div>
+        )}
 
-      {result.unknowns.length > 0 && (
-        <>
-          <h2>Still to confirm</h2>
-          <ul>
-            {result.unknowns.map((u) => (
-              <li key={u}>{u}</li>
-            ))}
-          </ul>
-        </>
-      )}
+        <div className={styles.grid}>
+          <div className={styles.primary}>
+            <VerdictCard result={result} profileLine={profileSummary(profile)} />
+            <RouteCard result={result} />
+            <UnknownsCard unknowns={result.unknowns} />
+          </div>
+          <div className={styles.secondary}>
+            <DocumentsCard result={result} viewer={viewer} />
+            <TimelineCard profile={profile} />
+            <ShareControls checkId={id} />
+            <ConversionCard checkId={id} viewer={viewer} />
+          </div>
+        </div>
 
-      {result.citations.length > 0 && (
-        <>
-          <h2>Sources</h2>
-          <ul>
-            {result.citations.map((c) => (
-              <li key={c.ruleId}>
-                <a href={c.sourceUrl} rel="noopener noreferrer">
-                  {c.sourceUrl}
-                </a>{" "}
-                — last verified:{" "}
-                {c.verifiedAt
-                  ? new Date(c.verifiedAt).toISOString().slice(0, 10)
-                  : "not yet verified"}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      <p>
-        <Link href="/check">Check another profile</Link>
-      </p>
+        <span className={styles.footer}>
+          Independent · not affiliated with DAAD, uni-assist, or any embassy
+        </span>
+      </div>
     </main>
   );
 }

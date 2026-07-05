@@ -237,7 +237,18 @@ export type Citation = {
   sourceUrl: string;
   verifiedAt: string | null;
   claim: string;
+  status: "beta" | "verified";
+  supports: ResultSupport[];
 };
+
+export type ResultSupport =
+  | "path"
+  | "aps"
+  | "testAS"
+  | "dMAT"
+  | "documents"
+  | "steps"
+  | "unknowns";
 
 export type Result = {
   path: z.infer<typeof PathValue>;
@@ -454,19 +465,31 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
 
   const citations: Citation[] = [];
   const unknowns: string[] = [];
-  const cite = (rule: ParsedRule) => {
-    if (citations.some((c) => c.ruleId === rule.id)) return;
+  const cite = (rule: ParsedRule, support: ResultSupport) => {
+    const existing = citations.find((c) => c.ruleId === rule.id);
+    if (existing) {
+      if (!existing.supports.includes(support)) existing.supports.push(support);
+      return;
+    }
     citations.push({
       ruleId: rule.id,
       sourceUrl: rule.source_url,
       verifiedAt: rule.last_verified_at ?? null,
       claim: rule.outcomes.note ?? rule.source_quote,
+      status: rule.status === "beta" ? "beta" : "verified",
+      supports: [support],
     });
   };
 
   // The most-specific rule decides each key. Equal-specificity disagreement is
   // a data conflict and therefore resolves to unknown with both sources cited.
   function resolve<V>(key: "path" | "aps" | "testas" | "dmat"): V | undefined {
+    const support: ResultSupport = {
+      path: "path",
+      aps: "aps",
+      testas: "testAS",
+      dmat: "dMAT",
+    }[key] as ResultSupport;
     const contenders = matched.filter((r) => r.outcomes[key] !== undefined);
     if (contenders.length === 0) return undefined;
     const specificity = (r: ParsedRule) => Object.keys(r.conditions).length;
@@ -474,13 +497,13 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     const top = contenders.filter((r) => specificity(r) === max);
     const values = new Set(top.map((r) => r.outcomes[key]));
     if (values.size > 1) {
-      top.forEach(cite);
+      top.forEach((rule) => cite(rule, support));
       unknowns.push(
         `Conflicting rules for ${key} at equal specificity (${top.map((r) => r.id).join(", ")}) — confirm with the official sources cited.`,
       );
       return "unknown" as V;
     }
-    top.forEach(cite);
+    top.forEach((rule) => cite(rule, support));
     const value = top[0].outcomes[key] as V;
     if (value === "unknown") {
       // a rule that explicitly answers "we don't know yet" carries its own
@@ -507,18 +530,18 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   for (const rule of matched) {
     for (const doc of rule.outcomes.documents ?? []) {
       if (!documents.includes(doc)) documents.push(doc);
-      cite(rule);
+      cite(rule, "documents");
     }
     for (const step of rule.outcomes.steps ?? []) {
       if (!steps.some((s) => s.text === step.text)) steps.push(step);
-      cite(rule);
+      cite(rule, "steps");
     }
     // note-only rules are open caveats ("verify which anabin proposal
     // applies…") — surface them as honest unknowns
     const { path, aps, testas, dmat, documents: d, steps: s, note } = rule.outcomes;
     if (note && [path, aps, testas, dmat, d, s].every((v) => v === undefined)) {
       unknowns.push(note);
-      cite(rule);
+      cite(rule, "unknowns");
     }
   }
 
