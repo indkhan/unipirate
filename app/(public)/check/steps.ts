@@ -182,6 +182,23 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   return steps;
 }
 
+/**
+ * Sets one answer and prunes answers whose step is no longer visible, so
+ * changing e.g. curriculum from national to GCE drops the stale board answer.
+ */
+export function withAnswer<K extends StepId>(
+  answers: PartialAnswers,
+  field: K,
+  value: Answers[K],
+): PartialAnswers {
+  const next: PartialAnswers = { ...answers, [field]: value };
+  const visible = new Set<string>(visibleSteps(next));
+  for (const key of Object.keys(next)) {
+    if (!visible.has(key)) delete next[key as StepId];
+  }
+  return next;
+}
+
 export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
   if (step === "intake") return answers.intake !== undefined;
   if (step === "gceSubjects") return (answers.gceSubjects?.length ?? 0) > 0;

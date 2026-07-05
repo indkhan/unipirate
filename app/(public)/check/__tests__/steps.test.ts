@@ -7,7 +7,13 @@ import {
 import { fixtureRules } from "@/lib/engine/__tests__/rules.fixture";
 import { evaluate } from "@/lib/engine/evaluate";
 
-import { AnswersSchema, buildProfile, visibleSteps, type Answers } from "../steps";
+import {
+  AnswersSchema,
+  buildProfile,
+  visibleSteps,
+  withAnswer,
+  type Answers,
+} from "../steps";
 
 // The exact clicks a user makes in the checker UI for each persona.
 const p1Answers: Answers = AnswersSchema.parse({
@@ -100,6 +106,16 @@ describe("visibleSteps", () => {
       "targetField",
       "intake",
     ]);
+  });
+
+  it("withAnswer drops stale branch answers when curriculum changes", () => {
+    const next = withAnswer(p1Answers, "curriculumType", "gce");
+    expect(next.board).toBeUndefined();
+    expect(next.schoolGradePercent).toBeUndefined();
+    expect(next.jeeAdvanced).toBeUndefined();
+    expect(next.nationality).toBe("in");
+    // APS-certificate answer survives: it depends on country, not curriculum
+    expect(next.hasExistingApsCertificate).toBe(false);
   });
 
   it("incomplete answers fail schema validation", () => {
