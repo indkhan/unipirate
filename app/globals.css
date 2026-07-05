@@ -143,6 +143,12 @@
   --route-blue: #1f4fbf;
   --route-blue-hover: #173e99;
   --route-blue-tint: #e9eefa;
+  --verified: #0e7a4b;
+  --verified-tint: #e6f4ec;
+  --verified-line: #bfe2ce;
+  --signal: #9a6200;
+  --signal-accent: #e5a32e;
+  --signal-tint: #fbf1dc;
   --danger: #b3261e;
   --danger-tint: #fbeae9;
   --focus-ring: rgba(31, 79, 191, 0.35);
