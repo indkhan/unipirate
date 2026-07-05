@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { usePostHog } from "posthog-js/react";
+import { useEffect, useState } from "react";
 
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
@@ -72,10 +73,15 @@ const emptySubject: GceSubjectAnswer = {
 
 export function CheckFlow({ countries, boards }: CheckFlowProps) {
   const router = useRouter();
+  const posthog = usePostHog();
   const [answers, setAnswers] = useState<PartialAnswers>({});
   const [stepIndex, setStepIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    posthog.capture("check_started");
+  }, [posthog]);
 
   const steps = visibleSteps(answers);
   const step = steps[Math.min(stepIndex, steps.length - 1)];
@@ -181,6 +187,7 @@ export function CheckFlow({ countries, boards }: CheckFlowProps) {
       setError("Please answer to continue.");
       return;
     }
+    posthog.capture("step_completed", { step: stepIndex + 1, question: step });
     if (!isLast) {
       setStepIndex(stepIndex + 1);
       return;
@@ -192,6 +199,7 @@ export function CheckFlow({ countries, boards }: CheckFlowProps) {
       setError(outcome.error);
       return;
     }
+    posthog.capture("check_completed", { check_id: outcome.id });
     router.push(`/result/${outcome.id}`);
   }
 
