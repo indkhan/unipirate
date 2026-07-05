@@ -27,6 +27,7 @@ type Option = { value: unknown; label: string; key: string };
 type CheckFlowProps = {
   countries: { code: string; name: string }[];
   boards: { countryCode: string; label: string }[];
+  initialAnswers?: PartialAnswers;
 };
 
 const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
@@ -71,10 +72,14 @@ const emptySubject: GceSubjectAnswer = {
   grade: "A",
 };
 
-export function CheckFlow({ countries, boards }: CheckFlowProps) {
+export function CheckFlow({
+  countries,
+  boards,
+  initialAnswers = {},
+}: CheckFlowProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>({});
+  const [answers, setAnswers] = useState<PartialAnswers>(initialAnswers);
   const [stepIndex, setStepIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
