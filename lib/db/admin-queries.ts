@@ -6,6 +6,7 @@ import type {
   Tables,
   TablesUpdate,
 } from "@/lib/db/database.types";
+import { EngineRuleSchema } from "@/lib/engine/evaluate";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
 
@@ -29,7 +30,7 @@ export async function listAdminRules(
     .order("updated_at", { ascending: false });
 
   if (filters.country) {
-    query = query.filter("conditions->>country", "eq", filters.country);
+    query = query.eq("country_code", filters.country);
   }
 
   if (filters.status) {
@@ -39,12 +40,21 @@ export async function listAdminRules(
   return unwrap(await query);
 }
 
+export async function getAdminRule(
+  db: Db,
+  id: string,
+): Promise<Tables<"rules">> {
+  return unwrap(await db.from("rules").select().eq("id", id).single());
+}
+
 export async function updateAdminRule(
   db: Db,
   id: string,
   rule: Pick<
     TablesUpdate<"rules">,
     | "conditions"
+    | "country_code"
+    | "last_verified_at"
     | "outcomes"
     | "source_url"
     | "source_quote"
@@ -61,6 +71,14 @@ export async function reverifyAdminRule(
   db: Db,
   id: string,
 ): Promise<Tables<"rules">> {
+  const existing = await getAdminRule(db, id);
+  const parsed = EngineRuleSchema.safeParse(existing);
+  if (!parsed.success) {
+    throw new Error(
+      `Rule cannot be verified until its schema errors are fixed: ${parsed.error.message}`,
+    );
+  }
+
   return unwrap(
     await db
       .from("rules")

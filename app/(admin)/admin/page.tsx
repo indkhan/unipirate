@@ -78,19 +78,6 @@ function isOlderThanSixMonths(value: string | null): boolean {
   return verifiedAt < sixMonthsAgo;
 }
 
-function countryFromRule(rule: Tables<"rules">): string {
-  if (
-    rule.conditions &&
-    typeof rule.conditions === "object" &&
-    !Array.isArray(rule.conditions) &&
-    typeof rule.conditions.country === "string"
-  ) {
-    return rule.conditions.country;
-  }
-
-  return "unknown";
-}
-
 function reviewAgeBadge(rule: Tables<"rules">) {
   const stale = isOlderThanSixMonths(rule.last_verified_at);
 
@@ -147,7 +134,13 @@ function CourseField({
   );
 }
 
-function RuleEditor({ rule }: { rule: Tables<"rules"> | undefined }) {
+function RuleEditor({
+  rule,
+  countries,
+}: {
+  rule: Tables<"rules"> | undefined;
+  countries: Tables<"countries">[];
+}) {
   if (!rule) {
     return (
       <section className="rounded-lg border bg-card p-4">
@@ -166,7 +159,7 @@ function RuleEditor({ rule }: { rule: Tables<"rules"> | undefined }) {
         <div>
           <h2 className="text-sm font-semibold">Rule editor</h2>
           <p className="mt-1 font-mono text-xs text-muted-foreground">
-            {rule.id}
+            {rule.slug ?? rule.id}
           </p>
         </div>
         <form action={reverifyRuleAction}>
@@ -179,6 +172,21 @@ function RuleEditor({ rule }: { rule: Tables<"rules"> | undefined }) {
 
       <form action={updateRuleAction} className="mt-4 grid gap-3">
         <input type="hidden" name="id" value={rule.id} />
+        <label className="grid gap-1 text-xs font-medium">
+          Country code
+          <select
+            name="country_code"
+            defaultValue={rule.country_code ?? ""}
+            className="h-8 rounded-md border bg-background px-2 text-sm"
+          >
+            <option value="">Shared / international</option>
+            {countries.map((country) => (
+              <option key={country.code} value={country.code}>
+                {country.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="grid gap-1 text-xs font-medium">
           Status
           <select
@@ -290,7 +298,7 @@ function RulesTable({
               )}
             >
               <td className="px-3 py-2 font-mono text-xs">
-                {countryFromRule(rule)}
+                {rule.country_code ?? "shared"}
               </td>
               <td className="px-3 py-2">{statusBadge(rule.status)}</td>
               <td className="px-3 py-2">{reviewAgeBadge(rule)}</td>
@@ -550,7 +558,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </div>
         </div>
 
-        <RuleEditor rule={selectedRule} />
+        <RuleEditor rule={selectedRule} countries={countries} />
       </section>
 
       <CourseQueue courses={pendingCourses} />

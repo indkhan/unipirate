@@ -4,17 +4,24 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import {
+  getAdminRule,
   reverifyAdminRule,
   updateAdminRule,
   updateCourseReviewStatus,
 } from "@/lib/db/admin-queries";
 import type { Json } from "@/lib/db/database.types";
 import { createClient } from "@/lib/db/server";
+import { EngineRuleSchema } from "@/lib/engine/evaluate";
 
 const ruleStatusSchema = z.enum(["draft", "beta", "verified"]);
 
 const ruleUpdateSchema = z.object({
   id: z.string().uuid(),
+  country_code: z
+    .string()
+    .trim()
+    .regex(/^[a-z]{2}$/)
+    .or(z.literal("")),
   conditions: z.string().min(2),
   outcomes: z.string().min(2),
   source_url: z.string().url(),
@@ -64,6 +71,7 @@ export async function updateRuleAction(formData: FormData) {
   const db = await requireAdminDb();
   const values = ruleUpdateSchema.parse({
     id: formData.get("id"),
+    country_code: formData.get("country_code") ?? "",
     conditions: formData.get("conditions"),
     outcomes: formData.get("outcomes"),
     source_url: formData.get("source_url"),
@@ -72,9 +80,29 @@ export async function updateRuleAction(formData: FormData) {
     status: formData.get("status"),
   });
 
+  const conditions = parseJsonObject(values.conditions, "conditions");
+  const outcomes = parseJsonObject(values.outcomes, "outcomes");
+  const existing = await getAdminRule(db, values.id);
+  const publishing =
+    values.status !== "draft" && values.status !== existing.status;
+  const lastVerifiedAt = publishing
+    ? new Date().toISOString()
+    : existing.last_verified_at;
+  EngineRuleSchema.parse({
+    id: values.id,
+    conditions,
+    outcomes,
+    source_url: values.source_url,
+    source_quote: values.source_quote,
+    status: values.status,
+    last_verified_at: lastVerifiedAt,
+  });
+
   await updateAdminRule(db, values.id, {
-    conditions: parseJsonObject(values.conditions, "conditions"),
-    outcomes: parseJsonObject(values.outcomes, "outcomes"),
+    country_code: values.country_code || null,
+    last_verified_at: lastVerifiedAt,
+    conditions,
+    outcomes,
     source_url: values.source_url,
     source_quote: values.source_quote,
     notes: values.notes.trim() === "" ? null : values.notes,

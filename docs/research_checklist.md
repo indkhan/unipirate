@@ -95,13 +95,13 @@ Every item below becomes one or more records in the `rules` table: **claim + con
 2. CBSE 12th + JEE Advanced qualified — expected: direct access
 3. Indian 3-yr B.Sc (7.8 CGPA) → Master's — expected: per-uni caveat + APS + (dMAT if in scope)
 4. Indian 4-yr B.Tech → Master's, English-taught — expected: APS + IELTS/MOI question
-5. Pakistani FSc pre-engineering → Bachelor's — expected: Studienkolleg T-Kurs or 1 yr uni + (APS per resolved answer)
-6. Pakistani 2-yr B.Com → Master's — expected: likely insufficient alone; show options honestly
+5. Pakistani FSc pre-engineering → Bachelor's — expected: `unknown` until the admission path and APS question are confirmed officially; retain the verified Pakistan visa step separately
+6. Pakistani 2-yr B.Com → Master's — expected: `unknown` until an official general ruling or per-university decision is available
 7. Pakistani 4-yr BS(CS), HEC-attested → Master's
 8. Saudi Tawjihiyya (science), 92% — expected: Studienkolleg
 9. Indian passport, CBSE school in Riyadh → Bachelor's — the routing edge case
-10. Saudi bachelor (KFUPM) → Master's
-11. A-Levels (CAIE) in Saudi Arabia: 3 AL (Math, Physics, CS) + 1 AS (English) → CS Bachelor's — expected: direct subject-restricted entry, no Studienkolleg, no APS (the founder's own path)
+10. Saudi bachelor (KFUPM) → Master's — expected: `unknown` globally; no Studienkolleg claim does not itself guarantee Master's admission
+11. A-Levels (CAIE) in Saudi Arabia: 3 AL (Math, Physics, CS) + 1 AS (English) → CS Bachelor's — expected: direct subject-restricted entry; APS remains unverified
 12. A-Levels in Pakistan: 2 AL + 2 AS, no math/science AL → expected: fails the GCE formula → Studienkolleg route (and verify which anabin proposal applies to Pakistan-obtained GCE)
 13. IB Diploma in India, Math AA at SL, 28 points → Mechanical Engineering Bachelor's — expected: SL math blocks STEM direct entry; check APS applicability for IB-in-India
 

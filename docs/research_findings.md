@@ -2,7 +2,7 @@
 
 Status legend: ✅ confirmed on an official source (opened directly or quoted from it) · 🟡 strong evidence, needs final official confirmation · 🔴 conflicting sources · ⬜ not yet researched
 
-Every ✅/🟡 item below maps to a `rules` record: put the source URL + quote + `verified_at: 2026-07-02` in the table. Re-verify anything money- or deadline-related every semester.
+Only findings with sufficient official support become draft rule candidates. Open or inference-only findings remain documentation until confirmed. Every candidate carries its source and check date; re-verify money and deadline data every semester.
 
 ---
 
@@ -30,13 +30,12 @@ Every ✅/🟡 item below maps to a `rules` record: put the source URL + quote +
 
 **Engine impact (critical):** the checker must ask *curriculum type* BEFORE the national-board question, for every country. IB, GCE A-Levels, American HS+AP etc. are assessed under their own KMK evaluation proposals, not the country's national rules. A student with A-Levels from Riyadh, Karachi, or Mumbai gets the GCE tree, not the Tawjihiyah/FSc/CBSE tree. (This is exactly how the founder's own Saudi→direct-entry path worked.)
 
-### GCE A-Levels ✅ (DAAD official)
+### GCE A-Levels ✅ (DAAD official, re-verified 4 July 2026)
 - Recognized as a **direct but strictly subject-restricted** HZB when conditions from the UK evaluation proposal in anabin are met.
-- **Subject formula (KMK, via DAAD):** four independent, general-education (non-vocational) subjects; **at least 3 at full A-Level** (AS sufficient for the 4th); **two AS can substitute one AL**. The four must include **a language at minimum AS** (Literature may count; German counts even if it's the mother tongue; a separate English exam like IELTS can NOT substitute) **and Mathematics or a natural science** (Bio/Chem/Physics).
-- **Field match required:** the intended degree needs a suitable A-Level (e.g. Engineering/CS → Math + a science at AL; Medicine → four of Math/Bio/Chem/Physics at AL; Humanities → e.g. History/Geography AL).
-- **Traps to encode:** A-Level Economics + Business Studies overlap → count as ONE subject; "Applied A-Levels" never qualify; **GCSE/IGCSE/O-Levels count only as middle-school certificates — never for university entrance**; Cambridge Pre-U Principle Subject ≥M3 ≈ A-Level ≥C; certificates must come from recognized awarding bodies (CAIE, Pearson/Edexcel, AQA, OCR, Oxford AQA, WJEC, CCEA, LRN) — school-issued certificates are insufficient.
+- **Current basic formula:** **3 independent, general-education A-Level subjects, each at grade C or better**. At least two must come from DAAD List A; the third may come from List A or B. **AS Levels are no longer considered** for university admission.
+- **Field match required:** Mathematics/technical studies require Mathematics plus Biology, Chemistry, Physics, or Computer Science at A-Level; medicine requires three A-Levels from that group; economics/social science requires one relevant humanities/economics subject plus one math/science/CS subject.
+- **Additional requirements:** normally 12 years of ascending schooling; certificates must come from a recognized awarding body. GCSE/IGCSE/O-Levels do not count for university entrance.
 → https://www.daad.de/en/studying-in-germany/requirements/gce/ · https://www.daad-thailand.org/en/study-research-in-germany/admission-requirements/alevel/
-- 🟡 12 consecutive years of schooling required (consistent secondary sources; confirm in the anabin UK proposal).
 - 🟡 **Country caveat (from the DAAD GCE page):** for countries where GCE-type exams are part of the national system, the *country's* evaluation proposal may apply instead (e.g. Singapore has its own 3-H2+1-H1 formula). For Pakistan, verify whether CAIE O/A-Levels are assessed under the UK proposal or a Pakistan-specific entry in anabin — this decides a huge cohort.
 - Note for Saudi corridor: Goethe's Studienkolleg Middle East explicitly does NOT admit GCE/IGCSE holders — because their route is the GCE direct-entry assessment, not Studienkolleg.
 
@@ -65,12 +64,13 @@ Every ✅/🟡 item below maps to a `rules` record: put the source URL + quote +
 **Engine impact:** grade thresholds are now decision nodes for India; the checker must ask Class XII overall % and branch on ≥70 / <70, with the intake-semester cutoff logic.
 
 ✅ **NEW — dMAT (official, aps-india.de/dmat + d-mat.de):** required for Indian **Master's** applicants whose prior degree is in Engineering (incl. CS/IT engineering), Commerce/Accounting/Finance/Economics, or Business/Management, for **Summer Semester 2027 intake onward**, as part of APS documentation. Run by g.a.s.t. (TestDaF body); ~3.5h, English, core + General Academic Module; **€150**; first cycle: registration 29 Jun–15 Sep 2026, exam 26 Sep 2026, results 12 Oct 2026 → not feasible for WS 2026/27 (which doesn't require it). Exempt: already-issued APS certificates, exchange/double-degree/partnership programs, PhD, and enrolled bachelor students below 5 sem (3-yr) / 7 sem (4-yr). Interdisciplinary degrees decided by APS India's official affected-fields list — the certificate wording, not the marketing name.
+Transitional exemptions also apply when APS online registration was completed before **29 June 2026** or complete APS documents were shipped before that date. The engine must ask these dates; intake and degree field alone are insufficient to return `required`.
 → https://aps-india.de/dmat/ · https://www.d-mat.de/en/dmat-in-india/
 **Engine impact:** ask Master's applicants for prior-degree field + target intake; branch dMAT yes/no; deadline objects for the test cycle.
 
 🟡 **APS India basics** (official portal exists; details from consistent secondary sources — confirm each on aps-india.de before `verified`): mandatory since Nov 2022 for degree study; fee ₹18,000 non-refundable; ~3–4 weeks processing (peaks 6–12); digital certificate (DigiZert) since Apr 2023; couriered applications only; possible interview for enrolled-bachelor applicants; exemptions incl. DAAD scholarship holders.
 
-🟡 **TestAS** required for Indian undergrad applicants without JEE Main+Advanced (mentioned by DAAD-adjacent and APS-linked sources; verify scope on aps-india.de news). JEE Main alone ≠ direct entry but exempts TestAS.
+⬜ **TestAS scope:** the previous claim that it is universally required without JEE Main+Advanced is not supported by the currently published APS India news page. No rule candidate is included until an official source confirms exact scope and exemptions.
 
 🟡 **3-yr vs 4-yr bachelor for Master's:** 3-yr → subject-restricted / per-uni acceptance; 4-yr → generally unrestricted. Largely per-university; treat as guidance + per-course check, not a global verified rule.
 
@@ -96,7 +96,7 @@ Every ✅/🟡 item below maps to a `rules` record: put the source URL + quote +
 ✅ **Regular Saudi high-school diploma (Tawjihiyah) → Studienkolleg required** before university; different regulations for SAT/IG-type certificates, and "sometimes even a year of study in KSA will be required." (German Embassy Riyadh, official)
 → https://saudiarabien.diplo.de/ksa-en/topics/weitere-themen/-/1686436
 
-✅ **University-study ladder (uni-assist official country page):** 1 completed year at an accredited Saudi university → qualifies for Studienkolleg (same subject area); **2 completed years → direct subject-restricted Bachelor admission**. Note: **new rules from Winter Semester 2026/27** for the Secondary Industrial Education Certificate — a third 2026 rule change, this time in your own corridor.
+✅ **Private-school certificate university-study ladder (uni-assist official country page):** where ZAB assessment of a Saudi private-school certificate meets the requirements, 1 completed year at an accredited Saudi university → Studienkolleg in the same subject area; **2 completed years → direct subject-restricted Bachelor admission**. Do not generalize this wording to every Saudi national certificate. Note: **new rules from Winter Semester 2026/27** for the Secondary Industrial Education Certificate.
 → https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/sa/
 
 ✅ **Studienkolleg Middle East (Goethe-Institut Riyadh, official):** a one-year hybrid preparatory program *in Saudi Arabia* (T-Kurs focus, partner TU Berlin, FSP exams in Cairo), entry at German B1, open to school graduates from the region (incl. Yemenis); completed Saudi bachelor → no Studienkolleg needed (C1 for German-taught). GCE/IGCSE holders cannot attend; IB case-by-case. Killer recommendation content for your Saudi/Gulf users.
