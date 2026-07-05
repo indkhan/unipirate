@@ -155,6 +155,26 @@ export async function setTaskDone(
   );
 }
 
+// ------------------------------------------------------------------- checks
+
+/** Anonymous eligibility check record; returns the shareable id. */
+export async function insertCheck(
+  db: Db,
+  check: TablesInsert<"checks">,
+): Promise<string> {
+  const row = unwrap<{ id: string }>(
+    await db.from("checks").insert(check).select("id").single(),
+  );
+  return row.id;
+}
+
+export async function getCheck(
+  db: Db,
+  id: string,
+): Promise<Tables<"checks"> | null> {
+  return unwrap(await db.from("checks").select().eq("id", id).maybeSingle());
+}
+
 // ------------------------------------------------------------------ reports
 
 // No .select() — anonymous reports (user_id null) have no read-back policy.

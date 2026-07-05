@@ -146,6 +146,27 @@ export type Database = {
           },
         ]
       }
+      checks: {
+        Row: {
+          created_at: string
+          id: string
+          profile: Json
+          result: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile: Json
+          result: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile?: Json
+          result?: Json
+        }
+        Relationships: []
+      }
       countries: {
         Row: {
           code: string
