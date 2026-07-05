@@ -15,8 +15,10 @@
     "db:types": "supabase gen types typescript --linked > lib/db/database.types.ts"
   },
   "dependencies": {
+    "@openrouter/ai-sdk-provider": "^2.10.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.0",
+    "ai": "^7.0.15",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.23.0",

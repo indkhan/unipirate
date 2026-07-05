@@ -10,6 +10,7 @@ const clientSchema = z.object({
 const serverSchema = clientSchema.extend({
   SUPABASE_SECRET_KEY: z.string().startsWith("sb_secret_"),
   RESEND_API_KEY: z.string().min(1).optional(),
+  OPENROUTER_API_KEY: z.string().min(1).optional(),
 });
 
 // NEXT_PUBLIC_ vars must be referenced literally so Next.js inlines them
@@ -22,6 +23,7 @@ const runtimeEnv = {
   NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
+  OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 };
 
 export type ClientEnv = z.infer<typeof clientSchema>;

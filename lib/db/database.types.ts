@@ -177,15 +177,7 @@ export type Database = {
           profile?: Json
           result?: Json
         }
-        Relationships: [
-          {
-            foreignKeyName: "checks_claimed_by_fkey"
-            columns: ["claimed_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       countries: {
         Row: {
@@ -214,6 +206,7 @@ export type Database = {
           extraction_method:
             | Database["public"]["Enums"]["extraction_method"]
             | null
+          field_extraction: Json | null
           id: string
           language: string | null
           name: string | null
@@ -223,6 +216,7 @@ export type Database = {
           source_url: string
           tuition: Json | null
           university_id: string | null
+          university_name: string | null
           updated_at: string
         }
         Insert: {
@@ -233,6 +227,7 @@ export type Database = {
           extraction_method?:
             | Database["public"]["Enums"]["extraction_method"]
             | null
+          field_extraction?: Json | null
           id?: string
           language?: string | null
           name?: string | null
@@ -242,6 +237,7 @@ export type Database = {
           source_url: string
           tuition?: Json | null
           university_id?: string | null
+          university_name?: string | null
           updated_at?: string
         }
         Update: {
@@ -252,6 +248,7 @@ export type Database = {
           extraction_method?:
             | Database["public"]["Enums"]["extraction_method"]
             | null
+          field_extraction?: Json | null
           id?: string
           language?: string | null
           name?: string | null
@@ -261,6 +258,7 @@ export type Database = {
           source_url?: string
           tuition?: Json | null
           university_id?: string | null
+          university_name?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -517,7 +515,7 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       result_viewer: {
-        Args: { p_check_id: string; p_token_hash?: string | null }
+        Args: { p_check_id: string; p_token_hash?: string }
         Returns: string
       }
     }
