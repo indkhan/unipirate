@@ -1,4 +1,4 @@
-# Project: Cyvalent — guided study-in-Germany applications
+# Project: UniPirate — guided study-in-Germany applications
 
 ## What this is
 A web app that tells students from India/Pakistan/Saudi Arabia their exact path
