@@ -20,7 +20,7 @@ const LIMIT: Record<Field, number> = {
   degree: 1,
   language: 4,
   deadlines: 10,
-  tuition: 2,
+  tuition: 1,
   requirements: 15,
 };
 
@@ -57,7 +57,11 @@ const BOUNDARIES = new Set([
 ]);
 
 export function parseDaadText(text: string): CourseFacts {
-  const lines = text.split(/\r?\n/).map((l) => l.trim());
+  const lines = text
+    .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&amp;/g, "&")
+    .split(/\r?\n/)
+    .map((l) => l.trim());
   const captured: Record<Field, string[]> = {
     degree: [],
     language: [],
