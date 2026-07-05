@@ -148,24 +148,44 @@ export type Database = {
       }
       checks: {
         Row: {
+          answers: Json | null
+          claimed_at: string | null
+          claimed_by: string | null
           created_at: string
           id: string
+          owner_token_hash: string | null
           profile: Json
           result: Json
         }
         Insert: {
+          answers?: Json | null
+          claimed_at?: string | null
+          claimed_by?: string | null
           created_at?: string
           id?: string
+          owner_token_hash?: string | null
           profile: Json
           result: Json
         }
         Update: {
+          answers?: Json | null
+          claimed_at?: string | null
+          claimed_by?: string | null
           created_at?: string
           id?: string
+          owner_token_hash?: string | null
           profile?: Json
           result?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "checks_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       countries: {
         Row: {
