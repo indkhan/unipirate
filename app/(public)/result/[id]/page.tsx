@@ -7,6 +7,8 @@ import { getCheck } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
 import type { Result } from "@/lib/engine/evaluate";
 
+import { ClaimOnReturn } from "./claim-on-return";
+
 export const dynamic = "force-dynamic";
 
 export const metadata = {
@@ -23,10 +25,13 @@ const PATH_LABELS: Record<Result["path"], string> = {
 
 export default async function ResultPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ claim?: string }>;
 }) {
   const { id } = await params;
+  const shouldClaim = (await searchParams).claim === "1";
   const db = await createClient();
   const check = await getCheck(db, id);
   if (!check) notFound();
@@ -34,6 +39,7 @@ export default async function ResultPage({
 
   return (
     <main style={{ maxWidth: 640, margin: "0 auto", padding: "32px 16px" }}>
+      {shouldClaim && <ClaimOnReturn checkId={id} />}
       <h1>Your path to a German university</h1>
       <p>
         <strong>Path:</strong> {PATH_LABELS[result.path]}

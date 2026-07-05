@@ -89,6 +89,7 @@ describe.skipIf(!configured || !schemaReady)("RLS: anon vs owner vs admin", () =
   let pendingCourseId: string;
   let rejectCourseId: string;
   let anonymousCheckId: string | undefined;
+  let claimCheckId: string | undefined;
   const createdUserIds: string[] = [];
   const createdRuleIds: string[] = [];
   const createdCourseIds: string[] = [];
@@ -200,6 +201,8 @@ describe.skipIf(!configured || !schemaReady)("RLS: anon vs owner vs admin", () =
       await service.from("courses").delete().in("id", createdCourseIds);
     if (anonymousCheckId)
       await service.from("checks").delete().eq("id", anonymousCheckId);
+    if (claimCheckId)
+      await service.from("checks").delete().eq("id", claimCheckId);
     if (createdRuleIds.length > 0)
       await service.from("rules").delete().in("id", createdRuleIds);
     for (const id of createdUserIds) await service.auth.admin.deleteUser(id);
@@ -308,6 +311,65 @@ describe.skipIf(!configured || !schemaReady)("RLS: anon vs owner vs admin", () =
       .from("profiles")
       .upsert({ user_id: otherUser.id, answers: {} });
     expect(error).not.toBeNull();
+  });
+
+  it("claims a check once for its token holder and rejects another user", async () => {
+    const tokenHash = "b".repeat(64);
+    const { data: check, error: insertError } = await service
+      .from("checks")
+      .insert({
+        answers: { targetDegree: "bachelor", nationality: "in" },
+        owner_token_hash: tokenHash,
+        profile: {
+          targetDegree: "bachelor",
+          nationality: "in",
+          certificateCountry: "in",
+        },
+        result: { path: "unknown" },
+      })
+      .select("id")
+      .single();
+    if (insertError?.code === "PGRST204") return;
+    expect(insertError).toBeNull();
+    claimCheckId = check!.id;
+
+    const missing = await owner.rpc("claim_check", {
+      p_check_id: claimCheckId,
+      p_token_hash: "c".repeat(64),
+    });
+    if (missing.error?.code === "PGRST202") return;
+    expect(missing.error).toBeNull();
+    expect(missing.data).toBe(false);
+
+    const claimed = await owner.rpc("claim_check", {
+      p_check_id: claimCheckId,
+      p_token_hash: tokenHash,
+    });
+    expect(claimed).toEqual(expect.objectContaining({ data: true, error: null }));
+
+    const repeated = await owner.rpc("claim_check", {
+      p_check_id: claimCheckId,
+      p_token_hash: tokenHash,
+    });
+    expect(repeated.data).toBe(true);
+
+    const crossUser = await other.rpc("claim_check", {
+      p_check_id: claimCheckId,
+      p_token_hash: tokenHash,
+    });
+    expect(crossUser.data).toBe(false);
+
+    const { data: profile } = await owner
+      .from("profiles")
+      .select("country_code, answers")
+      .eq("user_id", ownerUser.id)
+      .single();
+    expect(profile).toEqual(
+      expect.objectContaining({
+        country_code: "in",
+        answers: expect.objectContaining({ targetDegree: "bachelor" }),
+      }),
+    );
   });
 
   it("owner CRUDs own tasks; other sees none", async () => {

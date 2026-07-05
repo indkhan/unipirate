@@ -511,7 +511,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_check: {
+        Args: { p_check_id: string; p_token_hash: string }
+        Returns: boolean
+      }
       is_admin: { Args: never; Returns: boolean }
+      result_viewer: {
+        Args: { p_check_id: string; p_token_hash?: string | null }
+        Returns: string
+      }
     }
     Enums: {
       course_review_status: "pending" | "approved" | "rejected"
