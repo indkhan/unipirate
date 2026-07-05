@@ -14,6 +14,3 @@ Guided study-in-Germany applications. Product spec: [docs/mvp.md](docs/mvp.md). 
 
 `pnpm dev` · `pnpm build` · `pnpm test` · `pnpm lint` · `pnpm typecheck` · `pnpm email:test <to>`
 
-## Structure
-
-See [CLAUDE.md](CLAUDE.md).
