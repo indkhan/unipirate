@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    body { margin: 0; background: #F2F4F7; -webkit-font-smoothing: antialiased; }
+    @keyframes uw-slide { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes uw-rise { from { transform: translateY(36px); opacity: 0; } to { transform: none; opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .uw-anim { animation: none !important; } }
+  </style>
+</helmet>
+
+<div style="min-height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--font-body); display: flex; flex-direction: column; align-items: center;">
+  <div style="width: 100%; max-width: 460px; padding: 0 16px 64px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px;">
+
+    <!-- HEADER: route + nearest deadline -->
+    <header data-screen-label="Dashboard header" style="display: flex; flex-direction: column; gap: 16px; padding-top: 14px;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-family: var(--font-display); font-weight: 800; font-size: 18px;">Uniweg</span>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <button onClick="{{ openAsk }}" style="min-height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--route-blue); font-family: var(--font-display); font-weight: 600; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px;"><span style="width: 7px; height: 7px; border-radius: 999px; background: var(--route-blue);"></span>Ask</button>
+          <span style="width: 32px; height: 32px; border-radius: 999px; background: var(--route-blue-tint); color: var(--route-blue); display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 13px;">AR</span>
+        </div>
+      </div>
+      <sc-if value="{{ notEmpty }}" hint-placeholder-val="{{ true }}">
+        <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px 16px 14px 16px; display: flex; flex-direction: column; gap: 14px;">
+          <x-import component="RouteLine" from="./components/route/RouteLine.jsx" current-index="{{ two }}" hint-size="100%,80px"></x-import>
+          <div style="border-top: 1px solid var(--line); padding-top: 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;">
+            <span style="font: var(--text-body-sm); color: var(--ink-secondary);">Next deadline</span>
+            <span style="font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; color: var(--signal);">{{ nextDeadline }}</span>
+          </div>
+        </div>
+      </sc-if>
+    </header>
+
+    <!-- EMPTY STATE -->
+    <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="Empty state" style="background: var(--surface); border: 1.5px dashed var(--line-strong); border-radius: 10px; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px;">
+        <span style="width: 18px; height: 18px; border-radius: 999px; border: 2.5px solid var(--line-strong); box-sizing: border-box;"></span>
+        <h2 style="margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 19px;">Add your first course</h2>
+        <p style="margin: 0; font: var(--text-body-sm); color: var(--ink-secondary); max-width: 34ch;">Paste any DAAD or university course link. We pull out the deadlines and documents for you.</p>
+        <div style="width: 100%; display: flex; gap: 8px;">
+          <input placeholder="https://www.daad.de/…" value="{{ emptyUrl }}" onChange="{{ onEmptyUrl }}" style="flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 13px; color: var(--ink); background: var(--paper); border: 1px solid var(--line-strong); border-radius: 6px; min-height: 48px; padding: 0 12px;" />
+          <x-import component="Button" from="./components/actions/Button.jsx" on-click="{{ openSheetFromEmpty }}" hint-size="80px,48px">Add</x-import>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- ALL DONE -->
+    <sc-if value="{{ isAllDone }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="All done" style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 36px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;">
+        <span style="width: 22px; height: 22px; border-radius: 999px; background: var(--route-blue); color: var(--ink-inverse); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">✓</span>
+        <h2 style="margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 19px;">Nothing due today.</h2>
+        <p style="margin: 0; font: var(--text-body-sm); color: var(--ink-secondary); max-width: 32ch;">Everything on the line is on time. Your next deadline is in 26 days.</p>
+        <span style="font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-muted);">Checked against 3 universities · 04 Jul 2026</span>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ isActive }}" hint-placeholder-val="{{ true }}">
+
+      <!-- VIEW TOGGLE -->
+      <div data-screen-label="View toggle" style="display: flex; gap: 0; background: var(--paper-sunken); border-radius: 6px; padding: 3px; align-self: flex-start;">
+        <button onClick="{{ showList }}" style="min-height: 38px; padding: 0 18px; border: none; border-radius: 4px; background: {{ listBg }}; color: {{ listFg }}; font-family: var(--font-display); font-weight: 600; font-size: 14px; cursor: pointer;">Tasks</button>
+        <button onClick="{{ showCal }}" style="min-height: 38px; padding: 0 18px; border: none; border-radius: 4px; background: {{ calBg }}; color: {{ calFg }}; font-family: var(--font-display); font-weight: 600; font-size: 14px; cursor: pointer;">Calendar</button>
+      </div>
+
+      <!-- TASKS VIEW -->
+      <sc-if value="{{ listView }}" hint-placeholder-val="{{ true }}">
+
+        <!-- NOW -->
+        <section data-screen-label="Now" style="display: flex; flex-direction: column; gap: 10px;">
+          <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Now</span>
+          <sc-for list="{{ nowTasks }}" as="t" hint-placeholder-count="3">
+            <div style="background: var(--surface); border: {{ t.border }}; border-radius: 6px; padding: 14px 14px; display: flex; gap: 12px; align-items: flex-start;">
+              <button onClick="{{ t.toggle }}" aria-label="mark done" style="width: 24px; height: 24px; flex: none; margin-top: 2px; border-radius: 6px; border: {{ t.boxBorder }}; background: {{ t.boxBg }}; color: var(--ink-inverse); font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0;">{{ t.mark }}</button>
+              <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1;">
+                <span style="font: var(--text-body); font-weight: 500; color: {{ t.labelColor }}; text-decoration: {{ t.deco }};">{{ t.label }}</span>
+                <sc-if value="{{ t.note }}" hint-placeholder-val="{{ false }}">
+                  <span style="font: var(--text-body-sm); color: var(--signal);">{{ t.note }}</span>
+                </sc-if>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                  <span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: {{ t.tagBg }}; color: {{ t.tagFg }};">{{ t.tag }}</span>
+                  <span style="font-family: var(--font-mono); font-size: 12px; color: {{ t.dateColor }};">{{ t.due }}</span>
+                </div>
+                <sc-if value="{{ t.hasStamp }}" hint-placeholder-val="{{ false }}">
+                  <div>
+                    <x-import component="VerifiedStamp" from="./components/verification/VerifiedStamp.jsx" source="{{ t.source }}" date="{{ t.sourceDate }}" hint-size="250px,28px"></x-import>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </section>
+
+        <!-- NEXT / LATER -->
+        <section data-screen-label="Next and later" style="display: flex; flex-direction: column; gap: 10px;">
+          <button onClick="{{ toggleNext }}" style="display: flex; justify-content: space-between; align-items: center; min-height: 48px; padding: 0 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-family: var(--font-body);">
+            <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Next · {{ nextCount }}</span>
+            <span style="color: var(--ink-muted); font-size: 14px;">{{ nextChevron }}</span>
+          </button>
+          <sc-if value="{{ nextOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ nextTasks }}" as="n" hint-placeholder-count="4">
+                <div style="display: flex; gap: 10px; align-items: center; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px;">
+                  <span style="width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--line-strong); flex: none; box-sizing: border-box;"></span>
+                  <span style="font: var(--text-body-sm); color: var(--ink); flex: 1;">{{ n.label }}</span>
+                  <span style="font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-muted); white-space: nowrap;">{{ n.due }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <button onClick="{{ toggleLater }}" style="display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 14px; background: transparent; border: 1px dashed var(--line-strong); border-radius: 6px; cursor: pointer; font-family: var(--font-body);">
+            <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted);">Later · {{ laterCount }}</span>
+            <span style="color: var(--ink-muted); font-size: 14px;">{{ laterChevron }}</span>
+          </button>
+          <sc-if value="{{ laterOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ laterTasks }}" as="n" hint-placeholder-count="2">
+                <div style="display: flex; gap: 10px; align-items: center; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px;">
+                  <span style="width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--line-strong); flex: none; box-sizing: border-box;"></span>
+                  <span style="font: var(--text-body-sm); color: var(--ink); flex: 1;">{{ n.label }}</span>
+                  <span style="font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-muted); white-space: nowrap;">{{ n.due }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <!-- CALENDAR VIEW -->
+      <sc-if value="{{ calView }}" hint-placeholder-val="{{ false }}">
+        <section data-screen-label="Calendar" style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+          <span style="font-family: var(--font-display); font-weight: 600; font-size: 16px;">July 2026</span>
+          <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;">
+            <sc-for list="{{ calCells }}" as="c" hint-placeholder-count="35">
+              <div style="min-height: 44px; border-radius: 4px; background: {{ c.bg }}; border: {{ c.border }}; padding: 4px; display: flex; flex-direction: column; gap: 2px; align-items: center;">
+                <span style="font-family: var(--font-mono); font-size: 11px; color: {{ c.fg }};">{{ c.day }}</span>
+                <sc-if value="{{ c.chip }}" hint-placeholder-val="{{ false }}">
+                  <span style="width: 8px; height: 8px; background: var(--signal-accent); border-radius: 1px;"></span>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px;">
+            <sc-for list="{{ calList }}" as="e" hint-placeholder-count="3">
+              <div style="display: flex; justify-content: space-between; gap: 10px;">
+                <span style="font: var(--text-body-sm); color: var(--ink);">{{ e.what }}</span>
+                <span style="font-family: var(--font-mono); font-size: 12px; color: var(--signal); white-space: nowrap;">{{ e.date }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </sc-if>
+
+      <!-- UNIVERSITIES RAIL -->
+      <section data-screen-label="Universities" style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Your applications</span>
+          <button onClick="{{ openSheet }}" style="border: none; background: transparent; font-family: var(--font-body); font-size: 14px; font-weight: 500; color: var(--route-blue); cursor: pointer; padding: 8px 0;">+ Add course</button>
+        </div>
+        <div style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; margin: 0 -16px; padding-left: 16px; padding-right: 16px;">
+          <sc-for list="{{ unis }}" as="u" hint-placeholder-count="3">
+            <div style="flex: none; width: 240px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-family: var(--font-display); font-weight: 600; font-size: 16px;">{{ u.name }}</span>
+                <span style="font: var(--text-body-sm); color: var(--ink-secondary);">{{ u.program }}</span>
+              </div>
+              <span style="align-self: flex-start; font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; background: {{ u.statusBg }}; color: {{ u.statusFg }};">{{ u.status }}</span>
+              <div style="display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: 8px;">
+                <span style="font: var(--text-caption); color: var(--ink-muted);">Next deadline</span>
+                <span style="font-family: var(--font-mono); font-size: 12px; color: var(--signal);">{{ u.deadline }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+  </div>
+
+  <!-- ADD COURSE SHEET -->
+  <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeSheet }}" style="position: fixed; inset: 0; background: rgba(22,36,61,0.45); z-index: 40; display: flex; align-items: flex-end; justify-content: center;" data-screen-label="Add course sheet">
+      <div onClick="{{ stopClick }}" style="width: 100%; max-width: 460px; background: var(--surface); border-radius: 10px 10px 0 0; box-shadow: 0 8px 28px rgba(22,36,61,0.18); padding: 24px 20px 32px 20px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 18px;">Add a course</h2>
+          <button onClick="{{ closeSheet }}" style="min-width: 44px; min-height: 44px; margin: -10px -10px -10px 0; border: none; background: transparent; font-size: 20px; color: var(--ink-secondary); cursor: pointer;">✕</button>
+        </div>
+
+        <sc-if value="{{ sheetPasting }}" hint-placeholder-val="{{ true }}">
+          <p style="margin: 0; font: var(--text-body-sm); color: var(--ink-secondary);">Paste a DAAD or university course page. We read the deadlines and documents from it.</p>
+          <input placeholder="https://www.daad.de/en/study/…" value="{{ sheetUrl }}" onChange="{{ onSheetUrl }}" style="font-family: var(--font-mono); font-size: 13px; color: var(--ink); background: var(--paper); border: 1px solid var(--line-strong); border-radius: 6px; min-height: 48px; padding: 0 12px;" />
+          <x-import component="Button" from="./components/actions/Button.jsx" full-width="{{ true }}" on-click="{{ fetchCourse }}" hint-size="100%,48px">Read this page</x-import>
+        </sc-if>
+
+        <sc-if value="{{ sheetPreview }}" hint-placeholder-val="{{ false }}">
+          <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; gap: 10px;"><span style="font: var(--text-body-sm); color: var(--ink-secondary);">University</span><span style="font: var(--text-body-sm); font-weight: 600;">RWTH Aachen</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 10px;"><span style="font: var(--text-body-sm); color: var(--ink-secondary);">Program</span><span style="font: var(--text-body-sm); font-weight: 600;">B.Sc. Mechanical Engineering</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 10px;"><span style="font: var(--text-body-sm); color: var(--ink-secondary);">Deadline</span><span style="font-family: var(--font-mono); font-size: 12.5px; color: var(--signal);">15 Jul 2026</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 10px;"><span style="font: var(--text-body-sm); color: var(--ink-secondary);">Applies via</span><span style="font: var(--text-body-sm); font-weight: 600;">uni-assist</span></div>
+            <div style="border-top: 1px solid var(--line); padding-top: 10px;">
+              <x-import component="VerifiedStamp" from="./components/verification/VerifiedStamp.jsx" source="rwth-aachen.de" date="04 Jul 2026" hint-size="250px,28px"></x-import>
+            </div>
+          </div>
+          <p style="margin: 0; font: var(--text-body-sm); color: var(--ink-secondary);">Check these against the page before you confirm — extraction can miss things.</p>
+          <x-import component="Button" from="./components/actions/Button.jsx" full-width="{{ true }}" on-click="{{ confirmCourse }}" hint-size="100%,48px">Add to my applications</x-import>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ASK SIDEBAR (desktop: right panel · mobile: bottom sheet) -->
+  <sc-if value="{{ askOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeAsk }}" data-screen-label="Ask sidebar" style="position: fixed; inset: 0; background: rgba(22,36,61,0.45); z-index: 50; display: flex; justify-content: {{ askJc }}; align-items: {{ askAi }};">
+      <div onClick="{{ stopClick }}" class="uw-anim" style="width: {{ askW }}; max-width: 100%; height: {{ askH }}; max-height: 100%; background: var(--surface); border-left: {{ askBorderLeft }}; border-radius: {{ askRadius }}; box-shadow: 0 8px 28px rgba(22,36,61,0.22); display: flex; flex-direction: column; box-sizing: border-box; animation: {{ askAnim }} 240ms var(--ease);">
+
+        <!-- panel header -->
+        <header style="flex: none; border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-family: var(--font-display); font-weight: 700; font-size: 16px;">Ask Uniweg</span>
+            <span style="font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-muted); white-space: nowrap;">Answers only with sources</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); white-space: nowrap;" title="Daily question quota">{{ askQuota }}</span>
+            <button onClick="{{ closeAsk }}" aria-label="Close" style="min-width: 44px; min-height: 44px; margin: -8px -12px -8px 0; border: none; background: transparent; font-size: 18px; color: var(--ink-secondary); cursor: pointer;">✕</button>
+          </div>
+        </header>
+
+        <!-- messages -->
+        <main style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+
+          <sc-if value="{{ askEmpty }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 12px;">
+              <p style="margin: 0; font: var(--text-body-sm); color: var(--ink-secondary); max-width: 38ch;">Ask about your route. Every answer cites an official source — and when we can't confirm something, we say so.</p>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <sc-for list="{{ askSuggestions }}" as="s" hint-placeholder-count="3">
+                  <button onClick="{{ s.ask }}" style="min-height: 48px; text-align: left; padding: 12px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; font-family: var(--font-body); font-size: 14.5px; color: var(--route-blue); cursor: pointer;" style-hover="background: var(--route-blue-tint);">{{ s.text }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-for list="{{ askMsgs }}" as="m" hint-placeholder-count="0">
+            <sc-if value="{{ m.isUser }}" hint-placeholder-val="{{ false }}">
+              <div style="align-self: flex-end; max-width: 88%; background: var(--route-blue); color: var(--ink-inverse); border-radius: 10px 10px 2px 10px; padding: 10px 14px; font: var(--text-body-sm); font-size: 15px;">{{ m.text }}</div>
+            </sc-if>
+            <sc-if value="{{ m.isBot }}" hint-placeholder-val="{{ false }}">
+              <div style="align-self: flex-start; max-width: 96%; display: flex; flex-direction: column; gap: 6px;">
+                <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 10px 10px 10px 2px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;">
+                  <span style="font: var(--text-body-sm); font-size: 15px; color: var(--ink); white-space: pre-line;">{{ m.text }}</span>
+
+                  <sc-if value="{{ m.hasStamp }}" hint-placeholder-val="{{ false }}">
+                    <div>
+                      <x-import component="VerifiedStamp" from="./components/verification/VerifiedStamp.jsx" source="{{ m.source }}" date="{{ m.sourceDate }}" hint-size="250px,28px"></x-import>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ m.isWeb }}" hint-placeholder-val="{{ false }}">
+                    <span style="align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px; background: var(--signal-tint); border: 1px solid rgba(154,98,0,0.35); border-radius: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--signal);"><span style="width: 8px; height: 8px; background: var(--signal-accent); border-radius: 1px;"></span>Unverified — double-check</span>
+                  </sc-if>
+
+                  <sc-if value="{{ m.hasRefs }}" hint-placeholder-val="{{ false }}">
+                    <div style="border-top: 1px solid var(--line); padding-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+                      <sc-for list="{{ m.refs }}" as="r" hint-placeholder-count="1">
+                        <a href="{{ r.href }}" style="font: var(--text-body-sm); font-weight: 500; color: var(--route-blue); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" style-hover="text-decoration: underline;"><span style="color: var(--ink-muted);">›</span>{{ r.label }}</a>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ m.isUnknown }}" hint-placeholder-val="{{ false }}">
+                    <div style="border-top: 1px dashed var(--line-strong); padding-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+                      <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-secondary);">Not in our verified rules</span>
+                      <span style="font: var(--text-body-sm); color: var(--ink-secondary);">{{ m.unknownNote }}</span>
+                      <a href="#" style="font: var(--text-body-sm); font-weight: 500; color: var(--route-blue); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px;">{{ m.unknownLink }}</a>
+                    </div>
+                  </sc-if>
+                </div>
+                <button style="align-self: flex-start; border: none; background: transparent; padding: 2px 4px; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-muted); cursor: pointer; white-space: nowrap;">Report this answer</button>
+              </div>
+            </sc-if>
+          </sc-for>
+        </main>
+
+        <!-- composer -->
+        <footer style="flex: none; border-top: 1px solid var(--line); padding: 12px 16px; display: flex; gap: 8px; background: var(--surface);">
+          <input placeholder="Ask about your route…" value="{{ askDraft }}" onChange="{{ onAskDraft }}" onKeyDown="{{ onAskKey }}" style="flex: 1; min-width: 0; font-family: var(--font-body); font-size: 16px; color: var(--ink); background: var(--paper); border: 1px solid var(--line-strong); border-radius: 6px; min-height: 48px; padding: 0 14px;" />
+          <x-import component="Button" from="./components/actions/Button.jsx" on-click="{{ askSend }}" hint-size="80px,48px">Send</x-import>
+        </footer>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;demoState&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;active&quot;, &quot;empty&quot;, &quot;all-done&quot;], &quot;default&quot;: &quot;active&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Demo&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    done: { t1: false, t2: false, t3: false },
+    nextOpen: false,
+    laterOpen: false,
+    view: 'list',
+    sheet: 'closed', // closed | paste | preview
+    sheetUrl: '',
+    emptyUrl: '',
+    added: false,
+    askOpen: false,
+    narrow: false,
+    askDraft: '',
+    asked: 6,
+    askMsgs: [],
+  };
+
+  componentDidMount() {
+    this._onResize = () => this.setState({ narrow: window.innerWidth < 640 });
+    window.addEventListener('resize', this._onResize);
+    this._onResize();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._onResize);
+  }
+
+  cannedAnswer(text) {
+    const canned = {
+      "What's my next APS step?": {
+        role: 'bot',
+        text: 'Your APS payment is recorded. The next step is uploading the payment receipt to the APS portal — it is due 08 Jul 2026 and unlocks your appointment booking.',
+        source: 'aps-india.de checklist', sourceDate: '21 Jun 2026',
+        refs: [{ label: 'Open task — Upload your APS payment receipt', href: '#' }],
+      },
+      'Which documents are missing for TU Berlin?': {
+        role: 'bot',
+        text: 'Two documents are still open for your TU Berlin application: the certified translation of your Class 12 transcript, and your IELTS certificate. Everything else on the uni-assist checklist is uploaded.',
+        source: 'uni-assist document checklist', sourceDate: '28 Jun 2026',
+        refs: [{ label: 'TU Berlin — your application card', href: '#' }, { label: 'Order two certified transcript copies', href: '#' }],
+      },
+      'When should I open my blocked account?': {
+        role: 'bot',
+        text: 'Open it right after your admission letter arrives, and no later than 8 weeks before your visa appointment — the confirmation letter takes up to 2 weeks and the embassy requires it at the appointment.',
+        source: 'auswaertiges-amt.de — student visa', sourceDate: '28 Jun 2026',
+        refs: [{ label: 'Open blocked account — task in Next', href: '#' }],
+      },
+    };
+    return canned[text];
+  }
+
+  askQuestion(text) {
+    const answer = this.cannedAnswer(text) || {
+      role: 'bot', kind: 'unknown',
+      text: 'This is a design prototype \u2014 the assistant is not connected yet.',
+      unknownNote: 'In the real product this answer would cite a verified rule or say what it cannot confirm.',
+      unknownLink: 'See how verified answers look',
+    };
+    this.setState((s) => ({
+      askDraft: '',
+      asked: Math.min(20, s.asked + 1),
+      askMsgs: [...s.askMsgs, { role: 'user', text }, answer],
+    }));
+  }
+
+  renderVals() {
+    const mode = this.props.demoState ?? 'active';
+    const d = this.state.done;
+    const narrow = typeof window !== 'undefined' ? window.innerWidth < 640 : this.state.narrow;
+
+    const nowTasks = [
+      {
+        id: 't1', label: 'Upload your APS payment receipt', tag: 'Global · APS', global: true,
+        due: 'Due 08 Jul 2026', overdue: false, source: 'aps-india.de checklist', sourceDate: '21 Jun 2026',
+      },
+      {
+        id: 't2', label: 'Book your visa appointment slot', tag: 'Global · Visa', global: true,
+        due: 'Was due 02 Jul 2026', overdue: true, note: 'This slot closed 2 days ago. New slots open Monday 09:00 — book the next one.',
+      },
+      {
+        id: 't3', label: 'Order two certified transcript copies', tag: 'TU Berlin', global: false,
+        due: 'Due 12 Jul 2026', overdue: false, source: 'TU Berlin admission page', sourceDate: '28 Jun 2026',
+      },
+    ];
+
+    const unis = [
+      { name: 'TU Berlin', program: 'B.Sc. Computer Science', status: 'Preparing docs', stage: 'prep', deadline: '15 Jul 2026' },
+      { name: 'Uni Stuttgart', program: 'B.Sc. Electrical Eng.', status: 'Submitted', stage: 'sent', deadline: '20 Aug 2026' },
+      { name: 'TU Darmstadt', program: 'B.Sc. Informatik', status: 'Preparing docs', stage: 'prep', deadline: '15 Jul 2026' },
+    ];
+    if (this.state.added) unis.push({ name: 'RWTH Aachen', program: 'B.Sc. Mechanical Eng.', status: 'New', stage: 'new', deadline: '15 Jul 2026' });
+
+    return {
+      two: 2,
+      notEmpty: mode !== 'empty',
+      isEmpty: mode === 'empty',
+      isAllDone: mode === 'all-done',
+      isActive: mode === 'active',
+      nextDeadline: '08 Jul 2026 · in 4 days',
+
+      listView: this.state.view === 'list',
+      calView: this.state.view === 'cal',
+      showList: () => this.setState({ view: 'list' }),
+      showCal: () => this.setState({ view: 'cal' }),
+      listBg: this.state.view === 'list' ? 'var(--surface)' : 'transparent',
+      listFg: this.state.view === 'list' ? 'var(--ink)' : 'var(--ink-secondary)',
+      calBg: this.state.view === 'cal' ? 'var(--surface)' : 'transparent',
+      calFg: this.state.view === 'cal' ? 'var(--ink)' : 'var(--ink-secondary)',
+
+      nowTasks: nowTasks.map((t) => {
+        const done = d[t.id];
+        return {
+          label: t.label,
+          labelColor: done ? 'var(--ink-muted)' : 'var(--ink)',
+          deco: done ? 'line-through' : 'none',
+          border: t.overdue && !done ? '1.5px solid var(--signal-accent)' : '1px solid var(--line)',
+          boxBorder: done ? '1px solid var(--route-blue)' : '1.5px solid var(--line-strong)',
+          boxBg: done ? 'var(--route-blue)' : 'var(--surface)',
+          mark: done ? '✓' : '',
+          toggle: () => this.setState((s) => ({ done: { ...s.done, [t.id]: !s.done[t.id] } })),
+          tag: t.tag,
+          tagBg: t.global ? 'var(--ink)' : 'var(--route-blue-tint)',
+          tagFg: t.global ? 'var(--ink-inverse)' : 'var(--route-blue)',
+          due: t.due,
+          dateColor: t.overdue && !done ? 'var(--signal)' : 'var(--ink-secondary)',
+          note: !done && t.note ? t.note : false,
+          hasStamp: !!t.source,
+          source: t.source || '',
+          sourceDate: t.sourceDate || '',
+        };
+      }),
+
+      nextOpen: this.state.nextOpen,
+      toggleNext: () => this.setState((s) => ({ nextOpen: !s.nextOpen })),
+      nextChevron: this.state.nextOpen ? '⌃' : '⌄',
+      nextCount: '4 tasks',
+      nextTasks: [
+        { label: 'Fill the uni-assist online form — TU Berlin', due: '15 Jul' },
+        { label: 'Pay uni-assist handling fee', due: '15 Jul' },
+        { label: 'Upload language certificate — Uni Stuttgart', due: '20 Aug' },
+        { label: 'Open blocked account', due: 'Aug' },
+      ],
+      laterOpen: this.state.laterOpen,
+      toggleLater: () => this.setState((s) => ({ laterOpen: !s.laterOpen })),
+      laterChevron: this.state.laterOpen ? '⌃' : '⌄',
+      laterCount: '3 tasks',
+      laterTasks: [
+        { label: 'Get health insurance confirmation', due: 'Sep' },
+        { label: 'Book flight after visa decision', due: 'Sep' },
+        { label: 'Register your address in Germany', due: 'Oct' },
+      ],
+
+      calCells: this.buildCalendar(),
+      calList: [
+        { what: 'APS payment receipt — Global', date: '08 Jul' },
+        { what: 'Transcripts — TU Berlin', date: '12 Jul' },
+        { what: 'uni-assist deadline — 2 unis', date: '15 Jul' },
+      ],
+
+      unis: unis.map((u) => ({
+        ...u,
+        statusBg: u.stage === 'sent' ? 'var(--route-blue)' : u.stage === 'new' ? 'var(--ink)' : 'var(--route-blue-tint)',
+        statusFg: u.stage === 'prep' ? 'var(--route-blue)' : 'var(--ink-inverse)',
+      })),
+
+      sheetOpen: this.state.sheet !== 'closed',
+      sheetPasting: this.state.sheet === 'paste',
+      sheetPreview: this.state.sheet === 'preview',
+      openSheet: () => this.setState({ sheet: 'paste' }),
+      openSheetFromEmpty: () => this.setState({ sheet: 'paste', sheetUrl: this.state.emptyUrl }),
+      closeSheet: () => this.setState({ sheet: 'closed' }),
+      stopClick: (e) => e.stopPropagation(),
+      sheetUrl: this.state.sheetUrl,
+      onSheetUrl: (e) => this.setState({ sheetUrl: e.target.value }),
+      emptyUrl: this.state.emptyUrl,
+      onEmptyUrl: (e) => this.setState({ emptyUrl: e.target.value }),
+      fetchCourse: () => this.setState({ sheet: 'preview' }),
+      confirmCourse: () => this.setState({ sheet: 'closed', added: true }),
+
+      // Ask sidebar
+      askOpen: this.state.askOpen,
+      openAsk: () => this.setState({ askOpen: true }),
+      closeAsk: () => this.setState({ askOpen: false }),
+      askJc: narrow ? 'center' : 'flex-end',
+      askAi: narrow ? 'flex-end' : 'stretch',
+      askW: narrow ? '100%' : '420px',
+      askH: narrow ? '86vh' : 'auto',
+      askBorderLeft: narrow ? 'none' : '1px solid var(--line)',
+      askRadius: narrow ? '12px 12px 0 0' : '0',
+      askAnim: narrow ? 'uw-rise' : 'uw-slide',
+      askQuota: this.state.asked + '/20 today',
+      askEmpty: this.state.askMsgs.length === 0,
+      askSuggestions: [
+        "What's my next APS step?",
+        'Which documents are missing for TU Berlin?',
+        'When should I open my blocked account?',
+      ].map((text) => ({ text, ask: () => this.askQuestion(text) })),
+      askMsgs: this.state.askMsgs.map((m) => ({
+        isUser: m.role === 'user',
+        isBot: m.role === 'bot',
+        text: m.text,
+        hasStamp: !!m.source,
+        source: m.source || '',
+        sourceDate: m.sourceDate || '',
+        isWeb: m.kind === 'web',
+        isUnknown: m.kind === 'unknown',
+        unknownNote: m.unknownNote || '',
+        unknownLink: m.unknownLink || '',
+        hasRefs: !!(m.refs && m.refs.length),
+        refs: m.refs || [],
+      })),
+      askDraft: this.state.askDraft,
+      onAskDraft: (e) => this.setState({ askDraft: e.target.value }),
+      onAskKey: (e) => { if (e.key === 'Enter' && this.state.askDraft.trim()) this.askQuestion(this.state.askDraft.trim()); },
+      askSend: () => { if (this.state.askDraft.trim()) this.askQuestion(this.state.askDraft.trim()); },
+    };
+  }
+
+  buildCalendar() {
+    // July 2026: 31 days, 01 Jul 2026 is a Wednesday (offset 2 in Mon-first grid).
+    const chips = [8, 12, 15];
+    const cells = [];
+    for (let i = 0; i < 2; i++) cells.push({ day: '', bg: 'transparent', border: 'none', fg: 'var(--ink-muted)', chip: false });
+    for (let day = 1; day <= 31; day++) {
+      const isToday = day === 4;
+      cells.push({
+        day: String(day),
+        bg: isToday ? 'var(--route-blue-tint)' : 'var(--paper)',
+        border: isToday ? '1.5px solid var(--route-blue)' : '1px solid var(--line)',
+        fg: isToday ? 'var(--route-blue)' : 'var(--ink-secondary)',
+        chip: chips.includes(day),
+      });
+    }
+    return cells;
+  }
+}
+</script>
+</body>
+</html>

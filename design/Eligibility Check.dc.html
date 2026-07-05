@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    body { margin: 0; background: #F2F4F7; -webkit-font-smoothing: antialiased; }
+  </style>
+</helmet>
+
+<div style="min-height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--font-body); display: flex; flex-direction: column;">
+
+  <!-- SLIM PROGRESS HEADER -->
+  <header data-screen-label="Checker progress" style="background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10;">
+    <div style="max-width: 520px; margin: 0 auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+        <button onClick="{{ goBack }}" style="min-width: 44px; min-height: 44px; margin: -8px 0 -8px -12px; border: none; background: transparent; color: {{ backColor }}; font-family: var(--font-body); font-size: 15px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">‹ Back</button>
+        <span style="font-family: var(--font-display); font-weight: 800; font-size: 16px;">Uniweg</span>
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); min-width: 44px; text-align: right;">{{ stepLabel }}</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0;">
+        <sc-for list="{{ progressDots }}" as="d" hint-placeholder-count="6">
+          <span style="display: flex; align-items: center; flex: {{ d.flex }};">
+            <span style="width: {{ d.size }}; height: {{ d.size }}; border-radius: 999px; background: {{ d.bg }}; border: {{ d.border }}; box-sizing: border-box; flex: none;"></span>
+            <sc-if value="{{ d.hasSeg }}" hint-placeholder-val="{{ true }}">
+              <span style="height: {{ d.segH }}; flex: 1; background: {{ d.segBg }}; border-top: {{ d.segBorder }};"></span>
+            </sc-if>
+          </span>
+        </sc-for>
+        <span style="font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); margin-left: 8px; white-space: nowrap;">Your result</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- QUESTION AREA -->
+  <main style="flex: 1; width: 100%; max-width: 520px; margin: 0 auto; padding: 32px 16px 48px 16px; box-sizing: border-box;">
+
+    <sc-if value="{{ notCalculating }}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <h1 style="margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1.15; letter-spacing: -0.015em; text-wrap: pretty;">{{ question }}</h1>
+          <sc-if value="{{ subtitle }}" hint-placeholder-val="{{ false }}">
+            <p style="margin: 0; font: var(--text-body-sm); color: var(--ink-secondary);">{{ subtitle }}</p>
+          </sc-if>
+          <sc-if value="{{ hasHelper }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ openSheet }}" style="align-self: flex-start; border: none; background: transparent; padding: 6px 0; font-family: var(--font-body); font-size: 14px; font-weight: 500; color: var(--route-blue); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; cursor: pointer;">Not sure? What this means</button>
+          </sc-if>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+          <sc-for list="{{ options }}" as="o" hint-placeholder-count="3">
+            <button onClick="{{ o.pick }}" style="min-height: 56px; padding: 14px 16px; border-radius: 6px; border: {{ o.border }}; background: {{ o.bg }}; font-family: var(--font-body); font-size: 16px; font-weight: 500; color: var(--ink); cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: border-color 140ms cubic-bezier(0.2,0,0,1), background-color 140ms cubic-bezier(0.2,0,0,1);">
+              <span>{{ o.name }}</span>
+              <span style="width: 18px; height: 18px; border-radius: 999px; border: {{ o.dotBorder }}; background: {{ o.dotBg }}; box-sizing: border-box; flex: none;"></span>
+            </button>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ isGradeStep }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="font: var(--text-body-sm); font-weight: 600; color: var(--ink);">Overall marks · required</label>
+            <input type="number" inputMode="decimal" placeholder="84" value="{{ gradeValue }}" onChange="{{ onGrade }}" style="font-family: var(--font-mono); font-size: 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 6px; min-height: 48px; padding: 0 14px; width: 140px;" />
+            <span style="font: var(--text-body-sm); color: var(--ink-secondary);">{{ gradeHint }}</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ error }}" hint-placeholder-val="{{ false }}">
+          <div style="font: var(--text-body-sm); color: var(--danger); background: var(--danger-tint); border: 1px solid rgba(179,38,30,0.25); border-radius: 6px; padding: 10px 14px;">{{ error }}</div>
+        </sc-if>
+
+        <x-import component="Button" from="./components/actions/Button.jsx" full-width="{{ true }}" on-click="{{ goNext }}" hint-size="100%,48px">{{ nextLabel }}</x-import>
+        <span style="font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-muted); text-align: center;">Your answers stay on this device until you sign up.</span>
+      </div>
+    </sc-if>
+
+    <!-- CALCULATING -->
+    <sc-if value="{{ calculating }}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 24px; padding-top: 32px;" data-screen-label="Calculating">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="width: 18px; height: 18px; border-radius: 999px; background: var(--surface); border: 5px solid var(--route-blue); box-sizing: border-box;"></span>
+          <h1 style="margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 24px; letter-spacing: -0.015em;">Checking your answers</h1>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+          <sc-for list="{{ calcLines }}" as="l" hint-placeholder-count="3">
+            <div style="display: flex; align-items: center; gap: 10px; opacity: {{ l.opacity }}; transition: opacity 240ms cubic-bezier(0.2,0,0,1);">
+              <span style="width: 16px; height: 16px; border-radius: 999px; background: {{ l.dotBg }}; border: {{ l.dotBorder }}; box-sizing: border-box; color: var(--ink-inverse); display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex: none;">{{ l.mark }}</span>
+              <span style="font-family: var(--font-mono); font-size: 13px; color: var(--ink-secondary);">{{ l.text }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <span style="font: var(--text-body-sm); color: var(--ink-secondary);">No magic here — we compare your answers with the current official rules.</span>
+      </div>
+    </sc-if>
+  </main>
+
+  <!-- HELPER SHEET -->
+  <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeSheet }}" style="position: fixed; inset: 0; background: rgba(22,36,61,0.45); z-index: 40; display: flex; align-items: flex-end; justify-content: center;" data-screen-label="Helper sheet">
+      <div onClick="{{ stopClick }}" style="width: 100%; max-width: 520px; background: var(--surface); border-radius: 10px 10px 0 0; box-shadow: 0 8px 28px rgba(22,36,61,0.18); padding: 24px 20px 32px 20px; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 18px;">{{ sheetTitle }}</h2>
+          <button onClick="{{ closeSheet }}" style="min-width: 44px; min-height: 44px; margin: -10px -10px -10px 0; border: none; background: transparent; font-size: 20px; color: var(--ink-secondary); cursor: pointer;">✕</button>
+        </div>
+        <p style="margin: 0; font: var(--text-body); color: var(--ink-secondary);">{{ sheetBody }}</p>
+        <p style="margin: 0; font: var(--text-body-sm); color: var(--ink-secondary);">{{ sheetBody2 }}</p>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem('uw-answers') || '{}'); } catch (e) {}
+    this.state = {
+      step: 0,
+      answers: { country: saved.country || null, level: null, board: null, stream: null, grade: '', target: null, field: null },
+      error: null,
+      sheetOpen: false,
+      calc: false,
+      calcDone: 0,
+    };
+    // If the landing already answered country, start at question 2.
+    if (saved.country) this.state.step = 1;
+  }
+
+  steps() {
+    const c = this.state.answers.country || 'India';
+    const boardsByCountry = {
+      'India': ['CBSE', 'CISCE (ISC)', 'State board'],
+      'Pakistan': ['FBISE (federal)', 'BISE (provincial)', 'Aga Khan / other'],
+      'Saudi Arabia': ['Tawjihiyya (public school)', 'International school'],
+    };
+    const levelByCountry = {
+      'India': ['Finished Class 12', 'In Class 12 now', "Finished a bachelor's", "Studying a bachelor's now"],
+      'Pakistan': ['Finished HSSC', 'In HSSC now', "Finished a bachelor's", "Studying a bachelor's now"],
+      'Saudi Arabia': ['Finished secondary school', 'In final year now', "Finished a bachelor's", "Studying a bachelor's now"],
+    };
+    return [
+      { key: 'country', q: 'Where did you finish school?', options: ['India', 'Pakistan', 'Saudi Arabia'] },
+      { key: 'level', q: 'Where are you in your studies?', options: levelByCountry[c] },
+      { key: 'board', q: 'Which board is your school leaving certificate from?', options: boardsByCountry[c], helper: true,
+        sub: 'This matters: Germany converts marks differently for each board.' },
+      { key: 'stream', q: 'Your stream and overall marks', options: ['Science', 'Commerce', 'Arts / Humanities'], grade: true,
+        gradeHint: c === 'Saudi Arabia' ? 'Your final average, out of 100.' : 'Your overall percentage — for example 84, not 8.4.' },
+      { key: 'target', q: 'What do you want to study for?', options: ['Bachelor', 'Master'] },
+      { key: 'field', q: 'Which field do you want to study?', options: ['Engineering', 'Computer science', 'Business', 'Natural sciences', 'Medicine', 'Something else'] },
+    ];
+  }
+
+  save(answers) {
+    try { localStorage.setItem('uw-answers', JSON.stringify(answers)); } catch (e) {}
+  }
+
+  startCalc() {
+    this.setState({ calc: true, calcDone: 0 });
+    const tick = (n) => setTimeout(() => {
+      this.setState({ calcDone: n });
+      if (n === 3) setTimeout(() => { window.location.href = 'Result.dc.html'; }, 500);
+    }, 650 * n);
+    tick(1); tick(2); tick(3);
+  }
+
+  renderVals() {
+    const steps = this.steps();
+    const i = this.state.step;
+    const step = steps[i];
+    const a = this.state.answers;
+    const current = a[step.key];
+
+    const calcTexts = ['Checking your board against anabin', 'Comparing your marks with the threshold', 'Checking APS rules for your country'];
+
+    return {
+      stepLabel: (i + 1) + ' of ' + steps.length,
+      backColor: 'var(--route-blue)',
+      goBack: () => {
+        if (this.state.calc) return;
+        if (i === 0) { window.location.href = 'Landing.dc.html'; return; }
+        this.setState({ step: i - 1, error: null });
+      },
+      progressDots: steps.map((s, j) => {
+        const answered = a[s.key] !== null && a[s.key] !== '' && a[s.key] !== undefined && (s.key !== 'stream' || (a.stream && a.grade));
+        const isCurrent = j === i;
+        return {
+          flex: j < steps.length - 1 ? '1' : 'none',
+          size: isCurrent ? '14px' : '10px',
+          bg: answered ? 'var(--route-blue)' : isCurrent ? 'var(--surface)' : 'var(--paper-sunken)',
+          border: isCurrent ? '4px solid var(--route-blue)' : answered ? 'none' : '2px solid var(--line-strong)',
+          hasSeg: j < steps.length - 1,
+          segH: answered ? '3px' : '0',
+          segBg: answered ? 'var(--route-blue)' : 'transparent',
+          segBorder: answered ? 'none' : '2px dashed var(--line-strong)',
+        };
+      }),
+      notCalculating: !this.state.calc,
+      calculating: this.state.calc,
+      question: step.q,
+      subtitle: step.sub || false,
+      hasHelper: !!step.helper,
+      options: (step.options || []).map((name) => {
+        const sel = current === name;
+        return {
+          name,
+          bg: sel ? 'var(--route-blue-tint)' : 'var(--surface)',
+          border: sel ? '1.5px solid var(--route-blue)' : '1px solid var(--line-strong)',
+          dotBg: sel ? 'var(--route-blue)' : 'var(--surface)',
+          dotBorder: sel ? '5px solid var(--route-blue)' : '2px solid var(--line-strong)',
+          pick: () => {
+            const answers = { ...this.state.answers, [step.key]: name };
+            this.save(answers);
+            // Auto-advance single-choice steps; the grade step waits for marks.
+            if (!step.grade && i < steps.length - 1) {
+              this.setState({ answers, error: null });
+              setTimeout(() => this.setState({ step: this.state.step + 1 }), 180);
+            } else {
+              this.setState({ answers, error: null });
+            }
+          },
+        };
+      }),
+      isGradeStep: !!step.grade,
+      gradeValue: a.grade,
+      gradeHint: step.gradeHint || '',
+      onGrade: (e) => {
+        const answers = { ...this.state.answers, grade: e.target.value };
+        this.save(answers);
+        this.setState({ answers, error: null });
+      },
+      error: this.state.error || false,
+      nextLabel: i === steps.length - 1 ? 'See my result' : 'Continue',
+      goNext: () => {
+        const missing = step.grade ? (!a.stream || !a.grade) : !current;
+        if (missing) { this.setState({ error: 'We need this to calculate your path.' }); return; }
+        if (i === steps.length - 1) { this.startCalc(); return; }
+        this.setState({ step: i + 1, error: null });
+      },
+      sheetOpen: this.state.sheetOpen,
+      openSheet: () => this.setState({ sheetOpen: true }),
+      closeSheet: () => this.setState({ sheetOpen: false }),
+      stopClick: (e) => e.stopPropagation(),
+      sheetTitle: 'Which board do I pick?',
+      sheetBody: 'Look at your Class 12 certificate. CBSE and CISCE are national boards — the name is printed at the top. If it names your state (for example "Maharashtra State Board"), pick State board.',
+      sheetBody2: 'Why we ask: the anabin database sets a different mark threshold for each board, so this changes your result.',
+      calcLines: calcTexts.map((text, n) => {
+        const done = this.state.calcDone > n;
+        return {
+          text,
+          opacity: done ? 1 : 0.45,
+          mark: done ? '✓' : '',
+          dotBg: done ? 'var(--route-blue)' : 'var(--surface)',
+          dotBorder: done ? 'none' : '2px solid var(--line-strong)',
+        };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    body { margin: 0; background: #F2F4F7; -webkit-font-smoothing: antialiased; }
+  </style>
+</helmet>
+
+<div style="min-height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--font-body);">
+
+  <!-- NAV -->
+  <header data-screen-label="Nav" style="background: var(--surface); border-bottom: 1px solid var(--line);">
+    <div style="max-width: 680px; margin: 0 auto; padding: 0 16px; height: 60px; display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -0.01em;">Uniweg</span>
+      <a href="Dashboard.dc.html" style="font: var(--text-body-sm); font-weight: 500; color: var(--route-blue); text-decoration: none; padding: 10px 0;">Sign in</a>
+    </div>
+  </header>
+
+  <!-- HERO + EMBEDDED CHECKER -->
+  <section data-screen-label="Hero" style="border-bottom: 1px solid var(--line);">
+    <div style="max-width: 680px; margin: 0 auto; padding: 40px 16px 48px 16px; display: flex; flex-direction: column; gap: 24px;">
+
+      <!-- small route preview -->
+      <div style="display: flex; align-items: center; gap: 0; flex-wrap: wrap; row-gap: 8px;">
+        <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 999px; background: var(--surface); border: 3.5px solid var(--route-blue); box-sizing: border-box; flex: none;"></span><span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink);">Eligibility</span></span>
+        <span style="width: 20px; height: 2px; border-top: 2px dashed var(--line-strong); margin: 0 8px;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 999px; border: 2px solid var(--line-strong); box-sizing: border-box; flex: none;"></span><span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted);">APS</span></span>
+        <span style="width: 20px; height: 2px; border-top: 2px dashed var(--line-strong); margin: 0 8px;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 999px; border: 2px solid var(--line-strong); box-sizing: border-box; flex: none;"></span><span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted);">Applications</span></span>
+        <span style="width: 20px; height: 2px; border-top: 2px dashed var(--line-strong); margin: 0 8px;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 999px; border: 2px solid var(--line-strong); box-sizing: border-box; flex: none;"></span><span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted);">Visa</span></span>
+        <span style="width: 20px; height: 2px; border-top: 2px dashed var(--line-strong); margin: 0 8px;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 999px; border: 2px solid var(--line-strong); box-sizing: border-box; flex: none;"></span><span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted);">Germany</span></span>
+      </div>
+
+      <h1 style="margin: 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(32px, 7vw, 46px); line-height: 1.07; letter-spacing: -0.02em; text-wrap: pretty;">See your exact path to a German public university.</h1>
+      <p style="margin: 0; font: var(--text-body); font-size: 17px; color: var(--ink-secondary); max-width: 46ch;">Free. No agents. Every rule is checked against the official source, and we show you the date we checked it.</p>
+
+      <!-- the checker IS the hero -->
+      <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 24px 20px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px;">
+          <span style="font-family: var(--font-display); font-weight: 600; font-size: 17px;">Where did you finish school?</span>
+          <span style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted);">1 of 6</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+          <sc-for list="{{ countries }}" as="c" hint-placeholder-count="3">
+            <button onClick="{{ c.pick }}" style="min-height: 56px; padding: 12px 14px; border-radius: 6px; border: {{ c.border }}; background: {{ c.bg }}; font-family: var(--font-body); font-size: 16px; font-weight: 500; color: var(--ink); cursor: pointer; text-align: left; transition: border-color 140ms cubic-bezier(0.2,0,0,1);">{{ c.name }}</button>
+          </sc-for>
+        </div>
+        <x-import component="Button" from="./components/actions/Button.jsx" full-width="{{ true }}" on-click="{{ startCheck }}" hint-size="100%,48px">Start my check</x-import>
+        <sc-if value="{{ needCountry }}" hint-placeholder-val="{{ false }}">
+          <span style="font: var(--text-body-sm); color: var(--danger);">Pick your country first — the rules are different for each one.</span>
+        </sc-if>
+        <span style="font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-muted);">6 questions · about 4 minutes · no email needed</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section data-screen-label="How it works" style="border-bottom: 1px solid var(--line);">
+    <div style="max-width: 680px; margin: 0 auto; padding: 48px 16px; display: flex; flex-direction: column; gap: 24px;">
+      <h2 style="margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -0.015em;">How it works</h2>
+      <div style="display: flex; flex-direction: column; gap: 0;">
+        <div style="display: flex; gap: 16px;">
+          <div style="display: flex; flex-direction: column; align-items: center; width: 20px; flex: none;">
+            <span style="width: 20px; height: 20px; border-radius: 999px; background: var(--route-blue); color: var(--ink-inverse); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11px; font-weight: 600; flex: none;">1</span>
+            <span style="width: 3px; flex: 1; background: var(--route-blue); min-height: 20px;"></span>
+          </div>
+          <div style="padding-bottom: 24px; display: flex; flex-direction: column; gap: 6px;">
+            <span style="font: var(--text-heading);">Answer six questions</span>
+            <span style="font: var(--text-body-sm); color: var(--ink-secondary); max-width: 52ch;">Country, school, grades. We check them against the official anabin database and tell you if you can apply directly — station one, Eligibility.</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 16px;">
+          <div style="display: flex; flex-direction: column; align-items: center; width: 20px; flex: none;">
+            <span style="width: 20px; height: 20px; border-radius: 999px; background: var(--route-blue); color: var(--ink-inverse); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11px; font-weight: 600; flex: none;">2</span>
+            <span style="width: 3px; flex: 1; background: var(--route-blue); min-height: 20px;"></span>
+          </div>
+          <div style="padding-bottom: 24px; display: flex; flex-direction: column; gap: 6px;">
+            <span style="font: var(--text-heading);">Follow your checklist</span>
+            <span style="font: var(--text-body-sm); color: var(--ink-secondary); max-width: 52ch;">APS, documents, applications, visa — as one list in the right order, with every deadline counted down. Stations two to four.</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 16px;">
+          <div style="display: flex; flex-direction: column; align-items: center; width: 20px; flex: none;">
+            <span style="width: 20px; height: 20px; border-radius: 999px; background: var(--surface); border: 5px solid var(--route-blue); box-sizing: border-box; flex: none;"></span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span style="font: var(--text-heading);">Arrive ready</span>
+            <span style="font: var(--text-body-sm); color: var(--ink-secondary); max-width: 52ch;">The checklist keeps going after you land: enrolment, city registration, insurance. Station five, Germany.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST -->
+  <section data-screen-label="Trust" style="border-bottom: 1px solid var(--line); background: var(--surface);">
+    <div style="max-width: 680px; margin: 0 auto; padding: 48px 16px; display: flex; flex-direction: column; gap: 18px;">
+      <h2 style="margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -0.015em; text-wrap: pretty;">Every answer shows its source.</h2>
+      <p style="margin: 0; font: var(--text-body); color: var(--ink-secondary); max-width: 52ch;">Groups and forums disagree. Agents earn money when you sign. Uniweg only tells you what an official source says — anabin, DAAD, uni-assist — and shows the date we last checked it. This stamp is on every rule:</p>
+      <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+        <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--ink-muted);">RULE ELIG-IN-01</span>
+        <p style="margin: 0; font: var(--text-body);">CBSE Class XII with the science stream qualifies for direct admission if your marks meet the anabin threshold.</p>
+        <div>
+          <x-import component="VerifiedStamp" from="./components/verification/VerifiedStamp.jsx" source="anabin database" date="28 Jun 2026" hint-size="270px,28px"></x-import>
+        </div>
+      </div>
+      <p style="margin: 0; font: var(--text-body-sm); color: var(--ink-secondary);">If a rule changes, the stamp changes. You never act on old information.</p>
+    </div>
+  </section>
+
+  <!-- WHY WE'RE DIFFERENT -->
+  <section data-screen-label="Comparison" style="border-bottom: 1px solid var(--line);">
+    <div style="max-width: 680px; margin: 0 auto; padding: 48px 16px; display: flex; flex-direction: column; gap: 24px;">
+      <h2 style="margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -0.015em;">Three ways to do this</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px;">
+        <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+          <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted);">Commission agents</span>
+          <p style="margin: 0; font: var(--text-body-sm); color: var(--ink-secondary);">Often push private universities that pay them. Public universities pay no commission — so many agents skip them.</p>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+          <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted);">Doing it alone</span>
+          <p style="margin: 0; font: var(--text-body-sm); color: var(--ink-secondary);">Possible — thousands do it. But the rules sit across many websites, in German, and one missed deadline costs a semester.</p>
+        </div>
+        <div style="background: var(--surface); border: 1.5px solid var(--route-blue); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+          <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--route-blue);">Uniweg</span>
+          <p style="margin: 0; font: var(--text-body-sm); color: var(--ink-secondary);">The same official rules, read for you, kept current, in one checklist. Free to start. We sell nothing else.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FREE TOOLS -->
+  <section data-screen-label="Free tools" style="border-bottom: 1px solid var(--line);">
+    <div style="max-width: 680px; margin: 0 auto; padding: 48px 16px; display: flex; flex-direction: column; gap: 20px;">
+      <h2 style="margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -0.015em;">Free tools</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+        <a href="Eligibility Check.dc.html" style="text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 8px;" style-hover="border-color: var(--route-blue);">
+          <span style="font: var(--text-heading); color: var(--ink);">Grade converter</span>
+          <span style="font: var(--text-body-sm); color: var(--ink-secondary);">Your percentage or GPA as a German grade, with the official formula shown.</span>
+          <span style="font-family: var(--font-mono); font-size: 12px; color: var(--route-blue); margin-top: 4px;">Open ›</span>
+        </a>
+        <a href="Eligibility Check.dc.html" style="text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 8px;" style-hover="border-color: var(--route-blue);">
+          <span style="font: var(--text-heading); color: var(--ink);">APS wizard</span>
+          <span style="font: var(--text-body-sm); color: var(--ink-secondary);">Find out if you need the APS certificate and exactly which papers to send.</span>
+          <span style="font-family: var(--font-mono); font-size: 12px; color: var(--route-blue); margin-top: 4px;">Open ›</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer data-screen-label="Footer" style="background: var(--surface);">
+    <div style="max-width: 680px; margin: 0 auto; padding: 32px 16px 40px 16px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <a href="#" style="font: var(--text-body-sm); color: var(--ink-secondary); text-decoration: none;">Impressum</a>
+        <a href="#" style="font: var(--text-body-sm); color: var(--ink-secondary); text-decoration: none;">Datenschutz</a>
+        <a href="#" style="font: var(--text-body-sm); color: var(--ink-secondary); text-decoration: none;">Contact</a>
+      </div>
+      <div style="border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font: var(--text-body-sm); color: var(--ink-secondary);">Built by a student who did this journey — Saudi Arabia → Saarbrücken.</span>
+        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--ink-muted);">Independent. Not affiliated with DAAD, uni-assist, or any embassy.</span>
+      </div>
+    </div>
+  </footer>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { picked: null, needCountry: false };
+
+  renderVals() {
+    const names = ['India', 'Pakistan', 'Saudi Arabia'];
+    return {
+      countries: names.map((name) => ({
+        name,
+        bg: this.state.picked === name ? 'var(--route-blue-tint)' : 'var(--surface)',
+        border: this.state.picked === name ? '1.5px solid var(--route-blue)' : '1px solid var(--line-strong)',
+        pick: () => this.setState({ picked: name, needCountry: false }),
+      })),
+      needCountry: this.state.needCountry,
+      startCheck: () => {
+        if (!this.state.picked) { this.setState({ needCountry: true }); return; }
+        try { localStorage.setItem('uw-answers', JSON.stringify({ country: this.state.picked })); } catch (e) {}
+        window.location.href = 'Eligibility Check.dc.html';
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>

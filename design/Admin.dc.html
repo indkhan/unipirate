@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    body { margin: 0; background: #F2F4F7; -webkit-font-smoothing: antialiased; }
+  </style>
+</helmet>
+
+<div style="min-height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--font-body);">
+
+  <!-- UTILITY HEADER -->
+  <header data-screen-label="Admin header" style="background: var(--surface); border-bottom: 1px solid var(--line);">
+    <div style="max-width: 1280px; margin: 0 auto; padding: 0 24px; height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <span style="font-family: var(--font-display); font-weight: 800; font-size: 16px;">Uniweg</span>
+        <span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-inverse); background: var(--ink); padding: 3px 8px; border-radius: 4px;">Admin</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 4px;">
+        <button onClick="{{ showRules }}" style="min-height: 36px; padding: 0 14px; border: none; border-radius: 4px; background: {{ rulesTabBg }}; color: {{ rulesTabFg }}; font-family: var(--font-display); font-weight: 600; font-size: 13.5px; cursor: pointer;">Rules · {{ ruleCount }}</button>
+        <button onClick="{{ showQueue }}" style="min-height: 36px; padding: 0 14px; border: none; border-radius: 4px; background: {{ queueTabBg }}; color: {{ queueTabFg }}; font-family: var(--font-display); font-weight: 600; font-size: 13.5px; cursor: pointer;">Review queue · {{ queueCount }}</button>
+      </div>
+    </div>
+  </header>
+
+  <main style="max-width: 1280px; margin: 0 auto; padding: 24px; box-sizing: border-box;">
+
+    <!-- ================= RULES TABLE ================= -->
+    <sc-if value="{{ rulesView }}" hint-placeholder-val="{{ true }}">
+      <section data-screen-label="Rules table" style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <input placeholder="Filter rules… (id, country, source)" value="{{ filter }}" onChange="{{ onFilter }}" style="width: 320px; font-family: var(--font-mono); font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 6px; min-height: 36px; padding: 0 12px;" />
+          <span style="font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-muted);">{{ staleCount }} rules older than 6 months — re-verify soon</span>
+        </div>
+
+        <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto;">
+          <div style="min-width: 1080px;">
+            <!-- header row -->
+            <div style="display: grid; grid-template-columns: 110px 1fr 1fr 200px 150px 90px 110px; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line-strong); background: var(--paper);">
+              <span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted);">Rule ID</span>
+              <span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted);">Conditions</span>
+              <span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted);">Outcome</span>
+              <span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted);">Source</span>
+              <span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted);">Last verified</span>
+              <span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted);">Status</span>
+              <span></span>
+            </div>
+            <sc-for list="{{ rules }}" as="r" hint-placeholder-count="6">
+              <div style="display: grid; grid-template-columns: 110px 1fr 1fr 200px 150px 90px 110px; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); align-items: center;">
+                <span style="font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--ink);">{{ r.id }}</span>
+                <span style="font: var(--text-body-sm); font-size: 13px; color: var(--ink);">{{ r.cond }}</span>
+                <span style="font: var(--text-body-sm); font-size: 13px; color: var(--ink-secondary);">{{ r.outcome }}</span>
+                <a href="#" style="font-family: var(--font-mono); font-size: 11.5px; color: var(--route-blue); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.source }}</a>
+                <span style="font-family: var(--font-mono); font-size: 12px; font-weight: {{ r.dateWeight }}; color: {{ r.dateColor }};">{{ r.date }}</span>
+                <span style="justify-self: start; font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: {{ r.statusBg }}; color: {{ r.statusFg }}; border: {{ r.statusBorder }};">{{ r.status }}</span>
+                <button onClick="{{ r.reverify }}" style="min-height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); font-family: var(--font-display); font-weight: 600; font-size: 12px; color: var(--route-blue); cursor: pointer; white-space: nowrap;">{{ r.btnLabel }}</button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- ================= REVIEW QUEUE ================= -->
+    <sc-if value="{{ queueView }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="Review queue" style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap;">
+          <span style="font: var(--text-body-sm); color: var(--ink-secondary);">Course extractions waiting for review. <span style="background: var(--signal-tint); padding: 1px 6px; border-radius: 3px; font-family: var(--font-mono); font-size: 12px;">Highlighted</span> fields are AI-extracted — check them against the source.</span>
+          <span style="font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-muted);">{{ queueLeft }} in queue</span>
+        </div>
+
+        <sc-for list="{{ queue }}" as="q" hint-placeholder-count="2">
+          <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; opacity: {{ q.opacity }};">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--paper); flex-wrap: wrap;">
+              <div style="display: flex; align-items: baseline; gap: 12px;">
+                <span style="font-family: var(--font-mono); font-size: 12px; font-weight: 600;">{{ q.id }}</span>
+                <a href="#" style="font-family: var(--font-mono); font-size: 11.5px; color: var(--route-blue); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px;">{{ q.url }}</a>
+              </div>
+              <sc-if value="{{ q.pending }}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; gap: 8px;">
+                  <button onClick="{{ q.reject }}" style="min-height: 34px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); font-family: var(--font-display); font-weight: 600; font-size: 13px; color: var(--danger); cursor: pointer;">Reject</button>
+                  <button onClick="{{ q.approve }}" style="min-height: 34px; padding: 0 14px; border: none; border-radius: 4px; background: var(--route-blue); font-family: var(--font-display); font-weight: 600; font-size: 13px; color: var(--ink-inverse); cursor: pointer;">Approve</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ q.decided }}" hint-placeholder-val="{{ false }}">
+                <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: {{ q.decisionColor }};">{{ q.decision }}</span>
+              </sc-if>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0;">
+              <sc-for list="{{ q.fields }}" as="f" hint-placeholder-count="6">
+                <div style="padding: 12px 20px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px;">
+                  <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px;">
+                    <span style="font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted);">{{ f.name }}</span>
+                    <sc-if value="{{ f.isAi }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; color: var(--signal);">AI</span>
+                    </sc-if>
+                  </div>
+                  <span style="font: var(--text-body-sm); font-size: 13.5px; color: var(--ink); background: {{ f.bg }}; padding: {{ f.pad }}; border-radius: 3px; align-self: flex-start;">{{ f.value }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </section>
+    </sc-if>
+  </main>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    tab: 'rules',
+    filter: '',
+    reverified: {},
+    decisions: {},
+  };
+
+  rulesData() {
+    return [
+      { id: 'ELIG-IN-01', cond: 'India · CBSE/CISCE · Class 12 science', outcome: 'Direct Bachelor admission if marks ≥ anabin threshold', source: 'anabin.kmk.org', date: '28 Jun 2026', months: 0, status: 'verified' },
+      { id: 'ELIG-IN-02', cond: 'India · State board · Class 12', outcome: 'Threshold varies by board — check per-board table', source: 'anabin.kmk.org', date: '12 Nov 2025', months: 8, status: 'verified' },
+      { id: 'APS-IN-04', cond: 'India · all applicants', outcome: 'APS certificate required, issued once, no expiry', source: 'aps-india.de/faq', date: '21 Jun 2026', months: 0, status: 'verified' },
+      { id: 'APS-PK-01', cond: 'Pakistan · all applicants', outcome: 'APS certificate + interview required', source: 'daad.pk/aps', date: '02 Dec 2025', months: 7, status: 'beta' },
+      { id: 'VISA-BLK-01', cond: 'All · student visa', outcome: 'Blocked account €11,904 / 12 months', source: 'auswaertiges-amt.de', date: '28 Jun 2026', months: 0, status: 'verified' },
+      { id: 'ELIG-SA-01', cond: 'Saudi Arabia · Tawjihiyya', outcome: 'Studienkolleg required before Bachelor', source: 'anabin.kmk.org', date: '15 Oct 2025', months: 9, status: 'beta' },
+      { id: 'UA-FEE-01', cond: 'All · uni-assist applications', outcome: '€75 first application, €30 each further', source: 'uni-assist.de/fees', date: '28 Jun 2026', months: 0, status: 'verified' },
+    ];
+  }
+
+  queueData() {
+    return [
+      { id: 'Q-1043', url: 'daad.de/…/tu-berlin-cs-bsc', fields: [
+        { name: 'University', value: 'TU Berlin', lib: true },
+        { name: 'Program', value: 'B.Sc. Computer Science', lib: true },
+        { name: 'Deadline (winter)', value: '15 Jul 2026', ai: true },
+        { name: 'Language', value: 'German C1 (DSH-2)', ai: true },
+        { name: 'Applies via', value: 'uni-assist', lib: true },
+        { name: 'Tuition', value: '€0 · semester fee €307', ai: true },
+      ]},
+      { id: 'Q-1044', url: 'uni-stuttgart.de/…/elektro-bsc', fields: [
+        { name: 'University', value: 'Universität Stuttgart', lib: true },
+        { name: 'Program', value: 'B.Sc. Elektrotechnik', lib: true },
+        { name: 'Deadline (winter)', value: '15 Jul 2026', ai: true },
+        { name: 'Language', value: 'German C1', ai: true },
+        { name: 'Applies via', value: 'Direct (C@MPUS portal)', ai: true },
+        { name: 'Tuition', value: '€1,500/sem non-EU', ai: true },
+      ]},
+    ];
+  }
+
+  renderVals() {
+    const f = this.state.filter.toLowerCase();
+    const rules = this.rulesData().filter((r) =>
+      !f || (r.id + ' ' + r.cond + ' ' + r.source).toLowerCase().includes(f));
+
+    return {
+      rulesView: this.state.tab === 'rules',
+      queueView: this.state.tab === 'queue',
+      showRules: () => this.setState({ tab: 'rules' }),
+      showQueue: () => this.setState({ tab: 'queue' }),
+      rulesTabBg: this.state.tab === 'rules' ? 'var(--route-blue-tint)' : 'transparent',
+      rulesTabFg: this.state.tab === 'rules' ? 'var(--route-blue)' : 'var(--ink-secondary)',
+      queueTabBg: this.state.tab === 'queue' ? 'var(--route-blue-tint)' : 'transparent',
+      queueTabFg: this.state.tab === 'queue' ? 'var(--route-blue)' : 'var(--ink-secondary)',
+      ruleCount: this.rulesData().length,
+      queueCount: this.queueData().length,
+      staleCount: this.rulesData().filter((r) => r.months > 6 && !this.state.reverified[r.id]).length,
+
+      filter: this.state.filter,
+      onFilter: (e) => this.setState({ filter: e.target.value }),
+
+      rules: rules.map((r) => {
+        const rev = this.state.reverified[r.id];
+        const stale = r.months > 6 && !rev;
+        return {
+          ...r,
+          date: rev ? '04 Jul 2026' : r.date,
+          dateColor: stale ? 'var(--signal)' : 'var(--ink-secondary)',
+          dateWeight: stale ? '600' : '500',
+          statusBg: r.status === 'verified' ? 'var(--verified-tint)' : 'var(--paper-sunken)',
+          statusFg: r.status === 'verified' ? 'var(--verified)' : 'var(--ink-secondary)',
+          statusBorder: r.status === 'verified' ? '1px solid var(--verified-line)' : '1px solid var(--line-strong)',
+          btnLabel: rev ? 'Done ✓' : 'Re-verify',
+          reverify: () => this.setState((s) => ({ reverified: { ...s.reverified, [r.id]: true } })),
+        };
+      }),
+
+      queueLeft: this.queueData().filter((q) => !this.state.decisions[q.id]).length,
+      queue: this.queueData().map((q) => {
+        const decision = this.state.decisions[q.id];
+        return {
+          id: q.id,
+          url: q.url,
+          pending: !decision,
+          decided: !!decision,
+          decision: decision === 'ok' ? 'Approved' : 'Rejected',
+          decisionColor: decision === 'ok' ? 'var(--verified)' : 'var(--danger)',
+          opacity: decision ? 0.55 : 1,
+          approve: () => this.setState((s) => ({ decisions: { ...s.decisions, [q.id]: 'ok' } })),
+          reject: () => this.setState((s) => ({ decisions: { ...s.decisions, [q.id]: 'no' } })),
+          fields: q.fields.map((fl) => ({
+            name: fl.name,
+            value: fl.value,
+            isAi: !!fl.ai,
+            bg: fl.ai ? 'var(--signal-tint)' : 'transparent',
+            pad: fl.ai ? '2px 6px' : '0',
+          })),
+        };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>
