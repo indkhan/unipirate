@@ -58,8 +58,15 @@ export async function extractCourse(
     return { facts, fieldExtraction, extractionMethod: "library" };
   }
 
-  // Parser wins: AI only fills fields the parser left empty.
-  const aiFacts = await ai(text, url);
+  // Parser wins: AI only fills fields the parser left empty. A failed AI call
+  // (missing key, model error) degrades to honest gaps instead of failing the import.
+  let aiFacts: CourseFacts;
+  try {
+    aiFacts = await ai(text, url);
+  } catch (error) {
+    console.error("course AI extraction failed:", error);
+    return { facts, fieldExtraction, extractionMethod: "library" };
+  }
   let aiUsed = false;
   for (const key of CORE) {
     if (!facts[key] && aiFacts[key]) {

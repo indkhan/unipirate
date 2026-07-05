@@ -1,0 +1,366 @@
+.shell {
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 460px;
+  padding: 0 16px 64px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 720px;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.signOut {
+  border: none;
+  background: transparent;
+  padding: 8px 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+}
+
+.signOut:hover {
+  color: var(--ink);
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-round);
+  background: var(--route-blue-tint);
+  color: var(--route-blue);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* ------------------------------------------------------------ empty state */
+
+.empty {
+  background: var(--surface);
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius-card);
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+}
+
+.emptyDot {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-round);
+  border: 2.5px solid var(--line-strong);
+  box-sizing: border-box;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 19px;
+}
+
+.emptyText {
+  margin: 0;
+  font: var(--text-body-sm);
+  color: var(--ink-secondary);
+  max-width: 34ch;
+}
+
+/* ---------------------------------------------------------------- courses */
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.railHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.railLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.addLink {
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--route-blue);
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 768px) {
+  .cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cardName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+a.cardName {
+  text-decoration: none;
+}
+
+a.cardName:hover {
+  color: var(--route-blue);
+}
+
+.cardUni {
+  font: var(--text-body-sm);
+  color: var(--ink-secondary);
+}
+
+.badge {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.badgePending {
+  background: var(--signal-tint);
+  color: var(--signal);
+}
+
+.badgeApproved {
+  background: var(--verified-tint);
+  color: var(--verified);
+}
+
+.badgeRejected {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+
+.cardFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.cardFootLabel {
+  font: var(--text-caption);
+  color: var(--ink-muted);
+  flex: none;
+}
+
+.deadline {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--signal);
+  text-align: right;
+}
+
+.sourceLink {
+  font: var(--text-caption);
+  color: var(--route-blue);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ sheet */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 36, 61, 0.45);
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 460px;
+  background: var(--surface);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  box-shadow: var(--shadow-overlay, 0 8px 28px rgba(22, 36, 61, 0.18));
+  padding: 24px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.sheetHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sheetTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.sheetClose {
+  min-width: 44px;
+  min-height: 44px;
+  margin: -10px -10px -10px 0;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+}
+
+.sheetHint {
+  margin: 0;
+  font: var(--text-body-sm);
+  color: var(--ink-secondary);
+}
+
+.urlInput {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  min-height: 48px;
+  padding: 0 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.textInput {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  min-height: 140px;
+  padding: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.urlInput:focus-visible,
+.textInput:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.submit {
+  min-height: 48px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--route-blue);
+  color: var(--ink-inverse);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease);
+}
+
+.submit:hover {
+  background: var(--route-blue-hover);
+}
+
+.submit:disabled {
+  background: var(--paper-sunken);
+  color: var(--ink-muted);
+  cursor: default;
+}
+
+.error {
+  margin: 0;
+  font: var(--text-body-sm);
+  color: var(--danger);
+  background: var(--danger-tint);
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+}

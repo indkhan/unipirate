@@ -15,7 +15,7 @@ describe("safeNextPath", () => {
     "//evil.example/result",
     "javascript:alert(1)",
   ])("falls back for unsafe destination %s", (value) => {
-    expect(safeNextPath(value)).toBe("/hello");
+    expect(safeNextPath(value)).toBe("/dashboard");
   });
 });
 

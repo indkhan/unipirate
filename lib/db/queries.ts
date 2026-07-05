@@ -52,6 +52,20 @@ export async function getApprovedCourses(db: Db): Promise<Tables<"courses">[]> {
   );
 }
 
+/** The user's imported courses, newest first (pending and approved alike). */
+export async function getMyCourses(
+  db: Db,
+  userId: string,
+): Promise<Tables<"courses">[]> {
+  return unwrap(
+    await db
+      .from("courses")
+      .select()
+      .eq("created_by", userId)
+      .order("created_at", { ascending: false }),
+  );
+}
+
 export async function getCourseByNormalizedUrl(
   db: Db,
   normalizedUrl: string,

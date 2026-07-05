@@ -46,7 +46,7 @@ async function requireAdminDb() {
   } = await db.auth.getUser();
 
   if (!user) redirect("/login");
-  if (user.app_metadata?.role !== "admin") redirect("/hello");
+  if (user.app_metadata?.role !== "admin") redirect("/dashboard");
 
   return db;
 }

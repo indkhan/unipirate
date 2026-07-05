@@ -37,6 +37,16 @@ describe("parseDaadText", () => {
     expect(missingRequired(facts)).toBe(false);
   });
 
+  it("handles the city bulleted on its own line", () => {
+    const variant = DAAD_PAGE_TEXT.replace(
+      "Leibniz University Hannover • Hannover",
+      "Leibniz University Hannover\n• Hannover",
+    );
+    const parsed = parseDaadText(variant);
+    expect(parsed.name).toBe("Computer Science – Master of Science");
+    expect(parsed.university).toBe("Leibniz University Hannover");
+  });
+
   it("finds nothing on non-DAAD or garbage text", () => {
     expect(missingRequired(parseDaadText(NON_DAAD_PAGE_TEXT))).toBe(true);
     expect(parseDaadText(GARBAGE_TEXT)).toEqual(EMPTY_FACTS);

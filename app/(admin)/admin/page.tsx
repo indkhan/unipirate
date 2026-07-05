@@ -51,7 +51,7 @@ async function requireAdminDb() {
   } = await db.auth.getUser();
 
   if (!user) redirect("/login");
-  if (user.app_metadata?.role !== "admin") redirect("/hello");
+  if (user.app_metadata?.role !== "admin") redirect("/dashboard");
 
   return db;
 }
@@ -503,7 +503,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
-          <Link href="/hello">Back to app</Link>
+          <Link href="/dashboard">Back to app</Link>
         </Button>
       </header>
 

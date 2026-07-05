@@ -78,30 +78,38 @@ export function parseDaadText(text: string): CourseFacts {
     }
   }
 
-  // Course heading sits just above the "University Name • City" line.
+  // Course heading sits just above the university line, which is either
+  // "University Name • City" on one line or the city bulleted on its own line
+  // ("University Name" \n "• City") depending on how the browser copies it.
   let name: string | null = null;
   let university: string | null = null;
-  for (let i = 0; i < lines.length; i++) {
-    const match = /^(.{3,}?) • (.+)$/.exec(lines[i]);
-    if (!match) continue;
-    university = match[1];
-    for (let j = i - 1; j >= 0; j--) {
-      if (lines[j] && !BOUNDARIES.has(lines[j])) {
-        name = lines[j];
-        break;
-      }
+  const previous = (from: number): string | null => {
+    for (let j = from; j >= 0; j--) {
+      if (lines[j] && !BOUNDARIES.has(lines[j])) return lines[j];
     }
-    break;
+    return null;
+  };
+  const inline = lines.findIndex((l) => /^.{3,} • .+$/.test(l));
+  const bullet = lines.findIndex((l) => /^• .+$/.test(l));
+  if (inline !== -1) {
+    university = lines[inline].split(" • ")[0];
+    name = previous(inline - 1);
+  } else if (bullet !== -1) {
+    university = previous(bullet - 1);
+    const uniIndex = university ? lines.lastIndexOf(university, bullet - 1) : -1;
+    name = uniIndex > 0 ? previous(uniIndex - 1) : null;
   }
 
+  // DAAD renders some blocks twice (mobile + desktop) — drop repeated lines.
+  const uniq = (values: string[]) => [...new Set(values)];
   return {
     ...EMPTY_FACTS,
     name,
     university,
     degree: captured.degree[0] ?? null,
-    language: captured.language.length ? captured.language.join(", ") : null,
-    deadlines: captured.deadlines,
-    requirements: captured.requirements,
-    tuition: captured.tuition.length ? captured.tuition.join(" ") : null,
+    language: captured.language.length ? uniq(captured.language).join(", ") : null,
+    deadlines: uniq(captured.deadlines),
+    requirements: uniq(captured.requirements),
+    tuition: captured.tuition.length ? uniq(captured.tuition).join(" ") : null,
   };
 }

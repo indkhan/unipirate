@@ -39,7 +39,7 @@ export default async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isProtectedRoute =
-    request.nextUrl.pathname.startsWith("/hello") ||
+    request.nextUrl.pathname.startsWith("/dashboard") ||
     request.nextUrl.pathname.startsWith("/admin");
 
   if (!user && isProtectedRoute) {
@@ -54,7 +54,7 @@ export default async function proxy(request: NextRequest) {
     user.app_metadata?.role !== "admin"
   ) {
     const url = request.nextUrl.clone();
-    url.pathname = "/hello";
+    url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 
