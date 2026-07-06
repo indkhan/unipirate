@@ -378,6 +378,14 @@ a.cardName:hover {
   transition: background-color var(--dur-1) var(--ease);
 }
 
+a.submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  text-decoration: none;
+}
+
 .submit:hover {
   background: var(--route-blue-hover);
 }

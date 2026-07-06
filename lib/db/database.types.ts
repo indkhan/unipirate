@@ -199,6 +199,7 @@ export type Database = {
       }
       courses: {
         Row: {
+          conflicts_with: string | null
           created_at: string
           created_by: string | null
           deadlines: Json | null
@@ -222,6 +223,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          conflicts_with?: string | null
           created_at?: string
           created_by?: string | null
           deadlines?: Json | null
@@ -245,6 +247,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          conflicts_with?: string | null
           created_at?: string
           created_by?: string | null
           deadlines?: Json | null
@@ -268,6 +271,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "courses_conflicts_with_fkey"
+            columns: ["conflicts_with"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "courses_university_id_fkey"
             columns: ["university_id"]
@@ -521,6 +531,10 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       remove_my_course: { Args: { course_id: string }; Returns: undefined }
+      resolve_course_conflict: {
+        Args: { p_keep_new: boolean; p_new_course_id: string }
+        Returns: undefined
+      }
       result_viewer: {
         Args: { p_check_id: string; p_token_hash?: string }
         Returns: string

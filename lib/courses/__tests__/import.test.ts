@@ -11,9 +11,32 @@ describe("normalizeUrl", () => {
   it("strips hash, tracking params, and trailing slash", () => {
     expect(
       normalizeUrl(
-        "https://WWW2.DAAD.de/deutschland/detail/3736/?utm_source=x&fbclid=y#overview",
+        "https://UNI.example.DE/courses/detail-page/?utm_source=x&fbclid=y#overview",
       ),
-    ).toBe("https://www2.daad.de/deutschland/detail/3736");
+    ).toBe("https://uni.example.de/courses/detail-page");
+  });
+
+  const canonical =
+    "https://www2.daad.de/deutschland/studienangebote/international-programmes/en/detail/6296";
+
+  it("canonicalizes DAAD detail URLs by their numeric id", () => {
+    expect(normalizeUrl(`${canonical}/`)).toBe(canonical);
+    // German language variant of the same course
+    expect(
+      normalizeUrl(
+        "https://www2.daad.de/deutschland/studienangebote/international-programmes/de/detail/6296/",
+      ),
+    ).toBe(canonical);
+    // uppercase host, other subdomain, query/hash noise
+    expect(
+      normalizeUrl("https://WWW.DAAD.de/en/detail/6296?utm_source=x#tab"),
+    ).toBe(canonical);
+  });
+
+  it("leaves non-detail DAAD URLs to generic normalization", () => {
+    expect(normalizeUrl("https://www2.daad.de/deutschland/studienangebote/")).toBe(
+      "https://www2.daad.de/deutschland/studienangebote",
+    );
   });
 
   it("keeps meaningful query params", () => {

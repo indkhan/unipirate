@@ -49,22 +49,30 @@ export async function getPublishedRules(db: Db): Promise<Tables<"rules">[]> {
 
 export async function getApprovedCourses(db: Db): Promise<Tables<"courses">[]> {
   return unwrap(
-    await db.from("courses").select().eq("review_status", "approved"),
+    await db
+      .from("courses")
+      .select()
+      .eq("review_status", "approved")
+      .order("name"),
   );
 }
 
-/** The user's imported courses, newest first (pending and approved alike). */
+/** The user's dashboard courses (linked via applications), newest link first. */
 export async function getMyCourses(
   db: Db,
   userId: string,
 ): Promise<Tables<"courses">[]> {
-  return unwrap(
+  const rows = unwrap(
     await db
-      .from("courses")
-      .select()
-      .eq("created_by", userId)
+      .from("applications")
+      .select("created_at, courses(*)")
+      .eq("user_id", userId)
       .order("created_at", { ascending: false }),
   );
+  // RLS can null the embed (e.g. a tracked course was rejected after approval).
+  return rows
+    .map((row) => row.courses)
+    .filter((course): course is Tables<"courses"> => course !== null);
 }
 
 /** RLS decides visibility: approved → everyone, pending → owner/admin only. */
@@ -129,6 +137,21 @@ export async function listApplications(
   userId: string,
 ): Promise<Tables<"applications">[]> {
   return unwrap(await db.from("applications").select().eq("user_id", userId));
+}
+
+/** Idempotently link a course to the user's dashboard. */
+export async function ensureApplication(
+  db: Db,
+  userId: string,
+  courseId: string,
+): Promise<void> {
+  const { error } = await db
+    .from("applications")
+    .upsert(
+      { user_id: userId, course_id: courseId },
+      { onConflict: "user_id,course_id", ignoreDuplicates: true },
+    );
+  if (error) throw new Error(error.message);
 }
 
 export async function insertApplication(

@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { firstDeadline } from "@/lib/courses/import";
 import { getMyCourses } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
 import type { Tables } from "@/lib/db/database.types";
 
-import { AddCourseSheet } from "./add-course-sheet";
 import styles from "./dashboard.module.css";
 import { RemoveCourseButton } from "./remove-course-button";
 
@@ -21,14 +21,6 @@ async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
-}
-
-function firstDeadline(course: Tables<"courses">): string | null {
-  const deadlines = course.deadlines;
-  if (!Array.isArray(deadlines)) return null;
-  // Skip audience headers like "Non-EU students:" — show the first dated line.
-  const line = deadlines.find((d) => typeof d === "string" && /\d/.test(d));
-  return typeof line === "string" ? line.replace(/^[:\s]+/, "") : null;
 }
 
 const BADGE: Record<
@@ -72,21 +64,25 @@ export default async function DashboardPage() {
             <span className={styles.emptyDot} aria-hidden />
             <h2 className={styles.emptyTitle}>Add your first course</h2>
             <p className={styles.emptyText}>
-              Paste any DAAD or university course link plus the page text. We
-              pull out the deadlines and requirements for you.
+              Browse the courses other students already imported, or add any
+              DAAD or university course by its link.
             </p>
-            <AddCourseSheet variant="empty" />
+            <Link className={styles.submit} href="/courses">
+              Find courses
+            </Link>
           </section>
         ) : (
           <section className={styles.rail}>
             <div className={styles.railHead}>
               <span className={styles.railLabel}>Your courses</span>
-              <AddCourseSheet variant="rail" />
+              <Link className={styles.addLink} href="/courses">
+                + Find courses
+              </Link>
             </div>
             <div className={styles.cards}>
               {courses.map((course) => {
                 const badge = BADGE[course.review_status];
-                const deadline = firstDeadline(course);
+                const deadline = firstDeadline(course.deadlines);
                 const courseName = course.name ?? "Untitled course";
                 const canOpenCourse = course.review_status !== "rejected";
                 return (
