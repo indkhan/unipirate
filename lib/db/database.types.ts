@@ -203,8 +203,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           deadlines: Json | null
-          description: string | null
           degree: string | null
+          description: string | null
           extraction_method:
             | Database["public"]["Enums"]["extraction_method"]
             | null
@@ -227,8 +227,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deadlines?: Json | null
-          description?: string | null
           degree?: string | null
+          description?: string | null
           extraction_method?:
             | Database["public"]["Enums"]["extraction_method"]
             | null
@@ -251,8 +251,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deadlines?: Json | null
-          description?: string | null
           degree?: string | null
+          description?: string | null
           extraction_method?:
             | Database["public"]["Enums"]["extraction_method"]
             | null
@@ -450,6 +450,7 @@ export type Database = {
           due_date: string | null
           generated_from_rule_id: string | null
           id: string
+          task_key: string | null
           title: string
           updated_at: string
           user_id: string
@@ -461,6 +462,7 @@ export type Database = {
           due_date?: string | null
           generated_from_rule_id?: string | null
           id?: string
+          task_key?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -472,6 +474,7 @@ export type Database = {
           due_date?: string | null
           generated_from_rule_id?: string | null
           id?: string
+          task_key?: string | null
           title?: string
           updated_at?: string
           user_id?: string

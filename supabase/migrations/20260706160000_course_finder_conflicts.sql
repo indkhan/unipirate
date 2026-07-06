@@ -1,5 +1,8 @@
--- Course finder: applications become the user<->course dashboard link, and
--- "the page changed" re-submissions land as conflict rows for admin review.
+-- Course finder conflicts: "the page changed" re-submissions land as conflict
+-- rows (linked to the course they dispute) for admin side-by-side review.
+-- (The user<->course dashboard link is the applications table, already seeded
+-- by syncDashboard / ensureApplication — no backfill or remove_my_course change
+-- needed here.)
 
 -- Conflict link: a pending update submission points at the course it disputes.
 alter table public.courses
@@ -10,31 +13,6 @@ alter table public.courses
 alter table public.courses drop constraint courses_normalized_url_key;
 create unique index courses_normalized_url_key
   on public.courses (normalized_url) where conflicts_with is null;
-
--- Backfill: every existing import becomes a dashboard link.
-insert into public.applications (user_id, course_id)
-select created_by, id from public.courses where created_by is not null
-on conflict (user_id, course_id) do nothing;
-
--- Remove = delete own application row; an own non-approved import row dies
--- too (nobody else can see it). created_by is provenance only from here on.
-create or replace function public.remove_my_course(course_id uuid)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  delete from public.applications a
-  where a.course_id = remove_my_course.course_id
-    and a.user_id = auth.uid();
-
-  delete from public.courses c
-  where c.id = remove_my_course.course_id
-    and c.created_by = auth.uid()
-    and c.review_status <> 'approved';
-end;
-$$;
 
 -- Atomic admin conflict resolution: keep the update (approve it, repoint
 -- trackers of the old course, drop the old row) or keep the existing course

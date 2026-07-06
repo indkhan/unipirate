@@ -40,6 +40,7 @@ export default async function proxy(request: NextRequest) {
 
   const isProtectedRoute =
     request.nextUrl.pathname.startsWith("/dashboard") ||
+    request.nextUrl.pathname.startsWith("/profile") ||
     request.nextUrl.pathname.startsWith("/admin") ||
     // course finder; /courses/[id] stays public
     request.nextUrl.pathname === "/courses";

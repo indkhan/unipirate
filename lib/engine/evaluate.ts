@@ -257,6 +257,7 @@ export type Result = {
   dMAT: z.infer<typeof FlagValue>;
   documents: string[];
   steps: string[]; // ordered
+  stepsDetailed: { order: number; text: string; ruleId: string }[];
   citations: Citation[];
   unknowns: string[]; // honest gaps: "no rule covers X — confirm with [source]"
 };
@@ -526,14 +527,16 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   const dMAT = flag("dmat");
 
   const documents: string[] = [];
-  const steps: { order: number; text: string }[] = [];
+  const steps: { order: number; text: string; ruleId: string }[] = [];
   for (const rule of matched) {
     for (const doc of rule.outcomes.documents ?? []) {
       if (!documents.includes(doc)) documents.push(doc);
       cite(rule, "documents");
     }
     for (const step of rule.outcomes.steps ?? []) {
-      if (!steps.some((s) => s.text === step.text)) steps.push(step);
+      if (!steps.some((s) => s.text === step.text)) {
+        steps.push({ ...step, ruleId: rule.id });
+      }
       cite(rule, "steps");
     }
     // note-only rules are open caveats ("verify which anabin proposal
@@ -545,13 +548,16 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     }
   }
 
+  const stepsDetailed = steps.sort((a, b) => a.order - b.order);
+
   return {
     path,
     aps,
     testAS,
     dMAT,
     documents,
-    steps: steps.sort((a, b) => a.order - b.order).map((s) => s.text),
+    steps: stepsDetailed.map((s) => s.text),
+    stepsDetailed,
     citations,
     unknowns,
   };

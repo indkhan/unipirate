@@ -5,6 +5,7 @@ import type {
   Tables,
   TablesInsert,
 } from "@/lib/db/database.types";
+import type { GeneratedTaskUpsert } from "@/lib/tasks/generate";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
 type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
@@ -57,22 +58,19 @@ export async function getApprovedCourses(db: Db): Promise<Tables<"courses">[]> {
   );
 }
 
-/** The user's dashboard courses (linked via applications), newest link first. */
+/** The user's imported courses (created_by); syncDashboard bridges these into
+ *  applications. Courses added from the finder link straight into applications. */
 export async function getMyCourses(
   db: Db,
   userId: string,
 ): Promise<Tables<"courses">[]> {
-  const rows = unwrap(
+  return unwrap(
     await db
-      .from("applications")
-      .select("created_at, courses(*)")
-      .eq("user_id", userId)
+      .from("courses")
+      .select()
+      .eq("created_by", userId)
       .order("created_at", { ascending: false }),
   );
-  // RLS can null the embed (e.g. a tracked course was rejected after approval).
-  return rows
-    .map((row) => row.courses)
-    .filter((course): course is Tables<"courses"> => course !== null);
 }
 
 /** RLS decides visibility: approved → everyone, pending → owner/admin only. */
@@ -139,7 +137,24 @@ export async function listApplications(
   return unwrap(await db.from("applications").select().eq("user_id", userId));
 }
 
-/** Idempotently link a course to the user's dashboard. */
+export type ApplicationWithCourse = Tables<"applications"> & {
+  courses: Tables<"courses"> | null;
+};
+
+export async function listApplicationsWithCourses(
+  db: Db,
+  userId: string,
+): Promise<ApplicationWithCourse[]> {
+  return unwrap(
+    await db
+      .from("applications")
+      .select("*, courses(*)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+  ) as ApplicationWithCourse[];
+}
+
+/** Idempotently link one course to the user's dashboard (finder / URL dedupe). */
 export async function ensureApplication(
   db: Db,
   userId: string,
@@ -151,6 +166,24 @@ export async function ensureApplication(
       { user_id: userId, course_id: courseId },
       { onConflict: "user_id,course_id", ignoreDuplicates: true },
     );
+  if (error) throw new Error(error.message);
+}
+
+export async function ensureApplications(
+  db: Db,
+  userId: string,
+  courses: Tables<"courses">[],
+): Promise<void> {
+  const rows = courses
+    .filter((course) => course.review_status !== "rejected")
+    .map((course) => ({ user_id: userId, course_id: course.id }));
+  if (rows.length === 0) return;
+  const { error } = await db
+    .from("applications")
+    .upsert(rows, {
+      onConflict: "user_id,course_id",
+      ignoreDuplicates: true,
+    });
   if (error) throw new Error(error.message);
 }
 
@@ -176,6 +209,19 @@ export async function updateApplicationStatus(
       .select()
       .single(),
   );
+}
+
+export async function deleteApplicationForCourse(
+  db: Db,
+  userId: string,
+  courseId: string,
+): Promise<void> {
+  const { error } = await db
+    .from("applications")
+    .delete()
+    .eq("user_id", userId)
+    .eq("course_id", courseId);
+  if (error) throw new Error(error.message);
 }
 
 // -------------------------------------------------------------------- tasks
@@ -208,6 +254,32 @@ export async function setTaskDone(
   return unwrap(
     await db.from("tasks").update({ done }).eq("id", id).select().single(),
   );
+}
+
+export async function upsertGeneratedTasks(
+  db: Db,
+  rows: GeneratedTaskUpsert[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const { error } = await db
+    .from("tasks")
+    .upsert(rows, { onConflict: "user_id,task_key" });
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteStaleGeneratedTasks(
+  db: Db,
+  userId: string,
+  staleKeys: string[],
+): Promise<void> {
+  if (staleKeys.length === 0) return;
+  const { error } = await db
+    .from("tasks")
+    .delete()
+    .eq("user_id", userId)
+    .eq("done", false)
+    .in("task_key", staleKeys);
+  if (error) throw new Error(error.message);
 }
 
 // ------------------------------------------------------------------- checks

@@ -35,7 +35,7 @@ export default async function CourseFinderPage() {
             UniPirate
           </Link>
           <div className={styles.headerActions}>
-            <Link className={styles.signOut} href="/dashboard">
+            <Link className={styles.checkLink} href="/dashboard">
               Dashboard
             </Link>
           </div>
