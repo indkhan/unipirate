@@ -162,9 +162,9 @@ export type StepId =
  */
 export function visibleSteps(answers: PartialAnswers): StepId[] {
   const steps: StepId[] = [
+    "certificateCountry",
     "targetDegree",
     "nationality",
-    "certificateCountry",
     "curriculumType",
   ];
   const bachelor = answers.targetDegree === "bachelor";

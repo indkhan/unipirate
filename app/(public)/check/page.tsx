@@ -37,6 +37,7 @@ export default async function CheckPage({
   const initialAnswers: PartialAnswers = {
     ...(certificateCountry ? { certificateCountry } : {}),
   };
+  const initialStepIndex = certificateCountry ? 1 : 0;
 
   const countryOptions = countries.map((c) => ({ code: c.code, name: c.name }));
   const userMenu = user ? (
@@ -51,6 +52,7 @@ export default async function CheckPage({
       countries={countryOptions}
       boards={boards}
       initialAnswers={initialAnswers}
+      initialStepIndex={initialStepIndex}
       userMenu={userMenu}
     />
   );

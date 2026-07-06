@@ -28,11 +28,12 @@ type CheckFlowProps = {
   countries: { code: string; name: string }[];
   boards: { countryCode: string; label: string }[];
   initialAnswers?: PartialAnswers;
+  initialStepIndex?: number;
   userMenu?: ReactNode;
 };
 
 const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
-  targetDegree: { question: "What do you want to study in Germany?" },
+  targetDegree: { question: "Which degree level are you applying for?" },
   nationality: { question: "What is your nationality?" },
   certificateCountry: {
     question: "Where did you finish school?",
@@ -77,12 +78,13 @@ export function CheckFlow({
   countries,
   boards,
   initialAnswers = {},
+  initialStepIndex = 0,
   userMenu,
 }: CheckFlowProps) {
   const router = useRouter();
   const posthog = usePostHog();
   const [answers, setAnswers] = useState<PartialAnswers>(initialAnswers);
-  const [stepIndex, setStepIndex] = useState(0);
+  const [stepIndex, setStepIndex] = useState(initialStepIndex);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
