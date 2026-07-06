@@ -125,10 +125,12 @@ export async function updateAdminCourse(
   course: Pick<
     TablesUpdate<"courses">,
     | "deadlines"
+    | "description"
     | "degree"
     | "extraction_method"
     | "field_extraction"
     | "language"
+    | "location"
     | "name"
     | "normalized_url"
     | "requirements"

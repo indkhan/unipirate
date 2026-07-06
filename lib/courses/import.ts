@@ -5,8 +5,10 @@ import { z } from "zod";
 export const CourseFactsSchema = z.object({
   name: z.string().min(1).nullable(),
   university: z.string().min(1).nullable(),
+  location: z.string().min(1).nullable(),
   degree: z.string().min(1).nullable(),
   language: z.string().min(1).nullable(),
+  description: z.string().min(1).nullable(),
   deadlines: z.array(z.string().min(1)),
   requirements: z.array(z.string().min(1)),
   tuition: z.string().min(1).nullable(),
@@ -17,15 +19,23 @@ export type CourseFacts = z.infer<typeof CourseFactsSchema>;
 export const EMPTY_FACTS: CourseFacts = {
   name: null,
   university: null,
+  location: null,
   degree: null,
   language: null,
+  description: null,
   deadlines: [],
   requirements: [],
   tuition: null,
 };
 
 // Field groups tracked in courses.field_extraction.
-export const FIELD_GROUPS = ["core", "deadlines", "requirements", "tuition"] as const;
+export const FIELD_GROUPS = [
+  "core",
+  "description",
+  "deadlines",
+  "requirements",
+  "tuition",
+] as const;
 export type FieldGroup = (typeof FIELD_GROUPS)[number];
 export type FieldExtraction = Partial<Record<FieldGroup, "library" | "ai">>;
 

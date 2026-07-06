@@ -101,7 +101,7 @@ export default async function DashboardPage() {
                       </span>
                     )}
                     <span className={styles.cardUni}>
-                      {[course.university_name, course.degree]
+                      {[course.university_name, course.location, course.degree]
                         .filter(Boolean)
                         .join(" · ") || "Details pending review"}
                     </span>

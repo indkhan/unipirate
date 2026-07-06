@@ -26,6 +26,8 @@ export async function aiExtract(text: string, url: string): Promise<CourseFacts>
       "You extract structured facts about a university course from pasted page text. " +
       "Quote every value verbatim from the text. If a fact is not literally present, " +
       "use null (or an empty array). Never guess, infer, or reformat dates. " +
+      "location: the verbatim course location/city if present. " +
+      "description: the verbatim programme description/content section if present. " +
       "deadlines: each application-deadline statement as one verbatim string. " +
       "requirements: academic and language admission requirements, one per string. " +
       "tuition: the verbatim tuition-fee statement.",
@@ -40,7 +42,7 @@ export type ExtractedCourse = {
   extractionMethod: "library" | "ai";
 };
 
-const CORE = ["name", "university", "degree", "language"] as const;
+const CORE = ["name", "university", "location", "degree", "language"] as const;
 
 export async function extractCourse(
   url: string,
@@ -50,6 +52,7 @@ export async function extractCourse(
   const facts = parseDaadText(text);
   const fieldExtraction: FieldExtraction = {};
   if (CORE.some((k) => facts[k])) fieldExtraction.core = "library";
+  if (facts.description) fieldExtraction.description = "library";
   if (facts.deadlines.length) fieldExtraction.deadlines = "library";
   if (facts.requirements.length) fieldExtraction.requirements = "library";
   if (facts.tuition) fieldExtraction.tuition = "library";
@@ -74,6 +77,11 @@ export async function extractCourse(
       fieldExtraction.core = "ai";
       aiUsed = true;
     }
+  }
+  if (!facts.description && aiFacts.description) {
+    facts.description = aiFacts.description;
+    fieldExtraction.description = "ai";
+    aiUsed = true;
   }
   for (const key of ["deadlines", "requirements"] as const) {
     if (!facts[key].length && aiFacts[key].length) {

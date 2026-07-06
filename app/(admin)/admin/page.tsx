@@ -440,6 +440,12 @@ function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
                     highlighted={ai("core")}
                   />
                   <CourseEditField
+                    label="Location"
+                    name="location"
+                    defaultValue={course.location ?? ""}
+                    highlighted={ai("core")}
+                  />
+                  <CourseEditField
                     label="Degree"
                     name="degree"
                     defaultValue={course.degree ?? ""}
@@ -452,6 +458,14 @@ function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
                     highlighted={ai("core")}
                   />
                 </div>
+
+                <CourseEditField
+                  label="Description/content"
+                  name="description"
+                  defaultValue={course.description ?? ""}
+                  highlighted={ai("description")}
+                  multiline
+                />
 
                 <div className="grid gap-2 lg:grid-cols-3">
                   <CourseEditField

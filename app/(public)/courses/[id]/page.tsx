@@ -73,6 +73,12 @@ export default async function CoursePage({
             <span className={styles.university}>{course.university_name}</span>
           ) : null}
           <div className={styles.factRow}>
+            <span className={styles.factLabel}>Location</span>
+            <span className={styles.factValue}>
+              {course.location ?? "Not on the page"}
+            </span>
+          </div>
+          <div className={styles.factRow}>
             <span className={styles.factLabel}>Degree</span>
             <span className={styles.factValue}>
               {course.degree ?? "Not on the page"}
@@ -91,6 +97,13 @@ export default async function CoursePage({
             </span>
           </div>
         </section>
+
+        {course.description ? (
+          <section className={styles.card}>
+            <span className={styles.sectionLabel}>Description/content</span>
+            <p className={styles.description}>{course.description}</p>
+          </section>
+        ) : null}
 
         <section className={styles.sourceCard}>
           <span className={styles.sectionLabel}>Official source</span>

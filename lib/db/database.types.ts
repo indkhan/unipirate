@@ -202,6 +202,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           deadlines: Json | null
+          description: string | null
           degree: string | null
           extraction_method:
             | Database["public"]["Enums"]["extraction_method"]
@@ -209,6 +210,7 @@ export type Database = {
           field_extraction: Json | null
           id: string
           language: string | null
+          location: string | null
           name: string | null
           normalized_url: string
           requirements: Json | null
@@ -223,6 +225,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deadlines?: Json | null
+          description?: string | null
           degree?: string | null
           extraction_method?:
             | Database["public"]["Enums"]["extraction_method"]
@@ -230,6 +233,7 @@ export type Database = {
           field_extraction?: Json | null
           id?: string
           language?: string | null
+          location?: string | null
           name?: string | null
           normalized_url: string
           requirements?: Json | null
@@ -244,6 +248,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deadlines?: Json | null
+          description?: string | null
           degree?: string | null
           extraction_method?:
             | Database["public"]["Enums"]["extraction_method"]
@@ -251,6 +256,7 @@ export type Database = {
           field_extraction?: Json | null
           id?: string
           language?: string | null
+          location?: string | null
           name?: string | null
           normalized_url?: string
           requirements?: Json | null

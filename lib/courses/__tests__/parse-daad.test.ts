@@ -14,9 +14,16 @@ describe("parseDaadText", () => {
   });
 
   it("captures overview fields verbatim", () => {
+    expect(facts.location).toBe("Hannover");
     expect(facts.degree).toBe("Master of Science");
     expect(facts.language).toBe("German, English");
     expect(facts.tuition).toBe("None");
+  });
+
+  it("captures the DAAD description/content section verbatim", () => {
+    expect(facts.description).toBe(
+      "The Master's programme in Computer Science is a research-oriented degree.",
+    );
   });
 
   it("keeps deadlines verbatim, one statement per line", () => {
@@ -60,6 +67,7 @@ describe("extractCourse", () => {
     expect(result.extractionMethod).toBe("library");
     expect(result.fieldExtraction).toEqual({
       core: "library",
+      description: "library",
       deadlines: "library",
       requirements: "library",
       tuition: "library",
@@ -73,6 +81,8 @@ describe("extractCourse", () => {
       university: "TU Example University",
       degree: "Master of Science",
       language: "English",
+      location: "Example City",
+      description: "Our two-year graduate programme teaches applied data things.",
       deadlines: ["Apply by the end of May each year via our portal."],
       tuition: "Fees: none for EU students.",
     });
@@ -82,8 +92,13 @@ describe("extractCourse", () => {
     expect(result.facts.deadlines).toEqual([
       "Apply by the end of May each year via our portal.",
     ]);
+    expect(result.facts.location).toBe("Example City");
+    expect(result.facts.description).toBe(
+      "Our two-year graduate programme teaches applied data things.",
+    );
     expect(result.fieldExtraction).toEqual({
       core: "ai",
+      description: "ai",
       deadlines: "ai",
       tuition: "ai",
     });

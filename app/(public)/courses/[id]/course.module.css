@@ -207,3 +207,10 @@
   font: var(--text-body-sm);
   color: var(--ink-secondary);
 }
+
+.description {
+  margin: 0;
+  white-space: pre-line;
+  font: var(--text-body-sm);
+  color: var(--ink-secondary);
+}
