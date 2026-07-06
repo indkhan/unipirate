@@ -19,7 +19,7 @@
 }
 
 .headerRow {
-  max-width: 520px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 12px 16px;
   display: flex;
@@ -57,6 +57,17 @@
   color: var(--ink-muted);
 }
 
+.userMenu {
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (max-width: 430px) {
+  .brand {
+    display: none;
+  }
+}
+
 .main {
   width: 100%;
   max-width: 520px;
@@ -66,6 +77,80 @@
   flex-direction: column;
   gap: 24px;
   flex: 1;
+}
+
+.reviewMain {
+  max-width: 1040px;
+}
+
+.reviewGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 760px) {
+  .reviewGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.reviewCard {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reviewCard h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.reviewOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reviewChoice {
+  min-height: 38px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font: var(--text-body-sm);
+  font-weight: 600;
+  padding: 0 12px;
+}
+
+.reviewChoiceSelected {
+  border-color: var(--route-blue);
+  background: var(--route-blue-tint);
+  color: var(--route-blue);
+}
+
+.reviewInline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reviewMissing {
+  align-self: flex-start;
+  border-radius: var(--radius-control);
+  background: var(--danger-tint);
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
 }
 
 /* progress dots */

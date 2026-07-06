@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
@@ -28,6 +28,7 @@ type CheckFlowProps = {
   countries: { code: string; name: string }[];
   boards: { countryCode: string; label: string }[];
   initialAnswers?: PartialAnswers;
+  userMenu?: ReactNode;
 };
 
 const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
@@ -76,6 +77,7 @@ export function CheckFlow({
   countries,
   boards,
   initialAnswers = {},
+  userMenu,
 }: CheckFlowProps) {
   const router = useRouter();
   const posthog = usePostHog();
@@ -221,6 +223,7 @@ export function CheckFlow({
           <span className={styles.stepLabel}>
             {stepIndex + 1} of {steps.length}
           </span>
+          {userMenu ? <div className={styles.userMenu}>{userMenu}</div> : null}
         </div>
       </header>
 

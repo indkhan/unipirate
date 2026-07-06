@@ -5,6 +5,7 @@ import type {
   Tables,
   TablesInsert,
 } from "@/lib/db/database.types";
+import type { GeneratedTaskUpsert } from "@/lib/tasks/generate";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
 type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
@@ -131,6 +132,41 @@ export async function listApplications(
   return unwrap(await db.from("applications").select().eq("user_id", userId));
 }
 
+export type ApplicationWithCourse = Tables<"applications"> & {
+  courses: Tables<"courses"> | null;
+};
+
+export async function listApplicationsWithCourses(
+  db: Db,
+  userId: string,
+): Promise<ApplicationWithCourse[]> {
+  return unwrap(
+    await db
+      .from("applications")
+      .select("*, courses(*)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+  ) as ApplicationWithCourse[];
+}
+
+export async function ensureApplications(
+  db: Db,
+  userId: string,
+  courses: Tables<"courses">[],
+): Promise<void> {
+  const rows = courses
+    .filter((course) => course.review_status !== "rejected")
+    .map((course) => ({ user_id: userId, course_id: course.id }));
+  if (rows.length === 0) return;
+  const { error } = await db
+    .from("applications")
+    .upsert(rows, {
+      onConflict: "user_id,course_id",
+      ignoreDuplicates: true,
+    });
+  if (error) throw new Error(error.message);
+}
+
 export async function insertApplication(
   db: Db,
   application: TablesInsert<"applications">,
@@ -153,6 +189,19 @@ export async function updateApplicationStatus(
       .select()
       .single(),
   );
+}
+
+export async function deleteApplicationForCourse(
+  db: Db,
+  userId: string,
+  courseId: string,
+): Promise<void> {
+  const { error } = await db
+    .from("applications")
+    .delete()
+    .eq("user_id", userId)
+    .eq("course_id", courseId);
+  if (error) throw new Error(error.message);
 }
 
 // -------------------------------------------------------------------- tasks
@@ -185,6 +234,32 @@ export async function setTaskDone(
   return unwrap(
     await db.from("tasks").update({ done }).eq("id", id).select().single(),
   );
+}
+
+export async function upsertGeneratedTasks(
+  db: Db,
+  rows: GeneratedTaskUpsert[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const { error } = await db
+    .from("tasks")
+    .upsert(rows, { onConflict: "user_id,task_key" });
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteStaleGeneratedTasks(
+  db: Db,
+  userId: string,
+  staleKeys: string[],
+): Promise<void> {
+  if (staleKeys.length === 0) return;
+  const { error } = await db
+    .from("tasks")
+    .delete()
+    .eq("user_id", userId)
+    .eq("done", false)
+    .in("task_key", staleKeys);
+  if (error) throw new Error(error.message);
 }
 
 // ------------------------------------------------------------------- checks
