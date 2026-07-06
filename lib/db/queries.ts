@@ -328,3 +328,48 @@ export async function insertAnswerReport(
   const { error } = await db.from("answer_reports").insert(report);
   if (error) throw new Error(error.message);
 }
+
+// --------------------------------------------------------------- assistant
+
+export type KbMatch =
+  Database["public"]["Functions"]["match_kb_chunks"]["Returns"][number];
+
+/** Semantic search over the assistant KB. `queryEmbedding` is a JSON-encoded number[]. */
+export async function matchKbChunks(
+  db: RpcDb,
+  queryEmbedding: string,
+  matchCount = 6,
+): Promise<KbMatch[]> {
+  return unwrap(
+    await db.rpc("match_kb_chunks", {
+      query_embedding: queryEmbedding,
+      match_count: matchCount,
+    }),
+  );
+}
+
+/** Questions asked since UTC midnight — the daily quota counter.
+ * ponytail: UTC day boundary (~5:30am IST reset), fine for a soft quota. */
+export async function countTodayAssistantQuestions(
+  db: Db,
+  userId: string,
+): Promise<number> {
+  const utcMidnight = new Date();
+  utcMidnight.setUTCHours(0, 0, 0, 0);
+  const { count, error } = await db
+    .from("assistant_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("role", "user")
+    .gte("created_at", utcMidnight.toISOString());
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+export async function insertAssistantMessage(
+  db: Db,
+  message: TablesInsert<"assistant_messages">,
+): Promise<void> {
+  const { error } = await db.from("assistant_messages").insert(message);
+  if (error) throw new Error(error.message);
+}
