@@ -43,6 +43,7 @@ export default async function CoursePage({
   const db = await createClient();
   const course = await getCourseById(db, id);
   if (!course) notFound();
+  if (course.review_status === "rejected") notFound();
 
   const deadlines = asStrings(course.deadlines);
   const requirements = asStrings(course.requirements);

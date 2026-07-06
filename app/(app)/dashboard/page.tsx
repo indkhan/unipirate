@@ -88,10 +88,11 @@ export default async function DashboardPage() {
                 const badge = BADGE[course.review_status];
                 const deadline = firstDeadline(course);
                 const courseName = course.name ?? "Untitled course";
+                const canOpenCourse = course.review_status !== "rejected";
                 return (
                   <article key={course.id} className={styles.card}>
                     <div className={styles.cardHead}>
-                      {course.review_status === "approved" ? (
+                      {canOpenCourse ? (
                         <Link
                           className={styles.cardName}
                           href={`/courses/${course.id}`}
