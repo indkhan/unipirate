@@ -35,7 +35,6 @@ const p11Answers: Answers = AnswersSchema.parse({
   certificateCountry: "sa",
   curriculumType: "gce",
   gceAwardingBody: "caie",
-  gceSchoolYears: 12,
   gceSubjects: [
     { subjectId: "mathematics", level: "AL", grade: "A" },
     { subjectId: "physics", level: "AL", grade: "A" },
@@ -101,7 +100,6 @@ describe("visibleSteps", () => {
       "nationality",
       "curriculumType",
       "gceAwardingBody",
-      "gceSchoolYears",
       "gceSubjects",
       "targetField",
       "intake",

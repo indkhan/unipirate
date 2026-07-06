@@ -282,11 +282,39 @@
   font-size: 16px;
   color: var(--ink);
   background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-control);
   min-height: 48px;
   padding: 0 14px;
   width: 140px;
+}
+
+.percentInputWrap {
+  width: 164px;
+  min-height: 48px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.percentInputWrap:focus-within {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.percentInputWrap .input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+}
+
+.percentSuffix {
+  padding-right: 14px;
+  font-family: var(--font-wf-mono);
+  font-size: 16px;
+  color: var(--ink-secondary);
 }
 
 .hint {

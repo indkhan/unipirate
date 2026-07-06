@@ -41,7 +41,6 @@ const QUESTIONS: Record<StepId, string> = {
   jeeAdvanced: "JEE Advanced",
   hasExistingApsCertificate: "APS certificate",
   gceAwardingBody: "A-Level awarding body",
-  gceSchoolYears: "School years",
   gceSubjects: "A-Level subjects",
   targetField: "Study field",
   intake: "Intake",
@@ -106,11 +105,6 @@ export function ProfileReview({
           label: b.label,
           key: b.id,
         }));
-      case "gceSchoolYears":
-        return [
-          { value: 12, label: "12 years", key: "12" },
-          { value: 13, label: "13 years", key: "13" },
-        ];
       case "targetField":
         return TARGET_FIELDS.map((f) => ({
           value: f.id,
@@ -170,13 +164,14 @@ export function ProfileReview({
   function field(step: StepId) {
     if (step === "schoolGradePercent") {
       return (
-        <div className={styles.reviewInline}>
+        <div className={styles.percentInputWrap}>
           <input
             className={styles.input}
             type="number"
             inputMode="decimal"
             min={0}
             max={100}
+            placeholder="85"
             value={answers.schoolGradePercent ?? ""}
             onChange={(event) =>
               select(
@@ -185,7 +180,7 @@ export function ProfileReview({
               )
             }
           />
-          <span className={styles.hint}>%</span>
+          <span className={styles.percentSuffix}>%</span>
         </div>
       );
     }

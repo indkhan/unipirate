@@ -56,10 +56,6 @@ const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
     question: "Do you already have an APS certificate?",
   },
   gceAwardingBody: { question: "Which awarding body issued your A-Levels?" },
-  gceSchoolYears: {
-    question: "How many school years did you complete?",
-    subtitle: "Including the A-Level years.",
-  },
   gceSubjects: {
     question: "Which subjects did you take?",
     subtitle: "Add each A-Level (AL) and AS subject with its grade.",
@@ -140,11 +136,6 @@ export function CheckFlow({
           label: b.label,
           key: b.id,
         }));
-      case "gceSchoolYears":
-        return [
-          { value: 12, label: "12 years", key: "12" },
-          { value: 13, label: "13 years", key: "13" },
-        ];
       case "targetField":
         return TARGET_FIELDS.map((f) => ({
           value: f.id,
@@ -264,7 +255,7 @@ export function CheckFlow({
             <label className={styles.inputLabel} htmlFor="grade-percent">
               Overall marks · required
             </label>
-            <div>
+            <div className={styles.percentInputWrap}>
               <input
                 id="grade-percent"
                 className={styles.input}
@@ -272,6 +263,7 @@ export function CheckFlow({
                 inputMode="decimal"
                 min={0}
                 max={100}
+                placeholder="85"
                 value={answers.schoolGradePercent ?? ""}
                 onChange={(e) =>
                   select(
@@ -279,8 +271,8 @@ export function CheckFlow({
                     e.target.value === "" ? undefined : Number(e.target.value),
                   )
                 }
-              />{" "}
-              <span className={styles.hint}>%</span>
+              />
+              <span className={styles.percentSuffix}>%</span>
             </div>
           </div>
         ) : step === "gceSubjects" ? (
