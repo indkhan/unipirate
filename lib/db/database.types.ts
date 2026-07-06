@@ -146,6 +146,33 @@ export type Database = {
           },
         ]
       }
+      assistant_messages: {
+        Row: {
+          citations: Json | null
+          content: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          citations?: Json | null
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          citations?: Json | null
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       checks: {
         Row: {
           answers: Json | null
@@ -283,6 +310,66 @@ export type Database = {
             columns: ["university_id"]
             isOneToOne: false
             referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kb_chunks: {
+        Row: {
+          content: string
+          country_code: string | null
+          created_at: string
+          embedding: string | null
+          id: string
+          last_verified_at: string | null
+          rule_id: string | null
+          slug: string
+          source_type: string
+          source_url: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          country_code?: string | null
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          last_verified_at?: string | null
+          rule_id?: string | null
+          slug: string
+          source_type: string
+          source_url: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          country_code?: string | null
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          last_verified_at?: string | null
+          rule_id?: string | null
+          slug?: string
+          source_type?: string
+          source_url?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kb_chunks_country_code_fkey"
+            columns: ["country_code"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "kb_chunks_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "rules"
             referencedColumns: ["id"]
           },
         ]
@@ -533,6 +620,19 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      match_kb_chunks: {
+        Args: { match_count?: number; query_embedding: string }
+        Returns: {
+          content: string
+          country_code: string
+          last_verified_at: string
+          similarity: number
+          slug: string
+          source_type: string
+          source_url: string
+          title: string
+        }[]
+      }
       remove_my_course: { Args: { course_id: string }; Returns: undefined }
       resolve_course_conflict: {
         Args: { p_keep_new: boolean; p_new_course_id: string }

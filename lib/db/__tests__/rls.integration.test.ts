@@ -289,6 +289,40 @@ describe.skipIf(!configured || !schemaReady)("RLS: anon vs owner vs admin", () =
       .eq("message", "rls test anon report");
   });
 
+  it("anon reads kb_chunks but cannot write them", async () => {
+    const slug = `rls-test-chunk-${randomUUID()}`;
+    const { error: fixtureError } = await service.from("kb_chunks").insert({
+      source_type: "snippet",
+      slug,
+      title: "rls test chunk",
+      content: "rls test content",
+      source_url: "https://example.com/rls-test/chunk",
+    });
+    if (fixtureError?.code === "PGRST205") {
+      console.warn("Skipping kb_chunks RLS assertions: migration not applied.");
+      return;
+    }
+    expect(fixtureError).toBeNull();
+
+    const { data, error } = await anon
+      .from("kb_chunks")
+      .select("slug")
+      .eq("slug", slug);
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
+
+    const { error: writeError } = await anon.from("kb_chunks").insert({
+      source_type: "snippet",
+      slug: `${slug}-nope`,
+      title: "nope",
+      content: "nope",
+      source_url: "https://example.com/nope",
+    });
+    expect(writeError).not.toBeNull();
+
+    await service.from("kb_chunks").delete().eq("slug", slug);
+  });
+
   // ----------------------------------------------------------------- owner
 
   it("owner upserts own profile; other user cannot see it", async () => {
@@ -478,6 +512,46 @@ describe.skipIf(!configured || !schemaReady)("RLS: anon vs owner vs admin", () =
     expect(detachedCourse).toEqual(
       expect.objectContaining({ created_by: null, review_status: "approved" }),
     );
+  });
+
+  it("owner logs own assistant messages; others see none", async () => {
+    const { error } = await owner.from("assistant_messages").insert({
+      user_id: ownerUser.id,
+      role: "user",
+      content: "rls test question",
+    });
+    if (error?.code === "PGRST205") {
+      console.warn(
+        "Skipping assistant_messages RLS assertions: migration not applied.",
+      );
+      return;
+    }
+    expect(error).toBeNull();
+
+    const { error: crossError } = await owner.from("assistant_messages").insert({
+      user_id: otherUser.id,
+      role: "user",
+      content: "rls test cross-user question",
+    });
+    expect(crossError).not.toBeNull();
+
+    const { data: otherView, error: otherError } = await other
+      .from("assistant_messages")
+      .select("id")
+      .eq("user_id", ownerUser.id);
+    expect(otherError).toBeNull();
+    expect(otherView).toHaveLength(0);
+
+    const { data: ownView } = await owner
+      .from("assistant_messages")
+      .select("content")
+      .eq("user_id", ownerUser.id);
+    expect(ownView!.map((m) => m.content)).toContain("rls test question");
+
+    await service
+      .from("assistant_messages")
+      .delete()
+      .eq("user_id", ownerUser.id);
   });
 
   it("owner cannot update rules", async () => {
