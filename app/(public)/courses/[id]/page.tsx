@@ -99,10 +99,13 @@ export default async function CoursePage({
         </section>
 
         {course.description ? (
-          <section className={styles.card}>
-            <span className={styles.sectionLabel}>Description/content</span>
+          <details className={styles.descriptionDisclosure}>
+            <summary className={styles.descriptionSummary}>
+              <span className={styles.sectionLabel}>Description/content</span>
+              <span className={styles.toggleText} aria-hidden="true" />
+            </summary>
             <p className={styles.description}>{course.description}</p>
-          </section>
+          </details>
         ) : null}
 
         <section className={styles.sourceCard}>

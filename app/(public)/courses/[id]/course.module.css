@@ -208,8 +208,62 @@
   color: var(--ink-secondary);
 }
 
+.descriptionDisclosure {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 0;
+}
+
+.descriptionSummary {
+  min-height: var(--tap-min);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.descriptionSummary::-webkit-details-marker {
+  display: none;
+}
+
+.descriptionSummary::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--ink-secondary);
+  border-bottom: 2px solid var(--ink-secondary);
+  transform: rotate(45deg);
+  transition: transform var(--dur-1) var(--ease);
+  flex: none;
+}
+
+.descriptionDisclosure[open] .descriptionSummary::after {
+  transform: rotate(225deg);
+}
+
+.toggleText {
+  margin-left: auto;
+  font: var(--text-body-sm);
+  color: var(--route-blue);
+  white-space: nowrap;
+}
+
+.toggleText::before {
+  content: "Show";
+}
+
+.descriptionDisclosure[open] .toggleText::before {
+  content: "Hide";
+}
+
 .description {
   margin: 0;
+  border-top: 1px solid var(--line);
+  padding: 16px 20px 20px;
   white-space: pre-line;
   font: var(--text-body-sm);
   color: var(--ink-secondary);
