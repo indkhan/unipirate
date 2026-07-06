@@ -119,6 +119,29 @@ export async function updateCourseReviewStatus(
   );
 }
 
+export async function updateAdminCourse(
+  db: Db,
+  id: string,
+  course: Pick<
+    TablesUpdate<"courses">,
+    | "deadlines"
+    | "degree"
+    | "extraction_method"
+    | "field_extraction"
+    | "language"
+    | "name"
+    | "normalized_url"
+    | "requirements"
+    | "source_url"
+    | "tuition"
+    | "university_name"
+  >,
+): Promise<Tables<"courses">> {
+  return unwrap(
+    await db.from("courses").update(course).eq("id", id).select().single(),
+  );
+}
+
 export async function listRecentAdminAuditEvents(
   db: Db,
   limit = 25,

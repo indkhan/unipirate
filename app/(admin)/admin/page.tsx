@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import {
   reverifyRuleAction,
   reviewCourseAction,
+  updateCourseAction,
   updateRuleAction,
 } from "./actions";
 
@@ -108,29 +109,51 @@ function compactJson(value: Json | null): string {
   return JSON.stringify(value);
 }
 
-function CourseField({
+function formatEditableJson(value: Json | null): string {
+  return JSON.stringify(value, null, 2);
+}
+
+function formatEditableArrayJson(value: Json | null): string {
+  return JSON.stringify(Array.isArray(value) ? value : [], null, 2);
+}
+
+function CourseEditField({
   label,
-  value,
+  name,
+  defaultValue,
   highlighted,
+  multiline,
 }: {
   label: string;
-  value: string;
+  name: string;
+  defaultValue: string;
   highlighted: boolean;
+  multiline?: boolean;
 }) {
+  const className = cn(
+    "rounded-md border bg-background px-2 text-sm",
+    highlighted && "border-amber-300 bg-amber-50",
+    multiline ? "min-h-20 py-2 font-mono text-xs" : "h-8",
+  );
+
   return (
-    <div
-      className={cn(
-        "min-w-0 rounded-md border p-2",
-        highlighted ? "border-amber-200 bg-amber-50" : "bg-background",
+    <label className="grid min-w-0 gap-1 text-[11px] font-medium uppercase text-muted-foreground">
+      {label}
+      {multiline ? (
+        <textarea
+          name={name}
+          defaultValue={defaultValue}
+          rows={4}
+          className={className}
+        />
+      ) : (
+        <input
+          name={name}
+          defaultValue={defaultValue}
+          className={className}
+        />
       )}
-    >
-      <dt className="text-[11px] font-medium uppercase text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="mt-1 truncate text-xs" title={value}>
-        {value || "Not extracted"}
-      </dd>
-    </div>
+    </label>
   );
 }
 
@@ -390,43 +413,82 @@ function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
                 </div>
               </div>
 
-              <dl className="mt-3 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
-                <CourseField
-                  label="Name"
-                  value={course.name ?? ""}
-                  highlighted={ai("core")}
-                />
-                <CourseField
-                  label="University"
-                  value={course.university_name ?? ""}
-                  highlighted={ai("core")}
-                />
-                <CourseField
-                  label="Degree"
-                  value={course.degree ?? ""}
-                  highlighted={ai("core")}
-                />
-                <CourseField
-                  label="Language"
-                  value={course.language ?? ""}
-                  highlighted={ai("core")}
-                />
-                <CourseField
-                  label="Tuition"
-                  value={compactJson(course.tuition)}
-                  highlighted={ai("tuition")}
-                />
-                <CourseField
-                  label="Deadlines"
-                  value={compactJson(course.deadlines)}
-                  highlighted={ai("deadlines")}
-                />
-                <CourseField
-                  label="Requirements"
-                  value={compactJson(course.requirements)}
-                  highlighted={ai("requirements")}
-                />
-              </dl>
+              <form action={updateCourseAction} className="mt-3 grid gap-3">
+                <input type="hidden" name="id" value={course.id} />
+                <label className="grid gap-1 text-[11px] font-medium uppercase text-muted-foreground">
+                  Source URL
+                  <input
+                    name="source_url"
+                    type="url"
+                    required
+                    defaultValue={course.source_url}
+                    className="h-8 rounded-md border bg-background px-2 text-sm"
+                  />
+                </label>
+
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                  <CourseEditField
+                    label="Name"
+                    name="name"
+                    defaultValue={course.name ?? ""}
+                    highlighted={ai("core")}
+                  />
+                  <CourseEditField
+                    label="University"
+                    name="university_name"
+                    defaultValue={course.university_name ?? ""}
+                    highlighted={ai("core")}
+                  />
+                  <CourseEditField
+                    label="Degree"
+                    name="degree"
+                    defaultValue={course.degree ?? ""}
+                    highlighted={ai("core")}
+                  />
+                  <CourseEditField
+                    label="Language"
+                    name="language"
+                    defaultValue={course.language ?? ""}
+                    highlighted={ai("core")}
+                  />
+                </div>
+
+                <div className="grid gap-2 lg:grid-cols-3">
+                  <CourseEditField
+                    label="Tuition JSON"
+                    name="tuition"
+                    defaultValue={formatEditableJson(course.tuition)}
+                    highlighted={ai("tuition")}
+                    multiline
+                  />
+                  <CourseEditField
+                    label="Deadlines JSON"
+                    name="deadlines"
+                    defaultValue={formatEditableArrayJson(course.deadlines)}
+                    highlighted={ai("deadlines")}
+                    multiline
+                  />
+                  <CourseEditField
+                    label="Requirements JSON"
+                    name="requirements"
+                    defaultValue={formatEditableArrayJson(course.requirements)}
+                    highlighted={ai("requirements")}
+                    multiline
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    Current extracted values: tuition{" "}
+                    <span className="font-mono">
+                      {compactJson(course.tuition)}
+                    </span>
+                  </p>
+                  <Button type="submit" variant="outline" size="sm">
+                    Save edits
+                  </Button>
+                </div>
+              </form>
             </article>
           );
         })}
