@@ -177,15 +177,7 @@ export type Database = {
           profile?: Json
           result?: Json
         }
-        Relationships: [
-          {
-            foreignKeyName: "checks_claimed_by_fkey"
-            columns: ["claimed_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       countries: {
         Row: {
@@ -210,12 +202,15 @@ export type Database = {
           created_at: string
           created_by: string | null
           deadlines: Json | null
+          description: string | null
           degree: string | null
           extraction_method:
             | Database["public"]["Enums"]["extraction_method"]
             | null
+          field_extraction: Json | null
           id: string
           language: string | null
+          location: string | null
           name: string | null
           normalized_url: string
           requirements: Json | null
@@ -223,18 +218,22 @@ export type Database = {
           source_url: string
           tuition: Json | null
           university_id: string | null
+          university_name: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           deadlines?: Json | null
+          description?: string | null
           degree?: string | null
           extraction_method?:
             | Database["public"]["Enums"]["extraction_method"]
             | null
+          field_extraction?: Json | null
           id?: string
           language?: string | null
+          location?: string | null
           name?: string | null
           normalized_url: string
           requirements?: Json | null
@@ -242,18 +241,22 @@ export type Database = {
           source_url: string
           tuition?: Json | null
           university_id?: string | null
+          university_name?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
           deadlines?: Json | null
+          description?: string | null
           degree?: string | null
           extraction_method?:
             | Database["public"]["Enums"]["extraction_method"]
             | null
+          field_extraction?: Json | null
           id?: string
           language?: string | null
+          location?: string | null
           name?: string | null
           normalized_url?: string
           requirements?: Json | null
@@ -261,6 +264,7 @@ export type Database = {
           source_url?: string
           tuition?: Json | null
           university_id?: string | null
+          university_name?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -516,8 +520,9 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      remove_my_course: { Args: { course_id: string }; Returns: undefined }
       result_viewer: {
-        Args: { p_check_id: string; p_token_hash?: string | null }
+        Args: { p_check_id: string; p_token_hash?: string }
         Returns: string
       }
     }

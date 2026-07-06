@@ -6,9 +6,11 @@ import { z } from "zod";
 import {
   getAdminRule,
   reverifyAdminRule,
+  updateAdminCourse,
   updateAdminRule,
   updateCourseReviewStatus,
 } from "@/lib/db/admin-queries";
+import { normalizeUrl } from "@/lib/courses/import";
 import type { Json } from "@/lib/db/database.types";
 import { createClient } from "@/lib/db/server";
 import { EngineRuleSchema } from "@/lib/engine/evaluate";
@@ -39,6 +41,20 @@ const courseReviewSchema = z.object({
   review_status: z.enum(["approved", "rejected"]),
 });
 
+const courseUpdateSchema = z.object({
+  id: z.string().uuid(),
+  source_url: z.string().url(),
+  name: z.string(),
+  university_name: z.string(),
+  location: z.string(),
+  degree: z.string(),
+  language: z.string(),
+  description: z.string(),
+  tuition: z.string().min(2),
+  deadlines: z.string().min(2),
+  requirements: z.string().min(2),
+});
+
 async function requireAdminDb() {
   const db = await createClient();
   const {
@@ -46,7 +62,7 @@ async function requireAdminDb() {
   } = await db.auth.getUser();
 
   if (!user) redirect("/login");
-  if (user.app_metadata?.role !== "admin") redirect("/hello");
+  if (user.app_metadata?.role !== "admin") redirect("/dashboard");
 
   return db;
 }
@@ -65,6 +81,45 @@ function parseJsonObject(value: string, field: string): Json {
   }
 
   return parsed as Json;
+}
+
+function parseJsonArray(value: string, field: string): string[] {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new Error(`${field} must be valid JSON.`);
+  }
+
+  const result = z.array(z.string().min(1)).safeParse(parsed);
+  if (!result.success) {
+    throw new Error(`${field} must be a JSON array of non-empty strings.`);
+  }
+
+  return result.data;
+}
+
+function parseNullableJsonString(value: string, field: string): string | null {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new Error(`${field} must be valid JSON.`);
+  }
+
+  const result = z.string().min(1).nullable().safeParse(parsed);
+  if (!result.success) {
+    throw new Error(`${field} must be a JSON string or null.`);
+  }
+
+  return result.data;
+}
+
+function nullableText(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
 }
 
 export async function updateRuleAction(formData: FormData) {
@@ -129,6 +184,47 @@ export async function reviewCourseAction(formData: FormData) {
   });
 
   await updateCourseReviewStatus(db, values.id, values.review_status);
+
+  redirect("/admin");
+}
+
+export async function updateCourseAction(formData: FormData) {
+  const db = await requireAdminDb();
+  const values = courseUpdateSchema.parse({
+    id: formData.get("id"),
+    source_url: formData.get("source_url"),
+    name: formData.get("name") ?? "",
+    university_name: formData.get("university_name") ?? "",
+    location: formData.get("location") ?? "",
+    degree: formData.get("degree") ?? "",
+    language: formData.get("language") ?? "",
+    description: formData.get("description") ?? "",
+    tuition: formData.get("tuition"),
+    deadlines: formData.get("deadlines"),
+    requirements: formData.get("requirements"),
+  });
+
+  await updateAdminCourse(db, values.id, {
+    source_url: values.source_url,
+    normalized_url: normalizeUrl(values.source_url),
+    name: nullableText(values.name),
+    university_name: nullableText(values.university_name),
+    location: nullableText(values.location),
+    degree: nullableText(values.degree),
+    language: nullableText(values.language),
+    description: nullableText(values.description),
+    tuition: parseNullableJsonString(values.tuition, "tuition"),
+    deadlines: parseJsonArray(values.deadlines, "deadlines"),
+    requirements: parseJsonArray(values.requirements, "requirements"),
+    extraction_method: "manual",
+    field_extraction: {
+      core: "manual",
+      description: "manual",
+      deadlines: "manual",
+      requirements: "manual",
+      tuition: "manual",
+    },
+  });
 
   redirect("/admin");
 }

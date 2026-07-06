@@ -7,6 +7,7 @@ import type {
 } from "@/lib/db/database.types";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
+type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
 
 function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {
   if (result.error) throw new Error(result.error.message);
@@ -52,6 +53,30 @@ export async function getApprovedCourses(db: Db): Promise<Tables<"courses">[]> {
   );
 }
 
+/** The user's imported courses, newest first (pending and approved alike). */
+export async function getMyCourses(
+  db: Db,
+  userId: string,
+): Promise<Tables<"courses">[]> {
+  return unwrap(
+    await db
+      .from("courses")
+      .select()
+      .eq("created_by", userId)
+      .order("created_at", { ascending: false }),
+  );
+}
+
+/** RLS decides visibility: approved → everyone, pending → owner/admin only. */
+export async function getCourseById(
+  db: Db,
+  id: string,
+): Promise<Tables<"courses"> | null> {
+  return unwrap(
+    await db.from("courses").select().eq("id", id).maybeSingle(),
+  );
+}
+
 export async function getCourseByNormalizedUrl(
   db: Db,
   normalizedUrl: string,
@@ -70,6 +95,13 @@ export async function insertCourse(
   course: TablesInsert<"courses">,
 ): Promise<Tables<"courses">> {
   return unwrap(await db.from("courses").insert(course).select().single());
+}
+
+export async function removeMyCourse(
+  db: RpcDb,
+  id: string,
+): Promise<void> {
+  unwrap(await db.rpc("remove_my_course", { course_id: id }));
 }
 
 // ----------------------------------------------------------------- profile

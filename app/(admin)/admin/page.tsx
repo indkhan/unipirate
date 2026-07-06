@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import {
   reverifyRuleAction,
   reviewCourseAction,
+  updateCourseAction,
   updateRuleAction,
 } from "./actions";
 
@@ -51,7 +52,7 @@ async function requireAdminDb() {
   } = await db.auth.getUser();
 
   if (!user) redirect("/login");
-  if (user.app_metadata?.role !== "admin") redirect("/hello");
+  if (user.app_metadata?.role !== "admin") redirect("/dashboard");
 
   return db;
 }
@@ -108,29 +109,51 @@ function compactJson(value: Json | null): string {
   return JSON.stringify(value);
 }
 
-function CourseField({
+function formatEditableJson(value: Json | null): string {
+  return JSON.stringify(value, null, 2);
+}
+
+function formatEditableArrayJson(value: Json | null): string {
+  return JSON.stringify(Array.isArray(value) ? value : [], null, 2);
+}
+
+function CourseEditField({
   label,
-  value,
+  name,
+  defaultValue,
   highlighted,
+  multiline,
 }: {
   label: string;
-  value: string;
+  name: string;
+  defaultValue: string;
   highlighted: boolean;
+  multiline?: boolean;
 }) {
+  const className = cn(
+    "rounded-md border bg-background px-2 text-sm",
+    highlighted && "border-amber-300 bg-amber-50",
+    multiline ? "min-h-20 py-2 font-mono text-xs" : "h-8",
+  );
+
   return (
-    <div
-      className={cn(
-        "min-w-0 rounded-md border p-2",
-        highlighted ? "border-amber-200 bg-amber-50" : "bg-background",
+    <label className="grid min-w-0 gap-1 text-[11px] font-medium uppercase text-muted-foreground">
+      {label}
+      {multiline ? (
+        <textarea
+          name={name}
+          defaultValue={defaultValue}
+          rows={4}
+          className={className}
+        />
+      ) : (
+        <input
+          name={name}
+          defaultValue={defaultValue}
+          className={className}
+        />
       )}
-    >
-      <dt className="text-[11px] font-medium uppercase text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="mt-1 truncate text-xs" title={value}>
-        {value || "Not extracted"}
-      </dd>
-    </div>
+    </label>
   );
 }
 
@@ -346,7 +369,12 @@ function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
 
       <div className="mt-3 grid gap-3">
         {courses.map((course) => {
-          const highlighted = course.extraction_method === "ai";
+          // Per-field-group extraction method — AI-filled groups need human eyes.
+          const groups = (course.field_extraction ?? {}) as Record<
+            string,
+            string
+          >;
+          const ai = (group: string) => groups[group] === "ai";
 
           return (
             <article key={course.id} className="rounded-lg border p-3">
@@ -385,38 +413,96 @@ function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
                 </div>
               </div>
 
-              <dl className="mt-3 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
-                <CourseField
-                  label="Name"
-                  value={course.name ?? ""}
-                  highlighted={highlighted}
+              <form action={updateCourseAction} className="mt-3 grid gap-3">
+                <input type="hidden" name="id" value={course.id} />
+                <label className="grid gap-1 text-[11px] font-medium uppercase text-muted-foreground">
+                  Source URL
+                  <input
+                    name="source_url"
+                    type="url"
+                    required
+                    defaultValue={course.source_url}
+                    className="h-8 rounded-md border bg-background px-2 text-sm"
+                  />
+                </label>
+
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                  <CourseEditField
+                    label="Name"
+                    name="name"
+                    defaultValue={course.name ?? ""}
+                    highlighted={ai("core")}
+                  />
+                  <CourseEditField
+                    label="University"
+                    name="university_name"
+                    defaultValue={course.university_name ?? ""}
+                    highlighted={ai("core")}
+                  />
+                  <CourseEditField
+                    label="Location"
+                    name="location"
+                    defaultValue={course.location ?? ""}
+                    highlighted={ai("core")}
+                  />
+                  <CourseEditField
+                    label="Degree"
+                    name="degree"
+                    defaultValue={course.degree ?? ""}
+                    highlighted={ai("core")}
+                  />
+                  <CourseEditField
+                    label="Language"
+                    name="language"
+                    defaultValue={course.language ?? ""}
+                    highlighted={ai("core")}
+                  />
+                </div>
+
+                <CourseEditField
+                  label="Description/content"
+                  name="description"
+                  defaultValue={course.description ?? ""}
+                  highlighted={ai("description")}
+                  multiline
                 />
-                <CourseField
-                  label="Degree"
-                  value={course.degree ?? ""}
-                  highlighted={highlighted}
-                />
-                <CourseField
-                  label="Language"
-                  value={course.language ?? ""}
-                  highlighted={highlighted}
-                />
-                <CourseField
-                  label="Tuition"
-                  value={compactJson(course.tuition)}
-                  highlighted={highlighted}
-                />
-                <CourseField
-                  label="Deadlines"
-                  value={compactJson(course.deadlines)}
-                  highlighted={highlighted}
-                />
-                <CourseField
-                  label="Requirements"
-                  value={compactJson(course.requirements)}
-                  highlighted={highlighted}
-                />
-              </dl>
+
+                <div className="grid gap-2 lg:grid-cols-3">
+                  <CourseEditField
+                    label="Tuition JSON"
+                    name="tuition"
+                    defaultValue={formatEditableJson(course.tuition)}
+                    highlighted={ai("tuition")}
+                    multiline
+                  />
+                  <CourseEditField
+                    label="Deadlines JSON"
+                    name="deadlines"
+                    defaultValue={formatEditableArrayJson(course.deadlines)}
+                    highlighted={ai("deadlines")}
+                    multiline
+                  />
+                  <CourseEditField
+                    label="Requirements JSON"
+                    name="requirements"
+                    defaultValue={formatEditableArrayJson(course.requirements)}
+                    highlighted={ai("requirements")}
+                    multiline
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    Current extracted values: tuition{" "}
+                    <span className="font-mono">
+                      {compactJson(course.tuition)}
+                    </span>
+                  </p>
+                  <Button type="submit" variant="outline" size="sm">
+                    Save edits
+                  </Button>
+                </div>
+              </form>
             </article>
           );
         })}
@@ -503,7 +589,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
-          <Link href="/hello">Back to app</Link>
+          <Link href="/dashboard">Back to app</Link>
         </Button>
       </header>
 
