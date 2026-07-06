@@ -13,6 +13,7 @@
     "email:test": "tsx --env-file=.env.local scripts/send-test-email.ts",
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
     "kb:embed": "tsx --env-file=.env.local scripts/embed-kb.ts",
+    "eval:assistant": "tsx --env-file=.env.local scripts/eval-assistant.ts",
     "db:types": "supabase gen types typescript --linked > lib/db/database.types.ts"
   },
   "dependencies": {

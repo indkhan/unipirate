@@ -22,7 +22,8 @@ export function parseMarkers(text: string): {
   };
   for (const match of text.matchAll(RULE_MARKER)) add("rule", match[1]);
   for (const match of text.matchAll(WEB_MARKER)) add("web", match[1]);
-  return { citations, unknown: UNKNOWN_MARKER.test(text) };
+  // .includes, not UNKNOWN_MARKER.test — a /g regex's .test() is stateful
+  return { citations, unknown: text.includes("[[unknown]]") };
 }
 
 export function stripMarkers(text: string): string {

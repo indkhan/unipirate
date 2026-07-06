@@ -46,6 +46,13 @@ describe("parseMarkers", () => {
     expect(parseMarkers("We can't confirm this. [[unknown]]").unknown).toBe(true);
   });
 
+  it("detects unknown consistently across repeated calls (no regex state)", () => {
+    const text = "[[unknown]] not covered.";
+    for (let i = 0; i < 4; i++) {
+      expect(parseMarkers(text).unknown).toBe(true);
+    }
+  });
+
   it("finds nothing in marker-free text", () => {
     expect(parseMarkers("Hello there.")).toEqual({
       citations: [],
