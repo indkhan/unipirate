@@ -17,6 +17,7 @@ const result: Result = {
   dMAT: "not_required",
   documents: ["1", "2", "3", "4", "5", "6", "7"],
   steps: [],
+  stepsDetailed: [],
   unknowns: [],
   citations: [
     {
@@ -85,4 +86,3 @@ describe("result page model", () => {
     expect(intakeLabel({ ...profile, intake: undefined })).toBeNull();
   });
 });
-

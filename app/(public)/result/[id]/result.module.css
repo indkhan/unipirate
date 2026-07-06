@@ -16,7 +16,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 14px;
   border-bottom: 1px solid var(--line);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .brand {
@@ -33,6 +40,13 @@
   color: var(--ink-muted);
   font-family: var(--font-wf-mono);
   font-size: 11px;
+}
+
+.dashboardLink {
+  color: var(--route-blue);
+  font: var(--text-body-sm);
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .banners {

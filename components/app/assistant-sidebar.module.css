@@ -1,0 +1,306 @@
+/* Ask Uniweg slide-over — ported from design/Assistant.dc.html.
+   Right-anchored panel on desktop, full-screen sheet ≤640px. */
+
+.trigger {
+  min-height: 40px;
+  padding: 0 14px;
+  background: var(--route-blue);
+  color: var(--ink-inverse);
+  border: none;
+  border-radius: var(--radius-control);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.trigger:hover {
+  background: var(--route-blue-hover);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 36, 61, 0.45);
+  z-index: 40;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.panel {
+  width: 100%;
+  max-width: 460px;
+  height: 100dvh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  box-shadow: var(--shadow-overlay);
+}
+
+@media (max-width: 640px) {
+  .panel {
+    max-width: none;
+    border-left: none;
+  }
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.close {
+  color: var(--route-blue);
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 8px 8px 8px 0;
+  cursor: pointer;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.subtitle {
+  font-family: var(--font-wf-mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+}
+
+.quota {
+  font-family: var(--font-wf-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.messages {
+  flex: 1;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 24px;
+}
+
+.emptyDot {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2.5px solid var(--line-strong);
+  box-sizing: border-box;
+  align-self: center;
+}
+
+.emptyText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink-secondary);
+  text-align: center;
+  max-width: 36ch;
+  align-self: center;
+}
+
+.suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.suggestion {
+  min-height: 48px;
+  text-align: left;
+  padding: 12px 14px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  color: var(--route-blue);
+  cursor: pointer;
+}
+
+.userBubble {
+  align-self: flex-end;
+  max-width: 85%;
+  background: var(--route-blue);
+  color: var(--ink-inverse);
+  border-radius: 10px 10px 2px 10px;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+
+.botGroup {
+  align-self: flex-start;
+  max-width: 94%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.botBubble {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px 10px 10px 2px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.botText {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--ink);
+  white-space: pre-line;
+}
+
+.webChip {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 10px;
+  background: var(--signal-tint);
+  border: 1px solid rgba(154, 98, 0, 0.35);
+  border-radius: var(--radius-control);
+  font-family: var(--font-wf-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+
+.webChipDot {
+  width: 8px;
+  height: 8px;
+  background: var(--signal-accent);
+  border-radius: 1px;
+}
+
+.webLink {
+  font-family: var(--font-wf-mono);
+  font-size: 12px;
+  color: var(--ink-secondary);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+.unknownBlock {
+  border-top: 1px dashed var(--line-strong);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.unknownLabel {
+  font-family: var(--font-wf-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+}
+
+.report {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  padding: 2px 4px;
+  font-family: var(--font-wf-mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.error {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.composer {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding: 12px 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  min-height: 48px;
+  padding: 0 14px;
+}
+.input:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 0;
+}
+
+.send {
+  min-height: 48px;
+  min-width: 72px;
+  padding: 0 18px;
+  background: var(--route-blue);
+  color: var(--ink-inverse);
+  border: none;
+  border-radius: var(--radius-control);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.send:hover {
+  background: var(--route-blue-hover);
+}
+.send:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

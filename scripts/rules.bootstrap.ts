@@ -377,6 +377,97 @@ export const ruleData: RuleRecord[] = [
       "Students applying for Bachelor's programs in Germany are not required to take dMAT.",
     last_verified_at: SOURCE_CHECKED_AT,
   },
+  // --------------------------------------------------------- process steps
+  {
+    id: "aps-india-process",
+    country: "in",
+    conditions: { certificate_country: "in" },
+    outcomes: {
+      steps: [
+        {
+          order: 10,
+          text: "Register for APS India and pay the current APS fee — ₹18,000 in the 2026 research notes; skip this chain if you already hold an APS certificate.",
+        },
+        {
+          order: 11,
+          text: "Courier your APS India documents and expect roughly 3–4 weeks of processing; confirm the current document list before sending.",
+        },
+        {
+          order: 12,
+          text: "Receive your APS digital certificate before starting German university and visa submissions.",
+        },
+      ],
+      note: "Draft process sequence for APS India. Keep as draft until the fee, courier steps, and processing time are confirmed by a human reviewer.",
+    },
+    status: "draft",
+    source_url: "https://aps-india.de/",
+    source_quote:
+      "APS India basics: mandatory since Nov 2022 for degree study; fee ₹18,000; ~3–4 weeks processing; digital certificate.",
+    last_verified_at: SOURCE_CHECKED_AT,
+  },
+  {
+    id: "uni-assist-vpd-process",
+    country: null,
+    conditions: {},
+    outcomes: {
+      steps: [
+        {
+          order: 20,
+          text: "Create your uni-assist account and start the VPD or application check for each target university that uses uni-assist.",
+        },
+        {
+          order: 21,
+          text: "Pay the uni-assist handling fee — research note says about €75 for the first application plus €30 for each extra course; confirm current fees before paying.",
+        },
+      ],
+      note: "Draft process sequence for uni-assist and VPD handling.",
+    },
+    status: "draft",
+    source_url: "https://www.uni-assist.de/en/",
+    source_quote:
+      "uni-assist VPD process & fees need official confirmation; secondary sources say ~€75 first + €30 each.",
+    last_verified_at: SOURCE_CHECKED_AT,
+  },
+  {
+    id: "blocked-account-open",
+    country: null,
+    conditions: {},
+    outcomes: {
+      steps: [
+        {
+          order: 41,
+          text: "Open your blocked account after the admission letter and at least 8 weeks before the visa appointment — 2026 research amount €11,904/year (€992/month); re-verify when BAföG rates change.",
+        },
+      ],
+      note: "Draft process step for blocked-account timing and 2026 amount.",
+    },
+    status: "draft",
+    source_url: "https://www.auswaertiges-amt.de/en/sperrkonto-388600",
+    source_quote:
+      "Blocked account amount varies by stay purpose and is based on German student support rates; research notes record €11,904/year = €992/month for study visas in 2026.",
+    last_verified_at: SOURCE_CHECKED_AT,
+  },
+  {
+    id: "visa-appointment-booking",
+    country: null,
+    conditions: {
+      certificate_country: { op: "in", value: ["in", "sa"] },
+    },
+    outcomes: {
+      steps: [
+        {
+          order: 44,
+          text: "Book the German student-visa appointment with the competent mission after admission and proof of funds are ready; confirm the document list on the official diplo.de study-visa page.",
+        },
+      ],
+      note: "Draft process step for India and Saudi Arabia visa appointment routing. Pakistan keeps its separate verified Consular Services Portal rule.",
+    },
+    status: "draft",
+    source_url: "https://digital.diplo.de/navigator/en/visa/study",
+    source_quote:
+      "The German study-visa pages route applicants to the competent mission and required-document workflow.",
+    last_verified_at: SOURCE_CHECKED_AT,
+  },
   // -------------------------------------------------------------- Pakistan
   {
     id: "pk-visa-consular-portal",

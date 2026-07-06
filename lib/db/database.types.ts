@@ -146,6 +146,33 @@ export type Database = {
           },
         ]
       }
+      assistant_messages: {
+        Row: {
+          citations: Json | null
+          content: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          citations?: Json | null
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          citations?: Json | null
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       checks: {
         Row: {
           answers: Json | null
@@ -199,11 +226,12 @@ export type Database = {
       }
       courses: {
         Row: {
+          conflicts_with: string | null
           created_at: string
           created_by: string | null
           deadlines: Json | null
-          description: string | null
           degree: string | null
+          description: string | null
           extraction_method:
             | Database["public"]["Enums"]["extraction_method"]
             | null
@@ -222,11 +250,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          conflicts_with?: string | null
           created_at?: string
           created_by?: string | null
           deadlines?: Json | null
-          description?: string | null
           degree?: string | null
+          description?: string | null
           extraction_method?:
             | Database["public"]["Enums"]["extraction_method"]
             | null
@@ -245,11 +274,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          conflicts_with?: string | null
           created_at?: string
           created_by?: string | null
           deadlines?: Json | null
-          description?: string | null
           degree?: string | null
+          description?: string | null
           extraction_method?:
             | Database["public"]["Enums"]["extraction_method"]
             | null
@@ -269,10 +299,77 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "courses_conflicts_with_fkey"
+            columns: ["conflicts_with"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "courses_university_id_fkey"
             columns: ["university_id"]
             isOneToOne: false
             referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kb_chunks: {
+        Row: {
+          content: string
+          country_code: string | null
+          created_at: string
+          embedding: string | null
+          id: string
+          last_verified_at: string | null
+          rule_id: string | null
+          slug: string
+          source_type: string
+          source_url: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          country_code?: string | null
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          last_verified_at?: string | null
+          rule_id?: string | null
+          slug: string
+          source_type: string
+          source_url: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          country_code?: string | null
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          last_verified_at?: string | null
+          rule_id?: string | null
+          slug?: string
+          source_type?: string
+          source_url?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kb_chunks_country_code_fkey"
+            columns: ["country_code"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "kb_chunks_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "rules"
             referencedColumns: ["id"]
           },
         ]
@@ -440,6 +537,7 @@ export type Database = {
           due_date: string | null
           generated_from_rule_id: string | null
           id: string
+          task_key: string | null
           title: string
           updated_at: string
           user_id: string
@@ -451,6 +549,7 @@ export type Database = {
           due_date?: string | null
           generated_from_rule_id?: string | null
           id?: string
+          task_key?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -462,6 +561,7 @@ export type Database = {
           due_date?: string | null
           generated_from_rule_id?: string | null
           id?: string
+          task_key?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -520,7 +620,24 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      match_kb_chunks: {
+        Args: { match_count?: number; query_embedding: string }
+        Returns: {
+          content: string
+          country_code: string
+          last_verified_at: string
+          similarity: number
+          slug: string
+          source_type: string
+          source_url: string
+          title: string
+        }[]
+      }
       remove_my_course: { Args: { course_id: string }; Returns: undefined }
+      resolve_course_conflict: {
+        Args: { p_keep_new: boolean; p_new_course_id: string }
+        Returns: undefined
+      }
       result_viewer: {
         Args: { p_check_id: string; p_token_hash?: string }
         Returns: string

@@ -12,9 +12,12 @@
     "test:watch": "vitest",
     "email:test": "tsx --env-file=.env.local scripts/send-test-email.ts",
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "kb:embed": "tsx --env-file=.env.local scripts/embed-kb.ts",
+    "eval:assistant": "tsx --env-file=.env.local scripts/eval-assistant.ts",
     "db:types": "supabase gen types typescript --linked > lib/db/database.types.ts"
   },
   "dependencies": {
+    "@ai-sdk/react": "^4.0.16",
     "@openrouter/ai-sdk-provider": "^2.10.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.0",

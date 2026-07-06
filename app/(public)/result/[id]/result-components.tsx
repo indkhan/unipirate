@@ -172,6 +172,9 @@ export function ConversionCard({
       <section className={`${styles.conversion} ${styles.saved}`}>
         <h2>Path saved</h2>
         <p>This check is connected to your profile.</p>
+        <Link className={styles.primaryAction} href="/dashboard">
+          Go to dashboard
+        </Link>
       </section>
     );
   }

@@ -119,7 +119,7 @@ export const p11ALevelsInSaudi: Profile = {
   curriculumType: "gce",
   gce: {
     awardingBody: "caie",
-    schoolYears: 12,
+    schoolYears: 13,
     subjects: [
       {
         independenceGroup: "mathematics",
@@ -162,7 +162,7 @@ export const p12ALevelsInPakistan: Profile = {
   curriculumType: "gce",
   gce: {
     awardingBody: "caie",
-    schoolYears: 12,
+    schoolYears: 13,
     subjects: [
       {
         independenceGroup: "economics_business",

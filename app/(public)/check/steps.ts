@@ -149,7 +149,6 @@ export type StepId =
   | "jeeAdvanced"
   | "hasExistingApsCertificate"
   | "gceAwardingBody"
-  | "gceSchoolYears"
   | "gceSubjects"
   | "targetField"
   | "intake";
@@ -162,9 +161,9 @@ export type StepId =
  */
 export function visibleSteps(answers: PartialAnswers): StepId[] {
   const steps: StepId[] = [
+    "certificateCountry",
     "targetDegree",
     "nationality",
-    "certificateCountry",
     "curriculumType",
   ];
   const bachelor = answers.targetDegree === "bachelor";
@@ -173,7 +172,7 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
     if (answers.certificateCountry === "in") steps.push("jeeAdvanced");
   }
   if (bachelor && answers.curriculumType === "gce") {
-    steps.push("gceAwardingBody", "gceSchoolYears", "gceSubjects");
+    steps.push("gceAwardingBody", "gceSubjects");
   }
   if (answers.certificateCountry === "in") {
     steps.push("hasExistingApsCertificate");
@@ -230,13 +229,14 @@ export function buildProfile(answers: Answers): Profile {
   if (
     answers.curriculumType === "gce" &&
     answers.gceAwardingBody !== undefined &&
-    answers.gceSchoolYears !== undefined &&
     answers.gceSubjects !== undefined
   ) {
     profile.gce = {
       awardingBody:
         answers.gceAwardingBody as NonNullable<Profile["gce"]>["awardingBody"],
-      schoolYears: answers.gceSchoolYears,
+      schoolYears: answers.gceSubjects.some((subject) => subject.level === "AL")
+        ? 13
+        : 12,
       subjects: answers.gceSubjects.map((s) => {
         const subject = GCE_SUBJECTS.find((c) => c.id === s.subjectId)!;
         return {

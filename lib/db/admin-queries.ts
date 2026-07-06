@@ -100,8 +100,50 @@ export async function listPendingCourses(
       .from("courses")
       .select()
       .eq("review_status", "pending")
+      // conflict submissions have their own review section
+      .is("conflicts_with", null)
       .order("created_at", { ascending: true }),
   );
+}
+
+export type ConflictCourse = Tables<"courses"> & {
+  old_course: Tables<"courses"> | null;
+};
+
+/** Pending "the page changed" submissions with the course they dispute. */
+export async function listConflictCourses(db: Db): Promise<ConflictCourse[]> {
+  const updates = unwrap(
+    await db
+      .from("courses")
+      .select()
+      .not("conflicts_with", "is", null)
+      .order("created_at", { ascending: true }),
+  );
+  if (updates.length === 0) return [];
+
+  const oldIds = updates
+    .map((c) => c.conflicts_with)
+    .filter((id): id is string => id !== null);
+  const oldCourses = unwrap(
+    await db.from("courses").select().in("id", oldIds),
+  );
+  const byId = new Map(oldCourses.map((c) => [c.id, c]));
+  return updates.map((c) => ({
+    ...c,
+    old_course: c.conflicts_with ? (byId.get(c.conflicts_with) ?? null) : null,
+  }));
+}
+
+export async function resolveCourseConflict(
+  db: Pick<SupabaseClient<Database>, "rpc">,
+  newCourseId: string,
+  keepNew: boolean,
+): Promise<void> {
+  const { error } = await db.rpc("resolve_course_conflict", {
+    p_new_course_id: newCourseId,
+    p_keep_new: keepNew,
+  });
+  if (error) throw new Error(error.message);
 }
 
 export async function updateCourseReviewStatus(

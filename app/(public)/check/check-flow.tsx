@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
@@ -28,10 +28,12 @@ type CheckFlowProps = {
   countries: { code: string; name: string }[];
   boards: { countryCode: string; label: string }[];
   initialAnswers?: PartialAnswers;
+  initialStepIndex?: number;
+  userMenu?: ReactNode;
 };
 
 const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
-  targetDegree: { question: "What do you want to study in Germany?" },
+  targetDegree: { question: "Which degree level are you applying for?" },
   nationality: { question: "What is your nationality?" },
   certificateCountry: {
     question: "Where did you finish school?",
@@ -54,10 +56,6 @@ const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
     question: "Do you already have an APS certificate?",
   },
   gceAwardingBody: { question: "Which awarding body issued your A-Levels?" },
-  gceSchoolYears: {
-    question: "How many school years did you complete?",
-    subtitle: "Including the A-Level years.",
-  },
   gceSubjects: {
     question: "Which subjects did you take?",
     subtitle: "Add each A-Level (AL) and AS subject with its grade.",
@@ -76,11 +74,13 @@ export function CheckFlow({
   countries,
   boards,
   initialAnswers = {},
+  initialStepIndex = 0,
+  userMenu,
 }: CheckFlowProps) {
   const router = useRouter();
   const posthog = usePostHog();
   const [answers, setAnswers] = useState<PartialAnswers>(initialAnswers);
-  const [stepIndex, setStepIndex] = useState(0);
+  const [stepIndex, setStepIndex] = useState(initialStepIndex);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -136,11 +136,6 @@ export function CheckFlow({
           label: b.label,
           key: b.id,
         }));
-      case "gceSchoolYears":
-        return [
-          { value: 12, label: "12 years", key: "12" },
-          { value: 13, label: "13 years", key: "13" },
-        ];
       case "targetField":
         return TARGET_FIELDS.map((f) => ({
           value: f.id,
@@ -221,6 +216,7 @@ export function CheckFlow({
           <span className={styles.stepLabel}>
             {stepIndex + 1} of {steps.length}
           </span>
+          {userMenu ? <div className={styles.userMenu}>{userMenu}</div> : null}
         </div>
       </header>
 
@@ -259,7 +255,7 @@ export function CheckFlow({
             <label className={styles.inputLabel} htmlFor="grade-percent">
               Overall marks · required
             </label>
-            <div>
+            <div className={styles.percentInputWrap}>
               <input
                 id="grade-percent"
                 className={styles.input}
@@ -267,6 +263,7 @@ export function CheckFlow({
                 inputMode="decimal"
                 min={0}
                 max={100}
+                placeholder="85"
                 value={answers.schoolGradePercent ?? ""}
                 onChange={(e) =>
                   select(
@@ -274,8 +271,8 @@ export function CheckFlow({
                     e.target.value === "" ? undefined : Number(e.target.value),
                   )
                 }
-              />{" "}
-              <span className={styles.hint}>%</span>
+              />
+              <span className={styles.percentSuffix}>%</span>
             </div>
           </div>
         ) : step === "gceSubjects" ? (

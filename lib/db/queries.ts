@@ -5,6 +5,7 @@ import type {
   Tables,
   TablesInsert,
 } from "@/lib/db/database.types";
+import type { GeneratedTaskUpsert } from "@/lib/tasks/generate";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
 type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
@@ -49,11 +50,16 @@ export async function getPublishedRules(db: Db): Promise<Tables<"rules">[]> {
 
 export async function getApprovedCourses(db: Db): Promise<Tables<"courses">[]> {
   return unwrap(
-    await db.from("courses").select().eq("review_status", "approved"),
+    await db
+      .from("courses")
+      .select()
+      .eq("review_status", "approved")
+      .order("name"),
   );
 }
 
-/** The user's imported courses, newest first (pending and approved alike). */
+/** The user's imported courses (created_by); syncDashboard bridges these into
+ *  applications. Courses added from the finder link straight into applications. */
 export async function getMyCourses(
   db: Db,
   userId: string,
@@ -131,6 +137,56 @@ export async function listApplications(
   return unwrap(await db.from("applications").select().eq("user_id", userId));
 }
 
+export type ApplicationWithCourse = Tables<"applications"> & {
+  courses: Tables<"courses"> | null;
+};
+
+export async function listApplicationsWithCourses(
+  db: Db,
+  userId: string,
+): Promise<ApplicationWithCourse[]> {
+  return unwrap(
+    await db
+      .from("applications")
+      .select("*, courses(*)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+  ) as ApplicationWithCourse[];
+}
+
+/** Idempotently link one course to the user's dashboard (finder / URL dedupe). */
+export async function ensureApplication(
+  db: Db,
+  userId: string,
+  courseId: string,
+): Promise<void> {
+  const { error } = await db
+    .from("applications")
+    .upsert(
+      { user_id: userId, course_id: courseId },
+      { onConflict: "user_id,course_id", ignoreDuplicates: true },
+    );
+  if (error) throw new Error(error.message);
+}
+
+export async function ensureApplications(
+  db: Db,
+  userId: string,
+  courses: Tables<"courses">[],
+): Promise<void> {
+  const rows = courses
+    .filter((course) => course.review_status !== "rejected")
+    .map((course) => ({ user_id: userId, course_id: course.id }));
+  if (rows.length === 0) return;
+  const { error } = await db
+    .from("applications")
+    .upsert(rows, {
+      onConflict: "user_id,course_id",
+      ignoreDuplicates: true,
+    });
+  if (error) throw new Error(error.message);
+}
+
 export async function insertApplication(
   db: Db,
   application: TablesInsert<"applications">,
@@ -153,6 +209,19 @@ export async function updateApplicationStatus(
       .select()
       .single(),
   );
+}
+
+export async function deleteApplicationForCourse(
+  db: Db,
+  userId: string,
+  courseId: string,
+): Promise<void> {
+  const { error } = await db
+    .from("applications")
+    .delete()
+    .eq("user_id", userId)
+    .eq("course_id", courseId);
+  if (error) throw new Error(error.message);
 }
 
 // -------------------------------------------------------------------- tasks
@@ -185,6 +254,32 @@ export async function setTaskDone(
   return unwrap(
     await db.from("tasks").update({ done }).eq("id", id).select().single(),
   );
+}
+
+export async function upsertGeneratedTasks(
+  db: Db,
+  rows: GeneratedTaskUpsert[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const { error } = await db
+    .from("tasks")
+    .upsert(rows, { onConflict: "user_id,task_key" });
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteStaleGeneratedTasks(
+  db: Db,
+  userId: string,
+  staleKeys: string[],
+): Promise<void> {
+  if (staleKeys.length === 0) return;
+  const { error } = await db
+    .from("tasks")
+    .delete()
+    .eq("user_id", userId)
+    .eq("done", false)
+    .in("task_key", staleKeys);
+  if (error) throw new Error(error.message);
 }
 
 // ------------------------------------------------------------------- checks
@@ -231,5 +326,50 @@ export async function insertAnswerReport(
   report: TablesInsert<"answer_reports">,
 ): Promise<void> {
   const { error } = await db.from("answer_reports").insert(report);
+  if (error) throw new Error(error.message);
+}
+
+// --------------------------------------------------------------- assistant
+
+export type KbMatch =
+  Database["public"]["Functions"]["match_kb_chunks"]["Returns"][number];
+
+/** Semantic search over the assistant KB. `queryEmbedding` is a JSON-encoded number[]. */
+export async function matchKbChunks(
+  db: RpcDb,
+  queryEmbedding: string,
+  matchCount = 6,
+): Promise<KbMatch[]> {
+  return unwrap(
+    await db.rpc("match_kb_chunks", {
+      query_embedding: queryEmbedding,
+      match_count: matchCount,
+    }),
+  );
+}
+
+/** Questions asked since UTC midnight — the daily quota counter.
+ * ponytail: UTC day boundary (~5:30am IST reset), fine for a soft quota. */
+export async function countTodayAssistantQuestions(
+  db: Db,
+  userId: string,
+): Promise<number> {
+  const utcMidnight = new Date();
+  utcMidnight.setUTCHours(0, 0, 0, 0);
+  const { count, error } = await db
+    .from("assistant_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("role", "user")
+    .gte("created_at", utcMidnight.toISOString());
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+export async function insertAssistantMessage(
+  db: Db,
+  message: TablesInsert<"assistant_messages">,
+): Promise<void> {
+  const { error } = await db.from("assistant_messages").insert(message);
   if (error) throw new Error(error.message);
 }

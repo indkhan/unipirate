@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { UserMenu } from "@/components/app/user-menu";
 import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
 import { getCheck } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
@@ -57,6 +58,9 @@ export default async function ResultPage({
   const { id } = await params;
   const shouldClaim = (await searchParams).claim === "1";
   const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
   const check = await getCheck(db, id);
   if (!check) notFound();
 
@@ -81,7 +85,22 @@ export default async function ResultPage({
       <div className={styles.shell}>
         <header className={styles.header}>
           <Link className={styles.brand} href="/">UniPirate</Link>
-          <span className={styles.headerMeta}>Result · {resultDate}</span>
+          <div className={styles.headerActions}>
+            <span className={styles.headerMeta}>Result · {resultDate}</span>
+            {user ? (
+              <UserMenu
+                email={user.email ?? null}
+                isAdmin={user.app_metadata?.role === "admin"}
+              />
+            ) : (
+              <Link
+                className={styles.dashboardLink}
+                href={`/login?next=${encodeURIComponent(`/result/${id}?claim=1`)}`}
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
         </header>
 
         {shouldClaim && <ClaimOnReturn checkId={id} />}

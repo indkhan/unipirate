@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import {
   getAdminRule,
+  resolveCourseConflict,
   reverifyAdminRule,
   updateAdminCourse,
   updateAdminRule,
@@ -184,6 +185,23 @@ export async function reviewCourseAction(formData: FormData) {
   });
 
   await updateCourseReviewStatus(db, values.id, values.review_status);
+
+  redirect("/admin");
+}
+
+const conflictResolveSchema = z.object({
+  id: z.string().uuid(),
+  keep_new: z.enum(["true", "false"]),
+});
+
+export async function resolveConflictAction(formData: FormData) {
+  const db = await requireAdminDb();
+  const values = conflictResolveSchema.parse({
+    id: formData.get("id"),
+    keep_new: formData.get("keep_new"),
+  });
+
+  await resolveCourseConflict(db, values.id, values.keep_new === "true");
 
   redirect("/admin");
 }

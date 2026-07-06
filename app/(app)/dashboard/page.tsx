@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { getMyCourses } from "@/lib/db/queries";
+import { AssistantSidebar } from "@/components/app/assistant-sidebar";
+import { UserMenu } from "@/components/app/user-menu";
+import { countTodayAssistantQuestions } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
-import type { Tables } from "@/lib/db/database.types";
+import { daysUntil } from "@/lib/tasks/generate";
+import { syncDashboard } from "@/lib/tasks/sync";
 
-import { AddCourseSheet } from "./add-course-sheet";
-import styles from "./dashboard.module.css";
+import { DashboardViews } from "./dashboard-views";
 import { RemoveCourseButton } from "./remove-course-button";
+import styles from "./dashboard.module.css";
+import { StatusSelect } from "./status-select";
 
 export const dynamic = "force-dynamic";
 
@@ -16,29 +20,33 @@ export const metadata: Metadata = {
   title: "Your dashboard — UniPirate",
 };
 
-async function signOut() {
-  "use server";
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect("/login");
+function sourceHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
 }
 
-function firstDeadline(course: Tables<"courses">): string | null {
-  const deadlines = course.deadlines;
-  if (!Array.isArray(deadlines)) return null;
-  // Skip audience headers like "Non-EU students:" — show the first dated line.
-  const line = deadlines.find((d) => typeof d === "string" && /\d/.test(d));
-  return typeof line === "string" ? line.replace(/^[:\s]+/, "") : null;
+function routeIndex(hasProfile: boolean, hasApplications: boolean): number {
+  if (!hasProfile) return 0;
+  if (!hasApplications) return 1;
+  return 2;
 }
 
-const BADGE: Record<
-  Tables<"courses">["review_status"],
-  { label: string; className: string }
-> = {
-  pending: { label: "In review", className: "badgePending" },
-  approved: { label: "Approved", className: "badgeApproved" },
-  rejected: { label: "Rejected", className: "badgeRejected" },
-};
+function routeDots(index: number) {
+  return ["Eligibility", "APS", "Applications", "Visa"].map((label, itemIndex) => (
+    <div key={label} className={styles.routeStep}>
+      <span
+        className={`${styles.routeDot} ${
+          itemIndex <= index ? styles.routeDotActive : ""
+        }`}
+        aria-hidden
+      />
+      <span>{label}</span>
+    </div>
+  ));
+}
 
 export default async function DashboardPage() {
   const db = await createClient();
@@ -47,94 +55,143 @@ export default async function DashboardPage() {
   } = await db.auth.getUser();
   if (!user) redirect("/login");
 
-  const courses = await getMyCourses(db, user.id);
-  const initials = (user.email ?? "?").slice(0, 2).toUpperCase();
+  const view = await syncDashboard(db, user.id);
+  const route = routeIndex(view.hasProfile, view.rail.length > 0);
+  const questionsUsed = await countTodayAssistantQuestions(db, user.id);
 
   return (
     <div className={styles.shell}>
       <div className={styles.container}>
         <header className={styles.header}>
-          <Link className={styles.brand} href="/">
-            UniPirate
-          </Link>
-          <div className={styles.headerActions}>
-            <form action={signOut}>
-              <button className={styles.signOut} type="submit">
-                Sign out
-              </button>
-            </form>
-            <span className={styles.avatar}>{initials}</span>
+          <div className={styles.topbar}>
+            <Link className={styles.brand} href="/">
+              UniPirate
+            </Link>
+            <div className={styles.headerActions}>
+              <AssistantSidebar initialUsed={questionsUsed} />
+              <Link className={styles.checkLink} href="/profile">
+                Edit profile
+              </Link>
+              <UserMenu
+                email={user.email ?? null}
+                isAdmin={user.app_metadata?.role === "admin"}
+              />
+            </div>
           </div>
+
+          <section className={styles.routeCard}>
+            <div className={styles.routeLine}>{routeDots(route)}</div>
+            <div className={styles.nextDeadlineLine}>
+              <span>Next deadline</span>
+              <span>
+                {view.nextDeadline
+                  ? `${view.nextDeadline.verbatim} · in ${view.nextDeadline.daysUntil} days`
+                  : "No dated task yet"}
+              </span>
+            </div>
+          </section>
+
+          {!view.hasProfile ? (
+            <Link className={styles.profilePrompt} href="/check">
+              Finish eligibility check for global APS, visa, and blocked-account tasks.
+            </Link>
+          ) : null}
         </header>
 
-        {courses.length === 0 ? (
-          <section className={styles.empty}>
-            <span className={styles.emptyDot} aria-hidden />
-            <h2 className={styles.emptyTitle}>Add your first course</h2>
-            <p className={styles.emptyText}>
-              Paste any DAAD or university course link plus the page text. We
-              pull out the deadlines and requirements for you.
-            </p>
-            <AddCourseSheet variant="empty" />
-          </section>
-        ) : (
+        <div className={styles.dashboardGrid}>
+          <main className={styles.mainColumn}>
+            {view.empty ? (
+              <section className={styles.empty}>
+                <span className={styles.emptyDot} aria-hidden />
+                <h2 className={styles.emptyTitle}>Add your first course</h2>
+                <p className={styles.emptyText}>
+                  Browse the courses other students already imported, or add any
+                  DAAD or university course by its link.
+                </p>
+                <Link className={styles.submit} href="/courses">
+                  Find courses
+                </Link>
+              </section>
+            ) : view.allDone ? (
+              <section className={styles.allDone}>
+                <span className={styles.doneMark}>✓</span>
+                <h2 className={styles.emptyTitle}>Nothing due today.</h2>
+                <p className={styles.emptyText}>
+                  {view.nextDeadline
+                    ? `Your next deadline is in ${daysUntil(
+                        view.nextDeadline.iso,
+                        view.checkedAt,
+                      )} days.`
+                    : "Everything on the line is on time."}
+                </p>
+                <span className={styles.checkedLine}>
+                  Checked against {view.universityCount} universities ·{" "}
+                  {view.checkedAt}
+                </span>
+              </section>
+            ) : (
+              <DashboardViews
+                buckets={view.buckets}
+                calendarEvents={view.calendarEvents}
+                todayIso={view.checkedAt}
+              />
+            )}
+          </main>
+
           <section className={styles.rail}>
             <div className={styles.railHead}>
-              <span className={styles.railLabel}>Your courses</span>
-              <AddCourseSheet variant="rail" />
+              <span className={styles.railLabel}>Your applications</span>
+              <Link className={styles.addLink} href="/courses">
+                + Find courses
+              </Link>
             </div>
-            <div className={styles.cards}>
-              {courses.map((course) => {
-                const badge = BADGE[course.review_status];
-                const deadline = firstDeadline(course);
-                const courseName = course.name ?? "Untitled course";
-                const canOpenCourse = course.review_status !== "rejected";
-                return (
-                  <article key={course.id} className={styles.card}>
+            {view.rail.length === 0 ? (
+              <div className={styles.quietPanel}>No universities added yet.</div>
+            ) : (
+              <div className={styles.cards}>
+                {view.rail.map((application) => (
+                  <article key={application.id} className={styles.railCard}>
                     <div className={styles.cardHead}>
-                      {canOpenCourse ? (
-                        <Link
-                          className={styles.cardName}
-                          href={`/courses/${course.id}`}
-                        >
-                          {courseName}
-                        </Link>
-                      ) : (
-                        <span className={styles.cardName}>{courseName}</span>
-                      )}
+                      <Link
+                        className={styles.cardName}
+                        href={`/courses/${application.courseId}`}
+                      >
+                        {application.universityName}
+                      </Link>
                       <RemoveCourseButton
-                        courseId={course.id}
-                        courseName={courseName}
+                        courseId={application.courseId}
+                        courseName={application.courseName}
                       />
                     </div>
                     <span className={styles.cardUni}>
-                      {[course.university_name, course.location, course.degree]
+                      {[application.courseName, application.detail]
                         .filter(Boolean)
-                        .join(" · ") || "Details pending review"}
+                        .join(" · ")}
                     </span>
-                    <span className={`${styles.badge} ${styles[badge.className]}`}>
-                      {badge.label}
-                    </span>
+                    <StatusSelect
+                      applicationId={application.id}
+                      status={application.status}
+                    />
                     <div className={styles.cardFoot}>
                       <span className={styles.cardFootLabel}>Next deadline</span>
                       <span className={styles.deadline}>
-                        {deadline ?? "Not on the page"}
+                        {application.nextDeadline.verbatim ?? "Not on the page"}
                       </span>
                     </div>
                     <a
                       className={styles.sourceLink}
-                      href={course.source_url}
+                      href={application.sourceUrl}
                       target="_blank"
                       rel="noreferrer"
                     >
-                      {new URL(course.source_url).hostname} ↗
+                      {sourceHost(application.sourceUrl)} ↗
                     </a>
                   </article>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </section>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -20,15 +20,22 @@
 
 @media (min-width: 768px) {
   .container {
-    max-width: 720px;
+    max-width: 1120px;
+    padding-inline: 28px;
   }
 }
 
 .header {
   display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 14px;
+}
+
+.topbar {
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 14px;
 }
 
 .brand {
@@ -45,32 +52,133 @@
   gap: 14px;
 }
 
-.signOut {
-  border: none;
-  background: transparent;
-  padding: 8px 0;
-  font-family: var(--font-body);
-  font-size: 14px;
-  color: var(--ink-secondary);
-  cursor: pointer;
-}
-
-.signOut:hover {
-  color: var(--ink);
-}
-
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-round);
-  background: var(--route-blue-tint);
+.checkLink {
   color: var(--route-blue);
-  display: inline-flex;
+  font: var(--text-body-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+@media (max-width: 430px) {
+  .checkLink {
+    display: none;
+  }
+}
+
+.routeCard {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 18px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.mainColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .dashboardGrid {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    align-items: start;
+  }
+
+  .rail {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+.routeLine {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  position: relative;
+}
+
+.routeLine::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--line-strong);
+}
+
+.routeStep {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 13px;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.routeDot {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-round);
+  border: 2px solid var(--line-strong);
+  background: var(--surface);
+  box-sizing: border-box;
+}
+
+.routeDotActive {
+  border-color: var(--route-blue);
+  background: var(--route-blue);
+}
+
+.nextDeadlineLine {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.nextDeadlineLine span:first-child {
+  font: var(--text-body-sm);
+  color: var(--ink-secondary);
+  flex: none;
+}
+
+.nextDeadlineLine span:last-child {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--signal);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.profilePrompt {
+  display: block;
+  background: var(--route-blue-tint);
+  border: 1px solid rgba(31, 79, 191, 0.24);
+  border-radius: var(--radius-control);
+  color: var(--route-blue);
+  font: var(--text-body-sm);
+  font-weight: 600;
+  padding: 12px 14px;
+  text-decoration: none;
 }
 
 /* ------------------------------------------------------------ empty state */
@@ -85,6 +193,373 @@
   align-items: center;
   text-align: center;
   gap: 14px;
+}
+
+.allDone {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 36px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.doneMark {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-round);
+  background: var(--route-blue);
+  color: var(--ink-inverse);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.checkedLine {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------------ tasks */
+
+.viewToggle {
+  display: inline-flex;
+  gap: 0;
+  background: var(--paper-sunken);
+  border-radius: var(--radius-control);
+  padding: 3px;
+  align-self: flex-start;
+}
+
+.viewToggle button {
+  min-height: 38px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 0 18px;
+}
+
+.viewToggle .viewActive {
+  background: var(--surface);
+  color: var(--route-blue);
+}
+
+.taskStack,
+.nowSection,
+.detailsStack,
+.miniStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.nowCard {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.nowCardOverdue {
+  border: 1.5px solid var(--signal-accent);
+}
+
+.taskCheck {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  margin-top: 2px;
+  border-radius: var(--radius-control);
+  border: 1.5px solid var(--route-blue);
+  background: var(--surface);
+  color: var(--route-blue);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  padding: 0;
+}
+
+.taskCheck:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.nowBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.nowTitle {
+  margin: 0;
+  font: var(--text-body);
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.dueNote {
+  font: var(--text-body-sm);
+  color: var(--signal);
+}
+
+.taskMeta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.taskTag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.tagGlobal {
+  background: var(--ink);
+  color: var(--ink-inverse);
+}
+
+.tagUniversity {
+  background: var(--route-blue-tint);
+  color: var(--route-blue);
+}
+
+.taskDue {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--signal);
+}
+
+.stamp {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--verified);
+  background: var(--verified-tint);
+  border: 1px solid var(--verified-line);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.stampSeal {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.taskDetails {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+
+.laterDetails {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--line-strong);
+}
+
+.taskDetails summary {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.laterDetails summary {
+  color: var(--ink-muted);
+}
+
+.miniStack {
+  padding: 0 10px 10px;
+}
+
+.miniTask {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+}
+
+.miniBox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--line-strong);
+  flex: none;
+  box-sizing: border-box;
+}
+
+.miniTitle {
+  font: var(--text-body-sm);
+  color: var(--ink);
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.miniDue {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  text-align: right;
+  max-width: 34%;
+  overflow-wrap: anywhere;
+}
+
+.quietPanel {
+  background: var(--surface);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-control);
+  padding: 16px;
+  font: var(--text-body-sm);
+  color: var(--ink-secondary);
+}
+
+/* --------------------------------------------------------------- calendar */
+
+.calendarPanel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.calendarTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.weekdays,
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.weekdays span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.calCell {
+  min-height: 44px;
+  border-radius: 4px;
+  background: var(--paper);
+  border: 1px solid transparent;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+}
+
+.calCell span:first-child {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-secondary);
+}
+
+.calToday {
+  background: var(--route-blue-tint);
+  border-color: rgba(31, 79, 191, 0.24);
+}
+
+.calDot {
+  width: 8px;
+  height: 8px;
+  background: var(--signal-accent);
+  border-radius: 1px;
+}
+
+.eventList {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eventRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font: var(--text-body-sm);
+  color: var(--ink);
+}
+
+.eventRow span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.eventRow span:last-child {
+  flex: none;
+  max-width: 40%;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--signal);
+  text-align: right;
+}
+
+.noEvents {
+  font: var(--text-body-sm);
+  color: var(--ink-muted);
 }
 
 .emptyDot {
@@ -144,14 +619,41 @@
 }
 
 .cards {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  margin: 0 -16px;
+  padding: 0 16px 6px;
+}
+
+.railCard {
+  flex: none;
+  width: min(240px, calc(100vw - 48px));
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
 @media (min-width: 768px) {
   .cards {
-    grid-template-columns: 1fr 1fr;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+@media (min-width: 900px) {
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .railCard {
+    width: auto;
   }
 }
 
@@ -194,29 +696,42 @@ a.cardName:hover {
   color: var(--ink-secondary);
 }
 
-.badge {
+.statusSelect {
   align-self: flex-start;
+  appearance: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
   font-family: var(--font-mono);
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 4px;
+  padding: 4px 24px 4px 8px;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 12px) 50%, calc(100% - 7px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
 }
 
-.badgePending {
-  background: var(--signal-tint);
-  color: var(--signal);
+.status_planning {
+  background-color: var(--route-blue-tint);
+  color: var(--route-blue);
 }
 
-.badgeApproved {
-  background: var(--verified-tint);
-  color: var(--verified);
+.status_applied {
+  background-color: var(--route-blue);
+  color: var(--ink-inverse);
 }
 
-.badgeRejected {
-  background: var(--danger-tint);
+.status_admitted {
+  background-color: var(--ink);
+  color: var(--ink-inverse);
+}
+
+.status_rejected {
+  background-color: var(--danger-tint);
   color: var(--danger);
 }
 
@@ -331,6 +846,47 @@ a.cardName:hover {
   color: var(--ink-secondary);
 }
 
+.sheetForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.previewBox {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.previewRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font: var(--text-body-sm);
+}
+
+.previewRow span {
+  color: var(--ink-secondary);
+  flex: none;
+}
+
+.previewRow strong {
+  color: var(--ink);
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.previewDeadline {
+  font-family: var(--font-mono);
+  color: var(--signal) !important;
+  font-size: 12.5px;
+}
+
 .urlInput {
   font-family: var(--font-mono);
   font-size: 13px;
@@ -376,6 +932,14 @@ a.cardName:hover {
   font-size: 15px;
   cursor: pointer;
   transition: background-color var(--dur-1) var(--ease);
+}
+
+a.submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  text-decoration: none;
 }
 
 .submit:hover {
