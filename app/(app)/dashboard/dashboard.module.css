@@ -165,11 +165,20 @@
   gap: 10px;
 }
 
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .cardName {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 16px;
   color: var(--ink);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 a.cardName {
@@ -240,6 +249,29 @@ a.cardName:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.removeCourse {
+  flex: none;
+  min-height: 32px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--danger);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 10px;
+}
+
+.removeCourse:hover {
+  background: var(--danger-tint);
+}
+
+.removeCourse:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 /* ------------------------------------------------------------------ sheet */

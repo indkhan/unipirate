@@ -520,6 +520,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      remove_my_course: { Args: { course_id: string }; Returns: undefined }
       result_viewer: {
         Args: { p_check_id: string; p_token_hash?: string }
         Returns: string

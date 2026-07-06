@@ -8,6 +8,7 @@ import type { Tables } from "@/lib/db/database.types";
 
 import { AddCourseSheet } from "./add-course-sheet";
 import styles from "./dashboard.module.css";
+import { RemoveCourseButton } from "./remove-course-button";
 
 export const dynamic = "force-dynamic";
 
@@ -86,20 +87,25 @@ export default async function DashboardPage() {
               {courses.map((course) => {
                 const badge = BADGE[course.review_status];
                 const deadline = firstDeadline(course);
+                const courseName = course.name ?? "Untitled course";
                 return (
                   <article key={course.id} className={styles.card}>
-                    {course.review_status === "approved" ? (
-                      <Link
-                        className={styles.cardName}
-                        href={`/courses/${course.id}`}
-                      >
-                        {course.name ?? "Untitled course"}
-                      </Link>
-                    ) : (
-                      <span className={styles.cardName}>
-                        {course.name ?? "Untitled course"}
-                      </span>
-                    )}
+                    <div className={styles.cardHead}>
+                      {course.review_status === "approved" ? (
+                        <Link
+                          className={styles.cardName}
+                          href={`/courses/${course.id}`}
+                        >
+                          {courseName}
+                        </Link>
+                      ) : (
+                        <span className={styles.cardName}>{courseName}</span>
+                      )}
+                      <RemoveCourseButton
+                        courseId={course.id}
+                        courseName={courseName}
+                      />
+                    </div>
                     <span className={styles.cardUni}>
                       {[course.university_name, course.location, course.degree]
                         .filter(Boolean)

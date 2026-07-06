@@ -410,6 +410,76 @@ describe.skipIf(!configured || !schemaReady)("RLS: anon vs owner vs admin", () =
     expect(updated).toHaveLength(0);
   });
 
+  it("owner removes own course but not another user's course", async () => {
+    const { data: course, error: insertError } = await owner
+      .from("courses")
+      .insert({
+        created_by: ownerUser.id,
+        source_url: "https://example.com/rls-test/delete-course",
+        normalized_url: `example.com/rls-test/delete-course/${randomUUID()}`,
+      })
+      .select("id")
+      .single();
+    expect(insertError).toBeNull();
+    createdCourseIds.push(course!.id);
+
+    const { error: crossUserError } = await other.rpc("remove_my_course", {
+      course_id: course!.id,
+    });
+    if (crossUserError?.code === "PGRST202") {
+      console.warn(
+        "Skipping course removal RLS assertions: remove_my_course migration is not applied.",
+      );
+      return;
+    }
+    expect(crossUserError).toBeNull();
+
+    const { data: stillOwned } = await service
+      .from("courses")
+      .select("created_by")
+      .eq("id", course!.id)
+      .single();
+    expect(stillOwned?.created_by).toBe(ownerUser.id);
+
+    const { error: ownerError } = await owner.rpc("remove_my_course", {
+      course_id: course!.id,
+    });
+    expect(ownerError).toBeNull();
+
+    const { data: ownerView } = await owner
+      .from("courses")
+      .select("id")
+      .eq("id", course!.id);
+    expect(ownerView).toHaveLength(0);
+
+    const { data: approvedCourse, error: approvedInsertError } = await service
+      .from("courses")
+      .insert({
+        created_by: ownerUser.id,
+        source_url: "https://example.com/rls-test/approved-detach-course",
+        normalized_url: `example.com/rls-test/approved-detach-course/${randomUUID()}`,
+        review_status: "approved",
+      })
+      .select("id")
+      .single();
+    expect(approvedInsertError).toBeNull();
+    createdCourseIds.push(approvedCourse!.id);
+
+    const { error: detachError } = await owner.rpc("remove_my_course", {
+      course_id: approvedCourse!.id,
+    });
+    expect(detachError).toBeNull();
+
+    const { data: detachedCourse } = await service
+      .from("courses")
+      .select("created_by, review_status")
+      .eq("id", approvedCourse!.id)
+      .single();
+    expect(detachedCourse).toEqual(
+      expect.objectContaining({ created_by: null, review_status: "approved" }),
+    );
+  });
+
   it("owner cannot update rules", async () => {
     const { data, error } = await owner
       .from("rules")

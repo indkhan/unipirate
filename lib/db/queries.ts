@@ -7,6 +7,7 @@ import type {
 } from "@/lib/db/database.types";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
+type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
 
 function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {
   if (result.error) throw new Error(result.error.message);
@@ -94,6 +95,13 @@ export async function insertCourse(
   course: TablesInsert<"courses">,
 ): Promise<Tables<"courses">> {
   return unwrap(await db.from("courses").insert(course).select().single());
+}
+
+export async function removeMyCourse(
+  db: RpcDb,
+  id: string,
+): Promise<void> {
+  unwrap(await db.rpc("remove_my_course", { course_id: id }));
 }
 
 // ----------------------------------------------------------------- profile
