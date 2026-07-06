@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import {
   deleteApplicationForCourse,
+  insertAnswerReport,
   removeMyCourse,
   setTaskDone,
   updateApplicationStatus,
@@ -64,4 +65,28 @@ export async function setApplicationStatus(input: unknown): Promise<void> {
 
   await updateApplicationStatus(db, id, status);
   revalidatePath("/dashboard");
+}
+
+const reportAnswerSchema = z.object({
+  question: z.string().min(1).max(4000),
+  answer: z.string().min(1).max(16000),
+  citations: z.array(
+    z.object({ type: z.enum(["rule", "web"]), ref: z.string() }),
+  ),
+});
+
+export async function reportAssistantAnswer(input: unknown): Promise<void> {
+  const { question, answer, citations } = reportAnswerSchema.parse(input);
+  const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  await insertAnswerReport(db, {
+    user_id: user.id,
+    message: "Reported assistant answer",
+    context: { question, answer, citations },
+  });
 }

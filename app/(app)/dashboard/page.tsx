@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AssistantSidebar } from "@/components/app/assistant-sidebar";
 import { UserMenu } from "@/components/app/user-menu";
+import { countTodayAssistantQuestions } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
 import { daysUntil } from "@/lib/tasks/generate";
 import { syncDashboard } from "@/lib/tasks/sync";
@@ -55,6 +57,7 @@ export default async function DashboardPage() {
 
   const view = await syncDashboard(db, user.id);
   const route = routeIndex(view.hasProfile, view.rail.length > 0);
+  const questionsUsed = await countTodayAssistantQuestions(db, user.id);
 
   return (
     <div className={styles.shell}>
@@ -65,6 +68,7 @@ export default async function DashboardPage() {
               UniPirate
             </Link>
             <div className={styles.headerActions}>
+              <AssistantSidebar initialUsed={questionsUsed} />
               <Link className={styles.checkLink} href="/profile">
                 Edit profile
               </Link>
