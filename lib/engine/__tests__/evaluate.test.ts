@@ -74,35 +74,37 @@ describe("Part E personas", () => {
     expect(r.unknowns.some((u) => /confirm/i.test(u))).toBe(true);
   });
 
-  it("8. Saudi Tawjihiyah 92% → Studienkolleg", () => {
+  it("8. Saudi Tawjihiyah 92% → Studienkolleg; no APS when visa filed from Saudi", () => {
     const r = run(p.p8SaudiTawjihiyah);
     expect(r.path).toBe("studienkolleg");
-    expect(r.aps).toBe("unknown");
+    expect(r.aps).toBe("not_required");
     expect(citedUrls(r)).toContain(
       "https://saudiarabien.diplo.de/ksa-en/topics/weitere-themen/-/1686436",
     );
   });
 
-  it("9. Indian passport, CBSE in Riyadh → CBSE tree (Studienkolleg), APS honestly unknown", () => {
+  it("9. Indian passport, CBSE in Riyadh → CBSE tree (Studienkolleg), no APS from Riyadh", () => {
     const r = run(p.p9CbseInRiyadh);
     expect(r.path).toBe("studienkolleg");
-    expect(r.aps).toBe("unknown");
-    expect(r.unknowns.some((u) => /APS/.test(u))).toBe(true);
+    expect(r.aps).toBe("not_required");
+    expect(citedUrls(r)).toContain(
+      "https://www.vfsglobal.com/Germany/SaudiArabia/pdf/Checklist_Student_Visa.pdf",
+    );
     expect(r.testAS).toBe("unknown");
   });
 
-  it("10. Saudi bachelor (KFUPM) → Master's: no global admission rule", () => {
+  it("10. Saudi bachelor (KFUPM) → Master's: no global admission rule, no APS from Saudi", () => {
     const r = run(p.p10SaudiBachelor);
     expect(r.path).toBe("unknown");
-    expect(r.aps).toBe("unknown");
+    expect(r.aps).toBe("not_required");
     expect(r.dMAT).toBe("unknown");
     expect(citedUrls(r)).toContain("https://www.goethe.de/ins/sa/en/spr/klg.html");
   });
 
-  it("11. A-Levels in Saudi → direct subject-restricted; APS unknown", () => {
+  it("11. A-Levels in Saudi, visa from Saudi → direct subject-restricted; no APS", () => {
     const r = run(p.p11ALevelsInSaudi);
     expect(r.path).toBe("subject_restricted");
-    expect(r.aps).toBe("unknown");
+    expect(r.aps).toBe("not_required");
     expect(citedUrls(r)).toContain(
       "https://www.daad.de/en/studying-in-germany/requirements/gce/",
     );

@@ -44,8 +44,16 @@ export function SourceStamp({ citation }: { citation: Citation }) {
   );
 }
 
-export function VerdictCard({ result, profileLine }: { result: Result; profileLine: string }) {
-  const verdicts = buildVerdicts(result);
+export function VerdictCard({
+  result,
+  profile,
+  profileLine,
+}: {
+  result: Result;
+  profile: Profile;
+  profileLine: string;
+}) {
+  const verdicts = buildVerdicts(result, profile);
   return (
     <section className={`${styles.card} ${styles.verdictCard}`}>
       <div className={styles.cardHeading}>

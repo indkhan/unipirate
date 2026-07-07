@@ -39,6 +39,11 @@ const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
     question: "Where did you finish school?",
     subtitle: "Or where you will finish it — the country of your certificate.",
   },
+  visaApplicationCountry: {
+    question: "Where will you apply for your German visa?",
+    subtitle:
+      "The country you'll file your student-visa application from — usually where you live. It decides which embassy's rules (like APS) apply.",
+  },
   curriculumType: {
     question: "Which curriculum did you study?",
     subtitle: "This decides which rules apply to you.",
@@ -105,6 +110,13 @@ export function CheckFlow({
         return countries
           .filter((c) => c.code !== "de")
           .map((c) => ({ value: c.code, label: c.name, key: c.code }));
+      case "visaApplicationCountry":
+        return [
+          ...countries
+            .filter((c) => c.code !== "de")
+            .map((c) => ({ value: c.code, label: c.name, key: c.code })),
+          { value: "other", label: "Another country", key: "other" },
+        ];
       case "curriculumType":
         return [
           {

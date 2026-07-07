@@ -14,6 +14,7 @@ export const p1CbseNoJee: Profile = {
   jeeAdvanced: false,
   hasExistingApsCertificate: false,
   targetField: "cs",
+  visaApplicationCountry: "in",
 };
 
 // 2. CBSE 12th + JEE Advanced qualified → direct (subject-specific) access
@@ -34,6 +35,7 @@ export const p3Indian3yrBsc: Profile = {
   isExchangeOrPartnershipProgram: false,
   apsRegistrationCompletedAt: "2026-07-01",
   apsDocumentsShippedAt: "2026-07-02",
+  visaApplicationCountry: "in",
 };
 
 // 4. Indian 4-yr B.Tech → Master's (WS 2026/27 → no dMAT)
@@ -44,6 +46,7 @@ export const p4Indian4yrBtech: Profile = {
   certificateCountry: "in",
   curriculumType: "national",
   priorDegree: { years: 4, field: "engineering" },
+  visaApplicationCountry: "in",
 };
 
 // 5. Pakistani FSc pre-engineering → Bachelor's — Studienkolleg T-Kurs or 1 yr uni
@@ -87,9 +90,11 @@ export const p8SaudiTawjihiyah: Profile = {
   curriculumType: "national",
   board: "tawjihiyah",
   schoolGradePercent: 92,
+  visaApplicationCountry: "sa",
 };
 
-// 9. Indian passport, CBSE school in Riyadh → Bachelor's — the routing edge case
+// 9. Indian passport, CBSE school in Riyadh → Bachelor's — the routing edge
+//    case; visa filed from Saudi Arabia, so no APS (Riyadh checklist)
 export const p9CbseInRiyadh: Profile = {
   targetDegree: "bachelor",
   intake: { term: "winter", year: 2026 },
@@ -99,6 +104,7 @@ export const p9CbseInRiyadh: Profile = {
   board: "cbse",
   schoolGradePercent: 76,
   jeeAdvanced: false,
+  visaApplicationCountry: "sa",
 };
 
 // 10. Saudi bachelor (KFUPM) → Master's — no Studienkolleg needed
@@ -108,10 +114,11 @@ export const p10SaudiBachelor: Profile = {
   certificateCountry: "sa",
   curriculumType: "national",
   priorDegree: { years: 4, field: "engineering" },
+  visaApplicationCountry: "sa",
 };
 
 // 11. A-Levels (CAIE) in Saudi Arabia: 3 AL (Math, Physics, CS) + 1 AS (English)
-//     → CS Bachelor's — direct subject-restricted; APS remains unverified
+//     → CS Bachelor's — direct subject-restricted; visa from Saudi → no APS
 export const p11ALevelsInSaudi: Profile = {
   targetDegree: "bachelor",
   nationality: "pk",
@@ -152,6 +159,7 @@ export const p11ALevelsInSaudi: Profile = {
     ],
   },
   targetField: "cs",
+  visaApplicationCountry: "sa",
 };
 
 // 12. A-Levels in Pakistan: 2 AL + 2 AS, no math/science AL → fails GCE formula → Studienkolleg

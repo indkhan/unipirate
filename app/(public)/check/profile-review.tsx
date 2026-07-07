@@ -35,6 +35,7 @@ const QUESTIONS: Record<StepId, string> = {
   targetDegree: "Study level",
   nationality: "Nationality",
   certificateCountry: "Certificate country",
+  visaApplicationCountry: "Visa application country",
   curriculumType: "Curriculum",
   board: "Board",
   schoolGradePercent: "Class 12 result",
@@ -78,6 +79,13 @@ export function ProfileReview({
         return countries
           .filter((c) => c.code !== "de")
           .map((c) => ({ value: c.code, label: c.name, key: c.code }));
+      case "visaApplicationCountry":
+        return [
+          ...countries
+            .filter((c) => c.code !== "de")
+            .map((c) => ({ value: c.code, label: c.name, key: c.code })),
+          { value: "other", label: "Another country", key: "other" },
+        ];
       case "curriculumType":
         return [
           { value: "national", label: "National board", key: "national" },

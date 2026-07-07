@@ -102,6 +102,8 @@ export const AnswersSchema = z
     targetDegree: z.enum(["bachelor", "master"]),
     nationality: z.string().min(2),
     certificateCountry: z.string().min(2),
+    // country of the German mission the visa is filed with; "other" = elsewhere
+    visaApplicationCountry: z.string().min(2).optional(),
     curriculumType: z.enum(["national", "ib", "gce", "other"]),
     board: z.string().min(1).optional(),
     schoolGradePercent: z.number().min(0).max(100).optional(),
@@ -143,6 +145,7 @@ export type StepId =
   | "targetDegree"
   | "nationality"
   | "certificateCountry"
+  | "visaApplicationCountry"
   | "curriculumType"
   | "board"
   | "schoolGradePercent"
@@ -164,6 +167,7 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
     "certificateCountry",
     "targetDegree",
     "nationality",
+    "visaApplicationCountry",
     "curriculumType",
   ];
   const bachelor = answers.targetDegree === "bachelor";
@@ -174,7 +178,12 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   if (bachelor && answers.curriculumType === "gce") {
     steps.push("gceAwardingBody", "gceSubjects");
   }
-  if (answers.certificateCountry === "in") {
+  // no APS on the Riyadh checklist, so an existing certificate is irrelevant
+  // when the visa is filed from Saudi Arabia
+  if (
+    answers.certificateCountry === "in" &&
+    answers.visaApplicationCountry !== "sa"
+  ) {
     steps.push("hasExistingApsCertificate");
   }
   steps.push("targetField", "intake");
@@ -216,6 +225,9 @@ export function buildProfile(answers: Answers): Profile {
     targetField: answers.targetField,
   };
   if (answers.intake) profile.intake = answers.intake;
+  if (answers.visaApplicationCountry !== undefined) {
+    profile.visaApplicationCountry = answers.visaApplicationCountry;
+  }
   if (answers.board !== undefined) profile.board = answers.board;
   if (answers.schoolGradePercent !== undefined) {
     profile.schoolGradePercent = answers.schoolGradePercent;

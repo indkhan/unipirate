@@ -1,8 +1,9 @@
-import type {
-  Citation,
-  Profile,
-  Result,
-  ResultSupport,
+import {
+  NO_RULE_MESSAGES,
+  type Citation,
+  type Profile,
+  type Result,
+  type ResultSupport,
 } from "@/lib/engine/evaluate";
 
 export type ViewerVariant = "anonymous_owner" | "claimed_owner" | "public";
@@ -47,7 +48,27 @@ export function citationsFor(
   );
 }
 
-export function buildVerdicts(result: Result): Verdict[] {
+/**
+ * Display relevance only — the engine still evaluates every flag. dMAT is an
+ * APS-India Master's admission test; TestAS is an undergraduate aptitude test.
+ * A flag that came back "required" is always shown, whatever the profile.
+ */
+function flagRelevant(
+  key: "aps" | "testAS" | "dMAT",
+  result: Result,
+  profile: Profile,
+): boolean {
+  if (result[key] === "required") return true;
+  if (key === "testAS") return profile.targetDegree === "bachelor";
+  if (key === "dMAT") {
+    return (
+      profile.targetDegree === "master" && profile.certificateCountry === "in"
+    );
+  }
+  return true;
+}
+
+export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
   const flags = [
     ["aps", "APS", result.aps],
     ["testAS", "TestAS", result.testAS],
@@ -61,16 +82,29 @@ export function buildVerdicts(result: Result): Verdict[] {
       citations: citationsFor(result, "path"),
       unknown: result.path === "unknown",
     },
-    ...flags.map(([key, name, value]) => {
-      const verdict = flagLabel(name, value);
-      return {
-        key,
-        label: verdict.label,
-        citations: citationsFor(result, key),
-        unknown: verdict.unknown,
-      };
-    }),
+    ...flags
+      .filter(([key]) => flagRelevant(key, result, profile))
+      .map(([key, name, value]) => {
+        const verdict = flagLabel(name, value);
+        return {
+          key,
+          label: verdict.label,
+          citations: citationsFor(result, key),
+          unknown: verdict.unknown,
+        };
+      }),
   ];
+}
+
+/** Drops "confirm whether X applies" gaps for flags the profile never needs. */
+export function visibleUnknowns(result: Result, profile: Profile): string[] {
+  return result.unknowns.filter((unknown) => {
+    if (unknown === NO_RULE_MESSAGES.testas)
+      return flagRelevant("testAS", result, profile);
+    if (unknown === NO_RULE_MESSAGES.dmat)
+      return flagRelevant("dMAT", result, profile);
+    return true;
+  });
 }
 
 export function buildRoute(result: Result): RouteStation[] {

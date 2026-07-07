@@ -24,6 +24,7 @@ import styles from "./result.module.css";
 import {
   isBetaCountry,
   profileSummary,
+  visibleUnknowns,
   type ViewerVariant,
 } from "./result-model";
 
@@ -114,9 +115,13 @@ export default async function ResultPage({
 
         <div className={styles.grid}>
           <div className={styles.primary}>
-            <VerdictCard result={result} profileLine={profileSummary(profile)} />
+            <VerdictCard
+              result={result}
+              profile={profile}
+              profileLine={profileSummary(profile)}
+            />
             <RouteCard result={result} />
-            <UnknownsCard unknowns={result.unknowns} />
+            <UnknownsCard unknowns={visibleUnknowns(result, profile)} />
           </div>
           <div className={styles.secondary}>
             <DocumentsCard result={result} viewer={viewer} />
