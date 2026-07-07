@@ -102,7 +102,7 @@
 
 .routeLine {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--route-columns, 3), minmax(0, 1fr));
   gap: 8px;
   position: relative;
 }

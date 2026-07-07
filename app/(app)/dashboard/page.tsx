@@ -11,6 +11,7 @@ import { syncDashboard } from "@/lib/tasks/sync";
 
 import { DashboardViews } from "./dashboard-views";
 import { RemoveCourseButton } from "./remove-course-button";
+import { dashboardRouteStations, type DashboardRouteStation } from "./route-line";
 import styles from "./dashboard.module.css";
 import { StatusSelect } from "./status-select";
 
@@ -28,24 +29,26 @@ function sourceHost(url: string): string {
   }
 }
 
-function routeIndex(hasProfile: boolean, hasApplications: boolean): number {
-  if (!hasProfile) return 0;
-  if (!hasApplications) return 1;
-  return 2;
-}
+function routeDots(stations: DashboardRouteStation[]) {
+  const routeStyle = {
+    "--route-columns": stations.length,
+  } as React.CSSProperties & Record<"--route-columns", number>;
 
-function routeDots(index: number) {
-  return ["Eligibility", "APS", "Applications", "Visa"].map((label, itemIndex) => (
-    <div key={label} className={styles.routeStep}>
-      <span
-        className={`${styles.routeDot} ${
-          itemIndex <= index ? styles.routeDotActive : ""
-        }`}
-        aria-hidden
-      />
-      <span>{label}</span>
+  return (
+    <div className={styles.routeLine} style={routeStyle}>
+      {stations.map((station) => (
+        <div key={station.label} className={styles.routeStep}>
+          <span
+            className={`${styles.routeDot} ${
+              station.active ? styles.routeDotActive : ""
+            }`}
+            aria-hidden
+          />
+          <span>{station.label}</span>
+        </div>
+      ))}
     </div>
-  ));
+  );
 }
 
 export default async function DashboardPage() {
@@ -56,7 +59,11 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const view = await syncDashboard(db, user.id);
-  const route = routeIndex(view.hasProfile, view.rail.length > 0);
+  const route = dashboardRouteStations({
+    hasApplications: view.rail.length > 0,
+    hasProfile: view.hasProfile,
+    result: view.result,
+  });
   const questionsUsed = await countTodayAssistantQuestions(db, user.id);
 
   return (
@@ -80,7 +87,7 @@ export default async function DashboardPage() {
           </div>
 
           <section className={styles.routeCard}>
-            <div className={styles.routeLine}>{routeDots(route)}</div>
+            {routeDots(route)}
             <div className={styles.nextDeadlineLine}>
               <span>Next deadline</span>
               <span>
