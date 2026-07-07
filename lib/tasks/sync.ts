@@ -20,7 +20,9 @@ import {
   generateTasks,
   parseDeadlineDate,
   prepareGeneratedTaskSync,
+  selectSubmissionDeadline,
   type GeneratedTask,
+  type TargetIntake,
 } from "@/lib/tasks/generate";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -154,8 +156,19 @@ function displayTasks(
   });
 }
 
-function datedDeadline(lines: unknown): { iso: string | null; verbatim: string | null } {
+function datedDeadline(
+  lines: unknown,
+  todayIso: string,
+  intake?: TargetIntake,
+): { iso: string | null; verbatim: string | null } {
   if (!Array.isArray(lines)) return { iso: null, verbatim: null };
+  const selected = selectSubmissionDeadline(
+    lines.filter((line): line is string => typeof line === "string"),
+    todayIso,
+    intake,
+  );
+  if (selected.verbatim) return { iso: selected.date, verbatim: selected.verbatim };
+
   for (const line of lines) {
     if (typeof line !== "string" || !/\d/.test(line)) continue;
     const iso = parseDeadlineDate(line);
@@ -164,7 +177,11 @@ function datedDeadline(lines: unknown): { iso: string | null; verbatim: string |
   return { iso: null, verbatim: null };
 }
 
-function railApplication(application: ApplicationWithCourse): RailApplication | null {
+function railApplication(
+  application: ApplicationWithCourse,
+  todayIso: string,
+  intake?: TargetIntake,
+): RailApplication | null {
   const course = application.courses;
   if (!course || course.review_status === "rejected") return null;
   return {
@@ -175,7 +192,7 @@ function railApplication(application: ApplicationWithCourse): RailApplication | 
     universityName: course.university_name ?? "University pending review",
     detail: [course.location, course.degree].filter(Boolean).join(" · "),
     sourceUrl: course.source_url,
-    nextDeadline: datedDeadline(course.deadlines),
+    nextDeadline: datedDeadline(course.deadlines, todayIso, intake),
   };
 }
 
@@ -209,7 +226,12 @@ export async function syncDashboard(
   await ensureApplications(db, userId, courses);
   const applications = await listApplicationsWithCourses(db, userId);
 
-  const desired = generateTasks(result, toGenerationApplications(applications));
+  const desired = generateTasks(
+    result,
+    toGenerationApplications(applications),
+    todayIso,
+    profile?.intake,
+  );
   const beforeTasks = await listTasks(db, userId);
   const reconciliation = prepareGeneratedTaskSync(userId, desired, beforeTasks);
   await upsertGeneratedTasks(db, reconciliation.upsertRows);
@@ -223,7 +245,7 @@ export async function syncDashboard(
   const pendingTasks = allGeneratedTasks.filter((task) => !task.done);
   const buckets = bucketTasks(pendingTasks, todayIso);
   const rail = applications.flatMap((application) => {
-    const row = railApplication(application);
+    const row = railApplication(application, todayIso, profile?.intake);
     return row ? [row] : [];
   });
   const calendarEvents = pendingTasks.flatMap((task) =>
