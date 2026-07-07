@@ -291,6 +291,35 @@ export async function setTaskDone(
   );
 }
 
+export async function setTaskPreferredBucket(
+  db: Db,
+  userId: string,
+  id: string,
+  preferredBucket: "now" | "next" | "later",
+): Promise<Tables<"tasks">> {
+  const result = await db
+    .from("tasks")
+    .update({ preferred_bucket: preferredBucket })
+    .eq("user_id", userId)
+    .eq("id", id)
+    .select()
+    .single();
+  if (
+    result.error?.message.includes("preferred_bucket") &&
+    result.error.message.includes("schema cache")
+  ) {
+    return unwrap(
+      await db
+        .from("tasks")
+        .select()
+        .eq("user_id", userId)
+        .eq("id", id)
+        .single(),
+    );
+  }
+  return unwrap(result);
+}
+
 export async function upsertGeneratedTasks(
   db: Db,
   rows: GeneratedTaskUpsert[],

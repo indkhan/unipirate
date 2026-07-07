@@ -45,6 +45,7 @@ export type DashboardTask = {
   dueDate: string | null;
   verbatimDue: string | null;
   order: number;
+  preferredBucket: "now" | "next" | "later" | null;
   applicationId: string | null;
   source: { url: string; verifiedAt: string | null } | null;
   scope: "global" | "university";
@@ -151,6 +152,12 @@ function displayTasks(
           dueDate: task.due_date,
           verbatimDue: null,
           order: 25,
+          preferredBucket:
+            task.preferred_bucket === "now" ||
+            task.preferred_bucket === "next" ||
+            task.preferred_bucket === "later"
+              ? task.preferred_bucket
+              : null,
           applicationId: task.application_id,
           source: task.source_url
             ? { url: task.source_url, verifiedAt: null }
@@ -172,6 +179,12 @@ function displayTasks(
         dueDate: task.due_date,
         verbatimDue: generatedTask.verbatimDue,
         order: generatedTask.order,
+        preferredBucket:
+          task.preferred_bucket === "now" ||
+          task.preferred_bucket === "next" ||
+          task.preferred_bucket === "later"
+            ? task.preferred_bucket
+            : null,
         applicationId: task.application_id,
         source: generatedTask.source,
         scope: task.application_id ? "university" : "global",
@@ -268,7 +281,24 @@ export async function syncDashboard(
   const allGeneratedTasks = displayTasks(currentDbTasks, desired);
   const pendingTasks = allGeneratedTasks.filter((task) => !task.done);
   const doneTasks = allGeneratedTasks.filter((task) => task.done);
-  const buckets = bucketTasks(pendingTasks, todayIso);
+  const defaultBuckets = bucketTasks(
+    pendingTasks.filter((task) => task.preferredBucket === null),
+    todayIso,
+  );
+  const buckets = {
+    now: [
+      ...pendingTasks.filter((task) => task.preferredBucket === "now"),
+      ...defaultBuckets.now,
+    ],
+    next: [
+      ...pendingTasks.filter((task) => task.preferredBucket === "next"),
+      ...defaultBuckets.next,
+    ],
+    later: [
+      ...pendingTasks.filter((task) => task.preferredBucket === "later"),
+      ...defaultBuckets.later,
+    ],
+  };
   const rail = applications.flatMap((application) => {
     const row = railApplication(application, todayIso, profile?.intake);
     return row ? [row] : [];

@@ -66,6 +66,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
+  min-width: 0;
 }
 
 .mainColumn {
@@ -413,6 +414,29 @@
   gap: 10px;
 }
 
+.dropSection {
+  transition:
+    border-color var(--dur-1) var(--ease),
+    background var(--dur-1) var(--ease),
+    opacity var(--dur-1) var(--ease);
+}
+
+.nowSection.dropSection {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.dropSectionActive {
+  border-color: var(--route-blue);
+  background: var(--route-blue-tint);
+}
+
+.dropSectionMoving {
+  opacity: 0.76;
+}
+
 .sectionLabel {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -420,6 +444,18 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink);
+}
+
+.nowSection > .sectionLabel {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+}
+
+.nowSection > .nowCard,
+.nowSection > .quietPanel {
+  margin: 0 10px 10px;
 }
 
 .nowCard {
@@ -431,6 +467,14 @@
   display: flex;
   gap: 12px;
   align-items: flex-start;
+}
+
+.nowCard[draggable="true"] {
+  cursor: grab;
+}
+
+.nowCard[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .nowCardOverdue {
@@ -537,9 +581,9 @@
 }
 
 .laterDetails {
-  background: transparent;
-  border-style: dashed;
-  border-color: var(--line-strong);
+  background: var(--surface);
+  border-style: solid;
+  border-color: var(--line);
 }
 
 .taskDetails summary {
@@ -557,7 +601,7 @@
 }
 
 .laterDetails summary {
-  color: var(--ink-muted);
+  color: var(--ink);
 }
 
 .sectionTaskStack {
@@ -588,11 +632,41 @@
   gap: 12px;
 }
 
+.calendarHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .calendarTitle {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 16px;
+}
+
+.calendarNav {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.calendarNavButton {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--route-blue);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.calendarNavButton:hover {
+  background: var(--route-blue-tint);
 }
 
 .weekdays,
@@ -619,6 +693,7 @@
   flex-direction: column;
   gap: 2px;
   align-items: center;
+  cursor: pointer;
 }
 
 .calCell span:first-child {
@@ -627,9 +702,23 @@
   color: var(--ink-secondary);
 }
 
+.calCell:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.calCell:not(:disabled):hover {
+  border-color: var(--line-strong);
+}
+
 .calToday {
   background: var(--route-blue-tint);
   border-color: rgba(31, 79, 191, 0.24);
+}
+
+.calSelected {
+  border-color: var(--route-blue);
+  box-shadow: inset 0 0 0 1px var(--route-blue);
 }
 
 .calDot {
@@ -702,12 +791,15 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0;
 }
 
 .railHead {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  gap: 12px;
+  min-width: 0;
 }
 
 .railLabel {
@@ -736,6 +828,7 @@
   overflow-x: auto;
   margin: 0 -16px;
   padding: 0 16px 6px;
+  min-width: 0;
 }
 
 .railCard {
@@ -748,6 +841,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 @media (min-width: 768px) {
@@ -784,6 +879,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
 }
 
 .cardName {
@@ -791,6 +887,7 @@
   font-weight: 600;
   font-size: 16px;
   color: var(--ink);
+  flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -806,10 +903,13 @@ a.cardName:hover {
 .cardUni {
   font: var(--text-body-sm);
   color: var(--ink-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .statusSelect {
   align-self: flex-start;
+  max-width: 100%;
   appearance: none;
   border: none;
   border-radius: 4px;
@@ -850,10 +950,11 @@ a.cardName:hover {
 .cardFoot {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 12px;
   border-top: 1px solid var(--line);
   padding-top: 8px;
+  min-width: 0;
 }
 
 .cardFootLabel {
@@ -863,10 +964,12 @@ a.cardName:hover {
 }
 
 .deadline {
+  min-width: 0;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--signal);
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .sourceLink {

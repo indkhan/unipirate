@@ -11,6 +11,7 @@ import {
   insertTask,
   listApplications,
   removeMyCourse,
+  setTaskPreferredBucket,
   setTaskDone,
   updateManualTask as updateManualTaskRow,
   updateApplicationStatus,
@@ -50,6 +51,24 @@ export async function toggleTask(input: unknown): Promise<void> {
   if (!user) redirect("/login");
 
   await setTaskDone(db, id, done);
+  revalidatePath("/dashboard");
+}
+
+const moveTaskSchema = z.object({
+  id: z.string().uuid(),
+  bucket: z.enum(["now", "next", "later"]),
+});
+
+export async function moveTaskToBucket(input: unknown): Promise<void> {
+  const { id, bucket } = moveTaskSchema.parse(input);
+  const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  await setTaskPreferredBucket(db, user.id, id, bucket);
   revalidatePath("/dashboard");
 }
 
