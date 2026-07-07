@@ -252,7 +252,7 @@ export async function updateManualTask(
   id: string,
   task: Pick<
     TablesInsert<"tasks">,
-    "title" | "description" | "due_date" | "application_id"
+    "title" | "description" | "source_url" | "due_date" | "application_id"
   >,
 ): Promise<Tables<"tasks">> {
   return unwrap(

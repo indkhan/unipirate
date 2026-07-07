@@ -1,2 +1,2 @@
 alter table public.tasks
-  add column description text;
+  add column if not exists description text;

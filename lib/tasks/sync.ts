@@ -152,7 +152,9 @@ function displayTasks(
           verbatimDue: null,
           order: 25,
           applicationId: task.application_id,
-          source: null,
+          source: task.source_url
+            ? { url: task.source_url, verifiedAt: null }
+            : null,
           scope: task.application_id ? ("university" as const) : ("global" as const),
         },
       ];

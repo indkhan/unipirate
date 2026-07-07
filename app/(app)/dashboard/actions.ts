@@ -67,6 +67,13 @@ const manualTaskSchema = z.object({
     )
     .optional()
     .default(null),
+  sourceUrl: z
+    .preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? null : value),
+      z.string().trim().url().max(2048).nullable(),
+    )
+    .optional()
+    .default(null),
   dueDate: taskDateSchema,
   applicationId: z
     .preprocess((value) => (value === "" ? null : value), z.string().uuid().nullable())
@@ -100,6 +107,7 @@ export async function createManualTask(input: unknown): Promise<void> {
     user_id: user.id,
     title: task.title,
     description: task.description,
+    source_url: task.sourceUrl,
     due_date: task.dueDate,
     application_id: task.applicationId,
   });
@@ -123,6 +131,7 @@ export async function updateManualTask(input: unknown): Promise<void> {
   await updateManualTaskRow(db, user.id, task.id, {
     title: task.title,
     description: task.description,
+    source_url: task.sourceUrl,
     due_date: task.dueDate,
     application_id: task.applicationId,
   });

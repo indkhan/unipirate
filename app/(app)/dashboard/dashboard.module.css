@@ -346,6 +346,20 @@
   align-items: center;
 }
 
+.nowCard > .nowBody > .taskActionRow {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease);
+}
+
+.nowCard:hover > .nowBody > .taskActionRow,
+.nowCard:focus-within > .nowBody > .taskActionRow {
+  opacity: 1;
+}
+
 .taskTextButton {
   min-height: 32px;
   border: 1px solid var(--line);
@@ -360,6 +374,34 @@
   font-size: 13px;
   font-weight: 600;
   padding: 0 10px;
+}
+
+.taskIconButton {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--route-blue);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.taskIconButton:hover {
+  background: var(--route-blue-tint);
+}
+
+.taskIconButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.editTaskForm .taskActionRow {
+  position: static;
+  opacity: 1;
 }
 
 .taskStack,
@@ -381,6 +423,7 @@
 }
 
 .nowCard {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
@@ -430,14 +473,6 @@
   font: var(--text-body);
   font-weight: 600;
   color: var(--ink);
-  overflow-wrap: anywhere;
-}
-
-.taskDescription {
-  margin: 0;
-  white-space: pre-wrap;
-  font: var(--text-body-sm);
-  color: var(--ink-secondary);
   overflow-wrap: anywhere;
 }
 

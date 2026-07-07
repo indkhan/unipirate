@@ -538,6 +538,7 @@ export type Database = {
           due_date: string | null
           generated_from_rule_id: string | null
           id: string
+          source_url: string | null
           task_key: string | null
           title: string
           updated_at: string
@@ -551,6 +552,7 @@ export type Database = {
           due_date?: string | null
           generated_from_rule_id?: string | null
           id?: string
+          source_url?: string | null
           task_key?: string | null
           title: string
           updated_at?: string
@@ -564,6 +566,7 @@ export type Database = {
           due_date?: string | null
           generated_from_rule_id?: string | null
           id?: string
+          source_url?: string | null
           task_key?: string | null
           title?: string
           updated_at?: string

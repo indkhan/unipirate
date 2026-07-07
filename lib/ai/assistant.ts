@@ -186,6 +186,7 @@ export function assistantTools(options: {
           tasks: tasks.map((t) => ({
             title: t.title,
             description: t.description,
+            source_url: t.source_url,
             due_date: t.due_date,
             done: t.done,
           })),

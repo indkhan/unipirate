@@ -84,12 +84,14 @@ function ManualTaskForm({ applications }: { applications: RailApplication[] }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [applicationId, setApplicationId] = useState("");
 
   function reset() {
     setTitle("");
     setDescription("");
+    setSourceUrl("");
     setDueDate("");
     setApplicationId("");
   }
@@ -143,6 +145,7 @@ function ManualTaskForm({ applications }: { applications: RailApplication[] }) {
                 await createManualTask({
                   title,
                   description,
+                  sourceUrl: sourceUrl || null,
                   dueDate: dueDate || null,
                   applicationId: applicationId || null,
                 });
@@ -169,6 +172,15 @@ function ManualTaskForm({ applications }: { applications: RailApplication[] }) {
               rows={4}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
+            />
+            <input
+              aria-label="Task source URL"
+              className={styles.taskInput}
+              maxLength={2048}
+              placeholder="https://example.com"
+              type="url"
+              value={sourceUrl}
+              onChange={(event) => setSourceUrl(event.target.value)}
             />
             <input
               aria-label="Task due date"
@@ -214,6 +226,7 @@ function ManualTaskActions({
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
+  const [sourceUrl, setSourceUrl] = useState(task.source?.url ?? "");
   const [dueDate, setDueDate] = useState(task.dueDate ?? "");
   const [applicationId, setApplicationId] = useState(task.applicationId ?? "");
 
@@ -230,6 +243,7 @@ function ManualTaskActions({
               id: task.id,
               title,
               description,
+              sourceUrl: sourceUrl || null,
               dueDate: dueDate || null,
               applicationId: applicationId || null,
             });
@@ -253,6 +267,14 @@ function ManualTaskActions({
           rows={3}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
+        />
+        <input
+          aria-label="Task source URL"
+          className={styles.taskInput}
+          maxLength={2048}
+          type="url"
+          value={sourceUrl}
+          onChange={(event) => setSourceUrl(event.target.value)}
         />
         <input
           aria-label="Task due date"
@@ -287,6 +309,7 @@ function ManualTaskActions({
             onClick={() => {
               setTitle(task.title);
               setDescription(task.description ?? "");
+              setSourceUrl(task.source?.url ?? "");
               setDueDate(task.dueDate ?? "");
               setApplicationId(task.applicationId ?? "");
               setEditing(false);
@@ -300,14 +323,19 @@ function ManualTaskActions({
   }
 
   return (
-    <div className={styles.taskActionRow}>
-      <button className={styles.taskTextButton} type="button" onClick={() => setEditing(true)}>
+    <div className={styles.taskActionRow} aria-label="Manual task actions">
+      <button
+        className={styles.taskIconButton}
+        type="button"
+        aria-label="Edit task"
+        onClick={() => setEditing(true)}
+      >
         <Pencil size={14} aria-hidden />
-        Edit
       </button>
       <button
-        className={styles.taskTextButton}
+        className={styles.taskIconButton}
         type="button"
+        aria-label="Delete task"
         disabled={isPending}
         onClick={() => {
           startTransition(async () => {
@@ -317,7 +345,6 @@ function ManualTaskActions({
         }}
       >
         <Trash2 size={14} aria-hidden />
-        Delete
       </button>
     </div>
   );
@@ -333,15 +360,15 @@ function NowTask({
   applications: RailApplication[];
 }) {
   const overdue = task.dueDate !== null && daysUntil(task.dueDate, todayIso) < 0;
+  const taskDetail = [task.description, task.verbatimDue ?? formatDate(task.dueDate)]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <article className={`${styles.nowCard} ${overdue ? styles.nowCardOverdue : ""}`}>
       <TaskToggle task={task} />
       <div className={styles.nowBody}>
         <h3 className={styles.nowTitle}>{task.title}</h3>
-        {task.description ? (
-          <p className={styles.taskDescription}>{task.description}</p>
-        ) : null}
         <div className={styles.taskMeta}>
           <span
             className={`${styles.taskTag} ${
@@ -350,9 +377,7 @@ function NowTask({
           >
             {task.scope === "global" ? "Global" : "University"}
           </span>
-          <span className={styles.taskDue}>
-            {task.verbatimDue ?? formatDate(task.dueDate)}
-          </span>
+          <span className={styles.taskDue}>{taskDetail}</span>
         </div>
         <Stamp source={task.source} />
         <ManualTaskActions task={task} applications={applications} />
