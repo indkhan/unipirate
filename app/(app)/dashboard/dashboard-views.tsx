@@ -565,8 +565,9 @@ export function DashboardViews({
 
       {view === "tasks" ? (
         <div className={styles.taskStack}>
-          <section
-            className={`${styles.nowSection} ${dropZoneClass("now")}`}
+          <details
+            className={`${styles.taskDetails} ${dropZoneClass("now")}`}
+            open
             onDragOver={(event) => {
               event.preventDefault();
               setDragOverBucket("now");
@@ -577,22 +578,24 @@ export function DashboardViews({
               dropTask("now");
             }}
           >
-            <span className={styles.sectionLabel}>Now</span>
-            {localBuckets.now.length === 0 ? (
-              <div className={styles.quietPanel}>Nothing needs action today.</div>
-            ) : (
-              localBuckets.now.map((task) => (
-                <NowTask
-                  key={task.key}
-                  task={task}
-                  todayIso={todayIso}
-                  applications={applications}
-                  onDragStart={setDraggedTaskId}
-                  onToggle={handleToggle}
-                />
-              ))
-            )}
-          </section>
+            <summary>Now · {localBuckets.now.length}</summary>
+            <div className={styles.sectionTaskStack}>
+              {localBuckets.now.length === 0 ? (
+                <div className={styles.quietPanel}>Nothing needs action today.</div>
+              ) : (
+                localBuckets.now.map((task) => (
+                  <NowTask
+                    key={task.key}
+                    task={task}
+                    todayIso={todayIso}
+                    applications={applications}
+                    onDragStart={setDraggedTaskId}
+                    onToggle={handleToggle}
+                  />
+                ))
+              )}
+            </div>
+          </details>
 
           <section className={styles.detailsStack}>
             <details
