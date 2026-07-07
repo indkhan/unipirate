@@ -20,6 +20,7 @@ const p1Answers: Answers = AnswersSchema.parse({
   targetDegree: "bachelor",
   nationality: "in",
   certificateCountry: "in",
+  visaApplicationCountry: "in",
   curriculumType: "national",
   board: "cbse",
   schoolGradePercent: 82,
@@ -33,6 +34,7 @@ const p11Answers: Answers = AnswersSchema.parse({
   targetDegree: "bachelor",
   nationality: "pk",
   certificateCountry: "sa",
+  visaApplicationCountry: "sa",
   curriculumType: "gce",
   gceAwardingBody: "caie",
   gceSubjects: [
@@ -65,7 +67,7 @@ describe("buildProfile reproduces engine-test personas", () => {
   it("persona #11 answers evaluate to the persona-#11 outcome", () => {
     const r = evaluate(buildProfile(p11Answers), fixtureRules);
     expect(r.path).toBe("subject_restricted");
-    expect(r.aps).toBe("unknown");
+    expect(r.aps).toBe("not_required");
   });
 });
 
@@ -83,6 +85,7 @@ describe("visibleSteps", () => {
       "certificateCountry",
       "targetDegree",
       "nationality",
+      "visaApplicationCountry",
       "curriculumType",
       "board",
       "schoolGradePercent",
@@ -98,6 +101,7 @@ describe("visibleSteps", () => {
       "certificateCountry",
       "targetDegree",
       "nationality",
+      "visaApplicationCountry",
       "curriculumType",
       "gceAwardingBody",
       "gceSubjects",
@@ -114,6 +118,13 @@ describe("visibleSteps", () => {
     expect(next.nationality).toBe("in");
     // APS-certificate answer survives: it depends on country, not curriculum
     expect(next.hasExistingApsCertificate).toBe(false);
+  });
+
+  it("skips the existing-APS question when the visa is filed from Saudi Arabia", () => {
+    const next = withAnswer(p1Answers, "visaApplicationCountry", "sa");
+    expect(visibleSteps(next)).not.toContain("hasExistingApsCertificate");
+    // the stale APS answer is pruned along with its step
+    expect(next.hasExistingApsCertificate).toBeUndefined();
   });
 
   it("incomplete answers fail schema validation", () => {

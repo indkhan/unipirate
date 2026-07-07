@@ -447,7 +447,7 @@ function ruleMatches(facts: Record<string, Fact>, rule: ParsedRule): boolean {
 
 // --------------------------------------------------------------- evaluate
 
-const NO_RULE_MESSAGES = {
+export const NO_RULE_MESSAGES = {
   path: "No rule covers your admission path — confirm with the DAAD admission database and the uni-assist country page for your certificate.",
   aps: "No rule determines whether APS applies to your profile — confirm with the competent German mission or the official APS portal.",
   testas: "No rule determines whether TestAS applies to your profile — confirm with DAAD or the official APS portal for your country.",

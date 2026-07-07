@@ -52,19 +52,6 @@
   gap: 14px;
 }
 
-.checkLink {
-  color: var(--route-blue);
-  font: var(--text-body-sm);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-@media (max-width: 430px) {
-  .checkLink {
-    display: none;
-  }
-}
-
 .routeCard {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -79,6 +66,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
+  min-width: 0;
 }
 
 .mainColumn {
@@ -102,7 +90,7 @@
 
 .routeLine {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--route-columns, 3), minmax(0, 1fr));
   gap: 8px;
   position: relative;
 }
@@ -228,6 +216,14 @@
 
 /* ------------------------------------------------------------------ tasks */
 
+.taskToolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
 .viewToggle {
   display: inline-flex;
   gap: 0;
@@ -255,13 +251,190 @@
   color: var(--route-blue);
 }
 
-.taskStack,
-.nowSection,
-.detailsStack,
-.miniStack {
+.addTaskButton {
+  min-height: 44px;
+  border: 1px solid rgba(31, 79, 191, 0.22);
+  border-radius: var(--radius-control);
+  background: var(--route-blue);
+  color: var(--ink-inverse);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0 14px;
+  box-shadow: 0 8px 18px rgba(31, 79, 191, 0.18);
+}
+
+.addTaskButton:hover {
+  background: var(--route-blue-hover);
+}
+
+.addTaskForm,
+.editTaskForm {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  padding: 10px;
+}
+
+.addTaskForm {
+  background: var(--paper);
+  padding: 12px;
+}
+
+.taskInput,
+.taskDateInput,
+.taskSelect,
+.taskTextarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font: var(--text-body-sm);
+  padding: 0 10px;
+}
+
+.taskInput,
+.taskDateInput,
+.taskSelect {
+  min-height: 42px;
+}
+
+.taskTextarea {
+  min-height: 104px;
+  padding-block: 10px;
+  resize: vertical;
+}
+
+.taskInput:focus,
+.taskDateInput:focus,
+.taskSelect:focus,
+.taskTextarea:focus {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.taskSubmit {
+  min-height: 42px;
+  border: none;
+  border-radius: 4px;
+  background: var(--route-blue);
+  color: var(--ink-inverse);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 700;
+  padding: 0 14px;
+}
+
+.taskSubmit:disabled,
+.taskTextButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.taskActionRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.nowCard > .nowBody > .taskActionRow {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease);
+}
+
+.nowCard:hover > .nowBody > .taskActionRow,
+.nowCard:focus-within > .nowBody > .taskActionRow {
+  opacity: 1;
+}
+
+.taskTextButton {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--route-blue);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 10px;
+}
+
+.taskIconButton {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--route-blue);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.taskIconButton:hover {
+  background: var(--route-blue-tint);
+}
+
+.taskIconButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.editTaskForm .taskActionRow {
+  position: static;
+  opacity: 1;
+}
+
+.taskStack,
+.nowSection,
+.detailsStack,
+.sectionTaskStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dropSection {
+  transition:
+    border-color var(--dur-1) var(--ease),
+    background var(--dur-1) var(--ease),
+    opacity var(--dur-1) var(--ease);
+}
+
+.nowSection.dropSection {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.dropSectionActive {
+  border-color: var(--route-blue);
+  background: var(--route-blue-tint);
+}
+
+.dropSectionMoving {
+  opacity: 0.76;
 }
 
 .sectionLabel {
@@ -273,7 +446,20 @@
   color: var(--ink);
 }
 
+.nowSection > .sectionLabel {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+}
+
+.nowSection > .nowCard,
+.nowSection > .quietPanel {
+  margin: 0 10px 10px;
+}
+
 .nowCard {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
@@ -281,6 +467,14 @@
   display: flex;
   gap: 12px;
   align-items: flex-start;
+}
+
+.nowCard[draggable="true"] {
+  cursor: grab;
+}
+
+.nowCard[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .nowCardOverdue {
@@ -324,11 +518,6 @@
   font-weight: 600;
   color: var(--ink);
   overflow-wrap: anywhere;
-}
-
-.dueNote {
-  font: var(--text-body-sm);
-  color: var(--signal);
 }
 
 .taskMeta {
@@ -392,9 +581,9 @@
 }
 
 .laterDetails {
-  background: transparent;
-  border-style: dashed;
-  border-color: var(--line-strong);
+  background: var(--surface);
+  border-style: solid;
+  border-color: var(--line);
 }
 
 .taskDetails summary {
@@ -412,47 +601,14 @@
 }
 
 .laterDetails summary {
-  color: var(--ink-muted);
-}
-
-.miniStack {
-  padding: 0 10px 10px;
-}
-
-.miniTask {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 12px 10px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control);
-}
-
-.miniBox {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1.5px solid var(--line-strong);
-  flex: none;
-  box-sizing: border-box;
-}
-
-.miniTitle {
-  font: var(--text-body-sm);
   color: var(--ink);
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
-.miniDue {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--ink-muted);
-  text-align: right;
-  max-width: 34%;
-  overflow-wrap: anywhere;
+.sectionTaskStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 10px 10px;
 }
 
 .quietPanel {
@@ -476,11 +632,41 @@
   gap: 12px;
 }
 
+.calendarHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .calendarTitle {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 16px;
+}
+
+.calendarNav {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.calendarNavButton {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--route-blue);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.calendarNavButton:hover {
+  background: var(--route-blue-tint);
 }
 
 .weekdays,
@@ -507,6 +693,7 @@
   flex-direction: column;
   gap: 2px;
   align-items: center;
+  cursor: pointer;
 }
 
 .calCell span:first-child {
@@ -515,9 +702,23 @@
   color: var(--ink-secondary);
 }
 
+.calCell:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.calCell:not(:disabled):hover {
+  border-color: var(--line-strong);
+}
+
 .calToday {
   background: var(--route-blue-tint);
   border-color: rgba(31, 79, 191, 0.24);
+}
+
+.calSelected {
+  border-color: var(--route-blue);
+  box-shadow: inset 0 0 0 1px var(--route-blue);
 }
 
 .calDot {
@@ -590,12 +791,15 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0;
 }
 
 .railHead {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  gap: 12px;
+  min-width: 0;
 }
 
 .railLabel {
@@ -624,6 +828,7 @@
   overflow-x: auto;
   margin: 0 -16px;
   padding: 0 16px 6px;
+  min-width: 0;
 }
 
 .railCard {
@@ -636,6 +841,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 @media (min-width: 768px) {
@@ -672,6 +879,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
 }
 
 .cardName {
@@ -679,6 +887,7 @@
   font-weight: 600;
   font-size: 16px;
   color: var(--ink);
+  flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -694,10 +903,13 @@ a.cardName:hover {
 .cardUni {
   font: var(--text-body-sm);
   color: var(--ink-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .statusSelect {
   align-self: flex-start;
+  max-width: 100%;
   appearance: none;
   border: none;
   border-radius: 4px;
@@ -738,10 +950,11 @@ a.cardName:hover {
 .cardFoot {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 12px;
   border-top: 1px solid var(--line);
   padding-top: 8px;
+  min-width: 0;
 }
 
 .cardFootLabel {
@@ -751,10 +964,12 @@ a.cardName:hover {
 }
 
 .deadline {
+  min-width: 0;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--signal);
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .sourceLink {
@@ -835,6 +1050,9 @@ a.cardName:hover {
   margin: -10px -10px -10px 0;
   border: none;
   background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 20px;
   color: var(--ink-secondary);
   cursor: pointer;

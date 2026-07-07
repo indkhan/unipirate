@@ -246,6 +246,41 @@ export async function insertTask(
   return unwrap(await db.from("tasks").insert(task).select().single());
 }
 
+export async function updateManualTask(
+  db: Db,
+  userId: string,
+  id: string,
+  task: Pick<
+    TablesInsert<"tasks">,
+    "title" | "description" | "source_url" | "due_date" | "application_id"
+  >,
+): Promise<Tables<"tasks">> {
+  return unwrap(
+    await db
+      .from("tasks")
+      .update(task)
+      .eq("user_id", userId)
+      .eq("id", id)
+      .is("task_key", null)
+      .select()
+      .single(),
+  );
+}
+
+export async function deleteManualTask(
+  db: Db,
+  userId: string,
+  id: string,
+): Promise<void> {
+  const { error } = await db
+    .from("tasks")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", id)
+    .is("task_key", null);
+  if (error) throw new Error(error.message);
+}
+
 export async function setTaskDone(
   db: Db,
   id: string,
@@ -254,6 +289,35 @@ export async function setTaskDone(
   return unwrap(
     await db.from("tasks").update({ done }).eq("id", id).select().single(),
   );
+}
+
+export async function setTaskPreferredBucket(
+  db: Db,
+  userId: string,
+  id: string,
+  preferredBucket: "now" | "next" | "later",
+): Promise<Tables<"tasks">> {
+  const result = await db
+    .from("tasks")
+    .update({ preferred_bucket: preferredBucket })
+    .eq("user_id", userId)
+    .eq("id", id)
+    .select()
+    .single();
+  if (
+    result.error?.message.includes("preferred_bucket") &&
+    result.error.message.includes("schema cache")
+  ) {
+    return unwrap(
+      await db
+        .from("tasks")
+        .select()
+        .eq("user_id", userId)
+        .eq("id", id)
+        .single(),
+    );
+  }
+  return unwrap(result);
 }
 
 export async function upsertGeneratedTasks(

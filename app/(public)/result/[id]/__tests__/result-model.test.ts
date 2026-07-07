@@ -2,13 +2,22 @@ import { describe, expect, it } from "vitest";
 
 import type { Profile, Result } from "@/lib/engine/evaluate";
 
+import { NO_RULE_MESSAGES } from "@/lib/engine/evaluate";
+
 import {
   buildRoute,
   buildVerdicts,
   documentPreview,
   intakeLabel,
   isBetaCountry,
+  visibleUnknowns,
 } from "../result-model";
+
+const bachelorProfile: Profile = {
+  targetDegree: "bachelor",
+  curriculumType: "national",
+  certificateCountry: "in",
+};
 
 const result: Result = {
   path: "studienkolleg",
@@ -33,10 +42,45 @@ const result: Result = {
 
 describe("result page model", () => {
   it("attaches citations only to their supported verdict", () => {
-    const verdicts = buildVerdicts(result);
+    const verdicts = buildVerdicts(result, bachelorProfile);
     expect(verdicts[0].citations).toHaveLength(1);
     expect(verdicts[1].citations).toHaveLength(0);
     expect(verdicts[2]).toEqual(expect.objectContaining({ unknown: true }));
+  });
+
+  it("hides dMAT for bachelor's applicants and TestAS for master's", () => {
+    const bachelor = buildVerdicts(result, bachelorProfile);
+    expect(bachelor.map((v) => v.key)).toEqual(["path", "aps", "testAS"]);
+
+    const master = buildVerdicts(
+      { ...result, testAS: "unknown", dMAT: "unknown" },
+      { ...bachelorProfile, targetDegree: "master" },
+    );
+    expect(master.map((v) => v.key)).toEqual(["path", "aps", "dMAT"]);
+  });
+
+  it("hides dMAT for non-Indian certificates but never hides a required flag", () => {
+    const saudiMaster = buildVerdicts(
+      { ...result, dMAT: "unknown" },
+      { ...bachelorProfile, targetDegree: "master", certificateCountry: "sa" },
+    );
+    expect(saudiMaster.map((v) => v.key)).not.toContain("dMAT");
+
+    const required = buildVerdicts(
+      { ...result, dMAT: "required" },
+      bachelorProfile,
+    );
+    expect(required.map((v) => v.key)).toContain("dMAT");
+  });
+
+  it("drops confirm-whether gaps for flags the profile never needs", () => {
+    const unknowns = [NO_RULE_MESSAGES.dmat, NO_RULE_MESSAGES.aps, "other gap"];
+    expect(
+      visibleUnknowns(
+        { ...result, dMAT: "unknown", unknowns },
+        bachelorProfile,
+      ),
+    ).toEqual([NO_RULE_MESSAGES.aps, "other gap"]);
   });
 
   it("personalizes route stations from evaluated outcomes", () => {

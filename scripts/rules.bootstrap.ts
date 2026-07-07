@@ -8,6 +8,9 @@ import { intakeIndex, type EngineRule } from "../lib/engine/evaluate";
 type RuleRecord = EngineRule & { country: string | null };
 
 const SOURCE_CHECKED_AT = "2026-07-04T00:00:00Z";
+// visa-country APS scoping verified 7 July 2026 against aps-india.de/faq and
+// the German Embassy Riyadh student-visa checklist (VFS Global).
+const VISA_SOURCE_CHECKED_AT = "2026-07-07T00:00:00Z";
 const SS_2026 = intakeIndex("summer", 2026);
 const WS_2026_27 = intakeIndex("winter", 2026);
 const SS_2027 = intakeIndex("summer", 2027);
@@ -212,17 +215,36 @@ export const ruleData: RuleRecord[] = [
   {
     id: "aps-india-national",
     country: "in",
-    conditions: { certificate_country: "in", curriculum: "national" },
+    conditions: {
+      certificate_country: "in",
+      curriculum: "national",
+      visa_application_country: "in",
+    },
     outcomes: {
       aps: "required",
       documents: ["APS India certificate"],
-      note: "APS India verifies qualifications issued by Indian educational institutions; its certificate is generally required for the German student-visa documentation.",
+      note: "APS India verifies qualifications issued by Indian educational institutions; its certificate is required when the student visa is filed with the German Missions in India.",
     },
     status: "verified",
     source_url: "https://aps-india.de/",
     source_quote:
       "APS India verifies academic documents and qualifications issued by Indian educational institutions; the APS certificate is generally required for the German student-visa procedure.",
-    last_verified_at: SOURCE_CHECKED_AT,
+    last_verified_at: VISA_SOURCE_CHECKED_AT,
+  },
+  {
+    id: "aps-not-required-visa-from-sa",
+    country: "sa",
+    conditions: { visa_application_country: "sa" },
+    outcomes: {
+      aps: "not_required",
+      note: "The German Embassy Riyadh student-visa checklist does not ask for an APS certificate — for Saudi citizens or for non-Saudi nationals residing in Saudi Arabia (Iqama holders). APS applies per visa jurisdiction, not nationality.",
+    },
+    status: "verified",
+    source_url:
+      "https://www.vfsglobal.com/Germany/SaudiArabia/pdf/Checklist_Student_Visa.pdf",
+    source_quote:
+      "CHECKLIST FOR STUDENT VISA — Additional documents required for non-Saudi nationals residing in Saudi Arabia: For non-Saudi citizens: Original Iqama with 2 photocopies; valid Saudi Arabian Exit Visa. (No APS certificate appears anywhere on the Embassy Riyadh checklist.)",
+    last_verified_at: VISA_SOURCE_CHECKED_AT,
   },
   // ------------------------------------------------------------------ dMAT
   {
@@ -381,7 +403,7 @@ export const ruleData: RuleRecord[] = [
   {
     id: "aps-india-process",
     country: "in",
-    conditions: { certificate_country: "in" },
+    conditions: { certificate_country: "in", visa_application_country: "in" },
     outcomes: {
       steps: [
         {

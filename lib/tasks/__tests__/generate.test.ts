@@ -111,6 +111,113 @@ describe("generateTasks", () => {
       ),
     ).toBe(false);
   });
+
+  it("creates one submit task per application even when the source has several deadline lines", () => {
+    const result = evaluate(p1CbseNoJee, promotedRules);
+    const application = app(1, "Normal deadline: 15 May");
+    application.course!.deadlines = [
+      "Normal deadline: 15 May",
+      "Early deadline: 15 November",
+      "Early deadline: 15 May",
+      "Normal deadline: 15 November",
+    ];
+
+    const submitTasks = generateTasks(result, [application], "2026-07-06").filter(
+      (task) => task.title.startsWith("Submit application"),
+    );
+
+    expect(submitTasks).toHaveLength(1);
+    expect(submitTasks[0]).toMatchObject({
+      key: `app:${application.id}:submit`,
+      verbatimDue: "Normal deadline: 15 May",
+    });
+  });
+
+  it("selects the deadline line matching the chosen winter intake", () => {
+    const result = evaluate(p1CbseNoJee, promotedRules);
+    const application = app(1, "Normal deadline: 15 May");
+    application.course!.deadlines = [
+      "Normal deadline: 15 May",
+      "Normal deadline: 15 November",
+    ];
+
+    const submitTask = generateTasks(result, [application], "2026-07-06", {
+      term: "winter",
+      year: 2026,
+    }).find((task) => task.title.startsWith("Submit application"));
+
+    expect(submitTask).toMatchObject({
+      dueDate: null,
+      verbatimDue: "Normal deadline: 15 May",
+    });
+  });
+
+  it("selects the deadline line matching the chosen summer intake", () => {
+    const result = evaluate(p1CbseNoJee, promotedRules);
+    const application = app(1, "Normal deadline: 15 May");
+    application.course!.deadlines = [
+      "Normal deadline: 15 May",
+      "Normal deadline: 15 November",
+    ];
+
+    const submitTask = generateTasks(result, [application], "2026-07-06", {
+      term: "summer",
+      year: 2027,
+    }).find((task) => task.title.startsWith("Submit application"));
+
+    expect(submitTask).toMatchObject({
+      dueDate: null,
+      verbatimDue: "Normal deadline: 15 November",
+    });
+  });
+
+  it("computes the selected intake deadline date from DAAD semester wording", () => {
+    const result = evaluate(p1CbseNoJee, promotedRules);
+    const application = app(1, "15 April to 31 May of the year for the winter semester");
+    application.course!.deadlines = [
+      "Non-EU students:",
+      "15 April to 31 May of the year for the winter semester",
+      "15 October to 30 November of the previous year for the summer semester",
+    ];
+
+    const winterTask = generateTasks(result, [application], "2026-07-06", {
+      term: "winter",
+      year: 2026,
+    }).find((task) => task.title.startsWith("Submit application"));
+    const summerTask = generateTasks(result, [application], "2026-07-06", {
+      term: "summer",
+      year: 2027,
+    }).find((task) => task.title.startsWith("Submit application"));
+
+    expect(winterTask).toMatchObject({
+      dueDate: "2026-05-31",
+      verbatimDue: "15 April to 31 May of the year for the winter semester",
+    });
+    expect(summerTask).toMatchObject({
+      dueDate: "2026-11-30",
+      verbatimDue:
+        "15 October to 30 November of the previous year for the summer semester",
+    });
+  });
+
+  it("uses the next upcoming parsed deadline for a course submission task", () => {
+    const result = evaluate(p1CbseNoJee, promotedRules);
+    const application = app(1, "Application deadline: 15 May 2026");
+    application.course!.deadlines = [
+      "Application deadline: 15 May 2026",
+      "Application deadline: 15 November 2026",
+      "Application deadline: 15 May 2027",
+    ];
+
+    const submitTask = generateTasks(result, [application], "2026-07-06").find(
+      (task) => task.title.startsWith("Submit application"),
+    );
+
+    expect(submitTask).toMatchObject({
+      dueDate: "2026-11-15",
+      verbatimDue: "Application deadline: 15 November 2026",
+    });
+  });
 });
 
 describe("bucketTasks", () => {

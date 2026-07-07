@@ -20,7 +20,9 @@ import {
   generateTasks,
   parseDeadlineDate,
   prepareGeneratedTaskSync,
+  selectSubmissionDeadline,
   type GeneratedTask,
+  type TargetIntake,
 } from "@/lib/tasks/generate";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -36,11 +38,14 @@ const RawProfileSchema = z
 export type DashboardTask = {
   id: string;
   key: string;
+  kind: "generated" | "manual";
   title: string;
+  description: string | null;
   done: boolean;
   dueDate: string | null;
   verbatimDue: string | null;
   order: number;
+  preferredBucket: "now" | "next" | "later" | null;
   applicationId: string | null;
   source: { url: string; verifiedAt: string | null } | null;
   scope: "global" | "university";
@@ -70,6 +75,7 @@ export type DashboardSyncView = {
     next: DashboardTask[];
     later: DashboardTask[];
   };
+  doneTasks: DashboardTask[];
   rail: RailApplication[];
   calendarEvents: CalendarEvent[];
   nextDeadline: { iso: string; verbatim: string; daysUntil: number } | null;
@@ -133,19 +139,52 @@ function displayTasks(
   generated: GeneratedTask[],
 ): DashboardTask[] {
   const metadata = generatedByKey(generated);
-  return dbTasks.flatMap((task) => {
-    if (!task.task_key) return [];
+  return dbTasks.flatMap<DashboardTask>((task) => {
+    if (!task.task_key) {
+      return [
+        {
+          id: task.id,
+          key: `manual:${task.id}`,
+          kind: "manual" as const,
+          title: task.title,
+          description: task.description,
+          done: task.done,
+          dueDate: task.due_date,
+          verbatimDue: null,
+          order: 25,
+          preferredBucket:
+            task.preferred_bucket === "now" ||
+            task.preferred_bucket === "next" ||
+            task.preferred_bucket === "later"
+              ? task.preferred_bucket
+              : null,
+          applicationId: task.application_id,
+          source: task.source_url
+            ? { url: task.source_url, verifiedAt: null }
+            : null,
+          scope: task.application_id ? ("university" as const) : ("global" as const),
+        },
+      ];
+    }
     const generatedTask = metadata.get(task.task_key);
     if (!generatedTask) return [];
     return [
       {
         id: task.id,
         key: task.task_key,
+        kind: "generated" as const,
         title: task.title,
+        description: task.description,
         done: task.done,
         dueDate: task.due_date,
         verbatimDue: generatedTask.verbatimDue,
         order: generatedTask.order,
+        preferredBucket:
+          task.preferred_bucket === "now" ||
+          task.preferred_bucket === "next" ||
+          task.preferred_bucket === "later"
+            ? task.preferred_bucket
+            : null,
         applicationId: task.application_id,
         source: generatedTask.source,
         scope: task.application_id ? "university" : "global",
@@ -154,8 +193,19 @@ function displayTasks(
   });
 }
 
-function datedDeadline(lines: unknown): { iso: string | null; verbatim: string | null } {
+function datedDeadline(
+  lines: unknown,
+  todayIso: string,
+  intake?: TargetIntake,
+): { iso: string | null; verbatim: string | null } {
   if (!Array.isArray(lines)) return { iso: null, verbatim: null };
+  const selected = selectSubmissionDeadline(
+    lines.filter((line): line is string => typeof line === "string"),
+    todayIso,
+    intake,
+  );
+  if (selected.verbatim) return { iso: selected.date, verbatim: selected.verbatim };
+
   for (const line of lines) {
     if (typeof line !== "string" || !/\d/.test(line)) continue;
     const iso = parseDeadlineDate(line);
@@ -164,7 +214,11 @@ function datedDeadline(lines: unknown): { iso: string | null; verbatim: string |
   return { iso: null, verbatim: null };
 }
 
-function railApplication(application: ApplicationWithCourse): RailApplication | null {
+function railApplication(
+  application: ApplicationWithCourse,
+  todayIso: string,
+  intake?: TargetIntake,
+): RailApplication | null {
   const course = application.courses;
   if (!course || course.review_status === "rejected") return null;
   return {
@@ -175,7 +229,7 @@ function railApplication(application: ApplicationWithCourse): RailApplication | 
     universityName: course.university_name ?? "University pending review",
     detail: [course.location, course.degree].filter(Boolean).join(" · "),
     sourceUrl: course.source_url,
-    nextDeadline: datedDeadline(course.deadlines),
+    nextDeadline: datedDeadline(course.deadlines, todayIso, intake),
   };
 }
 
@@ -209,7 +263,12 @@ export async function syncDashboard(
   await ensureApplications(db, userId, courses);
   const applications = await listApplicationsWithCourses(db, userId);
 
-  const desired = generateTasks(result, toGenerationApplications(applications));
+  const desired = generateTasks(
+    result,
+    toGenerationApplications(applications),
+    todayIso,
+    profile?.intake,
+  );
   const beforeTasks = await listTasks(db, userId);
   const reconciliation = prepareGeneratedTaskSync(userId, desired, beforeTasks);
   await upsertGeneratedTasks(db, reconciliation.upsertRows);
@@ -221,9 +280,27 @@ export async function syncDashboard(
       : await listTasks(db, userId);
   const allGeneratedTasks = displayTasks(currentDbTasks, desired);
   const pendingTasks = allGeneratedTasks.filter((task) => !task.done);
-  const buckets = bucketTasks(pendingTasks, todayIso);
+  const doneTasks = allGeneratedTasks.filter((task) => task.done);
+  const defaultBuckets = bucketTasks(
+    pendingTasks.filter((task) => task.preferredBucket === null),
+    todayIso,
+  );
+  const buckets = {
+    now: [
+      ...pendingTasks.filter((task) => task.preferredBucket === "now"),
+      ...defaultBuckets.now,
+    ],
+    next: [
+      ...pendingTasks.filter((task) => task.preferredBucket === "next"),
+      ...defaultBuckets.next,
+    ],
+    later: [
+      ...pendingTasks.filter((task) => task.preferredBucket === "later"),
+      ...defaultBuckets.later,
+    ],
+  };
   const rail = applications.flatMap((application) => {
-    const row = railApplication(application);
+    const row = railApplication(application, todayIso, profile?.intake);
     return row ? [row] : [];
   });
   const calendarEvents = pendingTasks.flatMap((task) =>
@@ -241,6 +318,7 @@ export async function syncDashboard(
 
   return {
     buckets,
+    doneTasks,
     rail,
     calendarEvents,
     nextDeadline: nextDeadline(pendingTasks, todayIso),

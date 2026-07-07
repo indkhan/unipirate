@@ -1,4 +1,4 @@
-import type { Citation, Result } from "@/lib/engine/evaluate";
+import type { Citation, Result, Term } from "@/lib/engine/evaluate";
 
 export type GeneratedTask = {
   key: string;
@@ -27,6 +27,8 @@ export type ApplicationForTaskGeneration = {
   status: string;
   course: CourseForTaskGeneration | null;
 };
+
+export type TargetIntake = { term: Term; year: number };
 
 export type BucketedTasks<T extends { dueDate: string | null; order: number; key: string }> = {
   now: T[];
@@ -161,12 +163,126 @@ function asStrings(value: unknown): string[] {
     : [];
 }
 
-function firstDatedLine(lines: string[]): { date: string; verbatim: string } | null {
-  for (const line of lines) {
-    const date = parseDeadlineDate(line);
-    if (date) return { date, verbatim: line };
+function parseDayMonth(input: string): { month: number; day: number }[] {
+  const monthAlternation = Object.keys(MONTHS)
+    .sort((a, b) => b.length - a.length)
+    .join("|");
+  const found: { month: number; day: number }[] = [];
+
+  const dayMonth = new RegExp(
+    `(?<!\\d)(\\d{1,2})\\.?\\s+(${monthAlternation})(?!\\s+\\d{4})`,
+    "gi",
+  );
+  for (const match of input.matchAll(dayMonth)) {
+    found.push({
+      month: MONTHS[match[2].toLowerCase()],
+      day: Number(match[1]),
+    });
   }
+
+  const monthDay = new RegExp(
+    `\\b(${monthAlternation})\\s+(\\d{1,2})(?!,?\\s*\\d{4})`,
+    "gi",
+  );
+  for (const match of input.matchAll(monthDay)) {
+    found.push({
+      month: MONTHS[match[1].toLowerCase()],
+      day: Number(match[2]),
+    });
+  }
+
+  return found;
+}
+
+function termMentioned(line: string): Term | null {
+  const lower = line.toLowerCase();
+  if (/\bwinter\b/.test(lower)) return "winter";
+  if (/\bsummer\b/.test(lower)) return "summer";
   return null;
+}
+
+function monthLikelyMatchesTerm(month: number, term: Term): boolean {
+  if (term === "winter") return month >= 2 && month <= 8;
+  return month >= 9 || month <= 2;
+}
+
+function deadlineYear(line: string, month: number, intake: TargetIntake): number {
+  const lower = line.toLowerCase();
+  if (/\bprevious year\b/.test(lower)) return intake.year - 1;
+  if (/\bof the year\b|\bsame year\b|\bcurrent year\b/.test(lower)) {
+    return intake.year;
+  }
+  if (intake.term === "summer" && month >= 9) return intake.year - 1;
+  return intake.year;
+}
+
+function deadlineForIntake(
+  line: string,
+  intake: TargetIntake,
+): { date: string | null; verbatim: string } | null {
+  const mentioned = termMentioned(line);
+  if (mentioned && mentioned !== intake.term) return null;
+
+  const explicitDate = parseDeadlineDate(line);
+  if (explicitDate) {
+    if (!mentioned && !monthLikelyMatchesTerm(Number(explicitDate.slice(5, 7)), intake.term)) {
+      return null;
+    }
+    return { date: explicitDate, verbatim: line };
+  }
+
+  const dates = parseDayMonth(line);
+  if (dates.length === 0) return null;
+  const endpoint = dates[dates.length - 1];
+  if (!mentioned && !monthLikelyMatchesTerm(endpoint.month, intake.term)) {
+    return null;
+  }
+
+  const year = deadlineYear(line, endpoint.month, intake);
+  return {
+    date: mentioned ? toIsoDate(year, endpoint.month, endpoint.day) : null,
+    verbatim: line,
+  };
+}
+
+export function selectSubmissionDeadline(
+  lines: string[],
+  todayIso?: string,
+  intake?: TargetIntake,
+): { date: string | null; verbatim: string | null } {
+  if (intake) {
+    const intakeMatches = lines.flatMap((line) => {
+      const deadline = deadlineForIntake(line, intake);
+      return deadline ? [deadline] : [];
+    });
+    if (intakeMatches.length > 0) {
+      return (
+        intakeMatches
+          .filter((deadline) => deadline.date)
+          .sort((a, b) => a.date!.localeCompare(b.date!))[0] ??
+        intakeMatches[0]
+      );
+    }
+  }
+
+  const dated = lines.flatMap((line) => {
+    const date = parseDeadlineDate(line);
+    return date ? [{ date, verbatim: line }] : [];
+  });
+
+  if (dated.length > 0) {
+    const sorted = [...dated].sort((a, b) => a.date.localeCompare(b.date));
+    if (todayIso) {
+      return (
+        sorted.find((deadline) => daysUntil(deadline.date, todayIso) >= 0) ??
+        sorted[sorted.length - 1]
+      );
+    }
+    return sorted[0];
+  }
+
+  const undated = lines.find((line) => /\d/.test(line));
+  return { date: null, verbatim: undated ?? null };
 }
 
 function hashDjb2(input: string): string {
@@ -188,6 +304,8 @@ function citationByRuleId(citations: Citation[]): Map<string, Citation> {
 export function generateTasks(
   result: Result | null,
   applications: ApplicationForTaskGeneration[],
+  todayIso?: string,
+  intake?: TargetIntake,
 ): GeneratedTask[] {
   const generated: GeneratedTask[] = [];
   const citations = citationByRuleId(result?.citations ?? []);
@@ -220,17 +338,16 @@ export function generateTasks(
 
     const deadlines = asStrings(course.deadlines);
     const requirements = asStrings(course.requirements);
-    const firstDeadline = firstDatedLine(deadlines);
+    const submitDeadline = selectSubmissionDeadline(deadlines, todayIso, intake);
     const label = courseLabel(course);
     const source = { url: course.source_url, verifiedAt: course.created_at };
 
-    for (const deadline of deadlines) {
-      if (!/\d/.test(deadline)) continue;
+    if (submitDeadline.verbatim) {
       generated.push({
-        key: `app:${application.id}:deadline:${hashDjb2(deadline)}`,
+        key: `app:${application.id}:submit`,
         title: `Submit application — ${label}`,
-        dueDate: parseDeadlineDate(deadline),
-        verbatimDue: deadline,
+        dueDate: submitDeadline.date,
+        verbatimDue: submitDeadline.verbatim,
         order: 30,
         applicationId: application.id,
         ruleId: null,
@@ -242,8 +359,8 @@ export function generateTasks(
       generated.push({
         key: `app:${application.id}:req:${hashDjb2(requirement)}`,
         title: `Prepare: ${requirement} — ${label}`,
-        dueDate: firstDeadline?.date ?? null,
-        verbatimDue: firstDeadline?.verbatim ?? null,
+        dueDate: submitDeadline.date,
+        verbatimDue: submitDeadline.verbatim,
         order: 28,
         applicationId: application.id,
         ruleId: null,
