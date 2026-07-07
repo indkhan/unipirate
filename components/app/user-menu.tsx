@@ -35,9 +35,6 @@ export function UserMenu({ email, isAdmin = false }: UserMenuProps) {
           <Link className={styles.link} href="/profile">
             Profile
           </Link>
-          <Link className={styles.link} href="/check">
-            New eligibility check
-          </Link>
           {isAdmin ? (
             <Link className={styles.link} href="/admin">
               Admin
