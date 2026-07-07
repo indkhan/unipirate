@@ -40,6 +40,7 @@ export type DashboardTask = {
   key: string;
   kind: "generated" | "manual";
   title: string;
+  description: string | null;
   done: boolean;
   dueDate: string | null;
   verbatimDue: string | null;
@@ -145,6 +146,7 @@ function displayTasks(
           key: `manual:${task.id}`,
           kind: "manual" as const,
           title: task.title,
+          description: task.description,
           done: task.done,
           dueDate: task.due_date,
           verbatimDue: null,
@@ -163,6 +165,7 @@ function displayTasks(
         key: task.task_key,
         kind: "generated" as const,
         title: task.title,
+        description: task.description,
         done: task.done,
         dueDate: task.due_date,
         verbatimDue: generatedTask.verbatimDue,

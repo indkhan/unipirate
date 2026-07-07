@@ -60,6 +60,13 @@ const taskDateSchema = z.preprocess(
 
 const manualTaskSchema = z.object({
   title: z.string().trim().min(1).max(240),
+  description: z
+    .preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? null : value),
+      z.string().trim().max(2000).nullable(),
+    )
+    .optional()
+    .default(null),
   dueDate: taskDateSchema,
   applicationId: z
     .preprocess((value) => (value === "" ? null : value), z.string().uuid().nullable())
@@ -92,6 +99,7 @@ export async function createManualTask(input: unknown): Promise<void> {
   await insertTask(db, {
     user_id: user.id,
     title: task.title,
+    description: task.description,
     due_date: task.dueDate,
     application_id: task.applicationId,
   });
@@ -114,6 +122,7 @@ export async function updateManualTask(input: unknown): Promise<void> {
   await assertOwnedApplication(db, user.id, task.applicationId);
   await updateManualTaskRow(db, user.id, task.id, {
     title: task.title,
+    description: task.description,
     due_date: task.dueDate,
     application_id: task.applicationId,
   });

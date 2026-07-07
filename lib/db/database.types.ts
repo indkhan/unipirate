@@ -533,6 +533,7 @@ export type Database = {
         Row: {
           application_id: string | null
           created_at: string
+          description: string | null
           done: boolean
           due_date: string | null
           generated_from_rule_id: string | null
@@ -545,6 +546,7 @@ export type Database = {
         Insert: {
           application_id?: string | null
           created_at?: string
+          description?: string | null
           done?: boolean
           due_date?: string | null
           generated_from_rule_id?: string | null
@@ -557,6 +559,7 @@ export type Database = {
         Update: {
           application_id?: string | null
           created_at?: string
+          description?: string | null
           done?: boolean
           due_date?: string | null
           generated_from_rule_id?: string | null

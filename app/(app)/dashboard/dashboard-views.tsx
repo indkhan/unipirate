@@ -83,11 +83,13 @@ function ManualTaskForm({ applications }: { applications: RailApplication[] }) {
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [applicationId, setApplicationId] = useState("");
 
   function reset() {
     setTitle("");
+    setDescription("");
     setDueDate("");
     setApplicationId("");
   }
@@ -140,6 +142,7 @@ function ManualTaskForm({ applications }: { applications: RailApplication[] }) {
               startTransition(async () => {
                 await createManualTask({
                   title,
+                  description,
                   dueDate: dueDate || null,
                   applicationId: applicationId || null,
                 });
@@ -157,6 +160,15 @@ function ManualTaskForm({ applications }: { applications: RailApplication[] }) {
               required
               value={title}
               onChange={(event) => setTitle(event.target.value)}
+            />
+            <textarea
+              aria-label="Task description"
+              className={styles.taskTextarea}
+              maxLength={2000}
+              placeholder="Add notes, links, or details"
+              rows={4}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
             />
             <input
               aria-label="Task due date"
@@ -201,6 +213,7 @@ function ManualTaskActions({
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description ?? "");
   const [dueDate, setDueDate] = useState(task.dueDate ?? "");
   const [applicationId, setApplicationId] = useState(task.applicationId ?? "");
 
@@ -216,6 +229,7 @@ function ManualTaskActions({
             await updateManualTask({
               id: task.id,
               title,
+              description,
               dueDate: dueDate || null,
               applicationId: applicationId || null,
             });
@@ -231,6 +245,14 @@ function ManualTaskActions({
           required
           value={title}
           onChange={(event) => setTitle(event.target.value)}
+        />
+        <textarea
+          aria-label="Task description"
+          className={styles.taskTextarea}
+          maxLength={2000}
+          rows={3}
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
         />
         <input
           aria-label="Task due date"
@@ -264,6 +286,7 @@ function ManualTaskActions({
             disabled={isPending}
             onClick={() => {
               setTitle(task.title);
+              setDescription(task.description ?? "");
               setDueDate(task.dueDate ?? "");
               setApplicationId(task.applicationId ?? "");
               setEditing(false);
@@ -300,34 +323,6 @@ function ManualTaskActions({
   );
 }
 
-function dueNote(task: DashboardTask, todayIso: string): string | null {
-  if (!task.dueDate) return null;
-  const days = daysUntil(task.dueDate, todayIso);
-  if (days < 0) return `${Math.abs(days)} days overdue`;
-  if (days === 0) return "Due today";
-  if (days <= 14) return `Due in ${days} days`;
-  return null;
-}
-
-function TaskRow({
-  task,
-  applications,
-}: {
-  task: DashboardTask;
-  applications: RailApplication[];
-}) {
-  return (
-    <div className={styles.miniTask}>
-      <TaskToggle task={task} />
-      <div className={styles.miniBody}>
-        <span className={styles.miniTitle}>{task.title}</span>
-        <span className={styles.miniDue}>{task.verbatimDue ?? formatDate(task.dueDate)}</span>
-        <ManualTaskActions task={task} applications={applications} />
-      </div>
-    </div>
-  );
-}
-
 function NowTask({
   task,
   todayIso,
@@ -338,14 +333,15 @@ function NowTask({
   applications: RailApplication[];
 }) {
   const overdue = task.dueDate !== null && daysUntil(task.dueDate, todayIso) < 0;
-  const note = dueNote(task, todayIso);
 
   return (
     <article className={`${styles.nowCard} ${overdue ? styles.nowCardOverdue : ""}`}>
       <TaskToggle task={task} />
       <div className={styles.nowBody}>
         <h3 className={styles.nowTitle}>{task.title}</h3>
-        {note ? <span className={styles.dueNote}>{note}</span> : null}
+        {task.description ? (
+          <p className={styles.taskDescription}>{task.description}</p>
+        ) : null}
         <div className={styles.taskMeta}>
           <span
             className={`${styles.taskTag} ${
@@ -486,23 +482,33 @@ export function DashboardViews({
           <section className={styles.detailsStack}>
             <details className={styles.taskDetails} open>
               <summary>Next · {buckets.next.length}</summary>
-              <div className={styles.miniStack}>
+              <div className={styles.sectionTaskStack}>
                 {buckets.next.map((task) => (
-                  <TaskRow key={task.key} task={task} applications={applications} />
+                  <NowTask
+                    key={task.key}
+                    task={task}
+                    todayIso={todayIso}
+                    applications={applications}
+                  />
                 ))}
               </div>
             </details>
             <details className={`${styles.taskDetails} ${styles.laterDetails}`}>
               <summary>Later · {buckets.later.length}</summary>
-              <div className={styles.miniStack}>
+              <div className={styles.sectionTaskStack}>
                 {buckets.later.map((task) => (
-                  <TaskRow key={task.key} task={task} applications={applications} />
+                  <NowTask
+                    key={task.key}
+                    task={task}
+                    todayIso={todayIso}
+                    applications={applications}
+                  />
                 ))}
               </div>
             </details>
             <details className={styles.taskDetails}>
               <summary>Done · {doneTasks.length}</summary>
-              <div className={styles.doneStack}>
+              <div className={styles.sectionTaskStack}>
                 {doneTasks.length === 0 ? (
                   <div className={styles.quietPanel}>Completed tasks will show here.</div>
                 ) : (

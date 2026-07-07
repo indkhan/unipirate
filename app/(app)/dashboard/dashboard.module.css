@@ -290,9 +290,9 @@
 
 .taskInput,
 .taskDateInput,
-.taskSelect {
+.taskSelect,
+.taskTextarea {
   width: 100%;
-  min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--surface);
@@ -301,9 +301,22 @@
   padding: 0 10px;
 }
 
+.taskInput,
+.taskDateInput,
+.taskSelect {
+  min-height: 42px;
+}
+
+.taskTextarea {
+  min-height: 104px;
+  padding-block: 10px;
+  resize: vertical;
+}
+
 .taskInput:focus,
 .taskDateInput:focus,
-.taskSelect:focus {
+.taskSelect:focus,
+.taskTextarea:focus {
   outline: 3px solid var(--focus-ring);
   outline-offset: 1px;
 }
@@ -352,7 +365,7 @@
 .taskStack,
 .nowSection,
 .detailsStack,
-.miniStack {
+.sectionTaskStack {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -420,9 +433,12 @@
   overflow-wrap: anywhere;
 }
 
-.dueNote {
+.taskDescription {
+  margin: 0;
+  white-space: pre-wrap;
   font: var(--text-body-sm);
-  color: var(--signal);
+  color: var(--ink-secondary);
+  overflow-wrap: anywhere;
 }
 
 .taskMeta {
@@ -509,56 +525,11 @@
   color: var(--ink-muted);
 }
 
-.miniStack {
-  padding: 0 10px 10px;
-}
-
-.doneStack {
+.sectionTaskStack {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 0 10px 10px;
-}
-
-.miniTask {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 12px 10px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control);
-}
-
-.miniBody {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px 10px;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-}
-
-.miniTitle {
-  font: var(--text-body-sm);
-  color: var(--ink);
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.miniDue {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--ink-muted);
-  text-align: right;
-  max-width: 34%;
-  overflow-wrap: anywhere;
-}
-
-.miniBody .editTaskForm,
-.miniBody .taskActionRow {
-  grid-column: 1 / -1;
 }
 
 .quietPanel {

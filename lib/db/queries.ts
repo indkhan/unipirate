@@ -250,7 +250,10 @@ export async function updateManualTask(
   db: Db,
   userId: string,
   id: string,
-  task: Pick<TablesInsert<"tasks">, "title" | "due_date" | "application_id">,
+  task: Pick<
+    TablesInsert<"tasks">,
+    "title" | "description" | "due_date" | "application_id"
+  >,
 ): Promise<Tables<"tasks">> {
   return unwrap(
     await db
