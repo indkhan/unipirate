@@ -52,19 +52,6 @@
   gap: 14px;
 }
 
-.checkLink {
-  color: var(--route-blue);
-  font: var(--text-body-sm);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-@media (max-width: 430px) {
-  .checkLink {
-    display: none;
-  }
-}
-
 .routeCard {
   background: var(--surface);
   border: 1px solid var(--line);

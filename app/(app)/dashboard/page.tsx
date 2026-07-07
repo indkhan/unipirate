@@ -76,9 +76,6 @@ export default async function DashboardPage() {
             </Link>
             <div className={styles.headerActions}>
               <AssistantSidebar initialUsed={questionsUsed} />
-              <Link className={styles.checkLink} href="/profile">
-                Edit profile
-              </Link>
               <UserMenu
                 email={user.email ?? null}
                 isAdmin={user.app_metadata?.role === "admin"}
