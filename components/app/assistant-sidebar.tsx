@@ -1,6 +1,6 @@
 "use client";
 
-// Ask Uniweg — strict-RAG chat in a slide-over, ported from
+// Ask — strict-RAG chat in a slide-over, ported from
 // design/Assistant.dc.html. Every factual claim renders its citation:
 // VerifiedStamp for [[rule:slug]], amber chip + link for [[web:url]],
 // the dashed "Not in our verified rules" block for [[unknown]].
@@ -183,7 +183,7 @@ export function AssistantSidebar({ initialUsed }: { initialUsed: number }) {
   if (!open) {
     return (
       <button className={styles.trigger} type="button" onClick={() => setOpen(true)}>
-        Ask Uniweg
+        Ask
       </button>
     );
   }
@@ -191,13 +191,13 @@ export function AssistantSidebar({ initialUsed }: { initialUsed: number }) {
   return (
     <>
       <button className={styles.trigger} type="button" onClick={() => setOpen(true)}>
-        Ask Uniweg
+        Ask
       </button>
       <div className={styles.overlay} onClick={() => setOpen(false)}>
         <div
           className={styles.panel}
           role="dialog"
-          aria-label="Ask Uniweg"
+          aria-label="Ask"
           onClick={(event) => event.stopPropagation()}
         >
           <header className={styles.header}>
@@ -211,7 +211,7 @@ export function AssistantSidebar({ initialUsed }: { initialUsed: number }) {
                 ‹
               </button>
               <div className={styles.titleBlock}>
-                <span className={styles.title}>Ask Uniweg</span>
+                <span className={styles.title}>Ask</span>
                 <span className={styles.subtitle}>Answers only with sources</span>
               </div>
             </div>
