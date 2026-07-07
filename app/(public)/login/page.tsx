@@ -1,26 +1,81 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { safeNextPath } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/db/server";
 
 import { LoginForm } from "./login-form";
+import styles from "./login.module.css";
+
+const supportedModes = ["signin", "signup", "magic", "forgot", "reset"] as const;
+type AuthMode = (typeof supportedModes)[number];
+
+function modeFromSearchParam(value: string | undefined): AuthMode {
+  return supportedModes.includes(value as AuthMode) ? (value as AuthMode) : "signin";
+}
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ error?: string; mode?: string; next?: string }>;
 }) {
-  const nextPath = safeNextPath((await searchParams).next);
+  const params = await searchParams;
+  const nextPath = safeNextPath(params.next);
+  const initialMode = modeFromSearchParam(params.mode);
   const db = await createClient();
   const {
     data: { user },
   } = await db.auth.getUser();
-  if (user) redirect(nextPath.startsWith("/login") ? "/dashboard" : nextPath);
+  if (user && initialMode !== "reset") {
+    redirect(nextPath.startsWith("/login") ? "/dashboard" : nextPath);
+  }
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
-      <h1 className="text-2xl font-bold">Log in</h1>
-      <LoginForm nextPath={nextPath} />
+    <main className={styles.page}>
+      <header className={styles.nav}>
+        <div className={styles.navInner}>
+          <Link className={styles.brand} href="/">
+            UniPirate
+          </Link>
+          <Link className={styles.navLink} href="/check">
+            Check eligibility
+          </Link>
+        </div>
+      </header>
+
+      <section className={styles.shell}>
+        <div className={styles.story}>
+          <p className={styles.eyebrow}>Your application command center</p>
+          <h1>Save your Germany route and keep every next step in one place.</h1>
+          <p>
+            Sign in to claim checker results, track course deadlines, and ask
+            UniPirate questions with sources attached.
+          </p>
+          <div className={styles.routePreview} aria-label="Saved application route">
+            <span className={styles.activeDot} />
+            <span className={styles.routeLine} />
+            <span className={styles.routeDot} />
+            <span className={styles.routeLine} />
+            <span className={styles.routeDot} />
+          </div>
+          <div className={styles.trustGrid}>
+            <article>
+              <span>Source-first</span>
+              <p>Eligibility claims stay tied to official URLs and review dates.</p>
+            </article>
+            <article>
+              <span>No lock-in</span>
+              <p>Your account stores the path; you still apply directly yourself.</p>
+            </article>
+          </div>
+        </div>
+
+        <LoginForm
+          authError={params.error === "auth"}
+          initialMode={initialMode}
+          nextPath={nextPath}
+        />
+      </section>
     </main>
   );
 }
