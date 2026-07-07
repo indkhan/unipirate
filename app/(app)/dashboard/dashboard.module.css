@@ -215,6 +215,14 @@
 
 /* ------------------------------------------------------------------ tasks */
 
+.taskToolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
 .viewToggle {
   display: inline-flex;
   gap: 0;
@@ -240,6 +248,105 @@
 .viewToggle .viewActive {
   background: var(--surface);
   color: var(--route-blue);
+}
+
+.addTaskButton {
+  min-height: 44px;
+  border: 1px solid rgba(31, 79, 191, 0.22);
+  border-radius: var(--radius-control);
+  background: var(--route-blue);
+  color: var(--ink-inverse);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0 14px;
+  box-shadow: 0 8px 18px rgba(31, 79, 191, 0.18);
+}
+
+.addTaskButton:hover {
+  background: var(--route-blue-hover);
+}
+
+.addTaskForm,
+.editTaskForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  padding: 10px;
+}
+
+.addTaskForm {
+  background: var(--paper);
+  padding: 12px;
+}
+
+.taskInput,
+.taskDateInput,
+.taskSelect {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font: var(--text-body-sm);
+  padding: 0 10px;
+}
+
+.taskInput:focus,
+.taskDateInput:focus,
+.taskSelect:focus {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.taskSubmit {
+  min-height: 42px;
+  border: none;
+  border-radius: 4px;
+  background: var(--route-blue);
+  color: var(--ink-inverse);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 700;
+  padding: 0 14px;
+}
+
+.taskSubmit:disabled,
+.taskTextButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.taskActionRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.taskTextButton {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--route-blue);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 10px;
 }
 
 .taskStack,
@@ -406,23 +513,30 @@
   padding: 0 10px 10px;
 }
 
+.doneStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 10px 10px;
+}
+
 .miniTask {
   display: flex;
   gap: 10px;
-  align-items: center;
+  align-items: flex-start;
   padding: 12px 10px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
 }
 
-.miniBox {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1.5px solid var(--line-strong);
-  flex: none;
-  box-sizing: border-box;
+.miniBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
 }
 
 .miniTitle {
@@ -440,6 +554,11 @@
   text-align: right;
   max-width: 34%;
   overflow-wrap: anywhere;
+}
+
+.miniBody .editTaskForm,
+.miniBody .taskActionRow {
+  grid-column: 1 / -1;
 }
 
 .quietPanel {
@@ -822,6 +941,9 @@ a.cardName:hover {
   margin: -10px -10px -10px 0;
   border: none;
   background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 20px;
   color: var(--ink-secondary);
   cursor: pointer;

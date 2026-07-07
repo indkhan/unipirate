@@ -38,6 +38,7 @@ const RawProfileSchema = z
 export type DashboardTask = {
   id: string;
   key: string;
+  kind: "generated" | "manual";
   title: string;
   done: boolean;
   dueDate: string | null;
@@ -72,6 +73,7 @@ export type DashboardSyncView = {
     next: DashboardTask[];
     later: DashboardTask[];
   };
+  doneTasks: DashboardTask[];
   rail: RailApplication[];
   calendarEvents: CalendarEvent[];
   nextDeadline: { iso: string; verbatim: string; daysUntil: number } | null;
@@ -135,14 +137,31 @@ function displayTasks(
   generated: GeneratedTask[],
 ): DashboardTask[] {
   const metadata = generatedByKey(generated);
-  return dbTasks.flatMap((task) => {
-    if (!task.task_key) return [];
+  return dbTasks.flatMap<DashboardTask>((task) => {
+    if (!task.task_key) {
+      return [
+        {
+          id: task.id,
+          key: `manual:${task.id}`,
+          kind: "manual" as const,
+          title: task.title,
+          done: task.done,
+          dueDate: task.due_date,
+          verbatimDue: null,
+          order: 25,
+          applicationId: task.application_id,
+          source: null,
+          scope: task.application_id ? ("university" as const) : ("global" as const),
+        },
+      ];
+    }
     const generatedTask = metadata.get(task.task_key);
     if (!generatedTask) return [];
     return [
       {
         id: task.id,
         key: task.task_key,
+        kind: "generated" as const,
         title: task.title,
         done: task.done,
         dueDate: task.due_date,
@@ -243,6 +262,7 @@ export async function syncDashboard(
       : await listTasks(db, userId);
   const allGeneratedTasks = displayTasks(currentDbTasks, desired);
   const pendingTasks = allGeneratedTasks.filter((task) => !task.done);
+  const doneTasks = allGeneratedTasks.filter((task) => task.done);
   const buckets = bucketTasks(pendingTasks, todayIso);
   const rail = applications.flatMap((application) => {
     const row = railApplication(application, todayIso, profile?.intake);
@@ -263,6 +283,7 @@ export async function syncDashboard(
 
   return {
     buckets,
+    doneTasks,
     rail,
     calendarEvents,
     nextDeadline: nextDeadline(pendingTasks, todayIso),

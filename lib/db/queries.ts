@@ -246,6 +246,38 @@ export async function insertTask(
   return unwrap(await db.from("tasks").insert(task).select().single());
 }
 
+export async function updateManualTask(
+  db: Db,
+  userId: string,
+  id: string,
+  task: Pick<TablesInsert<"tasks">, "title" | "due_date" | "application_id">,
+): Promise<Tables<"tasks">> {
+  return unwrap(
+    await db
+      .from("tasks")
+      .update(task)
+      .eq("user_id", userId)
+      .eq("id", id)
+      .is("task_key", null)
+      .select()
+      .single(),
+  );
+}
+
+export async function deleteManualTask(
+  db: Db,
+  userId: string,
+  id: string,
+): Promise<void> {
+  const { error } = await db
+    .from("tasks")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", id)
+    .is("task_key", null);
+  if (error) throw new Error(error.message);
+}
+
 export async function setTaskDone(
   db: Db,
   id: string,

@@ -2,11 +2,17 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Pencil, Plus, Trash2, X } from "lucide-react";
 
-import type { CalendarEvent, DashboardTask } from "@/lib/tasks/sync";
+import type { CalendarEvent, DashboardTask, RailApplication } from "@/lib/tasks/sync";
 import { daysUntil } from "@/lib/tasks/generate";
 
-import { toggleTask } from "./actions";
+import {
+  createManualTask,
+  deleteManualTask,
+  toggleTask,
+  updateManualTask,
+} from "./actions";
 import styles from "./dashboard.module.css";
 
 type DashboardViewsProps = {
@@ -15,7 +21,9 @@ type DashboardViewsProps = {
     next: DashboardTask[];
     later: DashboardTask[];
   };
+  doneTasks: DashboardTask[];
   calendarEvents: CalendarEvent[];
+  applications: RailApplication[];
   todayIso: string;
 };
 
@@ -66,6 +74,232 @@ function TaskToggle({ task }: { task: DashboardTask }) {
   );
 }
 
+function applicationLabel(application: RailApplication): string {
+  return [application.universityName, application.courseName].filter(Boolean).join(" · ");
+}
+
+function ManualTaskForm({ applications }: { applications: RailApplication[] }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [applicationId, setApplicationId] = useState("");
+
+  function reset() {
+    setTitle("");
+    setDueDate("");
+    setApplicationId("");
+  }
+
+  function close() {
+    if (isPending) return;
+    reset();
+    setOpen(false);
+  }
+
+  const trigger = (
+    <button className={styles.addTaskButton} type="button" onClick={() => setOpen(true)}>
+      <Plus size={16} aria-hidden />
+      Add task
+    </button>
+  );
+
+  if (!open) return trigger;
+
+  return (
+    <>
+      {trigger}
+      <div className={styles.overlay} onClick={close}>
+        <div
+          className={styles.sheet}
+          role="dialog"
+          aria-label="Add a task"
+          aria-modal="true"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className={styles.sheetHead}>
+            <h2 className={styles.sheetTitle}>Add a task</h2>
+            <button
+              className={styles.sheetClose}
+              type="button"
+              aria-label="Close"
+              onClick={close}
+            >
+              <X size={20} aria-hidden />
+            </button>
+          </div>
+          <p className={styles.sheetHint}>
+            Keep personal reminders next to your generated application steps.
+          </p>
+
+          <form
+            className={styles.addTaskForm}
+            onSubmit={(event) => {
+              event.preventDefault();
+              startTransition(async () => {
+                await createManualTask({
+                  title,
+                  dueDate: dueDate || null,
+                  applicationId: applicationId || null,
+                });
+                reset();
+                setOpen(false);
+                router.refresh();
+              });
+            }}
+          >
+            <input
+              aria-label="Task title"
+              className={styles.taskInput}
+              maxLength={240}
+              placeholder="Book APS courier appointment"
+              required
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+            <input
+              aria-label="Task due date"
+              className={styles.taskDateInput}
+              type="date"
+              value={dueDate}
+              onChange={(event) => setDueDate(event.target.value)}
+            />
+            {applications.length > 0 ? (
+              <select
+                aria-label="Attach task to application"
+                className={styles.taskSelect}
+                value={applicationId}
+                onChange={(event) => setApplicationId(event.target.value)}
+              >
+                <option value="">General</option>
+                {applications.map((application) => (
+                  <option key={application.id} value={application.id}>
+                    {applicationLabel(application)}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            <button className={styles.taskSubmit} type="submit" disabled={isPending}>
+              Add task
+            </button>
+          </form>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ManualTaskActions({
+  task,
+  applications,
+}: {
+  task: DashboardTask;
+  applications: RailApplication[];
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(task.title);
+  const [dueDate, setDueDate] = useState(task.dueDate ?? "");
+  const [applicationId, setApplicationId] = useState(task.applicationId ?? "");
+
+  if (task.kind !== "manual") return null;
+
+  if (editing) {
+    return (
+      <form
+        className={styles.editTaskForm}
+        onSubmit={(event) => {
+          event.preventDefault();
+          startTransition(async () => {
+            await updateManualTask({
+              id: task.id,
+              title,
+              dueDate: dueDate || null,
+              applicationId: applicationId || null,
+            });
+            setEditing(false);
+            router.refresh();
+          });
+        }}
+      >
+        <input
+          aria-label="Task title"
+          className={styles.taskInput}
+          maxLength={240}
+          required
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+        />
+        <input
+          aria-label="Task due date"
+          className={styles.taskDateInput}
+          type="date"
+          value={dueDate}
+          onChange={(event) => setDueDate(event.target.value)}
+        />
+        {applications.length > 0 ? (
+          <select
+            aria-label="Attach task to application"
+            className={styles.taskSelect}
+            value={applicationId}
+            onChange={(event) => setApplicationId(event.target.value)}
+          >
+            <option value="">General</option>
+            {applications.map((application) => (
+              <option key={application.id} value={application.id}>
+                {applicationLabel(application)}
+              </option>
+            ))}
+          </select>
+        ) : null}
+        <div className={styles.taskActionRow}>
+          <button className={styles.taskSubmit} type="submit" disabled={isPending}>
+            Save
+          </button>
+          <button
+            className={styles.taskTextButton}
+            type="button"
+            disabled={isPending}
+            onClick={() => {
+              setTitle(task.title);
+              setDueDate(task.dueDate ?? "");
+              setApplicationId(task.applicationId ?? "");
+              setEditing(false);
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  return (
+    <div className={styles.taskActionRow}>
+      <button className={styles.taskTextButton} type="button" onClick={() => setEditing(true)}>
+        <Pencil size={14} aria-hidden />
+        Edit
+      </button>
+      <button
+        className={styles.taskTextButton}
+        type="button"
+        disabled={isPending}
+        onClick={() => {
+          startTransition(async () => {
+            await deleteManualTask({ id: task.id });
+            router.refresh();
+          });
+        }}
+      >
+        <Trash2 size={14} aria-hidden />
+        Delete
+      </button>
+    </div>
+  );
+}
+
 function dueNote(task: DashboardTask, todayIso: string): string | null {
   if (!task.dueDate) return null;
   const days = daysUntil(task.dueDate, todayIso);
@@ -75,17 +309,34 @@ function dueNote(task: DashboardTask, todayIso: string): string | null {
   return null;
 }
 
-function MiniTask({ task }: { task: DashboardTask }) {
+function TaskRow({
+  task,
+  applications,
+}: {
+  task: DashboardTask;
+  applications: RailApplication[];
+}) {
   return (
     <div className={styles.miniTask}>
-      <span className={styles.miniBox} aria-hidden />
-      <span className={styles.miniTitle}>{task.title}</span>
-      <span className={styles.miniDue}>{task.verbatimDue ?? formatDate(task.dueDate)}</span>
+      <TaskToggle task={task} />
+      <div className={styles.miniBody}>
+        <span className={styles.miniTitle}>{task.title}</span>
+        <span className={styles.miniDue}>{task.verbatimDue ?? formatDate(task.dueDate)}</span>
+        <ManualTaskActions task={task} applications={applications} />
+      </div>
     </div>
   );
 }
 
-function NowTask({ task, todayIso }: { task: DashboardTask; todayIso: string }) {
+function NowTask({
+  task,
+  todayIso,
+  applications,
+}: {
+  task: DashboardTask;
+  todayIso: string;
+  applications: RailApplication[];
+}) {
   const overdue = task.dueDate !== null && daysUntil(task.dueDate, todayIso) < 0;
   const note = dueNote(task, todayIso);
 
@@ -108,6 +359,7 @@ function NowTask({ task, todayIso }: { task: DashboardTask; todayIso: string }) 
           </span>
         </div>
         <Stamp source={task.source} />
+        <ManualTaskActions task={task} applications={applications} />
       </div>
     </article>
   );
@@ -184,28 +436,33 @@ function Calendar({
 
 export function DashboardViews({
   buckets,
+  doneTasks,
   calendarEvents,
+  applications,
   todayIso,
 }: DashboardViewsProps) {
   const [view, setView] = useState<"tasks" | "calendar">("tasks");
 
   return (
     <>
-      <div className={styles.viewToggle} aria-label="Dashboard view">
-        <button
-          className={view === "tasks" ? styles.viewActive : ""}
-          type="button"
-          onClick={() => setView("tasks")}
-        >
-          Tasks
-        </button>
-        <button
-          className={view === "calendar" ? styles.viewActive : ""}
-          type="button"
-          onClick={() => setView("calendar")}
-        >
-          Calendar
-        </button>
+      <div className={styles.taskToolbar}>
+        <div className={styles.viewToggle} aria-label="Dashboard view">
+          <button
+            className={view === "tasks" ? styles.viewActive : ""}
+            type="button"
+            onClick={() => setView("tasks")}
+          >
+            Tasks
+          </button>
+          <button
+            className={view === "calendar" ? styles.viewActive : ""}
+            type="button"
+            onClick={() => setView("calendar")}
+          >
+            Calendar
+          </button>
+        </div>
+        <ManualTaskForm applications={applications} />
       </div>
 
       {view === "tasks" ? (
@@ -216,7 +473,12 @@ export function DashboardViews({
               <div className={styles.quietPanel}>Nothing needs action today.</div>
             ) : (
               buckets.now.map((task) => (
-                <NowTask key={task.key} task={task} todayIso={todayIso} />
+                <NowTask
+                  key={task.key}
+                  task={task}
+                  todayIso={todayIso}
+                  applications={applications}
+                />
               ))
             )}
           </section>
@@ -226,7 +488,7 @@ export function DashboardViews({
               <summary>Next · {buckets.next.length}</summary>
               <div className={styles.miniStack}>
                 {buckets.next.map((task) => (
-                  <MiniTask key={task.key} task={task} />
+                  <TaskRow key={task.key} task={task} applications={applications} />
                 ))}
               </div>
             </details>
@@ -234,8 +496,25 @@ export function DashboardViews({
               <summary>Later · {buckets.later.length}</summary>
               <div className={styles.miniStack}>
                 {buckets.later.map((task) => (
-                  <MiniTask key={task.key} task={task} />
+                  <TaskRow key={task.key} task={task} applications={applications} />
                 ))}
+              </div>
+            </details>
+            <details className={styles.taskDetails}>
+              <summary>Done · {doneTasks.length}</summary>
+              <div className={styles.doneStack}>
+                {doneTasks.length === 0 ? (
+                  <div className={styles.quietPanel}>Completed tasks will show here.</div>
+                ) : (
+                  doneTasks.map((task) => (
+                    <NowTask
+                      key={task.key}
+                      task={task}
+                      todayIso={todayIso}
+                      applications={applications}
+                    />
+                  ))
+                )}
               </div>
             </details>
           </section>

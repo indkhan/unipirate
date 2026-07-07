@@ -6,9 +6,13 @@ import { z } from "zod";
 
 import {
   deleteApplicationForCourse,
+  deleteManualTask as deleteManualTaskRow,
   insertAnswerReport,
+  insertTask,
+  listApplications,
   removeMyCourse,
   setTaskDone,
+  updateManualTask as updateManualTaskRow,
   updateApplicationStatus,
 } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
@@ -46,6 +50,90 @@ export async function toggleTask(input: unknown): Promise<void> {
   if (!user) redirect("/login");
 
   await setTaskDone(db, id, done);
+  revalidatePath("/dashboard");
+}
+
+const taskDateSchema = z.preprocess(
+  (value) => (value === "" ? null : value),
+  z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+);
+
+const manualTaskSchema = z.object({
+  title: z.string().trim().min(1).max(240),
+  dueDate: taskDateSchema,
+  applicationId: z
+    .preprocess((value) => (value === "" ? null : value), z.string().uuid().nullable())
+    .optional()
+    .default(null),
+});
+
+async function assertOwnedApplication(
+  db: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  applicationId: string | null,
+): Promise<void> {
+  if (!applicationId) return;
+  const applications = await listApplications(db, userId);
+  if (!applications.some((application) => application.id === applicationId)) {
+    throw new Error("Application not found");
+  }
+}
+
+export async function createManualTask(input: unknown): Promise<void> {
+  const task = manualTaskSchema.parse(input);
+  const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  await assertOwnedApplication(db, user.id, task.applicationId);
+  await insertTask(db, {
+    user_id: user.id,
+    title: task.title,
+    due_date: task.dueDate,
+    application_id: task.applicationId,
+  });
+  revalidatePath("/dashboard");
+}
+
+const updateManualTaskSchema = manualTaskSchema.extend({
+  id: z.string().uuid(),
+});
+
+export async function updateManualTask(input: unknown): Promise<void> {
+  const task = updateManualTaskSchema.parse(input);
+  const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  await assertOwnedApplication(db, user.id, task.applicationId);
+  await updateManualTaskRow(db, user.id, task.id, {
+    title: task.title,
+    due_date: task.dueDate,
+    application_id: task.applicationId,
+  });
+  revalidatePath("/dashboard");
+}
+
+const deleteManualTaskSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export async function deleteManualTask(input: unknown): Promise<void> {
+  const { id } = deleteManualTaskSchema.parse(input);
+  const db = await createClient();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  await deleteManualTaskRow(db, user.id, id);
   revalidatePath("/dashboard");
 }
 

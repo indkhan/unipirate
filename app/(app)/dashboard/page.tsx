@@ -6,7 +6,6 @@ import { AssistantSidebar } from "@/components/app/assistant-sidebar";
 import { UserMenu } from "@/components/app/user-menu";
 import { countTodayAssistantQuestions } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
-import { daysUntil } from "@/lib/tasks/generate";
 import { syncDashboard } from "@/lib/tasks/sync";
 
 import { DashboardViews } from "./dashboard-views";
@@ -116,30 +115,14 @@ export default async function DashboardPage() {
                   Find courses
                 </Link>
               </section>
-            ) : view.allDone ? (
-              <section className={styles.allDone}>
-                <span className={styles.doneMark}>✓</span>
-                <h2 className={styles.emptyTitle}>Nothing due today.</h2>
-                <p className={styles.emptyText}>
-                  {view.nextDeadline
-                    ? `Your next deadline is in ${daysUntil(
-                        view.nextDeadline.iso,
-                        view.checkedAt,
-                      )} days.`
-                    : "Everything on the line is on time."}
-                </p>
-                <span className={styles.checkedLine}>
-                  Checked against {view.universityCount} universities ·{" "}
-                  {view.checkedAt}
-                </span>
-              </section>
-            ) : (
-              <DashboardViews
-                buckets={view.buckets}
-                calendarEvents={view.calendarEvents}
-                todayIso={view.checkedAt}
-              />
-            )}
+            ) : null}
+            <DashboardViews
+              buckets={view.buckets}
+              doneTasks={view.doneTasks}
+              calendarEvents={view.calendarEvents}
+              applications={view.rail}
+              todayIso={view.checkedAt}
+            />
           </main>
 
           <section className={styles.rail}>
