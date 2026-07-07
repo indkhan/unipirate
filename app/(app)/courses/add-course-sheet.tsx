@@ -21,7 +21,15 @@ type LookupState =
   | { step: "found"; course: FoundCourse }
   | { step: "paste"; conflictsWith: string | null };
 
-export function AddCourseSheet() {
+type AddCourseSheetProps = {
+  triggerLabel?: string;
+  triggerClassName?: string;
+};
+
+export function AddCourseSheet({
+  triggerLabel = "Add it by URL",
+  triggerClassName,
+}: AddCourseSheetProps) {
   const router = useRouter();
   const posthog = usePostHog();
   const [open, setOpen] = useState(false);
@@ -123,8 +131,12 @@ export function AddCourseSheet() {
   }
 
   const trigger = (
-    <button className={styles.addButton} type="button" onClick={() => setOpen(true)}>
-      Add it by URL
+    <button
+      className={triggerClassName ?? styles.addButton}
+      type="button"
+      onClick={() => setOpen(true)}
+    >
+      {triggerLabel}
     </button>
   );
 

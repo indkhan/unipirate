@@ -86,6 +86,24 @@
   cursor: default;
 }
 
+.navAddButton {
+  min-height: 36px;
+  border: 1px solid rgba(31, 79, 191, 0.22);
+  border-radius: var(--radius-control);
+  background: var(--route-blue);
+  color: var(--ink-inverse);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.navAddButton:hover {
+  background: var(--route-blue-hover);
+}
+
 .footer {
   display: flex;
   flex-direction: column;
