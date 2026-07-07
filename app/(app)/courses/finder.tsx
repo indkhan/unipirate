@@ -7,7 +7,6 @@ import { useMemo, useState, useTransition } from "react";
 import { firstDeadline } from "@/lib/courses/import";
 import type { Tables } from "@/lib/db/database.types";
 
-import dashStyles from "../dashboard/dashboard.module.css";
 import { addCourseToDashboard } from "./actions";
 import { AddCourseSheet } from "./add-course-sheet";
 import styles from "./finder.module.css";
@@ -65,7 +64,7 @@ export function Finder({
 
   return (
     <>
-      <div>
+      <div className={styles.titleBlock}>
         <h1 className={styles.title}>Course finder</h1>
         <p className={styles.subtitle}>
           Courses other students already imported and we reviewed. Add one to
@@ -110,23 +109,23 @@ export function Finder({
         </span>
       </div>
 
-      <div className={dashStyles.cards}>
+      <div className={styles.grid}>
         {filtered.map((course) => {
           const deadline = firstDeadline(course.deadlines);
           const onDashboard = tracked.has(course.id);
           return (
-            <article key={course.id} className={dashStyles.card}>
-              <Link className={dashStyles.cardName} href={`/courses/${course.id}`}>
+            <article key={course.id} className={styles.courseCard}>
+              <Link className={styles.cardName} href={`/courses/${course.id}`}>
                 {course.name ?? "Untitled course"}
               </Link>
-              <span className={dashStyles.cardUni}>
+              <span className={styles.cardMeta}>
                 {[course.university_name, course.location, course.degree]
                   .filter(Boolean)
                   .join(" · ")}
               </span>
-              <div className={dashStyles.cardFoot}>
-                <span className={dashStyles.cardFootLabel}>Next deadline</span>
-                <span className={dashStyles.deadline}>
+              <div className={styles.cardFoot}>
+                <span className={styles.cardFootLabel}>Next deadline</span>
+                <span className={styles.deadline}>
                   {deadline ?? "Not on the page"}
                 </span>
               </div>
