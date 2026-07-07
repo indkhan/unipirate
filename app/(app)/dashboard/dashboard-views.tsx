@@ -55,8 +55,13 @@ function Stamp({ source }: { source: DashboardTask["source"] }) {
   );
 }
 
-function TaskToggle({ task }: { task: DashboardTask }) {
-  const router = useRouter();
+function TaskToggle({
+  task,
+  onToggle,
+}: {
+  task: DashboardTask;
+  onToggle: (task: DashboardTask, done: boolean) => void;
+}) {
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -66,9 +71,10 @@ function TaskToggle({ task }: { task: DashboardTask }) {
       disabled={isPending}
       aria-label={task.done ? "Mark task not done" : "Mark task done"}
       onClick={() => {
+        const nextDone = !task.done;
+        onToggle(task, nextDone);
         startTransition(async () => {
-          await toggleTask({ id: task.id, done: !task.done });
-          router.refresh();
+          await toggleTask({ id: task.id, done: nextDone });
         });
       }}
     >
@@ -293,11 +299,13 @@ function NowTask({
   todayIso,
   applications,
   onDragStart,
+  onToggle,
 }: {
   task: DashboardTask;
   todayIso: string;
   applications: RailApplication[];
   onDragStart: (taskId: string) => void;
+  onToggle: (task: DashboardTask, done: boolean) => void;
 }) {
   const overdue = task.dueDate !== null && daysUntil(task.dueDate, todayIso) < 0;
   const taskDetail = [task.description, task.verbatimDue ?? formatDate(task.dueDate)]
@@ -315,7 +323,7 @@ function NowTask({
       }}
       onDragEnd={() => onDragStart("")}
     >
-      <TaskToggle task={task} />
+      <TaskToggle task={task} onToggle={onToggle} />
       <div className={styles.nowBody}>
         <h3 className={styles.nowTitle}>{task.title}</h3>
         <div className={styles.taskMeta}>
@@ -465,19 +473,65 @@ export function DashboardViews({
   todayIso,
 }: DashboardViewsProps) {
   const [view, setView] = useState<"tasks" | "calendar">("tasks");
-  const router = useRouter();
+  const [localBuckets, setLocalBuckets] = useState(buckets);
+  const [localDoneTasks, setLocalDoneTasks] = useState(doneTasks);
   const [draggedTaskId, setDraggedTaskId] = useState("");
   const [dragOverBucket, setDragOverBucket] = useState<BucketName | null>(null);
   const [isMoving, startMoveTransition] = useTransition();
+
+  function pendingTaskById(taskId: string) {
+    return [...localBuckets.now, ...localBuckets.next, ...localBuckets.later].find(
+      (task) => task.id === taskId,
+    );
+  }
+
+  function removePendingTask(taskId: string) {
+    setLocalBuckets((current) => {
+      const next = {
+        now: current.now.filter((pendingTask) => pendingTask.id !== taskId),
+        next: current.next.filter((pendingTask) => pendingTask.id !== taskId),
+        later: current.later.filter((pendingTask) => pendingTask.id !== taskId),
+      };
+      return next;
+    });
+  }
+
+  function handleToggle(task: DashboardTask, done: boolean) {
+    if (done) {
+      const movedTask = pendingTaskById(task.id);
+      removePendingTask(task.id);
+      setLocalDoneTasks((current) => [
+        { ...(movedTask ?? task), done: true },
+        ...current.filter((doneTask) => doneTask.id !== task.id),
+      ]);
+      return;
+    }
+
+    setLocalDoneTasks((current) => current.filter((doneTask) => doneTask.id !== task.id));
+    setLocalBuckets((current) => ({
+      ...current,
+      now: [{ ...task, done: false }, ...current.now],
+    }));
+  }
 
   function dropTask(bucket: BucketName) {
     if (!draggedTaskId) return;
     const taskId = draggedTaskId;
     setDraggedTaskId("");
     setDragOverBucket(null);
+    const movedTask = pendingTaskById(taskId);
+    removePendingTask(taskId);
+    if (movedTask) {
+      setLocalBuckets((current) => ({
+        ...current,
+        [bucket]: [
+          { ...movedTask, preferredBucket: bucket },
+          ...current[bucket].filter((task) => task.id !== taskId),
+        ],
+      }));
+    }
     startMoveTransition(async () => {
       await moveTaskToBucket({ id: taskId, bucket });
-      router.refresh();
     });
   }
 
@@ -524,16 +578,17 @@ export function DashboardViews({
             }}
           >
             <span className={styles.sectionLabel}>Now</span>
-            {buckets.now.length === 0 ? (
+            {localBuckets.now.length === 0 ? (
               <div className={styles.quietPanel}>Nothing needs action today.</div>
             ) : (
-              buckets.now.map((task) => (
+              localBuckets.now.map((task) => (
                 <NowTask
                   key={task.key}
                   task={task}
                   todayIso={todayIso}
                   applications={applications}
                   onDragStart={setDraggedTaskId}
+                  onToggle={handleToggle}
                 />
               ))
             )}
@@ -553,15 +608,16 @@ export function DashboardViews({
                 dropTask("next");
               }}
             >
-              <summary>Next · {buckets.next.length}</summary>
+              <summary>Next · {localBuckets.next.length}</summary>
               <div className={styles.sectionTaskStack}>
-                {buckets.next.map((task) => (
+                {localBuckets.next.map((task) => (
                   <NowTask
                     key={task.key}
                     task={task}
                     todayIso={todayIso}
                     applications={applications}
                     onDragStart={setDraggedTaskId}
+                    onToggle={handleToggle}
                   />
                 ))}
               </div>
@@ -580,32 +636,34 @@ export function DashboardViews({
                 dropTask("later");
               }}
             >
-              <summary>Later · {buckets.later.length}</summary>
+              <summary>Later · {localBuckets.later.length}</summary>
               <div className={styles.sectionTaskStack}>
-                {buckets.later.map((task) => (
+                {localBuckets.later.map((task) => (
                   <NowTask
                     key={task.key}
                     task={task}
                     todayIso={todayIso}
                     applications={applications}
                     onDragStart={setDraggedTaskId}
+                    onToggle={handleToggle}
                   />
                 ))}
               </div>
             </details>
             <details className={styles.taskDetails}>
-              <summary>Done · {doneTasks.length}</summary>
+              <summary>Done · {localDoneTasks.length}</summary>
               <div className={styles.sectionTaskStack}>
-                {doneTasks.length === 0 ? (
+                {localDoneTasks.length === 0 ? (
                   <div className={styles.quietPanel}>Completed tasks will show here.</div>
                 ) : (
-                  doneTasks.map((task) => (
+                  localDoneTasks.map((task) => (
                     <NowTask
                       key={task.key}
                       task={task}
                       todayIso={todayIso}
                       applications={applications}
                       onDragStart={setDraggedTaskId}
+                      onToggle={handleToggle}
                     />
                   ))
                 )}

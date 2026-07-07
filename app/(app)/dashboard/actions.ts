@@ -51,7 +51,6 @@ export async function toggleTask(input: unknown): Promise<void> {
   if (!user) redirect("/login");
 
   await setTaskDone(db, id, done);
-  revalidatePath("/dashboard");
 }
 
 const moveTaskSchema = z.object({
@@ -69,7 +68,6 @@ export async function moveTaskToBucket(input: unknown): Promise<void> {
   if (!user) redirect("/login");
 
   await setTaskPreferredBucket(db, user.id, id, bucket);
-  revalidatePath("/dashboard");
 }
 
 const taskDateSchema = z.preprocess(

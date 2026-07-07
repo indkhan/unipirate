@@ -64,6 +64,22 @@ export default async function DashboardPage() {
     result: view.result,
   });
   const questionsUsed = await countTodayAssistantQuestions(db, user.id);
+  const dashboardViewsKey = [
+    ...view.buckets.now,
+    ...view.buckets.next,
+    ...view.buckets.later,
+    ...view.doneTasks,
+  ]
+    .map((task) =>
+      [
+        task.id,
+        task.title,
+        task.done ? "done" : "pending",
+        task.dueDate ?? "",
+        task.preferredBucket ?? "",
+      ].join(":"),
+    )
+    .join("|");
 
   return (
     <div className={styles.shell}>
@@ -117,6 +133,7 @@ export default async function DashboardPage() {
               </section>
             ) : null}
             <DashboardViews
+              key={dashboardViewsKey}
               buckets={view.buckets}
               doneTasks={view.doneTasks}
               calendarEvents={view.calendarEvents}
