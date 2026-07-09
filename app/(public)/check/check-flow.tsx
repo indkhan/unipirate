@@ -32,6 +32,14 @@ type CheckFlowProps = {
   userMenu?: ReactNode;
 };
 
+type SavedCheckState = {
+  answers: PartialAnswers;
+  stepIndex: number;
+};
+
+const CHECK_HISTORY_STEP_KEY = "__unipirateCheckStep";
+const CHECK_STORAGE_PREFIX = "unipirate.check.v1";
+
 const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
   targetDegree: { question: "Which degree level are you applying for?" },
   nationality: { question: "What is your nationality?" },
@@ -88,10 +96,52 @@ export function CheckFlow({
   const [stepIndex, setStepIndex] = useState(initialStepIndex);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [restored, setRestored] = useState(false);
+  const [historyDepth, setHistoryDepth] = useState(0);
+  const storageKey = `${CHECK_STORAGE_PREFIX}:${
+    initialAnswers.certificateCountry ?? "none"
+  }`;
 
   useEffect(() => {
     posthog.capture("check_started");
   }, [posthog]);
+
+  useEffect(() => {
+    let nextAnswers = initialAnswers;
+    let nextStepIndex = initialStepIndex;
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (raw) {
+        const saved = JSON.parse(raw) as SavedCheckState;
+        const savedCountry = saved.answers?.certificateCountry;
+        if (
+          !initialAnswers.certificateCountry ||
+          savedCountry === initialAnswers.certificateCountry
+        ) {
+          nextAnswers = saved.answers ?? initialAnswers;
+          const savedSteps = visibleSteps(nextAnswers);
+          nextStepIndex = Math.min(
+            Math.max(saved.stepIndex ?? initialStepIndex, 0),
+            Math.max(savedSteps.length - 1, 0),
+          );
+          setAnswers(nextAnswers);
+          setStepIndex(nextStepIndex);
+        }
+      }
+    } catch {
+      sessionStorage.removeItem(storageKey);
+    } finally {
+      window.history.replaceState(
+        {
+          ...(window.history.state ?? {}),
+          [CHECK_HISTORY_STEP_KEY]: nextStepIndex,
+        },
+        "",
+        window.location.href,
+      );
+      setRestored(true);
+    }
+  }, [initialAnswers, initialStepIndex, storageKey]);
 
   const steps = visibleSteps(answers);
   const step = steps[Math.min(stepIndex, steps.length - 1)];
@@ -104,6 +154,35 @@ export function CheckFlow({
     !isAnswered(answers, "schoolGradePercent")
       ? "Enter a percentage from 0 to 100."
       : null;
+
+  useEffect(() => {
+    if (!restored) return;
+    const safeStepIndex = Math.min(stepIndex, Math.max(steps.length - 1, 0));
+    sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        answers,
+        stepIndex: safeStepIndex,
+      } satisfies SavedCheckState),
+    );
+  }, [answers, restored, stepIndex, steps.length, storageKey]);
+
+  useEffect(() => {
+    if (!restored) return;
+    function onPopState(event: PopStateEvent) {
+      const historyStep = event.state?.[CHECK_HISTORY_STEP_KEY];
+      if (typeof historyStep !== "number") return;
+      const safeStepIndex = Math.min(
+        Math.max(historyStep, 0),
+        Math.max(visibleSteps(answers).length - 1, 0),
+      );
+      setError(null);
+      setHistoryDepth((depth) => Math.max(depth - 1, 0));
+      setStepIndex(safeStepIndex);
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [answers, restored]);
 
   function optionsFor(stepId: StepId): Option[] {
     switch (stepId) {
@@ -196,8 +275,25 @@ export function CheckFlow({
 
   function back() {
     setError(null);
-    if (stepIndex > 0) setStepIndex(stepIndex - 1);
-    else router.push("/");
+    if (stepIndex > 0) {
+      if (
+        historyDepth > 0 &&
+        window.history.state?.[CHECK_HISTORY_STEP_KEY] === stepIndex
+      ) {
+        window.history.back();
+      } else {
+        const previousStepIndex = stepIndex - 1;
+        setStepIndex(previousStepIndex);
+        window.history.replaceState(
+          {
+            ...(window.history.state ?? {}),
+            [CHECK_HISTORY_STEP_KEY]: previousStepIndex,
+          },
+          "",
+          window.location.href,
+        );
+      }
+    } else router.push("/");
   }
 
   async function next() {
@@ -208,7 +304,17 @@ export function CheckFlow({
     }
     posthog.capture("step_completed", { step: stepIndex + 1, question: step });
     if (!isLast) {
-      setStepIndex(stepIndex + 1);
+      const nextStepIndex = stepIndex + 1;
+      setStepIndex(nextStepIndex);
+      setHistoryDepth((depth) => depth + 1);
+      window.history.pushState(
+        {
+          ...(window.history.state ?? {}),
+          [CHECK_HISTORY_STEP_KEY]: nextStepIndex,
+        },
+        "",
+        window.location.href,
+      );
       return;
     }
     setSubmitting(true);
