@@ -192,6 +192,10 @@ export function CheckFlow({
           { value: "master", label: "A Master's degree", key: "master" },
         ];
       case "nationality":
+        return countries
+          .filter((c) => c.code !== "de")
+          .map((c) => ({ value: c.code, label: c.name, key: c.code }))
+          .concat({ value: "other", label: "Another country", key: "other" });
       case "certificateCountry":
         return countries
           .filter((c) => c.code !== "de")
