@@ -209,7 +209,10 @@ export function withAnswer<K extends StepId>(
 
 export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
   if (step === "intake") return answers.intake !== undefined;
-  if (step === "gceSubjects") return (answers.gceSubjects?.length ?? 0) > 0;
+  if (step === "gceSubjects") {
+    const subjects = answers.gceSubjects ?? [];
+    return subjects.length > 0 && !hasDuplicateGceSubjects(subjects);
+  }
   if (step === "schoolGradePercent") {
     const grade = answers.schoolGradePercent;
     return (
@@ -220,6 +223,15 @@ export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
     );
   }
   return answers[step] !== undefined;
+}
+
+export function hasDuplicateGceSubjects(subjects: GceSubjectAnswer[]): boolean {
+  const subjectIds = new Set<string>();
+  for (const subject of subjects) {
+    if (subjectIds.has(subject.subjectId)) return true;
+    subjectIds.add(subject.subjectId);
+  }
+  return false;
 }
 
 // ------------------------------------------------------------------- profile

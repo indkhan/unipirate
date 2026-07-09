@@ -10,6 +10,7 @@ import { evaluate } from "@/lib/engine/evaluate";
 import {
   AnswersSchema,
   buildProfile,
+  hasDuplicateGceSubjects,
   isAnswered,
   visibleSteps,
   withAnswer,
@@ -143,6 +144,22 @@ describe("visibleSteps", () => {
     ).toBe(false);
     expect(
       AnswersSchema.safeParse({ ...p1Answers, schoolGradePercent: 150 })
+        .success,
+    ).toBe(false);
+  });
+
+  it("does not count duplicate GCE subjects as a complete answer", () => {
+    const duplicateSubjects = [
+      { subjectId: "mathematics", level: "AL", grade: "A" },
+      { subjectId: "mathematics", level: "AL", grade: "B" },
+    ] satisfies Answers["gceSubjects"];
+
+    expect(hasDuplicateGceSubjects(duplicateSubjects)).toBe(true);
+    expect(
+      isAnswered({ ...p11Answers, gceSubjects: duplicateSubjects }, "gceSubjects"),
+    ).toBe(false);
+    expect(
+      AnswersSchema.safeParse({ ...p11Answers, gceSubjects: duplicateSubjects })
         .success,
     ).toBe(false);
   });

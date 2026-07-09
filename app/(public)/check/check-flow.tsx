@@ -13,6 +13,7 @@ import {
   GCE_SUBJECTS,
   INTAKE_OPTIONS,
   TARGET_FIELDS,
+  hasDuplicateGceSubjects,
   isAnswered,
   visibleSteps,
   withAnswer,
@@ -88,6 +89,15 @@ const emptySubject: GceSubjectAnswer = {
   level: "AL",
   grade: "A",
 };
+
+function nextSubject(subjects: GceSubjectAnswer[]): GceSubjectAnswer {
+  const used = new Set(subjects.map((subject) => subject.subjectId));
+  const subject = GCE_SUBJECTS.find((candidate) => !used.has(candidate.id));
+  return {
+    ...emptySubject,
+    subjectId: subject?.id ?? emptySubject.subjectId,
+  };
+}
 
 export function CheckFlow({
   countries,
@@ -343,6 +353,10 @@ export function CheckFlow({
   }
 
   const subjects = answers.gceSubjects ?? [];
+  const gceDuplicateError =
+    step === "gceSubjects" && hasDuplicateGceSubjects(subjects)
+      ? "Add each subject only once."
+      : null;
 
   return (
     <div className={styles.shell}>
@@ -440,7 +454,14 @@ export function CheckFlow({
                     }}
                   >
                     {GCE_SUBJECTS.map((c) => (
-                      <option key={c.id} value={c.id}>
+                      <option
+                        disabled={subjects.some(
+                          (subject, subjectIndex) =>
+                            subjectIndex !== i && subject.subjectId === c.id,
+                        )}
+                        key={c.id}
+                        value={c.id}
+                      >
                         {c.label}
                       </option>
                     ))}
@@ -497,11 +518,14 @@ export function CheckFlow({
               type="button"
               className={styles.addBtn}
               onClick={() =>
-                select("gceSubjects", [...subjects, { ...emptySubject }])
+                select("gceSubjects", [...subjects, nextSubject(subjects)])
               }
             >
               + Add {subjects.length === 0 ? "a subject" : "another subject"}
             </button>
+            {gceDuplicateError && (
+              <p className={styles.fieldError}>{gceDuplicateError}</p>
+            )}
           </div>
         ) : (
           <div className={styles.options}>
