@@ -77,6 +77,12 @@ const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
   intake: { question: "When do you want to start?" },
 };
 
+const MASTER_CURRICULUM_QUESTION = {
+  question: "Which school curriculum did you finish?",
+  subtitle:
+    "Master's guidance is limited for now. We'll confirm what our verified rules can support.",
+};
+
 const emptySubject: GceSubjectAnswer = {
   subjectId: "mathematics",
   level: "AL",
@@ -147,6 +153,10 @@ export function CheckFlow({
   const step = steps[Math.min(stepIndex, steps.length - 1)];
   const isLast = stepIndex >= steps.length - 1;
   const canContinue = isAnswered(answers, step);
+  const questionCopy =
+    step === "curriculumType" && answers.targetDegree === "master"
+      ? MASTER_CURRICULUM_QUESTION
+      : QUESTIONS[step];
   const gradeValue = answers.schoolGradePercent;
   const gradeError =
     step === "schoolGradePercent" &&
@@ -373,9 +383,9 @@ export function CheckFlow({
         </div>
 
         <div>
-          <h1 className={styles.question}>{QUESTIONS[step].question}</h1>
-          {QUESTIONS[step].subtitle && (
-            <p className={styles.subtitle}>{QUESTIONS[step].subtitle}</p>
+          <h1 className={styles.question}>{questionCopy.question}</h1>
+          {questionCopy.subtitle && (
+            <p className={styles.subtitle}>{questionCopy.subtitle}</p>
           )}
         </div>
 

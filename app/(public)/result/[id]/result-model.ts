@@ -28,6 +28,22 @@ const PATH_LABELS: Record<Result["path"], string> = {
   unknown: "Your admission route still needs confirmation.",
 };
 
+const BOARD_LABELS: Record<string, string> = {
+  cbse: "CBSE",
+  cisce: "CISCE",
+  state_board: "State board",
+  fsc: "FSc/HSSC",
+  tawjihiyah: "Tawjihiyah",
+  private_school: "Private-school certificate",
+};
+
+const CURRICULUM_LABELS: Record<Profile["curriculumType"], string> = {
+  national: "National board",
+  ib: "IB Diploma",
+  gce: "GCE A-Levels",
+  other: "Other curriculum",
+};
+
 function flagLabel(
   name: string,
   value: Result["aps"],
@@ -146,11 +162,14 @@ export function countryLabel(profile: Profile): string {
 
 export function profileSummary(profile: Profile): string {
   const parts = [
-    profile.board?.toUpperCase(),
+    profile.targetDegree === "master" ? "Master's applicant" : undefined,
+    profile.board ? (BOARD_LABELS[profile.board] ?? profile.board) : undefined,
     profile.schoolGradePercent !== undefined
       ? `${profile.schoolGradePercent}%`
       : undefined,
-    !profile.board ? profile.curriculumType.toUpperCase() : undefined,
+    profile.targetDegree !== "master" && !profile.board
+      ? CURRICULUM_LABELS[profile.curriculumType]
+      : undefined,
   ];
   return parts.filter(Boolean).join(" · ");
 }
