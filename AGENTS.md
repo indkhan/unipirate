@@ -46,5 +46,14 @@ German public university. Full architecture and flow documentation:
 - Schema changes: add a new file under `supabase/migrations/` (never edit an
   applied one), `pnpm supabase db push` against the linked project (never
   `db reset --linked`), then `pnpm db:types`.
-- When you make a change to the architecture of the program in any way edit 
-   the `docs/application.md`
+- When changing the program architecture, update `docs/application.md` in the same change.
+   
+
+
+## Read first
+Before making changes, read:
+
+1. `docs/application.md` — architecture, flows, and product decisions
+2. Relevant files under `lib/rules/`, `lib/checker/`, `lib/assistant/`, or `lib/db/`
+3. Existing tests for the area being changed
+
