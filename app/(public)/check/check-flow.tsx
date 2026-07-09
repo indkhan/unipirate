@@ -140,8 +140,6 @@ export function CheckFlow({
             Math.max(saved.stepIndex ?? initialStepIndex, 0),
             Math.max(savedSteps.length - 1, 0),
           );
-          setAnswers(nextAnswers);
-          setStepIndex(nextStepIndex);
         }
       }
     } catch {
@@ -155,7 +153,11 @@ export function CheckFlow({
         "",
         window.location.href,
       );
-      setRestored(true);
+      queueMicrotask(() => {
+        setAnswers(nextAnswers);
+        setStepIndex(nextStepIndex);
+        setRestored(true);
+      });
     }
   }, [initialAnswers, initialStepIndex, storageKey]);
 
