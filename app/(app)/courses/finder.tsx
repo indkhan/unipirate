@@ -36,7 +36,7 @@ export function Finder({
   const tracked = new Set([...trackedIds, ...added]);
 
   const filtered = useMemo(() => {
-    // ponytail: client-side filter, move server-side when the catalog outgrows one fetch
+    // Trade-off: client-side filter; move server-side when the catalog outgrows one fetch.
     const q = query.trim().toLowerCase();
     return courses.filter(
       (c) =>

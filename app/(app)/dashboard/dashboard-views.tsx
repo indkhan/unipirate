@@ -100,6 +100,49 @@ export function DashboardViews({
     } ${isMoving ? styles.dropSectionMoving : ""}`;
   }
 
+  function bucketSection(
+    bucket: BucketName,
+    label: string,
+    options: { open?: boolean; emptyText?: string; className?: string } = {},
+  ) {
+    const tasks = localBuckets[bucket];
+    return (
+      <details
+        className={`${styles.taskDetails} ${options.className ?? ""} ${dropZoneClass(bucket)}`}
+        open={options.open}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setDragOverBucket(bucket);
+        }}
+        onDragLeave={() => setDragOverBucket(null)}
+        onDrop={(event) => {
+          event.preventDefault();
+          dropTask(bucket);
+        }}
+      >
+        <summary>
+          {label} · {tasks.length}
+        </summary>
+        <div className={styles.sectionTaskStack}>
+          {tasks.length === 0 && options.emptyText ? (
+            <div className={styles.quietPanel}>{options.emptyText}</div>
+          ) : (
+            tasks.map((task) => (
+              <NowTask
+                key={task.key}
+                task={task}
+                todayIso={todayIso}
+                applications={applications}
+                onDragStart={setDraggedTaskId}
+                onToggle={handleToggle}
+              />
+            ))
+          )}
+        </div>
+      </details>
+    );
+  }
+
   return (
     <>
       <div className={styles.taskToolbar}>
@@ -124,94 +167,16 @@ export function DashboardViews({
 
       {view === "tasks" ? (
         <div className={styles.taskStack}>
-          <details
-            className={`${styles.taskDetails} ${dropZoneClass("now")}`}
-            open
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragOverBucket("now");
-            }}
-            onDragLeave={() => setDragOverBucket(null)}
-            onDrop={(event) => {
-              event.preventDefault();
-              dropTask("now");
-            }}
-          >
-            <summary>Now · {localBuckets.now.length}</summary>
-            <div className={styles.sectionTaskStack}>
-              {localBuckets.now.length === 0 ? (
-                <div className={styles.quietPanel}>Nothing needs action today.</div>
-              ) : (
-                localBuckets.now.map((task) => (
-                  <NowTask
-                    key={task.key}
-                    task={task}
-                    todayIso={todayIso}
-                    applications={applications}
-                    onDragStart={setDraggedTaskId}
-                    onToggle={handleToggle}
-                  />
-                ))
-              )}
-            </div>
-          </details>
+          {bucketSection("now", "Now", {
+            open: true,
+            emptyText: "Nothing needs action today.",
+          })}
 
           <section className={styles.detailsStack}>
-            <details
-              className={`${styles.taskDetails} ${dropZoneClass("next")}`}
-              open
-              onDragOver={(event) => {
-                event.preventDefault();
-                setDragOverBucket("next");
-              }}
-              onDragLeave={() => setDragOverBucket(null)}
-              onDrop={(event) => {
-                event.preventDefault();
-                dropTask("next");
-              }}
-            >
-              <summary>Next · {localBuckets.next.length}</summary>
-              <div className={styles.sectionTaskStack}>
-                {localBuckets.next.map((task) => (
-                  <NowTask
-                    key={task.key}
-                    task={task}
-                    todayIso={todayIso}
-                    applications={applications}
-                    onDragStart={setDraggedTaskId}
-                    onToggle={handleToggle}
-                  />
-                ))}
-              </div>
-            </details>
-            <details
-              className={`${styles.taskDetails} ${styles.laterDetails} ${dropZoneClass(
-                "later",
-              )}`}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setDragOverBucket("later");
-              }}
-              onDragLeave={() => setDragOverBucket(null)}
-              onDrop={(event) => {
-                event.preventDefault();
-                dropTask("later");
-              }}
-            >
-              <summary>Later · {localBuckets.later.length}</summary>
-              <div className={styles.sectionTaskStack}>
-                {localBuckets.later.map((task) => (
-                  <NowTask
-                    key={task.key}
-                    task={task}
-                    todayIso={todayIso}
-                    applications={applications}
-                    onDragStart={setDraggedTaskId}
-                    onToggle={handleToggle}
-                  />
-                ))}
-              </div>
-            </details>
+            {bucketSection("next", "Next", { open: true })}
+            {bucketSection("later", "Later", {
+              className: styles.laterDetails,
+            })}
             <details className={styles.taskDetails}>
               <summary>Done · {localDoneTasks.length}</summary>
               <div className={styles.sectionTaskStack}>

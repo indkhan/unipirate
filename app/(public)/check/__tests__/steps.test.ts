@@ -10,6 +10,7 @@ import { evaluate } from "@/lib/engine/evaluate";
 import {
   AnswersSchema,
   buildProfile,
+  isAnswered,
   visibleSteps,
   withAnswer,
   type Answers,
@@ -72,7 +73,7 @@ describe("buildProfile reproduces engine-test personas", () => {
 });
 
 describe("visibleSteps", () => {
-  it("asks curriculum type before the board (domain rule 5)", () => {
+  it("asks curriculum type before the board", () => {
     const steps = visibleSteps(p1Answers);
     expect(steps.indexOf("curriculumType")).toBeGreaterThan(-1);
     expect(steps.indexOf("curriculumType")).toBeLessThan(
@@ -130,6 +131,28 @@ describe("visibleSteps", () => {
   it("incomplete answers fail schema validation", () => {
     expect(
       AnswersSchema.safeParse({ ...p1Answers, board: undefined }).success,
+    ).toBe(false);
+  });
+
+  it("blocks Continue on out-of-range marks instead of failing at submit", () => {
+    expect(isAnswered(p1Answers, "schoolGradePercent")).toBe(true);
+    expect(
+      isAnswered(
+        { ...p1Answers, schoolGradePercent: 150 },
+        "schoolGradePercent",
+      ),
+    ).toBe(false);
+    expect(
+      isAnswered(
+        { ...p1Answers, schoolGradePercent: -5 },
+        "schoolGradePercent",
+      ),
+    ).toBe(false);
+    expect(
+      isAnswered(
+        { ...p1Answers, schoolGradePercent: undefined },
+        "schoolGradePercent",
+      ),
     ).toBe(false);
   });
 });

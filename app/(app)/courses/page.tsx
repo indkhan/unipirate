@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
 import { AuthenticatedTopbar } from "@/components/app/authenticated-topbar";
+import { requireUser } from "@/lib/auth/session";
 import {
   countTodayAssistantQuestions,
   getApprovedCourses,
   listApplications,
 } from "@/lib/db/queries";
-import { createClient } from "@/lib/db/server";
 
 import styles from "../dashboard/dashboard.module.css";
 import { AddCourseSheet } from "./add-course-sheet";
@@ -21,11 +20,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CourseFinderPage() {
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-  if (!user) redirect("/login");
+  const { db, user } = await requireUser("/courses");
 
   const [courses, applications, questionsUsed] = await Promise.all([
     getApprovedCourses(db),

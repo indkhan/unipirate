@@ -1,3 +1,9 @@
+// Write side of generated tasks. Called at event time (profile saved, result
+// claimed, course added, application status changed) — never during dashboard
+// render. Reconciles desired vs existing rows by task_key: changed rows are
+// upserted, stale open rows deleted, stale done rows deactivated (kept so a
+// returning task_key restores its checkmark). User fields (done,
+// preferred_bucket) are never written here.
 import {
   deactivateGeneratedTasks,
   deleteOpenGeneratedTasksForApplication as deleteOpenGeneratedTaskRowsForApplication,

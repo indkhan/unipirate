@@ -1,3 +1,7 @@
+// Anonymous-check ownership: the browser that ran a check gets a random
+// token in an HttpOnly cookie; only its SHA-256 hash is stored on the check
+// row. claim_check() in the DB compares hashes, so a leaked database never
+// exposes a claimable token.
 import { createHash, randomBytes } from "node:crypto";
 
 const TOKEN_BYTES = 32;

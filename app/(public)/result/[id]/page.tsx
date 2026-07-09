@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { z } from "zod";
 
 import { UserMenu } from "@/components/app/user-menu";
 import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
-import { getCheck } from "@/lib/db/queries";
+import { getCheck, getResultViewer } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
 import type { Profile, Result } from "@/lib/engine/evaluate";
 
@@ -38,16 +39,7 @@ export const metadata = {
 async function viewerFor(checkId: string): Promise<ViewerVariant> {
   const db = await createClient();
   const token = (await cookies()).get(ownerCookieName(checkId))?.value;
-  const { data, error } = await db.rpc(
-    "result_viewer",
-    {
-      p_check_id: checkId,
-      p_token_hash: token ? hashOwnerToken(token) : null,
-    } as never,
-  );
-  if (error) return "public";
-  if (data === "anonymous_owner" || data === "claimed_owner") return data;
-  return "public";
+  return getResultViewer(db, checkId, token ? hashOwnerToken(token) : null);
 }
 
 export default async function ResultPage({
@@ -58,6 +50,9 @@ export default async function ResultPage({
   searchParams: Promise<{ claim?: string }>;
 }) {
   const { id } = await params;
+  // Mangled share links (truncated copy/paste) must 404, not hit Postgres
+  // with a non-uuid and 500.
+  if (!z.string().uuid().safeParse(id).success) notFound();
   const shouldClaim = (await searchParams).claim === "1";
   const db = await createClient();
   const {

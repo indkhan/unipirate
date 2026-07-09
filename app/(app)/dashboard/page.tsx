@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { AuthenticatedTopbar } from "@/components/app/authenticated-topbar";
+import { requireUser } from "@/lib/auth/session";
 import {
   countTodayAssistantQuestions,
   hasGeneratedTasksMissingMetadata,
 } from "@/lib/db/queries";
-import { createClient } from "@/lib/db/server";
 import { materializeAllTasksForUser } from "@/lib/tasks/materialize";
 import { buildDashboardView } from "@/lib/tasks/view";
 
@@ -54,11 +53,7 @@ function routeDots(stations: DashboardRouteStation[]) {
 }
 
 export default async function DashboardPage() {
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-  if (!user) redirect("/login");
+  const { db, user } = await requireUser();
 
   if (await hasGeneratedTasksMissingMetadata(db, user.id)) {
     await materializeAllTasksForUser(db, user.id);

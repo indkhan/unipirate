@@ -1,3 +1,9 @@
+// Pure task generation: engine results and tracked courses → deterministic
+// GeneratedTask lists, plus deadline parsing and Now/Next/Later bucketing.
+// Zero I/O — materialize.ts writes the output to the DB, view.ts renders it.
+// Task identity is the `key` (`rule:<id>:step:<n>`, `app:<id>:submit`,
+// `app:<id>:req:<hash>`); regeneration reconciles by key so user state
+// (done, preferred bucket) survives.
 import type { Citation, Result, Term } from "@/lib/engine/evaluate";
 
 export type GeneratedTask = {
@@ -400,7 +406,7 @@ export function generateTasks(
 }
 
 function band(order: number): number {
-  // ponytail: order bands are the dependency mechanism for generated tasks.
+  // Trade-off: order bands are the dependency mechanism for generated tasks.
   // Upgrade path: explicit rule dependencies if the route gets branchier.
   return Math.floor(order / 10);
 }

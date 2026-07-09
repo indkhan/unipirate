@@ -1,3 +1,6 @@
+// Queries for the /admin review workspace: rule editing/verification, the
+// course review queues, and the audit trail. Callers must hold an admin
+// session (requireAdmin) — RLS rejects these writes for everyone else.
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type {

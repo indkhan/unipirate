@@ -26,6 +26,10 @@ Walkthrough complete. I went through every flow as a user: home page, all three 
 
 ## Bugs
 
+> Status (2026-07-09): #1 fixed (Continue is blocked and an inline error shows
+> while marks are outside 0–100), #2 fixed (malformed result ids 404), and #8
+> fixed (intake renders as "Winter 2026/27" everywhere). The rest are open.
+
 1. **Marks input accepts impossible values, and the error comes too late and too vague.** On the Class 12 marks step I typed **150%** — Continue stayed enabled and the flow let me sail through four more steps. Only when I hit "See my result" did I get *"Some answers are missing or invalid. Please go back and check them"* with no hint which of the 11 answers is bad. A real user would not guess it's the marks. Cause: [check-flow.tsx:280](app/(public)/check/check-flow.tsx:280) only checks `!== undefined` via `isAnswered`; the Zod `min(0).max(100)` in [steps.ts:109](app/(public)/check/steps.ts:109) only runs server-side at submit. Fix: block Continue (or clamp/show inline error) on that step when the value is outside 0–100. Negative values have the same hole.
 
 2. **Malformed result URL crashes with a 500.** `/result/not-a-real-id` renders "This page couldn't load — A server error occurred" because the raw string goes straight into a Postgres uuid query and the error is thrown at [queries.ts:14](lib/db/queries.ts:14). A well-formed-but-unknown UUID correctly 404s. Anyone mangling a shared WhatsApp link (very common — truncated copy/paste) sees a scary error page. Validate the id format in [page.tsx:65](app/(public)/result/[id]/page.tsx:65) and `notFound()` instead.

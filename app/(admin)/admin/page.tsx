@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { requireAdmin } from "@/lib/auth/session";
 import {
   listAdminRules,
   listConflictCourses,
@@ -11,7 +11,6 @@ import {
 } from "@/lib/db/admin-queries";
 import type { Enums } from "@/lib/db/database.types";
 import { getCountries } from "@/lib/db/queries";
-import { createClient } from "@/lib/db/server";
 
 import { AuditLog } from "./audit-log";
 import { ConflictQueue, CourseQueue } from "./course-queue";
@@ -36,25 +35,13 @@ function parseRuleStatus(
   return undefined;
 }
 
-async function requireAdminDb() {
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-
-  if (!user) redirect("/login");
-  if (user.app_metadata?.role !== "admin") redirect("/dashboard");
-
-  return db;
-}
-
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const params = (await searchParams) ?? {};
   const country = singleParam(params.country);
   const status = parseRuleStatus(singleParam(params.status));
   const selectedRuleId = singleParam(params.rule);
 
-  const db = await requireAdminDb();
+  const { db } = await requireAdmin();
   const filters: AdminRuleFilters = { country, status };
   const [countries, rules, pendingCourses, conflictCourses, auditEvents] =
     await Promise.all([

@@ -1,3 +1,7 @@
+// Read side of the dashboard: loads the saved profile, applications, and
+// active task rows, then derives buckets, the applications rail, calendar
+// events, and the next deadline. Strictly read-only — task rows are
+// materialized at event time by materialize.ts, never during render.
 import {
   getProfile,
   getPublishedRules,

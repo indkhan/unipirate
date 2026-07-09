@@ -120,13 +120,18 @@ describe("result page model", () => {
     ).toBe(false);
   });
 
-  it("formats intake without inventing a deadline", () => {
+  it("formats intake the way the checker labels it", () => {
     const profile: Profile = {
       targetDegree: "bachelor",
       curriculumType: "national",
       intake: { term: "winter", year: 2027 },
     };
-    expect(intakeLabel(profile)).toBe("Winter 2027");
+    // winter semesters span two years — must match the "Winter 2027/28"
+    // option the user picked
+    expect(intakeLabel(profile)).toBe("Winter 2027/28");
+    expect(
+      intakeLabel({ ...profile, intake: { term: "summer", year: 2027 } }),
+    ).toBe("Summer 2027");
     expect(intakeLabel({ ...profile, intake: undefined })).toBeNull();
   });
 });

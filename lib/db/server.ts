@@ -1,3 +1,5 @@
+// Supabase client for server components, server actions, and route handlers.
+// The session comes from request cookies; proxy.ts keeps it refreshed.
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 

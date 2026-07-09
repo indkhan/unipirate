@@ -170,6 +170,13 @@ export function CheckFlow({
               />
               <span className={styles.percentSuffix}>%</span>
             </div>
+            {answers.schoolGradePercent !== undefined &&
+              (answers.schoolGradePercent < 0 ||
+                answers.schoolGradePercent > 100) && (
+                <div className={styles.error}>
+                  Enter your overall percentage between 0 and 100.
+                </div>
+              )}
           </div>
         ) : step === "gceSubjects" ? (
           <GceSubjectsEditor

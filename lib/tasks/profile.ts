@@ -1,3 +1,6 @@
+// Rebuilds an engine Profile from the answers stored on a `profiles` row.
+// Falls back to a loose parse for rows written before the current
+// AnswersSchema, so old profiles keep generating tasks.
 import { z } from "zod";
 
 import { AnswersSchema, buildProfile } from "@/app/(public)/check/steps";
