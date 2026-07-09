@@ -65,7 +65,7 @@ Built by a CS student at Saarland University who did this exact journey himself 
 
 
 
- How the app works: [application.md](application.md).
+ How the app works: [docs/application.md](docs/application.md).
 
 ## Local setup
 

@@ -19,6 +19,7 @@ import {
   TimelineCard,
   UnknownsCard,
   VerdictCard,
+  formatDate,
 } from "./result-components";
 import styles from "./result.module.css";
 import {
@@ -68,12 +69,7 @@ export default async function ResultPage({
   const result = check.result as unknown as Result;
   const profile = check.profile as unknown as Profile;
   const viewer = await viewerFor(id);
-  const resultDate = new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(check.created_at));
+  const resultDate = formatDate(check.created_at);
 
   return (
     <main className={styles.page}>

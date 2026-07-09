@@ -6,14 +6,10 @@ import type {
   TablesInsert,
 } from "@/lib/db/database.types";
 import type { GeneratedTaskUpsert } from "@/lib/tasks/generate";
+import { unwrap } from "@/lib/db/unwrap";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
 type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
-
-function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {
-  if (result.error) throw new Error(result.error.message);
-  return result.data as T;
-}
 
 // ---------------------------------------------------------- reference data
 
@@ -31,12 +27,6 @@ export async function getQualifications(
     query = query.or(`country_code.eq.${countryCode},country_code.is.null`);
   }
   return unwrap(await query);
-}
-
-export async function getUniversities(
-  db: Db,
-): Promise<Tables<"universities">[]> {
-  return unwrap(await db.from("universities").select().order("name"));
 }
 
 // ------------------------------------------------------------------- rules
@@ -431,14 +421,6 @@ export async function getCheck(
 // ------------------------------------------------------------------ reports
 
 // No .select() — anonymous reports (user_id null) have no read-back policy.
-export async function insertRuleReport(
-  db: Db,
-  report: TablesInsert<"rule_reports">,
-): Promise<void> {
-  const { error } = await db.from("rule_reports").insert(report);
-  if (error) throw new Error(error.message);
-}
-
 export async function insertAnswerReport(
   db: Db,
   report: TablesInsert<"answer_reports">,

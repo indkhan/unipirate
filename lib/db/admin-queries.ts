@@ -7,6 +7,7 @@ import type {
   TablesUpdate,
 } from "@/lib/db/database.types";
 import { EngineRuleSchema } from "@/lib/engine/evaluate";
+import { unwrap } from "@/lib/db/unwrap";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
 
@@ -14,11 +15,6 @@ export type AdminRuleFilters = {
   country?: string;
   status?: Enums<"rule_status">;
 };
-
-function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {
-  if (result.error) throw new Error(result.error.message);
-  return result.data as T;
-}
 
 export async function listAdminRules(
   db: Db,

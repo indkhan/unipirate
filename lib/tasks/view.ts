@@ -15,6 +15,7 @@ import {
   type TargetIntake,
 } from "@/lib/tasks/generate";
 import { profileFromAnswers } from "@/lib/tasks/profile";
+import { todayIsoBerlin } from "@/lib/tasks/dates";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
@@ -70,15 +71,6 @@ export type DashboardView = {
   checkedAt: string;
   result: Result | null;
 };
-
-function todayIsoBerlin(): string {
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Berlin",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 function preferredBucket(
   value: string | null,
