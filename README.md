@@ -65,7 +65,7 @@ Built by a CS student at Saarland University who did this exact journey himself 
 
 Start with [docs/application.md](docs/application.md) — architecture, core
 flows, data model, and a "where to make common changes" map. Conventions and
-product rules live in [CLAUDE.md](CLAUDE.md).
+product rules live in [CLAUDE.md](CLAUDE.md), [AGENTS.md](AGENTS.md).
 
 ## Local setup
 

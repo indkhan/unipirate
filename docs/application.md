@@ -8,7 +8,7 @@ be able to find and change anything.
 
 Product framing and setup instructions live in the [README](../README.md).
 Non-negotiable product rules and code conventions live in
-[CLAUDE.md](../CLAUDE.md). Known open issues live in [bugs.md](bugs.md).
+[CLAUDE.md](../CLAUDE.md), [AGENTS.md](../AGENTS.md). Known open issues live in [bugs.md](bugs.md).
 
 ## Tech stack
 
