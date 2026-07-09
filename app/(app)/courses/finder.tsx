@@ -148,7 +148,7 @@ export function Finder({
 
       <div className={styles.footer}>
         <span className={styles.subtitle}>Can&apos;t find your course?</span>
-        <AddCourseSheet />
+        <AddCourseSheet trackedIds={[...tracked]} />
       </div>
     </>
   );

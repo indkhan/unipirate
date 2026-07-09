@@ -44,6 +44,7 @@ export default async function CourseFinderPage() {
             initialAssistantUsed={questionsUsed}
           >
             <AddCourseSheet
+              trackedIds={trackedIds}
               triggerLabel="Add course"
               triggerClassName={finderStyles.navAddButton}
             />

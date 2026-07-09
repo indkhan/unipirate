@@ -7,6 +7,7 @@ import {
   ensureApplication,
   getCourseById,
   getCourseByNormalizedUrl,
+  hasApplicationForCourse,
   insertCourse,
 } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
@@ -64,7 +65,14 @@ export async function POST(request: Request) {
     const existing = await getCourseByNormalizedUrl(db, normalizedUrl);
     if (!text) {
       // Lookup mode for the add-course sheet.
-      return NextResponse.json({ course: existing, deduped: existing !== null });
+      const onDashboard = existing
+        ? await hasApplicationForCourse(db, user.id, existing.id)
+        : false;
+      return NextResponse.json({
+        course: existing,
+        deduped: existing !== null,
+        onDashboard,
+      });
     }
     if (existing) {
       const application = await ensureApplication(db, user.id, existing.id);
