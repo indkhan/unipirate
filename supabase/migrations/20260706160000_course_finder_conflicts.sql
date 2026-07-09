@@ -1,8 +1,8 @@
 -- Course finder conflicts: "the page changed" re-submissions land as conflict
 -- rows (linked to the course they dispute) for admin side-by-side review.
--- (The user<->course dashboard link is the applications table, already seeded
--- by syncDashboard / ensureApplication — no backfill or remove_my_course change
--- needed here.)
+-- (The user<->course dashboard link is the applications table; newer
+-- migrations backfill historical created_by imports and course add/import
+-- actions create the link directly.)
 
 -- Conflict link: a pending update submission points at the course it disputes.
 alter table public.courses

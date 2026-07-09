@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { AuthenticatedTopbar } from "@/components/app/authenticated-topbar";
 import { countTodayAssistantQuestions } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
-import { syncDashboard } from "@/lib/tasks/sync";
+import { buildDashboardView } from "@/lib/tasks/view";
 
 import { DashboardViews } from "./dashboard-views";
 import { RemoveCourseButton } from "./remove-course-button";
@@ -56,7 +56,7 @@ export default async function DashboardPage() {
   } = await db.auth.getUser();
   if (!user) redirect("/login");
 
-  const view = await syncDashboard(db, user.id);
+  const view = await buildDashboardView(db, user.id);
   const route = dashboardRouteStations({
     hasApplications: view.rail.length > 0,
     hasProfile: view.hasProfile,

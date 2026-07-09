@@ -17,6 +17,10 @@ import {
   updateApplicationStatus,
 } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
+import {
+  materializeCourseTasksForApplication,
+  removeOpenGeneratedTasksForApplication,
+} from "@/lib/tasks/materialize";
 
 const removeCourseSchema = z.object({
   id: z.string().uuid(),
@@ -187,6 +191,11 @@ export async function setApplicationStatus(input: unknown): Promise<void> {
   if (!user) redirect("/login");
 
   await updateApplicationStatus(db, id, status);
+  if (status === "planning") {
+    await materializeCourseTasksForApplication(db, user.id, id);
+  } else {
+    await removeOpenGeneratedTasksForApplication(db, user.id, id);
+  }
   revalidatePath("/dashboard");
 }
 

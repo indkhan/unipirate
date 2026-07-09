@@ -10,6 +10,7 @@ import {
   insertCourse,
 } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
+import { materializeCourseTasksForApplication } from "@/lib/tasks/materialize";
 
 const ImportRequestSchema = z.object({
   url: z.string().url("Enter the full course URL (starting with https://)."),
@@ -66,7 +67,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ course: existing, deduped: existing !== null });
     }
     if (existing) {
-      await ensureApplication(db, user.id, existing.id);
+      const application = await ensureApplication(db, user.id, existing.id);
+      await materializeCourseTasksForApplication(db, user.id, application.id);
       return NextResponse.json({ course: existing, deduped: true });
     }
   }
@@ -108,7 +110,8 @@ export async function POST(request: Request) {
       extraction_method: extractionMethod,
       field_extraction: fieldExtraction,
     });
-    await ensureApplication(db, user.id, course.id);
+    const application = await ensureApplication(db, user.id, course.id);
+    await materializeCourseTasksForApplication(db, user.id, application.id);
     return NextResponse.json({ course }, { status: 201 });
   } catch (error) {
     // Someone else's pending course is invisible to RLS, so the dedupe check

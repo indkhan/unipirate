@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2, X } from "lucide-react";
 
-import type { CalendarEvent, DashboardTask, RailApplication } from "@/lib/tasks/sync";
+import type { CalendarEvent, DashboardTask, RailApplication } from "@/lib/tasks/view";
 import { daysUntil } from "@/lib/tasks/generate";
 
 import {
