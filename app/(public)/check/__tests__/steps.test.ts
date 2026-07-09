@@ -10,6 +10,7 @@ import { evaluate } from "@/lib/engine/evaluate";
 import {
   AnswersSchema,
   buildProfile,
+  isAnswered,
   visibleSteps,
   withAnswer,
   type Answers,
@@ -130,6 +131,19 @@ describe("visibleSteps", () => {
   it("incomplete answers fail schema validation", () => {
     expect(
       AnswersSchema.safeParse({ ...p1Answers, board: undefined }).success,
+    ).toBe(false);
+  });
+
+  it("rejects impossible school percentages before submission", () => {
+    expect(
+      isAnswered({ ...p1Answers, schoolGradePercent: 150 }, "schoolGradePercent"),
+    ).toBe(false);
+    expect(
+      isAnswered({ ...p1Answers, schoolGradePercent: -1 }, "schoolGradePercent"),
+    ).toBe(false);
+    expect(
+      AnswersSchema.safeParse({ ...p1Answers, schoolGradePercent: 150 })
+        .success,
     ).toBe(false);
   });
 });

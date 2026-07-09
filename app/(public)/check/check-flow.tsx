@@ -97,6 +97,13 @@ export function CheckFlow({
   const step = steps[Math.min(stepIndex, steps.length - 1)];
   const isLast = stepIndex >= steps.length - 1;
   const canContinue = isAnswered(answers, step);
+  const gradeValue = answers.schoolGradePercent;
+  const gradeError =
+    step === "schoolGradePercent" &&
+    gradeValue !== undefined &&
+    !isAnswered(answers, "schoolGradePercent")
+      ? "Enter a percentage from 0 to 100."
+      : null;
 
   function optionsFor(stepId: StepId): Option[] {
     switch (stepId) {
@@ -275,6 +282,8 @@ export function CheckFlow({
                 inputMode="decimal"
                 min={0}
                 max={100}
+                aria-invalid={gradeError ? "true" : undefined}
+                aria-describedby={gradeError ? "grade-percent-error" : undefined}
                 placeholder="85"
                 value={answers.schoolGradePercent ?? ""}
                 onChange={(e) =>
@@ -286,6 +295,11 @@ export function CheckFlow({
               />
               <span className={styles.percentSuffix}>%</span>
             </div>
+            {gradeError && (
+              <p id="grade-percent-error" className={styles.fieldError}>
+                {gradeError}
+              </p>
+            )}
           </div>
         ) : step === "gceSubjects" ? (
           <div className={styles.options}>

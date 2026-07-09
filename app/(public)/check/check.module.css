@@ -333,6 +333,13 @@
   padding: 10px 14px;
 }
 
+.fieldError {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--danger);
+}
+
 .cta {
   min-height: var(--tap-min);
   width: 100%;

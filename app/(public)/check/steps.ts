@@ -210,6 +210,15 @@ export function withAnswer<K extends StepId>(
 export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
   if (step === "intake") return answers.intake !== undefined;
   if (step === "gceSubjects") return (answers.gceSubjects?.length ?? 0) > 0;
+  if (step === "schoolGradePercent") {
+    const grade = answers.schoolGradePercent;
+    return (
+      typeof grade === "number" &&
+      Number.isFinite(grade) &&
+      grade >= 0 &&
+      grade <= 100
+    );
+  }
   return answers[step] !== undefined;
 }
 
