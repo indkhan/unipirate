@@ -235,6 +235,21 @@ export async function listGeneratedTasksByPrefix(
   );
 }
 
+export async function hasGeneratedTasksMissingMetadata(
+  db: Db,
+  userId: string,
+): Promise<boolean> {
+  const { count, error } = await db
+    .from("tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("generated_active", true)
+    .not("task_key", "is", null)
+    .or("source_url.is.null,and(application_id.not.is.null,verbatim_due.is.null)");
+  if (error) throw new Error(error.message);
+  return (count ?? 0) > 0;
+}
+
 export async function insertTask(
   db: Db,
   task: TablesInsert<"tasks">,

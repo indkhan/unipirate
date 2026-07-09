@@ -3,8 +3,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AuthenticatedTopbar } from "@/components/app/authenticated-topbar";
-import { countTodayAssistantQuestions } from "@/lib/db/queries";
+import {
+  countTodayAssistantQuestions,
+  hasGeneratedTasksMissingMetadata,
+} from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
+import { materializeAllTasksForUser } from "@/lib/tasks/materialize";
 import { buildDashboardView } from "@/lib/tasks/view";
 
 import { DashboardViews } from "./dashboard-views";
@@ -55,6 +59,10 @@ export default async function DashboardPage() {
     data: { user },
   } = await db.auth.getUser();
   if (!user) redirect("/login");
+
+  if (await hasGeneratedTasksMissingMetadata(db, user.id)) {
+    await materializeAllTasksForUser(db, user.id);
+  }
 
   const view = await buildDashboardView(db, user.id);
   const route = dashboardRouteStations({
