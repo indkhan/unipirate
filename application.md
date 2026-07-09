@@ -31,6 +31,7 @@ Current state: auth + full data model (schema, RLS, seed) + admin rule/course re
 ## Infrastructure
 
 - `lib/env.ts` — zod-validates all env vars at import time; server-only vars are only validated server-side. All env access goes through it.
+- `app/globals.css` — global shadcn + Wayfinding design tokens. The Wayfinding palette now responds to `prefers-color-scheme: dark` at the token layer so public/app surfaces using `--paper`, `--surface`, `--ink`, route, verified, signal, and danger tokens automatically get dark-mode colors without per-component overrides.
 - `components/app/posthog-provider.tsx` — initializes PostHog (if `NEXT_PUBLIC_POSTHOG_KEY` is set) with automatic pageview/pageleave capture; wraps the app in `app/layout.tsx`.
 - `scripts/send-test-email.ts` — sends a test email through Resend (`pnpm email:test <to>`).
 - Vitest (`vitest.config.ts`) with `@` alias; smoke test in `lib/engine/__tests__/`.
