@@ -53,5 +53,3 @@ Walkthrough complete. I went through every flow as a user: home page, all three 
 12. **No dark mode** — with `prefers-color-scheme: dark` everything stays light. Fine if intentional, just noting it.
 
 What worked well: the disabled-Continue gating on choice steps, the honest unknown outcomes (Pakistan GCE, Saudi "something else"), the APS skip for Saudi-filed visas, beta banners for PK/SA, verified source chips with dates, the JEE-Advanced direct-route branch, and the mobile layout — all behaved correctly.
-
-The two I'd fix first are #1 (marks validation) and #3 (refresh wipes the flow) — both sit squarely in the path of every single user.
