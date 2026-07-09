@@ -353,7 +353,7 @@ export function CheckFlow({
           </button>
           <span className={styles.brand}>UniPirate</span>
           <span className={styles.stepLabel}>
-            {stepIndex + 1} of {steps.length}
+            Step {Math.min(stepIndex, steps.length - 1) + 1}
           </span>
           {userMenu ? <div className={styles.userMenu}>{userMenu}</div> : null}
         </div>
