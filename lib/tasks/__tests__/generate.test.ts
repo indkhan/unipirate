@@ -8,8 +8,9 @@ import {
   bucketTasks,
   generateTasks,
   parseDeadlineDate,
-  prepareGeneratedTaskSync,
+  prepareGeneratedTaskMaterialization,
   type ApplicationForTaskGeneration,
+  type ExistingGeneratedTask,
 } from "../generate";
 
 const PROCESS_RULE_IDS = new Set([
@@ -256,58 +257,111 @@ describe("bucketTasks", () => {
   });
 });
 
-describe("prepareGeneratedTaskSync", () => {
+function existingGenerated(
+  overrides: Partial<ExistingGeneratedTask> & Pick<ExistingGeneratedTask, "task_key">,
+): ExistingGeneratedTask {
+  return {
+    task_key: overrides.task_key,
+    title: overrides.title ?? "Existing",
+    due_date: overrides.due_date ?? null,
+    verbatim_due: overrides.verbatim_due ?? null,
+    sort_order: overrides.sort_order ?? 25,
+    source_url: overrides.source_url ?? null,
+    source_verified_at: overrides.source_verified_at ?? null,
+    application_id: overrides.application_id ?? null,
+    generated_from_rule_id: overrides.generated_from_rule_id ?? null,
+    done: overrides.done ?? false,
+    generated_active: overrides.generated_active ?? true,
+  };
+}
+
+describe("prepareGeneratedTaskMaterialization", () => {
   it("produces idempotent upsert rows and zero stale deletes on a second run", () => {
     const result = evaluate(p1CbseNoJee, promotedRules);
     const desired = generateTasks(result, [app(1, "Application deadline: 15 July 2026")]);
-    const existing = desired.map((task) => ({
+    const existing = desired.map((task) => existingGenerated({
       task_key: task.key,
       title: task.title,
       due_date: task.dueDate,
+      verbatim_due: task.verbatimDue,
+      sort_order: task.order,
+      source_url: task.source?.url ?? null,
+      source_verified_at: task.source?.verifiedAt ?? null,
       application_id: task.applicationId,
       generated_from_rule_id: task.ruleId,
-      done: false,
+      generated_active: true,
     }));
 
-    const sync = prepareGeneratedTaskSync("user-1", desired, existing);
+    const materialization = prepareGeneratedTaskMaterialization(
+      "user-1",
+      desired,
+      existing,
+    );
 
-    expect(sync.staleKeysToDelete).toEqual([]);
-    expect(sync.upsertRows).toEqual([]);
+    expect(materialization.staleOpenKeysToDelete).toEqual([]);
+    expect(materialization.staleDoneKeysToDeactivate).toEqual([]);
+    expect(materialization.upsertRows).toEqual([]);
   });
 
   it("does not include done in generated upsert payloads", () => {
     const result = evaluate(p1CbseNoJee, promotedRules);
     const desired = generateTasks(result, [app(1, "Application deadline: 15 July 2026")]);
 
-    const sync = prepareGeneratedTaskSync("user-1", desired, []);
+    const materialization = prepareGeneratedTaskMaterialization("user-1", desired, []);
 
-    expect(sync.upsertRows).toHaveLength(desired.length);
-    expect(sync.upsertRows.every((row) => !("done" in row))).toBe(true);
+    expect(materialization.upsertRows).toHaveLength(desired.length);
+    expect(materialization.upsertRows.every((row) => !("done" in row))).toBe(true);
+    expect(materialization.upsertRows.every((row) => !("preferred_bucket" in row))).toBe(true);
+    expect(materialization.upsertRows.every((row) => row.generated_active)).toBe(true);
   });
 
-  it("keeps completed generated rows out of stale cleanup", () => {
+  it("deletes stale open rows and deactivates stale completed rows", () => {
     const result = evaluate(p1CbseNoJee, promotedRules);
     const desired = generateTasks(result, [app(1, "Application deadline: 15 July 2026")]);
 
-    const sync = prepareGeneratedTaskSync("user-1", desired, [
-      {
+    const materialization = prepareGeneratedTaskMaterialization("user-1", desired, [
+      existingGenerated({
         task_key: "old-not-done",
         title: "Old",
-        due_date: null,
-        application_id: null,
-        generated_from_rule_id: null,
         done: false,
-      },
-      {
+      }),
+      existingGenerated({
         task_key: "old-done",
         title: "Old done",
-        due_date: null,
-        application_id: null,
-        generated_from_rule_id: null,
         done: true,
-      },
+      }),
     ]);
 
-    expect(sync.staleKeysToDelete).toEqual(["old-not-done"]);
+    expect(materialization.staleOpenKeysToDelete).toEqual(["old-not-done"]);
+    expect(materialization.staleDoneKeysToDeactivate).toEqual(["old-done"]);
+  });
+
+  it("revives inactive generated rows when the obligation returns", () => {
+    const result = evaluate(p1CbseNoJee, promotedRules);
+    const desired = generateTasks(result, [app(1, "Application deadline: 15 July 2026")]);
+    const first = desired[0];
+
+    const materialization = prepareGeneratedTaskMaterialization("user-1", [first], [
+      existingGenerated({
+        task_key: first.key,
+        title: first.title,
+        due_date: first.dueDate,
+        verbatim_due: first.verbatimDue,
+        sort_order: first.order,
+        source_url: first.source?.url ?? null,
+        source_verified_at: first.source?.verifiedAt ?? null,
+        application_id: first.applicationId,
+        generated_from_rule_id: first.ruleId,
+        done: true,
+        generated_active: false,
+      }),
+    ]);
+
+    expect(materialization.upsertRows).toEqual([
+      expect.objectContaining({
+        task_key: first.key,
+        generated_active: true,
+      }),
+    ]);
   });
 });

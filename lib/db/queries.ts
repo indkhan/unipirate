@@ -58,21 +58,6 @@ export async function getApprovedCourses(db: Db): Promise<Tables<"courses">[]> {
   );
 }
 
-/** The user's imported courses (created_by); syncDashboard bridges these into
- *  applications. Courses added from the finder link straight into applications. */
-export async function getMyCourses(
-  db: Db,
-  userId: string,
-): Promise<Tables<"courses">[]> {
-  return unwrap(
-    await db
-      .from("courses")
-      .select()
-      .eq("created_by", userId)
-      .order("created_at", { ascending: false }),
-  );
-}
-
 /** RLS decides visibility: approved → everyone, pending → owner/admin only. */
 export async function getCourseById(
   db: Db,
@@ -137,6 +122,20 @@ export async function listApplications(
   return unwrap(await db.from("applications").select().eq("user_id", userId));
 }
 
+export async function hasApplicationForCourse(
+  db: Db,
+  userId: string,
+  courseId: string,
+): Promise<boolean> {
+  const { count, error } = await db
+    .from("applications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("course_id", courseId);
+  if (error) throw new Error(error.message);
+  return (count ?? 0) > 0;
+}
+
 export type ApplicationWithCourse = Tables<"applications"> & {
   courses: Tables<"courses"> | null;
 };
@@ -159,7 +158,7 @@ export async function ensureApplication(
   db: Db,
   userId: string,
   courseId: string,
-): Promise<void> {
+): Promise<Tables<"applications">> {
   const { error } = await db
     .from("applications")
     .upsert(
@@ -167,32 +166,13 @@ export async function ensureApplication(
       { onConflict: "user_id,course_id", ignoreDuplicates: true },
     );
   if (error) throw new Error(error.message);
-}
-
-export async function ensureApplications(
-  db: Db,
-  userId: string,
-  courses: Tables<"courses">[],
-): Promise<void> {
-  const rows = courses
-    .filter((course) => course.review_status !== "rejected")
-    .map((course) => ({ user_id: userId, course_id: course.id }));
-  if (rows.length === 0) return;
-  const { error } = await db
-    .from("applications")
-    .upsert(rows, {
-      onConflict: "user_id,course_id",
-      ignoreDuplicates: true,
-    });
-  if (error) throw new Error(error.message);
-}
-
-export async function insertApplication(
-  db: Db,
-  application: TablesInsert<"applications">,
-): Promise<Tables<"applications">> {
   return unwrap(
-    await db.from("applications").insert(application).select().single(),
+    await db
+      .from("applications")
+      .select()
+      .eq("user_id", userId)
+      .eq("course_id", courseId)
+      .single(),
   );
 }
 
@@ -209,6 +189,21 @@ export async function updateApplicationStatus(
       .select()
       .single(),
   );
+}
+
+export async function getApplicationWithCourse(
+  db: Db,
+  userId: string,
+  id: string,
+): Promise<ApplicationWithCourse | null> {
+  return unwrap(
+    await db
+      .from("applications")
+      .select("*, courses(*)")
+      .eq("user_id", userId)
+      .eq("id", id)
+      .maybeSingle(),
+  ) as ApplicationWithCourse | null;
 }
 
 export async function deleteApplicationForCourse(
@@ -235,8 +230,38 @@ export async function listTasks(
       .from("tasks")
       .select()
       .eq("user_id", userId)
+      .eq("generated_active", true)
       .order("due_date", { ascending: true, nullsFirst: false }),
   );
+}
+
+export async function listGeneratedTasksByPrefix(
+  db: Db,
+  userId: string,
+  prefix: string,
+): Promise<Tables<"tasks">[]> {
+  return unwrap(
+    await db
+      .from("tasks")
+      .select()
+      .eq("user_id", userId)
+      .like("task_key", `${prefix}%`),
+  );
+}
+
+export async function hasGeneratedTasksMissingMetadata(
+  db: Db,
+  userId: string,
+): Promise<boolean> {
+  const { count, error } = await db
+    .from("tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("generated_active", true)
+    .not("task_key", "is", null)
+    .or("source_url.is.null,and(application_id.not.is.null,verbatim_due.is.null)");
+  if (error) throw new Error(error.message);
+  return (count ?? 0) > 0;
 }
 
 export async function insertTask(
@@ -343,6 +368,35 @@ export async function deleteStaleGeneratedTasks(
     .eq("user_id", userId)
     .eq("done", false)
     .in("task_key", staleKeys);
+  if (error) throw new Error(error.message);
+}
+
+export async function deactivateGeneratedTasks(
+  db: Db,
+  userId: string,
+  keys: string[],
+): Promise<void> {
+  if (keys.length === 0) return;
+  const { error } = await db
+    .from("tasks")
+    .update({ generated_active: false })
+    .eq("user_id", userId)
+    .in("task_key", keys);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteOpenGeneratedTasksForApplication(
+  db: Db,
+  userId: string,
+  applicationId: string,
+): Promise<void> {
+  const { error } = await db
+    .from("tasks")
+    .delete()
+    .eq("user_id", userId)
+    .eq("application_id", applicationId)
+    .eq("done", false)
+    .not("task_key", "is", null);
   if (error) throw new Error(error.message);
 }
 

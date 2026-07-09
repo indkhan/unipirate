@@ -40,9 +40,14 @@ export type ExistingGeneratedTask = {
   task_key: string | null;
   title: string;
   due_date: string | null;
+  verbatim_due: string | null;
+  sort_order: number;
+  source_url: string | null;
+  source_verified_at: string | null;
   application_id: string | null;
   generated_from_rule_id: string | null;
   done: boolean;
+  generated_active: boolean;
 };
 
 export type GeneratedTaskUpsert = {
@@ -50,8 +55,13 @@ export type GeneratedTaskUpsert = {
   task_key: string;
   title: string;
   due_date: string | null;
+  verbatim_due: string | null;
+  sort_order: number;
+  source_url: string | null;
+  source_verified_at: string | null;
   application_id: string | null;
   generated_from_rule_id: string | null;
+  generated_active: boolean;
 };
 
 const MONTHS: Record<string, number> = {
@@ -301,12 +311,7 @@ function citationByRuleId(citations: Citation[]): Map<string, Citation> {
   return new Map(citations.map((citation) => [citation.ruleId, citation]));
 }
 
-export function generateTasks(
-  result: Result | null,
-  applications: ApplicationForTaskGeneration[],
-  todayIso?: string,
-  intake?: TargetIntake,
-): GeneratedTask[] {
+export function generateGlobalTasks(result: Result | null): GeneratedTask[] {
   const generated: GeneratedTask[] = [];
   const citations = citationByRuleId(result?.citations ?? []);
 
@@ -328,6 +333,16 @@ export function generateTasks(
       });
     }
   }
+
+  return generated.sort((a, b) => a.key.localeCompare(b.key));
+}
+
+export function generateCourseTasks(
+  applications: ApplicationForTaskGeneration[],
+  todayIso?: string,
+  intake?: TargetIntake,
+): GeneratedTask[] {
+  const generated: GeneratedTask[] = [];
 
   for (const application of applications) {
     const course = application.course;
@@ -370,6 +385,18 @@ export function generateTasks(
   }
 
   return generated.sort((a, b) => a.key.localeCompare(b.key));
+}
+
+export function generateTasks(
+  result: Result | null,
+  applications: ApplicationForTaskGeneration[],
+  todayIso?: string,
+  intake?: TargetIntake,
+): GeneratedTask[] {
+  return [
+    ...generateGlobalTasks(result),
+    ...generateCourseTasks(applications, todayIso, intake),
+  ].sort((a, b) => a.key.localeCompare(b.key));
 }
 
 function band(order: number): number {
@@ -423,11 +450,15 @@ export function bucketTasks<
   return { now, next, later };
 }
 
-export function prepareGeneratedTaskSync(
+export function prepareGeneratedTaskMaterialization(
   userId: string,
   desired: GeneratedTask[],
   existing: ExistingGeneratedTask[],
-): { upsertRows: GeneratedTaskUpsert[]; staleKeysToDelete: string[] } {
+): {
+  upsertRows: GeneratedTaskUpsert[];
+  staleOpenKeysToDelete: string[];
+  staleDoneKeysToDeactivate: string[];
+} {
   const desiredKeys = new Set(desired.map((task) => task.key));
   const existingByKey = new Map(
     existing.flatMap((task) => (task.task_key ? [[task.task_key, task]] : [])),
@@ -437,8 +468,13 @@ export function prepareGeneratedTaskSync(
     task_key: task.key,
     title: task.title,
     due_date: task.dueDate,
+    verbatim_due: task.verbatimDue,
+    sort_order: task.order,
+    source_url: task.source?.url ?? null,
+    source_verified_at: task.source?.verifiedAt ?? null,
     application_id: task.applicationId,
     generated_from_rule_id: task.ruleId,
+    generated_active: true,
   }));
   return {
     upsertRows: desiredRows.filter((row) => {
@@ -447,12 +483,25 @@ export function prepareGeneratedTaskSync(
         !existingRow ||
         existingRow.title !== row.title ||
         existingRow.due_date !== row.due_date ||
+        existingRow.verbatim_due !== row.verbatim_due ||
+        existingRow.sort_order !== row.sort_order ||
+        existingRow.source_url !== row.source_url ||
+        existingRow.source_verified_at !== row.source_verified_at ||
         existingRow.application_id !== row.application_id ||
-        existingRow.generated_from_rule_id !== row.generated_from_rule_id
+        existingRow.generated_from_rule_id !== row.generated_from_rule_id ||
+        existingRow.generated_active !== row.generated_active
       );
     }),
-    staleKeysToDelete: existing.flatMap((task) =>
+    staleOpenKeysToDelete: existing.flatMap((task) =>
       task.task_key !== null && !task.done && !desiredKeys.has(task.task_key)
+        ? [task.task_key]
+        : [],
+    ),
+    staleDoneKeysToDeactivate: existing.flatMap((task) =>
+      task.task_key !== null &&
+      task.done &&
+      task.generated_active &&
+      !desiredKeys.has(task.task_key)
         ? [task.task_key]
         : [],
     ),

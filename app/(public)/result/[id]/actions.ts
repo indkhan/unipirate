@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
 import { createClient } from "@/lib/db/server";
+import { materializeAllTasksForUser } from "@/lib/tasks/materialize";
 
 export async function claimResult(
   checkId: string,
@@ -33,6 +34,7 @@ export async function claimResult(
     return { ok: false, error: "That result could not be claimed." };
   }
 
+  await materializeAllTasksForUser(db, user.id);
   cookieStore.delete(cookieName);
   return { ok: true };
 }

@@ -18,10 +18,20 @@ type FoundCourse = {
 
 type LookupState =
   | { step: "url" }
-  | { step: "found"; course: FoundCourse }
+  | { step: "found"; course: FoundCourse; onDashboard: boolean }
   | { step: "paste"; conflictsWith: string | null };
 
-export function AddCourseSheet() {
+type AddCourseSheetProps = {
+  trackedIds?: string[];
+  triggerLabel?: string;
+  triggerClassName?: string;
+};
+
+export function AddCourseSheet({
+  trackedIds = [],
+  triggerLabel = "Add it by URL",
+  triggerClassName,
+}: AddCourseSheetProps) {
   const router = useRouter();
   const posthog = usePostHog();
   const [open, setOpen] = useState(false);
@@ -49,6 +59,7 @@ export function AddCourseSheet() {
       error?: string;
       deduped?: boolean;
       course?: FoundCourse | null;
+      onDashboard?: boolean;
     };
     if (!response.ok) {
       const error = new Error(payload.error ?? "Something went wrong — try again.");
@@ -65,7 +76,11 @@ export function AddCourseSheet() {
     try {
       const payload = await post({ url });
       if (payload.course) {
-        setLookup({ step: "found", course: payload.course });
+        setLookup({
+          step: "found",
+          course: payload.course,
+          onDashboard: payload.onDashboard ?? trackedIds.includes(payload.course.id),
+        });
       } else {
         setLookup({ step: "paste", conflictsWith: null });
       }
@@ -123,12 +138,18 @@ export function AddCourseSheet() {
   }
 
   const trigger = (
-    <button className={styles.addButton} type="button" onClick={() => setOpen(true)}>
-      Add it by URL
+    <button
+      className={triggerClassName ?? styles.addButton}
+      type="button"
+      onClick={() => setOpen(true)}
+    >
+      {triggerLabel}
     </button>
   );
 
   if (!open) return trigger;
+
+  const foundCourseOnDashboard = lookup.step === "found" && lookup.onDashboard;
 
   return (
     <>
@@ -194,6 +215,11 @@ export function AddCourseSheet() {
                 </span>
               </article>
               {error ? <p className={dashStyles.error}>{error}</p> : null}
+              {foundCourseOnDashboard ? (
+                <button className={dashStyles.submit} type="button" disabled>
+                  Already in dashboard
+                </button>
+              ) : (
               <button
                 className={dashStyles.submit}
                 type="button"
@@ -202,6 +228,7 @@ export function AddCourseSheet() {
               >
                 {busy ? "Adding…" : "Add to my dashboard"}
               </button>
+              )}
               <button
                 className={styles.addButton}
                 type="button"

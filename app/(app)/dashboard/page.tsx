@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { AssistantSidebar } from "@/components/app/assistant-sidebar";
-import { UserMenu } from "@/components/app/user-menu";
-import { countTodayAssistantQuestions } from "@/lib/db/queries";
+import { AuthenticatedTopbar } from "@/components/app/authenticated-topbar";
+import {
+  countTodayAssistantQuestions,
+  hasGeneratedTasksMissingMetadata,
+} from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
-import { syncDashboard } from "@/lib/tasks/sync";
+import { materializeAllTasksForUser } from "@/lib/tasks/materialize";
+import { buildDashboardView } from "@/lib/tasks/view";
 
 import { DashboardViews } from "./dashboard-views";
 import { RemoveCourseButton } from "./remove-course-button";
@@ -57,7 +60,11 @@ export default async function DashboardPage() {
   } = await db.auth.getUser();
   if (!user) redirect("/login");
 
-  const view = await syncDashboard(db, user.id);
+  if (await hasGeneratedTasksMissingMetadata(db, user.id)) {
+    await materializeAllTasksForUser(db, user.id);
+  }
+
+  const view = await buildDashboardView(db, user.id);
   const route = dashboardRouteStations({
     hasApplications: view.rail.length > 0,
     hasProfile: view.hasProfile,
@@ -85,18 +92,11 @@ export default async function DashboardPage() {
     <div className={styles.shell}>
       <div className={styles.container}>
         <header className={styles.header}>
-          <div className={styles.topbar}>
-            <Link className={styles.brand} href="/">
-              UniPirate
-            </Link>
-            <div className={styles.headerActions}>
-              <AssistantSidebar initialUsed={questionsUsed} />
-              <UserMenu
-                email={user.email ?? null}
-                isAdmin={user.app_metadata?.role === "admin"}
-              />
-            </div>
-          </div>
+          <AuthenticatedTopbar
+            email={user.email ?? null}
+            isAdmin={user.app_metadata?.role === "admin"}
+            initialAssistantUsed={questionsUsed}
+          />
 
           <section className={styles.routeCard}>
             {routeDots(route)}

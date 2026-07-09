@@ -11,6 +11,7 @@ import type { Json } from "@/lib/db/database.types";
 import { getPublishedRules, insertCheck, upsertProfile } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
 import { evaluate } from "@/lib/engine/evaluate";
+import { materializeAllTasksForUser } from "@/lib/tasks/materialize";
 
 import { AnswersSchema, buildProfile } from "./steps";
 
@@ -43,6 +44,7 @@ export async function submitCheck(
       country_code: profile.certificateCountry ?? profile.nationality ?? null,
       answers: parsed.data as unknown as Json,
     });
+    await materializeAllTasksForUser(db, user.id);
   } else {
     if (!ownerToken) {
       return { error: "Could not create a secure owner token. Please try again." };

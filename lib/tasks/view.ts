@@ -1,39 +1,23 @@
-import { z } from "zod";
-
-import { AnswersSchema, buildProfile } from "@/app/(public)/check/steps";
 import {
-  deleteStaleGeneratedTasks,
-  ensureApplications,
-  getMyCourses,
   getProfile,
   getPublishedRules,
   listApplicationsWithCourses,
   listTasks,
-  upsertGeneratedTasks,
   type ApplicationWithCourse,
 } from "@/lib/db/queries";
 import type { Database, Tables } from "@/lib/db/database.types";
-import { evaluate, type Profile, type Result } from "@/lib/engine/evaluate";
+import { evaluate, type Result } from "@/lib/engine/evaluate";
 import {
   bucketTasks,
   daysUntil,
-  generateTasks,
   parseDeadlineDate,
-  prepareGeneratedTaskSync,
   selectSubmissionDeadline,
-  type GeneratedTask,
   type TargetIntake,
 } from "@/lib/tasks/generate";
+import { profileFromAnswers } from "@/lib/tasks/profile";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
-
-const RawProfileSchema = z
-  .object({
-    targetDegree: z.enum(["bachelor", "master"]),
-    curriculumType: z.enum(["national", "ib", "gce", "other"]),
-  })
-  .passthrough() as z.ZodType<Profile>;
 
 export type DashboardTask = {
   id: string;
@@ -69,7 +53,7 @@ export type CalendarEvent = {
   verbatimDue: string | null;
 };
 
-export type DashboardSyncView = {
+export type DashboardView = {
   buckets: {
     now: DashboardTask[];
     next: DashboardTask[];
@@ -96,100 +80,32 @@ function todayIsoBerlin(): string {
   }).format(new Date());
 }
 
-function profileFromAnswers(row: Tables<"profiles"> | null): {
-  profile: Profile | null;
-  hasProfile: boolean;
-} {
-  if (!row) return { profile: null, hasProfile: false };
-  const answers = AnswersSchema.safeParse(row.answers);
-  if (answers.success) return { profile: buildProfile(answers.data), hasProfile: true };
-
-  const rawProfile = RawProfileSchema.safeParse(row.answers);
-  return {
-    profile: rawProfile.success ? rawProfile.data : null,
-    hasProfile: rawProfile.success,
-  };
+function preferredBucket(
+  value: string | null,
+): "now" | "next" | "later" | null {
+  return value === "now" || value === "next" || value === "later" ? value : null;
 }
 
-function toGenerationApplications(applications: ApplicationWithCourse[]) {
-  return applications.map((application) => ({
-    id: application.id,
-    status: application.status,
-    course: application.courses
-      ? {
-          id: application.courses.id,
-          name: application.courses.name,
-          university_name: application.courses.university_name,
-          deadlines: application.courses.deadlines,
-          requirements: application.courses.requirements,
-          source_url: application.courses.source_url,
-          created_at: application.courses.created_at,
-          review_status: application.courses.review_status,
-        }
-      : null,
-  }));
-}
-
-function generatedByKey(tasks: GeneratedTask[]): Map<string, GeneratedTask> {
-  return new Map(tasks.map((task) => [task.key, task]));
-}
-
-function displayTasks(
-  dbTasks: Tables<"tasks">[],
-  generated: GeneratedTask[],
-): DashboardTask[] {
-  const metadata = generatedByKey(generated);
-  return dbTasks.flatMap<DashboardTask>((task) => {
-    if (!task.task_key) {
-      return [
-        {
-          id: task.id,
-          key: `manual:${task.id}`,
-          kind: "manual" as const,
-          title: task.title,
-          description: task.description,
-          done: task.done,
-          dueDate: task.due_date,
-          verbatimDue: null,
-          order: 25,
-          preferredBucket:
-            task.preferred_bucket === "now" ||
-            task.preferred_bucket === "next" ||
-            task.preferred_bucket === "later"
-              ? task.preferred_bucket
-              : null,
-          applicationId: task.application_id,
-          source: task.source_url
-            ? { url: task.source_url, verifiedAt: null }
-            : null,
-          scope: task.application_id ? ("university" as const) : ("global" as const),
-        },
-      ];
-    }
-    const generatedTask = metadata.get(task.task_key);
-    if (!generatedTask) return [];
-    return [
-      {
-        id: task.id,
-        key: task.task_key,
-        kind: "generated" as const,
-        title: task.title,
-        description: task.description,
-        done: task.done,
-        dueDate: task.due_date,
-        verbatimDue: generatedTask.verbatimDue,
-        order: generatedTask.order,
-        preferredBucket:
-          task.preferred_bucket === "now" ||
-          task.preferred_bucket === "next" ||
-          task.preferred_bucket === "later"
-            ? task.preferred_bucket
-            : null,
-        applicationId: task.application_id,
-        source: generatedTask.source,
-        scope: task.application_id ? "university" : "global",
-      },
-    ];
+function displayTasks(dbTasks: Tables<"tasks">[]): DashboardTask[] {
+  return dbTasks.map((task) => {
+    const generated = task.task_key !== null;
+    return {
+      id: task.id,
+      key: task.task_key ?? `manual:${task.id}`,
+      kind: generated ? "generated" : "manual",
+      title: task.title,
+      description: task.description,
+      done: task.done,
+      dueDate: task.due_date,
+      verbatimDue: task.verbatim_due,
+      order: generated ? task.sort_order : 25,
+      preferredBucket: preferredBucket(task.preferred_bucket),
+      applicationId: task.application_id,
+      source: task.source_url
+        ? { url: task.source_url, verifiedAt: task.source_verified_at }
+        : null,
+      scope: task.application_id ? "university" : "global",
+    };
   });
 }
 
@@ -227,7 +143,7 @@ function railApplication(
     courseId: course.id,
     courseName: course.name ?? "Untitled course",
     universityName: course.university_name ?? "University pending review",
-    detail: [course.location, course.degree].filter(Boolean).join(" · "),
+    detail: [course.location, course.degree].filter(Boolean).join(" \u00b7 "),
     sourceUrl: course.source_url,
     nextDeadline: datedDeadline(course.deadlines, todayIso, intake),
   };
@@ -250,37 +166,23 @@ function nextDeadline(
     : null;
 }
 
-export async function syncDashboard(
+export async function buildDashboardView(
   db: Db,
   userId: string,
-): Promise<DashboardSyncView> {
+): Promise<DashboardView> {
   const todayIso = todayIsoBerlin();
   const savedProfile = await getProfile(db, userId);
   const { profile, hasProfile } = profileFromAnswers(savedProfile);
   const result = profile ? evaluate(profile, await getPublishedRules(db)) : null;
 
-  const courses = await getMyCourses(db, userId);
-  await ensureApplications(db, userId, courses);
-  const applications = await listApplicationsWithCourses(db, userId);
+  const [applications, dbTasks] = await Promise.all([
+    listApplicationsWithCourses(db, userId),
+    listTasks(db, userId),
+  ]);
 
-  const desired = generateTasks(
-    result,
-    toGenerationApplications(applications),
-    todayIso,
-    profile?.intake,
-  );
-  const beforeTasks = await listTasks(db, userId);
-  const reconciliation = prepareGeneratedTaskSync(userId, desired, beforeTasks);
-  await upsertGeneratedTasks(db, reconciliation.upsertRows);
-  await deleteStaleGeneratedTasks(db, userId, reconciliation.staleKeysToDelete);
-
-  const currentDbTasks =
-    reconciliation.upsertRows.length === 0 && reconciliation.staleKeysToDelete.length === 0
-      ? beforeTasks
-      : await listTasks(db, userId);
-  const allGeneratedTasks = displayTasks(currentDbTasks, desired);
-  const pendingTasks = allGeneratedTasks.filter((task) => !task.done);
-  const doneTasks = allGeneratedTasks.filter((task) => task.done);
+  const allTasks = displayTasks(dbTasks);
+  const pendingTasks = allTasks.filter((task) => !task.done);
+  const doneTasks = allTasks.filter((task) => task.done);
   const defaultBuckets = bucketTasks(
     pendingTasks.filter((task) => task.preferredBucket === null),
     todayIso,
@@ -322,8 +224,8 @@ export async function syncDashboard(
     rail,
     calendarEvents,
     nextDeadline: nextDeadline(pendingTasks, todayIso),
-    allDone: allGeneratedTasks.length > 0 && pendingTasks.length === 0,
-    empty: rail.length === 0 && allGeneratedTasks.length === 0,
+    allDone: allTasks.length > 0 && pendingTasks.length === 0,
+    empty: rail.length === 0 && allTasks.length === 0,
     hasProfile,
     universityCount: rail.length,
     checkedAt: todayIso,
