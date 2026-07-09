@@ -9,6 +9,7 @@ import {
 import "./globals.css";
 
 import { PostHogProvider } from "@/components/app/posthog-provider";
+import { ThemeToggle } from "@/components/app/theme-toggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -57,7 +58,15 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} ${publicSans.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <PostHogProvider>{children}</PostHogProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => { const key = "unipirate.theme"; const saved = localStorage.getItem(key); const dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches; document.documentElement.classList.toggle("dark", dark); document.documentElement.dataset.theme = dark ? "dark" : "light"; })()`,
+          }}
+        />
+        <PostHogProvider>
+          {children}
+          <ThemeToggle />
+        </PostHogProvider>
       </body>
     </html>
   );
