@@ -191,6 +191,10 @@ export function profileSummary(profile: Profile): string {
 
 export function intakeLabel(profile: Profile): string | null {
   if (!profile.intake) return null;
-  return `${profile.intake.term === "winter" ? "Winter" : "Summer"} ${profile.intake.year}`;
+  if (profile.intake.term === "winter") {
+    const nextYear = String((profile.intake.year + 1) % 100).padStart(2, "0");
+    return `Winter ${profile.intake.year}/${nextYear}`;
+  }
+  return `Summer ${profile.intake.year}`;
 }
 
