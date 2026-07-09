@@ -124,9 +124,24 @@ export function visibleUnknowns(result: Result, profile: Profile): string[] {
 }
 
 export function buildRoute(result: Result): RouteStation[] {
+  if (result.path === "unknown") {
+    return [
+      { label: "Confirm eligibility", state: "current" },
+      { label: "Applications", state: "todo" },
+      { label: "Visa", state: "todo" },
+      { label: "Germany", state: "todo" },
+    ];
+  }
+  if (result.path === "insufficient") {
+    return [
+      { label: "Review alternatives", state: "current" },
+      { label: "Applications", state: "todo" },
+      { label: "Visa", state: "todo" },
+      { label: "Germany", state: "todo" },
+    ];
+  }
+
   const pending: string[] = [];
-  if (result.path === "unknown") pending.push("Confirm eligibility");
-  if (result.path === "insufficient") pending.push("Review alternatives");
   if (result.path === "studienkolleg") pending.push("Studienkolleg");
   if (result.aps === "required") pending.push("APS");
   if (result.testAS === "required") pending.push("TestAS");
