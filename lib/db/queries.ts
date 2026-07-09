@@ -1,3 +1,7 @@
+// All user-facing database access lives here — pages, actions, and API routes
+// never build queries inline. Every helper takes a caller-scoped Supabase
+// client, so row-level security (not this module) is the authorization
+// boundary. Admin-only queries live in admin-queries.ts.
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type {
@@ -6,14 +10,10 @@ import type {
   TablesInsert,
 } from "@/lib/db/database.types";
 import type { GeneratedTaskUpsert } from "@/lib/tasks/generate";
+import { unwrap } from "@/lib/db/unwrap";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
 type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
-
-function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {
-  if (result.error) throw new Error(result.error.message);
-  return result.data as T;
-}
 
 // ---------------------------------------------------------- reference data
 
@@ -31,12 +31,6 @@ export async function getQualifications(
     query = query.or(`country_code.eq.${countryCode},country_code.is.null`);
   }
   return unwrap(await query);
-}
-
-export async function getUniversities(
-  db: Db,
-): Promise<Tables<"universities">[]> {
-  return unwrap(await db.from("universities").select().order("name"));
 }
 
 // ------------------------------------------------------------------- rules
@@ -329,6 +323,9 @@ export async function setTaskPreferredBucket(
     .eq("id", id)
     .select()
     .single();
+  // PostgREST caches the table schema; right after the preferred_bucket
+  // migration is applied the column can be missing from that cache. Degrade
+  // to a no-op (return the unchanged row) instead of failing the drag.
   if (
     result.error?.message.includes("preferred_bucket") &&
     result.error.message.includes("schema cache")
@@ -428,17 +425,47 @@ export async function getCheck(
   );
 }
 
+/**
+ * Atomically claim an anonymous check for the signed-in user (verifies the
+ * owner-token hash and copies the answers into the profile). True on success.
+ */
+export async function claimCheck(
+  db: RpcDb,
+  checkId: string,
+  tokenHash: string,
+): Promise<boolean> {
+  return unwrap(
+    await db.rpc("claim_check", {
+      p_check_id: checkId,
+      p_token_hash: tokenHash,
+    }),
+  );
+}
+
+/**
+ * Whether the current request views a check as its anonymous owner, its
+ * claimed owner, or the public. Falls back to "public" on any error so a
+ * shared result page always renders.
+ */
+export async function getResultViewer(
+  db: RpcDb,
+  checkId: string,
+  tokenHash: string | null,
+): Promise<"anonymous_owner" | "claimed_owner" | "public"> {
+  const { data, error } = await db.rpc("result_viewer", {
+    p_check_id: checkId,
+    // omit the param so the SQL default (null) applies
+    p_token_hash: tokenHash ?? undefined,
+  });
+  if (error) return "public";
+  return data === "anonymous_owner" || data === "claimed_owner"
+    ? data
+    : "public";
+}
+
 // ------------------------------------------------------------------ reports
 
 // No .select() — anonymous reports (user_id null) have no read-back policy.
-export async function insertRuleReport(
-  db: Db,
-  report: TablesInsert<"rule_reports">,
-): Promise<void> {
-  const { error } = await db.from("rule_reports").insert(report);
-  if (error) throw new Error(error.message);
-}
-
 export async function insertAnswerReport(
   db: Db,
   report: TablesInsert<"answer_reports">,
@@ -467,7 +494,7 @@ export async function matchKbChunks(
 }
 
 /** Questions asked since UTC midnight — the daily quota counter.
- * ponytail: UTC day boundary (~5:30am IST reset), fine for a soft quota. */
+ * Trade-off: UTC day boundary (~5:30am IST reset), fine for a soft quota. */
 export async function countTodayAssistantQuestions(
   db: Db,
   userId: string,

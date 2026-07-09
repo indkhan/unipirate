@@ -157,6 +157,11 @@ export function profileSummary(profile: Profile): string {
 
 export function intakeLabel(profile: Profile): string | null {
   if (!profile.intake) return null;
-  return `${profile.intake.term === "winter" ? "Winter" : "Summer"} ${profile.intake.year}`;
+  const { term, year } = profile.intake;
+  // German winter semesters span two years — "Winter 2026/27", matching the
+  // intake options in the checker.
+  return term === "winter"
+    ? `Winter ${year}/${String(year + 1).slice(2)}`
+    : `Summer ${year}`;
 }
 

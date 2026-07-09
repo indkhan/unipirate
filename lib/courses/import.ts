@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 // Structured facts extracted from a pasted course page. Deadline/tuition text
-// is kept verbatim from the source — never converted or invented (CLAUDE.md rule 2).
+// is kept verbatim from the source — never converted or invented (product
+// rule: never invent a fact — see CLAUDE.md).
 export const CourseFactsSchema = z.object({
   name: z.string().min(1).nullable(),
   university: z.string().min(1).nullable(),

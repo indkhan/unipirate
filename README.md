@@ -1,5 +1,3 @@
-# UniPirate
-
 # UniPirate — Your guided path to studying in Germany
 
 **One-liner:** A free web app that tells international students exactly how to get into a German public university — personalized steps, documents, and deadlines — without paying a commission-driven consultant or drowning in scattered forum advice.
@@ -63,16 +61,18 @@ Built by a CS student at Saarland University who did this exact journey himself 
 
 **Want to help?** We're looking for students from India and Pakistan who recently went through the process to verify country rules — and early users who want their application semester to be less terrifying.
 
+## New to the codebase?
 
-
- How the app works: [application.md](application.md).
+Start with [docs/application.md](docs/application.md) — architecture, core
+flows, data model, and a "where to make common changes" map. Conventions and
+product rules live in [CLAUDE.md](CLAUDE.md), [AGENTS.md](AGENTS.md).
 
 ## Local setup
 
 1. **Install deps** — `pnpm install` (Node 20+, pnpm 9+).
 2. **Env vars** — `cp .env.example .env.local` and fill in the Supabase URL, publishable key, and secret key from the [Supabase dashboard](https://supabase.com/dashboard) → Project Settings → API keys. PostHog and Resend keys are optional in dev.
 3. **Supabase auth config** — in the dashboard enable **Email** sign-in and sign-ups (Authentication → Providers → Email), keep **Confirm email** on, point the **Magic Link** template at `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`, and point the **Confirm signup** template at `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup`. Add `http://localhost:3000/**` to the redirect URLs. Google can stay disabled until OAuth credentials are ready.
-4. **Run** — `pnpm dev` and open http://localhost:3000. Log in with email/password or magic link; you land on `/hello`.
+4. **Run** — `pnpm dev` and open http://localhost:3000. Log in with email/password or magic link; you land on `/dashboard`.
 5. **Verify** — `pnpm test && pnpm lint && pnpm typecheck && pnpm build` should all pass. Test email sending with `pnpm email:test you@example.com` (needs `RESEND_API_KEY`).
 
 ## Commands

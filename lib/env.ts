@@ -1,3 +1,6 @@
+// Zod-validated environment access — the only place process.env is read.
+// getClientEnv() is safe anywhere; getServerEnv() adds server-only secrets
+// and must never be imported into client components.
 import { z } from "zod";
 
 const clientSchema = z.object({

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { requireAdmin } from "@/lib/auth/session";
 import {
   getAdminRule,
   resolveCourseConflict,
@@ -13,7 +14,6 @@ import {
 } from "@/lib/db/admin-queries";
 import { normalizeUrl } from "@/lib/courses/import";
 import type { Json } from "@/lib/db/database.types";
-import { createClient } from "@/lib/db/server";
 import { EngineRuleSchema } from "@/lib/engine/evaluate";
 
 const ruleStatusSchema = z.enum(["draft", "beta", "verified"]);
@@ -55,18 +55,6 @@ const courseUpdateSchema = z.object({
   deadlines: z.string().min(2),
   requirements: z.string().min(2),
 });
-
-async function requireAdminDb() {
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-
-  if (!user) redirect("/login");
-  if (user.app_metadata?.role !== "admin") redirect("/dashboard");
-
-  return db;
-}
 
 function parseJsonObject(value: string, field: string): Json {
   let parsed: unknown;
@@ -124,7 +112,7 @@ function nullableText(value: string): string | null {
 }
 
 export async function updateRuleAction(formData: FormData) {
-  const db = await requireAdminDb();
+  const { db } = await requireAdmin();
   const values = ruleUpdateSchema.parse({
     id: formData.get("id"),
     country_code: formData.get("country_code") ?? "",
@@ -169,7 +157,7 @@ export async function updateRuleAction(formData: FormData) {
 }
 
 export async function reverifyRuleAction(formData: FormData) {
-  const db = await requireAdminDb();
+  const { db } = await requireAdmin();
   const values = idSchema.parse({ id: formData.get("id") });
 
   await reverifyAdminRule(db, values.id);
@@ -178,7 +166,7 @@ export async function reverifyRuleAction(formData: FormData) {
 }
 
 export async function reviewCourseAction(formData: FormData) {
-  const db = await requireAdminDb();
+  const { db } = await requireAdmin();
   const values = courseReviewSchema.parse({
     id: formData.get("id"),
     review_status: formData.get("review_status"),
@@ -195,7 +183,7 @@ const conflictResolveSchema = z.object({
 });
 
 export async function resolveConflictAction(formData: FormData) {
-  const db = await requireAdminDb();
+  const { db } = await requireAdmin();
   const values = conflictResolveSchema.parse({
     id: formData.get("id"),
     keep_new: formData.get("keep_new"),
@@ -207,7 +195,7 @@ export async function resolveConflictAction(formData: FormData) {
 }
 
 export async function updateCourseAction(formData: FormData) {
-  const db = await requireAdminDb();
+  const { db } = await requireAdmin();
   const values = courseUpdateSchema.parse({
     id: formData.get("id"),
     source_url: formData.get("source_url"),

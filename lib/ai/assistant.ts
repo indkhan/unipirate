@@ -28,10 +28,10 @@ import {
 } from "@/lib/db/queries";
 
 export const DAILY_QUOTA = 20;
-export const CHAT_MODEL = "openai/gpt-5.4-mini";
+const CHAT_MODEL = "openai/gpt-5.4-mini";
 const EMBEDDING_MODEL = "openai/text-embedding-3-small";
 
-export const OFFICIAL_DOMAINS = [
+const OFFICIAL_DOMAINS = [
   "daad.de",
   "aps-india.de",
   "uni-assist.de",
@@ -117,7 +117,7 @@ async function tavilySearch(
   }));
 }
 
-export function assistantTools(options: {
+function assistantTools(options: {
   db: Db;
   userId: string;
   openrouterApiKey: string;

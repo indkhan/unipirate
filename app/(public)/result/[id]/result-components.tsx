@@ -13,7 +13,7 @@ import {
   type ViewerVariant,
 } from "./result-model";
 
-function formatDate(value: string | null): string {
+export function formatDate(value: string | null): string {
   if (!value) return "date unavailable";
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",

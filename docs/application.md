@@ -1,0 +1,293 @@
+# How the application works
+
+UniPirate is a free web app that tells international students exactly how to
+get into a German public university: a rule-based eligibility checker, a
+course tracker, a task dashboard, and a citations-only AI assistant. This
+document is the onboarding guide — read it top to bottom once and you should
+be able to find and change anything.
+
+Product framing and setup instructions live in the [README](../README.md).
+Non-negotiable product rules and code conventions live in
+[CLAUDE.md](../CLAUDE.md), [AGENTS.md](../AGENTS.md). Known open issues live in [bugs.md](bugs.md).
+
+## Tech stack
+
+| Layer | Choice |
+| --- | --- |
+| Framework | Next.js 16 (App Router, server components + server actions) |
+| Language | TypeScript, strict; zod at every boundary |
+| Database & auth | Supabase (Postgres + RLS, GoTrue auth, pgvector) |
+| Styling | CSS Modules per surface + Tailwind (admin only) |
+| AI | OpenRouter (chat + embeddings), Tavily (web search), Vercel AI SDK |
+| Analytics / email | PostHog / Resend |
+| Tests | Vitest (`__tests__` folders next to the code) |
+
+## Architecture in one picture
+
+```
+Browser
+  │
+  ▼
+proxy.ts (middleware: refresh session, gate /dashboard /profile /courses /admin)
+  │
+  ▼
+app/ routes ──────────── server components render, server actions mutate
+  │
+  ▼
+lib/ modules
+  ├─ engine/      pure rule evaluation        (zero I/O, unit-tested)
+  ├─ tasks/       generate (pure) → materialize (write) → view (read)
+  ├─ courses/     URL normalization + deterministic DAAD parser
+  ├─ ai/          assistant, KB rendering, extraction fallback, markers
+  ├─ checks/      anonymous-result ownership tokens
+  ├─ auth/        requireUser/requireAdmin guards, safe redirects
+  └─ db/          typed Supabase clients + ALL queries
+  │
+  ▼
+Supabase (Postgres + RLS = the authorization boundary)
+```
+
+Two principles explain most of the layout:
+
+1. **Pure core, I/O shell.** Anything with domain logic (rule evaluation,
+   checker step routing, task generation, deadline parsing, citation markers)
+   is a pure module with unit tests. Actions and routes are thin shells that
+   load data, call the pure core, and write results.
+2. **RLS is the authorization boundary.** Every query helper takes the
+   caller's session-scoped Supabase client. Postgres row-level security —
+   not TypeScript — decides what each user can see and write; the app-level
+   guards only decide where to redirect.
+
+## Repository tour
+
+```
+app/
+  (public)/          no login required
+    page.tsx           landing page
+    check/             eligibility checker (one question per screen)
+    result/[id]/       shareable result page + claim flow
+    courses/[id]/      public course page
+    login/             email/password, magic link, Google OAuth, reset
+  (app)/             signed-in surfaces
+    dashboard/         tasks (Now/Next/Later + calendar), applications rail
+    courses/           course finder + add-by-URL sheet
+    profile/           edit saved checker answers
+  (admin)/admin/     rule verification, course review queues, audit log
+  api/
+    courses/import/    POST — course lookup / import / update submission
+    assistant/chat/    POST — streaming strict-RAG chat
+  auth/confirm|callback  magic-link / OAuth redirect handlers
+components/
+  app/               shared product components (topbar, assistant sidebar…)
+  ui/                shadcn primitives (admin only)
+lib/                 see architecture picture above
+scripts/             seed, KB embed, assistant eval, test email
+supabase/migrations/ schema — append-only, applied with `supabase db push`
+docs/                this file, bugs.md
+```
+
+Naming conventions: route-specific logic lives next to its route (e.g.
+`app/(public)/check/steps.ts`); anything shared by two routes moves to
+`lib/`. Server actions are always in an `actions.ts` beside the page that
+uses them.
+
+## Domain concepts
+
+- **Rule** — a row in `rules`: a flat AND-map of `conditions` over derived
+  facts, plus `outcomes` (admission path, APS/TestAS/dMAT flags, documents,
+  steps, note), a `status` (`draft` → `beta` → `verified`), and mandatory
+  source metadata (`source_url`, `source_quote`, `last_verified_at`).
+  Eligibility logic lives entirely in rule data, never in code.
+- **Fact** — a primitive derived from the user's profile
+  (`class12_percent`, `gce_al_count`, `intake_index`…). The engine derives
+  facts; thresholds stay in rule conditions so admins can change them
+  without a deploy.
+- **Check** — one anonymous eligibility run: answers, normalized profile,
+  and result stored under a shareable UUID at `/result/[id]`.
+- **Application** — the user↔course link that puts a course on the
+  dashboard (`applications` row with a status: planning/applied/admitted/
+  rejected).
+- **Task** — a dashboard to-do. *Generated* tasks (non-null `task_key`) are
+  derived from rules and course facts and are reconciled by key; *manual*
+  tasks (`task_key = null`) belong entirely to the user.
+- **KB chunk** — an embedded text rendering of a rule (or curated snippet)
+  the assistant retrieves and cites.
+
+## The rule engine (`lib/engine/evaluate.ts`)
+
+`evaluate(profile, rules[]) → Result`. Pure, zero I/O; callers load rules
+from the DB.
+
+1. **Derive facts** from the profile (arithmetic restatement only — counts,
+   minimum grades, boolean presence; no thresholds).
+2. **Match rules**: every condition must pass; a condition on a missing fact
+   never passes (missing data never satisfies anything, not even `neq`).
+   Draft and malformed rows are skipped so bad data cannot take the checker
+   down.
+3. **Merge outcomes**: per key (path, aps, testas, dmat) the most-specific
+   matching rule wins (highest condition count). An equal-specificity
+   disagreement is a data conflict → the key resolves to `unknown` and both
+   rules are cited. No matching rule → explicit `unknown` plus a
+   "confirm with the official source" entry in `unknowns`.
+
+The result carries `citations[]` (which rule supported which part of the
+verdict) and `unknowns[]` (honest gaps). Tests in
+`lib/engine/__tests__/` run 13 real-student personas against the same rule
+fixture the seed uses.
+
+## Core flows
+
+### 1. Eligibility check → shareable result → claim
+
+1. `/check` renders one question per screen. All flow logic —
+   `visibleSteps` (branching), `withAnswer` (prunes answers whose step
+   disappeared), `isAnswered` (gates Continue), `buildProfile` — is pure in
+   `app/(public)/check/steps.ts`. Branches: curriculum type is asked before
+   the board; GCE collects per-subject rows; the existing-APS question is
+   skipped when the visa is filed from Saudi Arabia.
+2. Submit (`submitCheck` server action) zod-validates the answers, evaluates
+   against published rules, and inserts a `checks` row → redirect to
+   `/result/[id]`.
+3. Ownership: anonymous submitters get a random token in an HttpOnly cookie;
+   only its SHA-256 hash is stored (`lib/checks/ownership.ts`). Signed-in
+   submitters skip tokens — their profile is upserted and dashboard tasks
+   are materialized immediately.
+4. `/result/[id]` is public to anyone holding the UUID. The `result_viewer`
+   DB function tells the page whether the request is the anonymous owner,
+   the claimed owner, or the public; the page adapts its banners and CTA.
+5. Claiming: the result CTA sends the visitor through
+   `/login?next=/result/[id]?claim=1`; back on the page, the `claim_check`
+   DB function verifies the token hash and atomically copies the answers
+   into the user's profile, then tasks are materialized.
+
+### 2. Course import & review
+
+1. A user pastes a course URL (plus the page's Ctrl+A text — the server
+   never fetches external pages) into the add-course sheet → `POST
+   /api/courses/import`.
+2. `normalizeUrl` canonicalizes DAAD language variants to one URL for
+   dedupe. An existing course is linked to the user's dashboard instead of
+   re-imported; a colliding pending import from another user surfaces as
+   409 via the unique index.
+3. Extraction: the deterministic DAAD label parser
+   (`lib/courses/parse-daad.ts`) runs first; the AI fallback
+   (`lib/ai/extract-course.ts`) fills only the fields the parser missed,
+   with verbatim-quote prompting and zod validation. Facts are stored
+   verbatim — deadlines and tuition are never reformatted.
+4. New imports land as `pending` and are visible only to their importer
+   until an admin approves them in `/admin`. "The page changed" submissions
+   carry `conflicts_with` and get a side-by-side resolution UI backed by
+   the atomic `resolve_course_conflict` DB function.
+
+### 3. Tasks: generate → materialize → view
+
+The task pipeline is split into three modules under `lib/tasks/` with a
+strict direction of data flow:
+
+- **`generate.ts` (pure)** — turns an engine result into global tasks
+  (`rule:<id>:step:<n>`) and tracked courses into per-university tasks
+  (`app:<id>:submit`, `app:<id>:req:<hash>`). Also owns deadline parsing
+  (`selectSubmissionDeadline` picks the line matching the user's intake
+  without inventing dates) and Now/Next/Later bucketing.
+- **`materialize.ts` (write)** — runs at event time (profile saved, result
+  claimed, course added, status changed), never during render. Reconciles by
+  `task_key`: changed rows upserted, stale open rows deleted, stale done
+  rows deactivated so a returning key restores its checkmark. Never touches
+  `done` or `preferred_bucket` — user state survives regeneration.
+- **`view.ts` (read)** — builds the dashboard view model: buckets (user's
+  dragged `preferred_bucket` wins over computed buckets), the applications
+  rail, calendar events, and the next deadline. Strictly read-only.
+
+Deadlines are always *displayed* verbatim (`verbatim_due`); parsed ISO dates
+are used only for sorting, bucketing, and calendar dots.
+
+### 4. The assistant (strict RAG)
+
+`POST /api/assistant/chat` → auth → zod → daily quota (20/user/day, UTC
+reset) → log the question (aborted streams still count) → `runAssistant`
+(`lib/ai/assistant.ts`).
+
+- Three tools: `search_rules` (embed the query, pgvector `match_kb_chunks`),
+  `get_user_context` (profile + applications + tasks via the user's own
+  RLS-scoped client), `web_search` (Tavily, official German domains first,
+  everything flagged unverified; degrades honestly without an API key).
+- The system prompt enforces the contract: answer **only** from tool
+  results; every claim ends with `[[rule:slug]]` or `[[web:url]]`; no
+  coverage → `[[unknown]]` plus the official source. Refusing to guess is
+  success.
+- Markers (`lib/ai/markers.ts`, pure) are stripped for display and rendered
+  as verified stamps / unverified chips / "not in our rules" blocks by
+  `components/app/assistant-sidebar.tsx`; on finish they are parsed and
+  logged to `assistant_messages`.
+- The KB is rebuilt wholesale by `pnpm kb:embed`: published rules are
+  rendered to readable chunks (`lib/ai/kb.ts`) and merged with curated
+  snippets from `scripts/kb.snippets.ts`. Rerun it after rule changes.
+- `pnpm eval:assistant` runs a 20-question adversarial eval (invented-fact
+  traps, out-of-scope traps, personal context) and fails on any uncited
+  claim.
+
+### 5. Auth & authorization
+
+- `proxy.ts` (middleware) refreshes the Supabase session on every request,
+  redirects signed-out users away from `/dashboard`, `/profile`, `/courses`,
+  and `/admin`, and requires `app_metadata.role === 'admin'` for `/admin`.
+- Pages and server actions re-check with `requireUser()` /
+  `requireAdmin()` from `lib/auth/session.ts` (defense in depth — the
+  middleware is a convenience redirect, not the security boundary).
+- API routes answer 401/403 JSON themselves.
+- All login flows (`/login`) run client-side against Supabase auth:
+  password, signup with email confirmation, magic link, Google OAuth, and
+  password recovery. Redirect targets are laundered through
+  `safeNextPath()` so `next=` can never become an open redirect.
+- The real boundary is RLS: every table has policies; admin writes hinge on
+  the `is_admin()` SQL helper reading the JWT claim.
+
+## Data model
+
+Schema lives in `supabase/migrations/` (append-only). Regenerate types with
+`pnpm db:types` after pushing a migration. Summary:
+
+| Table | What it is | Access |
+| --- | --- | --- |
+| `countries`, `qualifications`, `universities` | reference data (null `country_code` on a qualification = international curriculum like IB/GCE) | public read, admin write |
+| `rules` | the eligibility engine's source of truth | public read except drafts; admin write |
+| `courses` | extracted course facts, verbatim; `normalized_url` dedupe key; `conflicts_with` marks update submissions; `review_status` pending/approved/rejected | approved public; owners see own pending |
+| `profiles` | one per user: `country_code` + checker `answers` jsonb | owner CRUD, admin read |
+| `applications` | user × course with status — THE dashboard link | owner CRUD |
+| `tasks` | generated (`task_key` set) + manual (`task_key` null) tasks; unique `(user_id, task_key)` makes upsert-reconciliation work | owner CRUD, admin read |
+| `checks` | anonymous check records; private ownership columns hidden by RLS | insert by anyone; shareable fields readable by UUID |
+| `kb_chunks` | assistant corpus with pgvector embeddings; `match_kb_chunks()` does exact cosine scan (fine below ~10k rows) | public read, admin write |
+| `assistant_messages` | full Q&A log; today's `role='user'` count is the quota | owner insert/read, admin read |
+| `rule_reports`, `answer_reports` | "this is wrong" feedback, anonymous allowed | insert by anyone |
+| `admin_audit_events` | append-only audit of rule/course updates, written by a DB trigger regardless of UI path | admin read |
+
+DB functions worth knowing: `claim_check` (atomic anonymous-result claim),
+`result_viewer` (who is looking at a result), `remove_my_course` (detach
+approved / delete own pending), `resolve_course_conflict` (atomic
+keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.
+
+## Testing
+
+- `pnpm test` runs everything. Pure modules have exhaustive unit tests;
+  `lib/engine/__tests__/personas.ts` holds the 13 verified student personas
+  shared between engine and checker tests.
+- `lib/db/__tests__/rls.integration.test.ts` asserts anon/owner/admin
+  visibility against the real linked Supabase project. It self-skips (with a
+  console warning) when env keys are missing, the schema is behind, or the
+  secret key cannot use the auth admin API — so `pnpm test` is green in any
+  environment.
+- Before merging: `pnpm test && pnpm lint && pnpm typecheck && pnpm build`.
+
+## Where to make common changes
+
+| You want to… | Touch |
+| --- | --- |
+| Add/edit an eligibility rule | `/admin` UI (data change, no deploy); new *candidates* go in `scripts/rules.bootstrap.ts` and are seeded as drafts |
+| Support a new fact in rules | `FactKeySchema` + `deriveFacts` in `lib/engine/evaluate.ts`, label in `lib/ai/kb.ts`, tests in `lib/engine/__tests__/` |
+| Add a checker question | `StepId`, `AnswersSchema`, `visibleSteps`, `buildProfile` in `app/(public)/check/steps.ts`; copy in `check-questions.ts`; tests in `steps.test.ts` |
+| Change dashboard task texts/buckets | `lib/tasks/generate.ts` (+ its tests) |
+| Add a DB query | `lib/db/queries.ts` (user) or `admin-queries.ts` (admin) |
+| Change the schema | new file in `supabase/migrations/` → `supabase db push` → `pnpm db:types` → RLS test |
+| Change assistant behavior | prompt/tools in `lib/ai/assistant.ts`; rerun `pnpm eval:assistant` |
+| Add course-page extraction support | labels in `lib/courses/parse-daad.ts`; the AI fallback needs no change |
+| Add an env var | `lib/env.ts` schemas + `runtimeEnv` + `.env.example` |

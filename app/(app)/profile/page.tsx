@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { UserMenu } from "@/components/app/user-menu";
+import { requireUser } from "@/lib/auth/session";
 import { getCountries, getProfile, getQualifications } from "@/lib/db/queries";
-import { createClient } from "@/lib/db/server";
 
 import { ProfileReview } from "@/app/(public)/check/profile-review";
 import { AnswersSchema } from "@/app/(public)/check/steps";
@@ -15,11 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ProfilePage() {
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-  if (!user) redirect("/login?next=/profile");
+  const { db, user } = await requireUser("/profile");
 
   const [countries, qualifications, profile] = await Promise.all([
     getCountries(db),

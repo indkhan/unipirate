@@ -11,8 +11,9 @@ import { parseDaadText } from "@/lib/courses/parse-daad";
 import { getServerEnv } from "@/lib/env";
 
 // AI never invents facts: the prompt demands verbatim quotes and the output is
-// zod-validated; a failed call degrades to honest gaps (CLAUDE.md rule 2).
-export async function aiExtract(text: string, url: string): Promise<CourseFacts> {
+// zod-validated; a failed call degrades to honest gaps (product rule: never
+// invent a fact — see CLAUDE.md).
+async function aiExtract(text: string, url: string): Promise<CourseFacts> {
   const apiKey = getServerEnv().OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not configured");

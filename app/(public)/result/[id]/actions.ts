@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 
 import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
+import { claimCheck } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
 import { materializeAllTasksForUser } from "@/lib/tasks/materialize";
 
@@ -26,11 +27,13 @@ export async function claimResult(
     return { ok: false, error: "This browser does not own that result." };
   }
 
-  const { data, error } = await db.rpc("claim_check", {
-    p_check_id: parsedId.data,
-    p_token_hash: hashOwnerToken(token),
-  } as never);
-  if (error || !data) {
+  let claimed = false;
+  try {
+    claimed = await claimCheck(db, parsedId.data, hashOwnerToken(token));
+  } catch {
+    claimed = false;
+  }
+  if (!claimed) {
     return { ok: false, error: "That result could not be claimed." };
   }
 

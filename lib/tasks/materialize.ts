@@ -1,3 +1,9 @@
+// Write side of generated tasks. Called at event time (profile saved, result
+// claimed, course added, application status changed) — never during dashboard
+// render. Reconciles desired vs existing rows by task_key: changed rows are
+// upserted, stale open rows deleted, stale done rows deactivated (kept so a
+// returning task_key restores its checkmark). User fields (done,
+// preferred_bucket) are never written here.
 import {
   deactivateGeneratedTasks,
   deleteOpenGeneratedTasksForApplication as deleteOpenGeneratedTaskRowsForApplication,
@@ -20,18 +26,10 @@ import {
   type TargetIntake,
 } from "@/lib/tasks/generate";
 import { profileFromAnswers } from "@/lib/tasks/profile";
+import { todayIsoBerlin } from "@/lib/tasks/dates";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
-
-function todayIsoBerlin(): string {
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Berlin",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 function toGenerationApplication(
   application: ApplicationWithCourse,
@@ -77,20 +75,6 @@ async function materializeGeneratedPrefix(
     db,
     userId,
     reconciliation.staleDoneKeysToDeactivate,
-  );
-}
-
-export async function materializeGlobalTasksForUser(
-  db: Db,
-  userId: string,
-): Promise<void> {
-  const profile = await currentProfile(db, userId);
-  const result = profile ? evaluate(profile, await getPublishedRules(db)) : null;
-  await materializeGeneratedPrefix(
-    db,
-    userId,
-    "rule:",
-    generateGlobalTasks(result),
   );
 }
 
