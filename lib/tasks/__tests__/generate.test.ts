@@ -280,7 +280,7 @@ function existingGenerated(
 }
 
 describe("prepareGeneratedTaskMaterialization", () => {
-  it("produces idempotent upsert rows and zero stale deletes on a second run", () => {
+  it("produces no rows for source keys that already exist", () => {
     const result = evaluate(p1CbseNoJee, promotedRules);
     const desired = generateTasks(result, [app(1, "Application deadline: 15 July 2026")]);
     const existing = desired.map((task) => existingGenerated({
@@ -302,8 +302,6 @@ describe("prepareGeneratedTaskMaterialization", () => {
       existing,
     );
 
-    expect(materialization.staleOpenKeysToDelete).toEqual([]);
-    expect(materialization.staleDoneKeysToDeactivate).toEqual([]);
     expect(materialization.upsertRows).toEqual([]);
   });
 
@@ -319,28 +317,26 @@ describe("prepareGeneratedTaskMaterialization", () => {
     expect(materialization.upsertRows.every((row) => row.generated_active)).toBe(true);
   });
 
-  it("deletes stale open rows and deactivates stale completed rows", () => {
+  it("adds only newly discovered source keys", () => {
     const result = evaluate(p1CbseNoJee, promotedRules);
     const desired = generateTasks(result, [app(1, "Application deadline: 15 July 2026")]);
+    const first = desired[0];
 
     const materialization = prepareGeneratedTaskMaterialization("user-1", desired, [
       existingGenerated({
-        task_key: "old-not-done",
-        title: "Old",
-        done: false,
-      }),
-      existingGenerated({
-        task_key: "old-done",
-        title: "Old done",
+        task_key: first.key,
+        title: "User-edited title",
+        due_date: "2030-01-01",
         done: true,
       }),
     ]);
 
-    expect(materialization.staleOpenKeysToDelete).toEqual(["old-not-done"]);
-    expect(materialization.staleDoneKeysToDeactivate).toEqual(["old-done"]);
+    expect(materialization.upsertRows.map((row) => row.task_key)).toEqual(
+      desired.slice(1).map((task) => task.key),
+    );
   });
 
-  it("revives inactive generated rows when the obligation returns", () => {
+  it("does not recreate a user-deleted source task", () => {
     const result = evaluate(p1CbseNoJee, promotedRules);
     const desired = generateTasks(result, [app(1, "Application deadline: 15 July 2026")]);
     const first = desired[0];
@@ -361,11 +357,6 @@ describe("prepareGeneratedTaskMaterialization", () => {
       }),
     ]);
 
-    expect(materialization.upsertRows).toEqual([
-      expect.objectContaining({
-        task_key: first.key,
-        generated_active: true,
-      }),
-    ]);
+    expect(materialization.upsertRows).toEqual([]);
   });
 });

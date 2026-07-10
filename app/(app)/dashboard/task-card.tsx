@@ -7,7 +7,7 @@ import { daysUntil } from "@/lib/tasks/generate";
 
 import { resolveCourseTaskUpdate, toggleTask } from "./actions";
 import { formatDate } from "./format";
-import { ManualTaskActions } from "./manual-task";
+import { TaskActions } from "./manual-task";
 import styles from "./dashboard.module.css";
 
 function sourceHost(url: string): string {
@@ -133,7 +133,7 @@ export function NowTask({
           <span className={styles.taskDue}>{taskDetail}</span>
         </div>
         <Stamp source={task.source} />
-        <ManualTaskActions task={task} applications={applications} />
+        <TaskActions task={task} applications={applications} />
         <CourseTaskChange task={task} />
       </div>
     </article>

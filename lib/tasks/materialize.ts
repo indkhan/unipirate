@@ -1,13 +1,8 @@
-// Write side of generated tasks. Called at event time (profile saved, result
-// claimed, course added, application status changed) — never during dashboard
-// render. Reconciles desired vs existing rows by task_key: changed rows are
-// upserted, stale open rows deleted, stale done rows deactivated (kept so a
-// returning task_key restores its checkmark). User fields (done,
-// preferred_bucket) are never written here.
+// Write side of source-generated tasks. Called at event time (profile saved,
+// result claimed, course added, application status changed) — never during
+// dashboard render. Each task_key is inserted once; after that the task is
+// owned by the user and generation never changes or recreates it.
 import {
-  deactivateGeneratedTasks,
-  deleteOpenGeneratedTasksForApplication as deleteOpenGeneratedTaskRowsForApplication,
-  deleteStaleGeneratedTasks,
   getApplicationWithCourse,
   getProfile,
   getPublishedRules,
@@ -73,12 +68,6 @@ async function materializeGeneratedPrefix(
     existing,
   );
   await upsertGeneratedTasks(db, reconciliation.upsertRows);
-  await deleteStaleGeneratedTasks(db, userId, reconciliation.staleOpenKeysToDelete);
-  await deactivateGeneratedTasks(
-    db,
-    userId,
-    reconciliation.staleDoneKeysToDeactivate,
-  );
 }
 
 async function materializeCourseTasksForApplicationRow(
@@ -144,22 +133,3 @@ export async function materializeAllTasksForUser(
   }
 }
 
-export async function removeOpenGeneratedTasksForApplication(
-  db: Db,
-  userId: string,
-  applicationId: string,
-): Promise<void> {
-  const existing = await listGeneratedTasksByPrefix(
-    db,
-    userId,
-    `app:${applicationId}:`,
-  );
-  await deleteOpenGeneratedTaskRowsForApplication(db, userId, applicationId);
-  await deactivateGeneratedTasks(
-    db,
-    userId,
-    existing.flatMap((task) =>
-      task.done && task.generated_active && task.task_key ? [task.task_key] : [],
-    ),
-  );
-}

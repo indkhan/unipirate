@@ -317,6 +317,9 @@ export async function updateManualTask(
   );
 }
 
+// Compatibility names used by the dashboard task editor.
+export const updateTask = updateManualTask;
+
 export async function getCourseTaskAssignment(
   db: Db,
   userId: string,
@@ -424,6 +427,8 @@ export async function deleteManualTask(
     .is("task_key", null);
   if (error) throw new Error(error.message);
 }
+
+export const deleteTask = deleteManualTask;
 
 export async function setTaskDone(
   db: Db,

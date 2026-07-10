@@ -6,31 +6,26 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 
 import type { DashboardTask, RailApplication } from "@/lib/tasks/view";
 
-import {
-  createManualTask,
-  deleteManualTask,
-  updateManualTask,
-  updateCourseTask,
-} from "./actions";
+import { createTask, deleteTask, updateTask, updateCourseTask } from "./actions";
 import styles from "./dashboard.module.css";
 
 function applicationLabel(application: RailApplication): string {
   return [application.universityName, application.courseName].filter(Boolean).join(" · ");
 }
 
-type ManualTaskDialogProps = {
+type TaskDialogProps = {
   applications: RailApplication[];
   mode: "add" | "edit";
   initialTask?: DashboardTask;
   onClose: () => void;
 };
 
-function ManualTaskDialog({
+function TaskDialog({
   applications,
   mode,
   initialTask,
   onClose,
-}: ManualTaskDialogProps) {
+}: TaskDialogProps) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const [title, setTitle] = useState(initialTask?.title ?? "");
@@ -86,10 +81,10 @@ function ManualTaskDialog({
                 if (initialTask.kind === "course_task") {
                   await updateCourseTask({ id: initialTask.id, ...payload });
                 } else {
-                  await updateManualTask({ id: initialTask.id, ...payload });
+                  await updateTask({ id: initialTask.id, ...payload });
                 }
               } else {
-                await createManualTask(payload);
+                await createTask(payload);
               }
               onClose();
               router.refresh();
@@ -154,7 +149,7 @@ function ManualTaskDialog({
   );
 }
 
-export function ManualTaskForm({ applications }: { applications: RailApplication[] }) {
+export function TaskForm({ applications }: { applications: RailApplication[] }) {
   const [open, setOpen] = useState(false);
 
   const trigger = (
@@ -169,7 +164,7 @@ export function ManualTaskForm({ applications }: { applications: RailApplication
   return (
     <>
       {trigger}
-      <ManualTaskDialog
+      <TaskDialog
         applications={applications}
         mode="add"
         onClose={() => setOpen(false)}
@@ -178,7 +173,7 @@ export function ManualTaskForm({ applications }: { applications: RailApplication
   );
 }
 
-export function ManualTaskActions({
+export function TaskActions({
   task,
   applications,
 }: {
@@ -193,7 +188,7 @@ export function ManualTaskActions({
 
   return (
     <>
-      <div className={styles.taskActionRow} aria-label="Manual task actions">
+      <div className={styles.taskActionRow} aria-label="Task actions">
         {task.kind === "manual" ? <button
           className={styles.taskIconButton}
           type="button"
@@ -202,23 +197,23 @@ export function ManualTaskActions({
         >
           <Pencil size={14} aria-hidden />
         </button> : null}
-        <button
+        {task.kind === "manual" ? <button
           className={styles.taskIconButton}
           type="button"
           aria-label="Delete task"
           disabled={isPending}
           onClick={() => {
             startTransition(async () => {
-              await deleteManualTask({ id: task.id });
+              await deleteTask({ id: task.id });
               router.refresh();
             });
           }}
         >
           <Trash2 size={14} aria-hidden />
-        </button>
+        </button> : null}
       </div>
       {editing ? (
-        <ManualTaskDialog
+        <TaskDialog
           applications={applications}
           mode="edit"
           initialTask={task}

@@ -551,20 +551,10 @@ export function prepareGeneratedTaskMaterialization(
     upsertRows: desiredRows.filter((row) => {
       const existingRow = existingByKey.get(row.task_key);
       if (!existingRow) return true;
-      return (
-        existingRow.title !== row.title ||
-        existingRow.due_date !== row.due_date ||
-        existingRow.verbatim_due !== row.verbatim_due ||
-        existingRow.sort_order !== row.sort_order ||
-        existingRow.source_url !== row.source_url ||
-        existingRow.source_verified_at !== row.source_verified_at ||
-        existingRow.application_id !== row.application_id ||
-        existingRow.generated_from_rule_id !== row.generated_from_rule_id ||
-        existingRow.course_task_definition_id !== row.course_task_definition_id ||
-        existingRow.definition_revision !== row.definition_revision ||
-        JSON.stringify(existingRow.admin_snapshot) !== JSON.stringify(row.admin_snapshot) ||
-        existingRow.generated_active !== row.generated_active
-      ) && !(existingRow.has_personal_edits && row.course_task_definition_id !== null);
+      // Existing rows are user-owned after first materialization. Admin
+      // definition fan-out is handled by the scoped SQL synchronizer; render
+      // or profile materialization must never overwrite a user's copy.
+      return false;
     }),
     staleOpenKeysToDelete: existing.flatMap((task) =>
       task.task_key !== null && !task.done && !desiredKeys.has(task.task_key) &&
