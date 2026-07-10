@@ -1,19 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "unipirate.theme";
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(() =>
-    typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark"),
-  );
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setDark(document.documentElement.classList.contains("dark"));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   function toggle() {
     const nextDark = !dark;
     document.documentElement.classList.toggle("dark", nextDark);
-    document.documentElement.dataset.theme = nextDark ? "dark" : "light";
     localStorage.setItem(STORAGE_KEY, nextDark ? "dark" : "light");
     setDark(nextDark);
   }
