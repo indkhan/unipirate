@@ -61,9 +61,19 @@ function CourseTaskChange({ task }: { task: DashboardTask }) {
   const [isPending, startTransition] = useTransition();
   if (task.kind !== "course_task" || task.adminChangeState === "current") return null;
   const removed = task.adminChangeState === "removal_pending";
+  const snapshotValue = (key: string) => {
+    const value = task.adminSnapshot?.[key];
+    return typeof value === "string" || value === null ? value : undefined;
+  };
   const adminTitle = typeof task.adminSnapshot?.title === "string"
     ? task.adminSnapshot.title
     : "the latest admin task";
+  const changes = [
+    ["Title", task.title, snapshotValue("title")],
+    ["Description", task.description, snapshotValue("description")],
+    ["Deadline", task.verbatimDue ?? task.dueDate, snapshotValue("verbatim_due") ?? snapshotValue("due_date")],
+    ["Source", task.source?.url ?? null, snapshotValue("source_url")],
+  ].filter(([, current, next]) => next !== undefined && current !== next);
   const resolve = (resolution: "adopt" | "keep" | "remove" | "manual") => {
     startTransition(async () => {
       await resolveCourseTaskUpdate({ id: task.id, resolution });
@@ -71,19 +81,30 @@ function CourseTaskChange({ task }: { task: DashboardTask }) {
     });
   };
   return (
-    <div className={styles.taskActionRow} aria-label="Admin task update">
+    <div className={`${styles.taskActionRow} ${styles.courseTaskChange}`} aria-label="Admin task update">
       <span className={styles.taskDue}>
         {removed ? "Admin removed this task." : `Admin updated this task: ${adminTitle}`}
       </span>
+      {changes.length > 0 ? (
+        <div className={styles.courseTaskChangeDetails}>
+          {changes.map(([label, current, next]) => (
+            <p key={label}>
+              <strong>{label} changed</strong>
+              <span>Was: {current ?? "None"}</span>
+              <span>Now: {next ?? "None"}</span>
+            </p>
+          ))}
+        </div>
+      ) : null}
       {removed ? (
         <>
-          <button className={styles.taskIconButton} type="button" disabled={isPending} onClick={() => resolve("manual")}>Keep mine</button>
-          <button className={styles.taskIconButton} type="button" disabled={isPending} onClick={() => resolve("remove")}>Remove</button>
+          <button className={styles.taskTextButton} type="button" disabled={isPending} onClick={() => resolve("manual")}>Keep mine</button>
+          <button className={styles.taskTextButton} type="button" disabled={isPending} onClick={() => resolve("remove")}>Remove</button>
         </>
       ) : (
         <>
-          <button className={styles.taskIconButton} type="button" disabled={isPending} onClick={() => resolve("keep")}>Keep mine</button>
-          <button className={styles.taskIconButton} type="button" disabled={isPending} onClick={() => resolve("adopt")}>Use admin</button>
+          <button className={styles.taskTextButton} type="button" disabled={isPending} onClick={() => resolve("keep")}>Keep mine</button>
+          <button className={styles.taskTextButton} type="button" disabled={isPending} onClick={() => resolve("adopt")}>Use admin</button>
         </>
       )}
     </div>

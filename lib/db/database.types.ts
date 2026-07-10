@@ -224,96 +224,6 @@ export type Database = {
         }
         Relationships: []
       }
-      courses: {
-        Row: {
-          conflicts_with: string | null
-          created_at: string
-          created_by: string | null
-          deadlines: Json | null
-          degree: string | null
-          description: string | null
-          extraction_method:
-            | Database["public"]["Enums"]["extraction_method"]
-            | null
-          field_extraction: Json | null
-          id: string
-          language: string | null
-          location: string | null
-          name: string | null
-          normalized_url: string
-          requirements: Json | null
-          review_status: Database["public"]["Enums"]["course_review_status"]
-          source_url: string
-          tuition: Json | null
-          university_id: string | null
-          university_name: string | null
-          updated_at: string
-        }
-        Insert: {
-          conflicts_with?: string | null
-          created_at?: string
-          created_by?: string | null
-          deadlines?: Json | null
-          degree?: string | null
-          description?: string | null
-          extraction_method?:
-            | Database["public"]["Enums"]["extraction_method"]
-            | null
-          field_extraction?: Json | null
-          id?: string
-          language?: string | null
-          location?: string | null
-          name?: string | null
-          normalized_url: string
-          requirements?: Json | null
-          review_status?: Database["public"]["Enums"]["course_review_status"]
-          source_url: string
-          tuition?: Json | null
-          university_id?: string | null
-          university_name?: string | null
-          updated_at?: string
-        }
-        Update: {
-          conflicts_with?: string | null
-          created_at?: string
-          created_by?: string | null
-          deadlines?: Json | null
-          degree?: string | null
-          description?: string | null
-          extraction_method?:
-            | Database["public"]["Enums"]["extraction_method"]
-            | null
-          field_extraction?: Json | null
-          id?: string
-          language?: string | null
-          location?: string | null
-          name?: string | null
-          normalized_url?: string
-          requirements?: Json | null
-          review_status?: Database["public"]["Enums"]["course_review_status"]
-          source_url?: string
-          tuition?: Json | null
-          university_id?: string | null
-          university_name?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "courses_conflicts_with_fkey"
-            columns: ["conflicts_with"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "courses_university_id_fkey"
-            columns: ["university_id"]
-            isOneToOne: false
-            referencedRelation: "universities"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       course_task_definitions: {
         Row: {
           course_id: string
@@ -426,6 +336,96 @@ export type Database = {
             columns: ["course_task_definition_id"]
             isOneToOne: false
             referencedRelation: "course_task_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          conflicts_with: string | null
+          created_at: string
+          created_by: string | null
+          deadlines: Json | null
+          degree: string | null
+          description: string | null
+          extraction_method:
+            | Database["public"]["Enums"]["extraction_method"]
+            | null
+          field_extraction: Json | null
+          id: string
+          language: string | null
+          location: string | null
+          name: string | null
+          normalized_url: string
+          requirements: Json | null
+          review_status: Database["public"]["Enums"]["course_review_status"]
+          source_url: string
+          tuition: Json | null
+          university_id: string | null
+          university_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          conflicts_with?: string | null
+          created_at?: string
+          created_by?: string | null
+          deadlines?: Json | null
+          degree?: string | null
+          description?: string | null
+          extraction_method?:
+            | Database["public"]["Enums"]["extraction_method"]
+            | null
+          field_extraction?: Json | null
+          id?: string
+          language?: string | null
+          location?: string | null
+          name?: string | null
+          normalized_url: string
+          requirements?: Json | null
+          review_status?: Database["public"]["Enums"]["course_review_status"]
+          source_url: string
+          tuition?: Json | null
+          university_id?: string | null
+          university_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          conflicts_with?: string | null
+          created_at?: string
+          created_by?: string | null
+          deadlines?: Json | null
+          degree?: string | null
+          description?: string | null
+          extraction_method?:
+            | Database["public"]["Enums"]["extraction_method"]
+            | null
+          field_extraction?: Json | null
+          id?: string
+          language?: string | null
+          location?: string | null
+          name?: string | null
+          normalized_url?: string
+          requirements?: Json | null
+          review_status?: Database["public"]["Enums"]["course_review_status"]
+          source_url?: string
+          tuition?: Json | null
+          university_id?: string | null
+          university_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courses_conflicts_with_fkey"
+            columns: ["conflicts_with"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courses_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
             referencedColumns: ["id"]
           },
         ]
@@ -652,8 +652,8 @@ export type Database = {
           application_id: string | null
           course_task_definition_id: string | null
           created_at: string
-          description: string | null
           definition_revision: number | null
+          description: string | null
           done: boolean
           due_date: string | null
           generated_active: boolean
@@ -662,13 +662,13 @@ export type Database = {
           id: string
           preferred_bucket: string | null
           sort_order: number
-          source_verified_at: string | null
           source_url: string | null
+          source_verified_at: string | null
           task_key: string | null
           title: string
           updated_at: string
-          verbatim_due: string | null
           user_id: string
+          verbatim_due: string | null
         }
         Insert: {
           admin_change_state?: Database["public"]["Enums"]["course_task_change_state"]
@@ -676,8 +676,8 @@ export type Database = {
           application_id?: string | null
           course_task_definition_id?: string | null
           created_at?: string
-          description?: string | null
           definition_revision?: number | null
+          description?: string | null
           done?: boolean
           due_date?: string | null
           generated_active?: boolean
@@ -686,13 +686,13 @@ export type Database = {
           id?: string
           preferred_bucket?: string | null
           sort_order?: number
-          source_verified_at?: string | null
           source_url?: string | null
+          source_verified_at?: string | null
           task_key?: string | null
           title: string
           updated_at?: string
-          verbatim_due?: string | null
           user_id: string
+          verbatim_due?: string | null
         }
         Update: {
           admin_change_state?: Database["public"]["Enums"]["course_task_change_state"]
@@ -700,8 +700,8 @@ export type Database = {
           application_id?: string | null
           course_task_definition_id?: string | null
           created_at?: string
-          description?: string | null
           definition_revision?: number | null
+          description?: string | null
           done?: boolean
           due_date?: string | null
           generated_active?: boolean
@@ -710,27 +710,27 @@ export type Database = {
           id?: string
           preferred_bucket?: string | null
           sort_order?: number
-          source_verified_at?: string | null
           source_url?: string | null
+          source_verified_at?: string | null
           task_key?: string | null
           title?: string
           updated_at?: string
-          verbatim_due?: string | null
           user_id?: string
+          verbatim_due?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "tasks_course_task_definition_id_fkey"
-            columns: ["course_task_definition_id"]
-            isOneToOne: false
-            referencedRelation: "course_task_definitions"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "tasks_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_course_task_definition_id_fkey"
+            columns: ["course_task_definition_id"]
+            isOneToOne: false
+            referencedRelation: "course_task_definitions"
             referencedColumns: ["id"]
           },
           {
@@ -807,12 +807,12 @@ export type Database = {
       }
     }
     Enums: {
+      course_review_status: "pending" | "approved" | "rejected"
       course_task_change_state: "current" | "update_pending" | "removal_pending"
       course_task_due_mode: "source_deadline" | "fixed_date" | "none"
       course_task_kind: "submission" | "requirement" | "custom"
       course_task_source_change: "changed" | "new" | "removed"
       course_task_source_review_status: "pending" | "adopted" | "kept"
-      course_review_status: "pending" | "approved" | "rejected"
       extraction_method: "library" | "ai" | "manual"
       qualification_level: "school" | "bachelor" | "master"
       rule_status: "draft" | "beta" | "verified"
@@ -946,12 +946,16 @@ export const Constants = {
   },
   public: {
     Enums: {
-      course_task_change_state: ["current", "update_pending", "removal_pending"],
+      course_review_status: ["pending", "approved", "rejected"],
+      course_task_change_state: [
+        "current",
+        "update_pending",
+        "removal_pending",
+      ],
       course_task_due_mode: ["source_deadline", "fixed_date", "none"],
       course_task_kind: ["submission", "requirement", "custom"],
       course_task_source_change: ["changed", "new", "removed"],
       course_task_source_review_status: ["pending", "adopted", "kept"],
-      course_review_status: ["pending", "approved", "rejected"],
       extraction_method: ["library", "ai", "manual"],
       qualification_level: ["school", "bachelor", "master"],
       rule_status: ["draft", "beta", "verified"],
