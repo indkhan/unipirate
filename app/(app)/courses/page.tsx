@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { redirect } from "next/navigation";
 
-import { getApprovedCourses, listApplications } from "@/lib/db/queries";
-import { createClient } from "@/lib/db/server";
+import { AuthenticatedTopbar } from "@/components/app/authenticated-topbar";
+import { requireUser } from "@/lib/auth/session";
+import {
+  countTodayAssistantQuestions,
+  getApprovedCourses,
+  listApplications,
+} from "@/lib/db/queries";
 
 import styles from "../dashboard/dashboard.module.css";
+import { AddCourseSheet } from "./add-course-sheet";
 import { Finder } from "./finder";
+import finderStyles from "./finder.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -15,15 +20,12 @@ export const metadata: Metadata = {
 };
 
 export default async function CourseFinderPage() {
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-  if (!user) redirect("/login");
+  const { db, user } = await requireUser("/courses");
 
-  const [courses, applications] = await Promise.all([
+  const [courses, applications, questionsUsed] = await Promise.all([
     getApprovedCourses(db),
     listApplications(db, user.id),
+    countTodayAssistantQuestions(db, user.id),
   ]);
   const trackedIds = applications.map((a) => a.course_id);
 
@@ -31,14 +33,17 @@ export default async function CourseFinderPage() {
     <div className={styles.shell}>
       <div className={styles.container}>
         <header className={styles.header}>
-          <Link className={styles.brand} href="/">
-            UniPirate
-          </Link>
-          <div className={styles.headerActions}>
-            <Link className={styles.checkLink} href="/dashboard">
-              Dashboard
-            </Link>
-          </div>
+          <AuthenticatedTopbar
+            email={user.email ?? null}
+            isAdmin={user.app_metadata?.role === "admin"}
+            initialAssistantUsed={questionsUsed}
+          >
+            <AddCourseSheet
+              trackedIds={trackedIds}
+              triggerLabel="Add course"
+              triggerClassName={finderStyles.navAddButton}
+            />
+          </AuthenticatedTopbar>
         </header>
         <Finder courses={courses} trackedIds={trackedIds} />
       </div>

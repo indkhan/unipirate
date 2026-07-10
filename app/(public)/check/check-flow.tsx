@@ -6,7 +6,10 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
+import { QUESTIONS, buildOptions, type Option } from "./check-questions";
+import { GceSubjectsEditor } from "./gce-subjects-editor";
 import {
+<<<<<<< HEAD
   AWARDING_BODIES,
   BOARD_IDS,
   GCE_GRADES,
@@ -14,16 +17,15 @@ import {
   INTAKE_OPTIONS,
   TARGET_FIELDS,
   hasDuplicateGceSubjects,
+=======
+>>>>>>> d44a76a73163da5f326016ef45081b448348ead3
   isAnswered,
   visibleSteps,
   withAnswer,
   type Answers,
-  type GceSubjectAnswer,
   type PartialAnswers,
   type StepId,
 } from "./steps";
-
-type Option = { value: unknown; label: string; key: string };
 
 type CheckFlowProps = {
   countries: { code: string; name: string }[];
@@ -33,6 +35,7 @@ type CheckFlowProps = {
   userMenu?: ReactNode;
 };
 
+<<<<<<< HEAD
 type SavedCheckState = {
   answers: PartialAnswers;
   stepIndex: number;
@@ -99,6 +102,8 @@ function nextSubject(subjects: GceSubjectAnswer[]): GceSubjectAnswer {
   };
 }
 
+=======
+>>>>>>> d44a76a73163da5f326016ef45081b448348ead3
 export function CheckFlow({
   countries,
   boards,
@@ -207,6 +212,7 @@ export function CheckFlow({
   }, [answers, restored]);
 
   function optionsFor(stepId: StepId): Option[] {
+<<<<<<< HEAD
     switch (stepId) {
       case "targetDegree":
         return [
@@ -278,6 +284,9 @@ export function CheckFlow({
       default:
         return [];
     }
+=======
+    return buildOptions(stepId, { countries, boards, answers });
+>>>>>>> d44a76a73163da5f326016ef45081b448348ead3
   }
 
   function currentKey(stepId: StepId): string | undefined {
@@ -431,6 +440,7 @@ export function CheckFlow({
               />
               <span className={styles.percentSuffix}>%</span>
             </div>
+<<<<<<< HEAD
             {gradeError && (
               <p id="grade-percent-error" className={styles.fieldError}>
                 {gradeError}
@@ -529,6 +539,21 @@ export function CheckFlow({
               <p className={styles.fieldError}>{gceDuplicateError}</p>
             )}
           </div>
+=======
+            {answers.schoolGradePercent !== undefined &&
+              (answers.schoolGradePercent < 0 ||
+                answers.schoolGradePercent > 100) && (
+                <div className={styles.error}>
+                  Enter your overall percentage between 0 and 100.
+                </div>
+              )}
+          </div>
+        ) : step === "gceSubjects" ? (
+          <GceSubjectsEditor
+            subjects={subjects}
+            onChange={(next) => select("gceSubjects", next)}
+          />
+>>>>>>> d44a76a73163da5f326016ef45081b448348ead3
         ) : (
           <div className={styles.options}>
             {optionsFor(step).map((o) => {

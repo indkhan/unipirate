@@ -74,7 +74,7 @@ describe("buildProfile reproduces engine-test personas", () => {
 });
 
 describe("visibleSteps", () => {
-  it("asks curriculum type before the board (domain rule 5)", () => {
+  it("asks curriculum type before the board", () => {
     const steps = visibleSteps(p1Answers);
     expect(steps.indexOf("curriculumType")).toBeGreaterThan(-1);
     expect(steps.indexOf("curriculumType")).toBeLessThan(

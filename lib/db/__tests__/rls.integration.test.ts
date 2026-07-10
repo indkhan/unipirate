@@ -1,8 +1,9 @@
 // RLS integration test: anon vs owner vs admin against the real Supabase
-// project. Skips entirely when .env.local / env keys are absent, or when the
-// linked remote schema has not applied current migrations, so plain `pnpm test`
-// stays green anywhere. Creates only rls-test-* users and its own rows; deletes
-// them in cleanup.
+// project. Skips entirely when .env.local / env keys are absent, when the
+// linked remote schema has not applied current migrations, or when the secret
+// key cannot use the auth admin API (needed to create test users), so plain
+// `pnpm test` stays green anywhere. Creates only rls-test-* users and its own
+// rows; deletes them in cleanup.
 
 import { randomUUID } from "node:crypto";
 
@@ -36,25 +37,41 @@ function anonClient(): Db {
   });
 }
 
-async function hasCurrentSchema(): Promise<boolean> {
+/**
+ * The suite needs two capabilities beyond the presence of keys: the current
+ * schema on the linked project, and a secret key that can manage users via
+ * the auth admin API. Missing either is an environment limitation, not a
+ * regression — warn and skip.
+ */
+async function canRunSuite(): Promise<boolean> {
   if (!configured) return false;
 
   const service = createClient<Database>(url!, secretKey!, {
     auth: { persistSession: false },
   });
+
   const { error } = await service
     .from("admin_audit_events")
     .select("id")
     .limit(1);
-
-  if (!error) return true;
-
   if (
-    error.code === "PGRST205" ||
-    error.message.includes("Could not find the table")
+    error &&
+    (error.code === "PGRST205" ||
+      error.message.includes("Could not find the table"))
   ) {
     console.warn(
       "Skipping RLS integration tests: admin_audit_events migration is not applied.",
+    );
+    return false;
+  }
+
+  const { error: adminError } = await service.auth.admin.listUsers({
+    page: 1,
+    perPage: 1,
+  });
+  if (adminError) {
+    console.warn(
+      `Skipping RLS integration tests: the secret key cannot use the auth admin API (${adminError.message}).`,
     );
     return false;
   }
@@ -72,9 +89,9 @@ async function signedInClient(email: string): Promise<Db> {
   return client;
 }
 
-const schemaReady = await hasCurrentSchema();
+const suiteReady = await canRunSuite();
 
-describe.skipIf(!configured || !schemaReady)("RLS: anon vs owner vs admin", () => {
+describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
   let service: Db;
   let anon: Db;
   let owner: Db;

@@ -1,3 +1,5 @@
+// Supabase client for "use client" components (browser session via cookies).
+// Server code uses lib/db/server.ts instead.
 import { createBrowserClient } from "@supabase/ssr";
 
 import type { Database } from "@/lib/db/database.types";

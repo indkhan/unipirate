@@ -536,13 +536,17 @@ export type Database = {
           description: string | null
           done: boolean
           due_date: string | null
+          generated_active: boolean
           generated_from_rule_id: string | null
           id: string
           preferred_bucket: string | null
+          sort_order: number
+          source_verified_at: string | null
           source_url: string | null
           task_key: string | null
           title: string
           updated_at: string
+          verbatim_due: string | null
           user_id: string
         }
         Insert: {
@@ -551,13 +555,17 @@ export type Database = {
           description?: string | null
           done?: boolean
           due_date?: string | null
+          generated_active?: boolean
           generated_from_rule_id?: string | null
           id?: string
           preferred_bucket?: string | null
+          sort_order?: number
+          source_verified_at?: string | null
           source_url?: string | null
           task_key?: string | null
           title: string
           updated_at?: string
+          verbatim_due?: string | null
           user_id: string
         }
         Update: {
@@ -566,13 +574,17 @@ export type Database = {
           description?: string | null
           done?: boolean
           due_date?: string | null
+          generated_active?: boolean
           generated_from_rule_id?: string | null
           id?: string
           preferred_bucket?: string | null
+          sort_order?: number
+          source_verified_at?: string | null
           source_url?: string | null
           task_key?: string | null
           title?: string
           updated_at?: string
+          verbatim_due?: string | null
           user_id?: string
         }
         Relationships: [

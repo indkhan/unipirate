@@ -21,7 +21,7 @@ export const AWARDING_BODIES = [
 
 export const GCE_GRADES = ["A*", "A", "B", "C", "D", "E", "U"] as const;
 
-// ponytail: static catalog of common A-Level subjects with their DAAD
+// Trade-off: static catalog of common A-Level subjects with their DAAD
 // classification; move into the DB alongside `qualifications` when subjects
 // beyond this list are needed. List/category mirror
 // https://www.daad.de/en/studying-in-germany/requirements/gce/ (List A =
@@ -158,9 +158,10 @@ export type StepId =
 
 /**
  * Ordered question list for the current answers. Branches:
- * curriculum type is asked BEFORE the board (domain rule 5) and routes
- * national-board vs GCE questions; IB/other collect no curriculum detail yet,
- * so the engine returns honest unknowns (domain rule 2).
+ * curriculum type is asked BEFORE the board (a board only makes sense for a
+ * national curriculum) and routes national-board vs GCE questions; IB/other
+ * collect no curriculum detail yet, so the engine returns honest unknowns
+ * instead of guessing.
  */
 export function visibleSteps(answers: PartialAnswers): StepId[] {
   const steps: StepId[] = [

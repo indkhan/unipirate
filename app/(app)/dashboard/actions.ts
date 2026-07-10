@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { requireUser, type Session } from "@/lib/auth/session";
 import {
   deleteApplicationForCourse,
   deleteManualTask as deleteManualTaskRow,
@@ -16,7 +16,10 @@ import {
   updateManualTask as updateManualTaskRow,
   updateApplicationStatus,
 } from "@/lib/db/queries";
-import { createClient } from "@/lib/db/server";
+import {
+  materializeCourseTasksForApplication,
+  removeOpenGeneratedTasksForApplication,
+} from "@/lib/tasks/materialize";
 
 const removeCourseSchema = z.object({
   id: z.string().uuid(),
@@ -24,12 +27,7 @@ const removeCourseSchema = z.object({
 
 export async function removeCourse(input: unknown): Promise<void> {
   const { id } = removeCourseSchema.parse(input);
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { db, user } = await requireUser();
 
   await deleteApplicationForCourse(db, user.id, id);
   await removeMyCourse(db, id);
@@ -43,12 +41,7 @@ const toggleTaskSchema = z.object({
 
 export async function toggleTask(input: unknown): Promise<void> {
   const { id, done } = toggleTaskSchema.parse(input);
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { db } = await requireUser();
 
   await setTaskDone(db, id, done);
 }
@@ -60,12 +53,7 @@ const moveTaskSchema = z.object({
 
 export async function moveTaskToBucket(input: unknown): Promise<void> {
   const { id, bucket } = moveTaskSchema.parse(input);
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { db, user } = await requireUser();
 
   await setTaskPreferredBucket(db, user.id, id, bucket);
 }
@@ -99,7 +87,7 @@ const manualTaskSchema = z.object({
 });
 
 async function assertOwnedApplication(
-  db: Awaited<ReturnType<typeof createClient>>,
+  db: Session["db"],
   userId: string,
   applicationId: string | null,
 ): Promise<void> {
@@ -112,12 +100,7 @@ async function assertOwnedApplication(
 
 export async function createManualTask(input: unknown): Promise<void> {
   const task = manualTaskSchema.parse(input);
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { db, user } = await requireUser();
 
   await assertOwnedApplication(db, user.id, task.applicationId);
   await insertTask(db, {
@@ -137,12 +120,7 @@ const updateManualTaskSchema = manualTaskSchema.extend({
 
 export async function updateManualTask(input: unknown): Promise<void> {
   const task = updateManualTaskSchema.parse(input);
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { db, user } = await requireUser();
 
   await assertOwnedApplication(db, user.id, task.applicationId);
   await updateManualTaskRow(db, user.id, task.id, {
@@ -161,12 +139,7 @@ const deleteManualTaskSchema = z.object({
 
 export async function deleteManualTask(input: unknown): Promise<void> {
   const { id } = deleteManualTaskSchema.parse(input);
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { db, user } = await requireUser();
 
   await deleteManualTaskRow(db, user.id, id);
   revalidatePath("/dashboard");
@@ -179,14 +152,14 @@ const applicationStatusSchema = z.object({
 
 export async function setApplicationStatus(input: unknown): Promise<void> {
   const { id, status } = applicationStatusSchema.parse(input);
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { db, user } = await requireUser();
 
   await updateApplicationStatus(db, id, status);
+  if (status === "planning") {
+    await materializeCourseTasksForApplication(db, user.id, id);
+  } else {
+    await removeOpenGeneratedTasksForApplication(db, user.id, id);
+  }
   revalidatePath("/dashboard");
 }
 
@@ -200,12 +173,7 @@ const reportAnswerSchema = z.object({
 
 export async function reportAssistantAnswer(input: unknown): Promise<void> {
   const { question, answer, citations } = reportAnswerSchema.parse(input);
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { db, user } = await requireUser();
 
   await insertAnswerReport(db, {
     user_id: user.id,

@@ -1,3 +1,7 @@
+// All user-facing database access lives here — pages, actions, and API routes
+// never build queries inline. Every helper takes a caller-scoped Supabase
+// client, so row-level security (not this module) is the authorization
+// boundary. Admin-only queries live in admin-queries.ts.
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type {
@@ -6,14 +10,10 @@ import type {
   TablesInsert,
 } from "@/lib/db/database.types";
 import type { GeneratedTaskUpsert } from "@/lib/tasks/generate";
+import { unwrap } from "@/lib/db/unwrap";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
 type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
-
-function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {
-  if (result.error) throw new Error(result.error.message);
-  return result.data as T;
-}
 
 // ---------------------------------------------------------- reference data
 
@@ -33,12 +33,6 @@ export async function getQualifications(
   return unwrap(await query);
 }
 
-export async function getUniversities(
-  db: Db,
-): Promise<Tables<"universities">[]> {
-  return unwrap(await db.from("universities").select().order("name"));
-}
-
 // ------------------------------------------------------------------- rules
 
 /** Beta + verified rules — everything RLS exposes to the public. */
@@ -55,21 +49,6 @@ export async function getApprovedCourses(db: Db): Promise<Tables<"courses">[]> {
       .select()
       .eq("review_status", "approved")
       .order("name"),
-  );
-}
-
-/** The user's imported courses (created_by); syncDashboard bridges these into
- *  applications. Courses added from the finder link straight into applications. */
-export async function getMyCourses(
-  db: Db,
-  userId: string,
-): Promise<Tables<"courses">[]> {
-  return unwrap(
-    await db
-      .from("courses")
-      .select()
-      .eq("created_by", userId)
-      .order("created_at", { ascending: false }),
   );
 }
 
@@ -137,6 +116,20 @@ export async function listApplications(
   return unwrap(await db.from("applications").select().eq("user_id", userId));
 }
 
+export async function hasApplicationForCourse(
+  db: Db,
+  userId: string,
+  courseId: string,
+): Promise<boolean> {
+  const { count, error } = await db
+    .from("applications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("course_id", courseId);
+  if (error) throw new Error(error.message);
+  return (count ?? 0) > 0;
+}
+
 export type ApplicationWithCourse = Tables<"applications"> & {
   courses: Tables<"courses"> | null;
 };
@@ -159,7 +152,7 @@ export async function ensureApplication(
   db: Db,
   userId: string,
   courseId: string,
-): Promise<void> {
+): Promise<Tables<"applications">> {
   const { error } = await db
     .from("applications")
     .upsert(
@@ -167,32 +160,13 @@ export async function ensureApplication(
       { onConflict: "user_id,course_id", ignoreDuplicates: true },
     );
   if (error) throw new Error(error.message);
-}
-
-export async function ensureApplications(
-  db: Db,
-  userId: string,
-  courses: Tables<"courses">[],
-): Promise<void> {
-  const rows = courses
-    .filter((course) => course.review_status !== "rejected")
-    .map((course) => ({ user_id: userId, course_id: course.id }));
-  if (rows.length === 0) return;
-  const { error } = await db
-    .from("applications")
-    .upsert(rows, {
-      onConflict: "user_id,course_id",
-      ignoreDuplicates: true,
-    });
-  if (error) throw new Error(error.message);
-}
-
-export async function insertApplication(
-  db: Db,
-  application: TablesInsert<"applications">,
-): Promise<Tables<"applications">> {
   return unwrap(
-    await db.from("applications").insert(application).select().single(),
+    await db
+      .from("applications")
+      .select()
+      .eq("user_id", userId)
+      .eq("course_id", courseId)
+      .single(),
   );
 }
 
@@ -209,6 +183,21 @@ export async function updateApplicationStatus(
       .select()
       .single(),
   );
+}
+
+export async function getApplicationWithCourse(
+  db: Db,
+  userId: string,
+  id: string,
+): Promise<ApplicationWithCourse | null> {
+  return unwrap(
+    await db
+      .from("applications")
+      .select("*, courses(*)")
+      .eq("user_id", userId)
+      .eq("id", id)
+      .maybeSingle(),
+  ) as ApplicationWithCourse | null;
 }
 
 export async function deleteApplicationForCourse(
@@ -235,8 +224,38 @@ export async function listTasks(
       .from("tasks")
       .select()
       .eq("user_id", userId)
+      .eq("generated_active", true)
       .order("due_date", { ascending: true, nullsFirst: false }),
   );
+}
+
+export async function listGeneratedTasksByPrefix(
+  db: Db,
+  userId: string,
+  prefix: string,
+): Promise<Tables<"tasks">[]> {
+  return unwrap(
+    await db
+      .from("tasks")
+      .select()
+      .eq("user_id", userId)
+      .like("task_key", `${prefix}%`),
+  );
+}
+
+export async function hasGeneratedTasksMissingMetadata(
+  db: Db,
+  userId: string,
+): Promise<boolean> {
+  const { count, error } = await db
+    .from("tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("generated_active", true)
+    .not("task_key", "is", null)
+    .or("source_url.is.null,and(application_id.not.is.null,verbatim_due.is.null)");
+  if (error) throw new Error(error.message);
+  return (count ?? 0) > 0;
 }
 
 export async function insertTask(
@@ -304,6 +323,9 @@ export async function setTaskPreferredBucket(
     .eq("id", id)
     .select()
     .single();
+  // PostgREST caches the table schema; right after the preferred_bucket
+  // migration is applied the column can be missing from that cache. Degrade
+  // to a no-op (return the unchanged row) instead of failing the drag.
   if (
     result.error?.message.includes("preferred_bucket") &&
     result.error.message.includes("schema cache")
@@ -346,6 +368,35 @@ export async function deleteStaleGeneratedTasks(
   if (error) throw new Error(error.message);
 }
 
+export async function deactivateGeneratedTasks(
+  db: Db,
+  userId: string,
+  keys: string[],
+): Promise<void> {
+  if (keys.length === 0) return;
+  const { error } = await db
+    .from("tasks")
+    .update({ generated_active: false })
+    .eq("user_id", userId)
+    .in("task_key", keys);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteOpenGeneratedTasksForApplication(
+  db: Db,
+  userId: string,
+  applicationId: string,
+): Promise<void> {
+  const { error } = await db
+    .from("tasks")
+    .delete()
+    .eq("user_id", userId)
+    .eq("application_id", applicationId)
+    .eq("done", false)
+    .not("task_key", "is", null);
+  if (error) throw new Error(error.message);
+}
+
 // ------------------------------------------------------------------- checks
 
 /** Anonymous eligibility check record; returns the shareable id. */
@@ -374,17 +425,47 @@ export async function getCheck(
   );
 }
 
+/**
+ * Atomically claim an anonymous check for the signed-in user (verifies the
+ * owner-token hash and copies the answers into the profile). True on success.
+ */
+export async function claimCheck(
+  db: RpcDb,
+  checkId: string,
+  tokenHash: string,
+): Promise<boolean> {
+  return unwrap(
+    await db.rpc("claim_check", {
+      p_check_id: checkId,
+      p_token_hash: tokenHash,
+    }),
+  );
+}
+
+/**
+ * Whether the current request views a check as its anonymous owner, its
+ * claimed owner, or the public. Falls back to "public" on any error so a
+ * shared result page always renders.
+ */
+export async function getResultViewer(
+  db: RpcDb,
+  checkId: string,
+  tokenHash: string | null,
+): Promise<"anonymous_owner" | "claimed_owner" | "public"> {
+  const { data, error } = await db.rpc("result_viewer", {
+    p_check_id: checkId,
+    // omit the param so the SQL default (null) applies
+    p_token_hash: tokenHash ?? undefined,
+  });
+  if (error) return "public";
+  return data === "anonymous_owner" || data === "claimed_owner"
+    ? data
+    : "public";
+}
+
 // ------------------------------------------------------------------ reports
 
 // No .select() — anonymous reports (user_id null) have no read-back policy.
-export async function insertRuleReport(
-  db: Db,
-  report: TablesInsert<"rule_reports">,
-): Promise<void> {
-  const { error } = await db.from("rule_reports").insert(report);
-  if (error) throw new Error(error.message);
-}
-
 export async function insertAnswerReport(
   db: Db,
   report: TablesInsert<"answer_reports">,
@@ -413,7 +494,7 @@ export async function matchKbChunks(
 }
 
 /** Questions asked since UTC midnight — the daily quota counter.
- * ponytail: UTC day boundary (~5:30am IST reset), fine for a soft quota. */
+ * Trade-off: UTC day boundary (~5:30am IST reset), fine for a soft quota. */
 export async function countTodayAssistantQuestions(
   db: Db,
   userId: string,
