@@ -265,7 +265,7 @@ export async function insertTask(
   return unwrap(await db.from("tasks").insert(task).select().single());
 }
 
-export async function updateManualTask(
+export async function updateTask(
   db: Db,
   userId: string,
   id: string,
@@ -280,23 +280,43 @@ export async function updateManualTask(
       .update(task)
       .eq("user_id", userId)
       .eq("id", id)
-      .is("task_key", null)
+      .eq("generated_active", true)
       .select()
       .single(),
   );
 }
 
-export async function deleteManualTask(
+export async function deleteTask(
   db: Db,
   userId: string,
   id: string,
 ): Promise<void> {
+  const task = unwrap<{ task_key: string | null } | null>(
+    await db
+      .from("tasks")
+      .select("task_key")
+      .eq("user_id", userId)
+      .eq("id", id)
+      .eq("generated_active", true)
+      .maybeSingle(),
+  );
+  if (!task) return;
+
+  if (task.task_key !== null) {
+    const { error } = await db
+      .from("tasks")
+      .update({ generated_active: false })
+      .eq("user_id", userId)
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
   const { error } = await db
     .from("tasks")
     .delete()
     .eq("user_id", userId)
-    .eq("id", id)
-    .is("task_key", null);
+    .eq("id", id);
   if (error) throw new Error(error.message);
 }
 
@@ -350,50 +370,6 @@ export async function upsertGeneratedTasks(
   const { error } = await db
     .from("tasks")
     .upsert(rows, { onConflict: "user_id,task_key" });
-  if (error) throw new Error(error.message);
-}
-
-export async function deleteStaleGeneratedTasks(
-  db: Db,
-  userId: string,
-  staleKeys: string[],
-): Promise<void> {
-  if (staleKeys.length === 0) return;
-  const { error } = await db
-    .from("tasks")
-    .delete()
-    .eq("user_id", userId)
-    .eq("done", false)
-    .in("task_key", staleKeys);
-  if (error) throw new Error(error.message);
-}
-
-export async function deactivateGeneratedTasks(
-  db: Db,
-  userId: string,
-  keys: string[],
-): Promise<void> {
-  if (keys.length === 0) return;
-  const { error } = await db
-    .from("tasks")
-    .update({ generated_active: false })
-    .eq("user_id", userId)
-    .in("task_key", keys);
-  if (error) throw new Error(error.message);
-}
-
-export async function deleteOpenGeneratedTasksForApplication(
-  db: Db,
-  userId: string,
-  applicationId: string,
-): Promise<void> {
-  const { error } = await db
-    .from("tasks")
-    .delete()
-    .eq("user_id", userId)
-    .eq("application_id", applicationId)
-    .eq("done", false)
-    .not("task_key", "is", null);
   if (error) throw new Error(error.message);
 }
 
