@@ -1,11 +1,16 @@
 import { Button } from "@/components/ui/button";
 import type { Json, Tables } from "@/lib/db/database.types";
 import type { ConflictCourse } from "@/lib/db/admin-queries";
+import { deriveCourseTaskCandidates } from "@/lib/tasks/course-tasks";
 import { cn } from "@/lib/utils";
 
 import {
   resolveConflictAction,
+  adoptCourseTaskSourceReviewAction,
+  keepCourseTaskSourceReviewAction,
   reviewCourseAction,
+  retireCourseTaskAction,
+  saveCourseTaskAction,
   updateCourseAction,
 } from "./actions";
 import { statusBadge } from "./admin-shared";
@@ -63,12 +68,124 @@ function CourseEditField({
   );
 }
 
-function CourseEditForm({ course }: { course: Tables<"courses"> }) {
+function CourseTaskForm({
+  course,
+  task,
+}: {
+  course: Tables<"courses">;
+  task: {
+    id?: string;
+    kind: "submission" | "requirement" | "custom";
+    sourceKey: string | null;
+    titleTemplate: string;
+    description: string | null;
+    sourceUrl: string | null;
+    dueMode: "source_deadline" | "fixed_date" | "none";
+    dueDate: string | null;
+    sourceSnapshot: Json | null;
+    sortOrder: number;
+    retiredAt?: string | null;
+  };
+}) {
+  return (
+    <div className="rounded-md border p-2">
+      <form action={saveCourseTaskAction} className="grid gap-2">
+        <input type="hidden" name="id" value={task.id ?? ""} />
+        <input type="hidden" name="course_id" value={course.id} />
+        <input type="hidden" name="kind" value={task.kind} />
+        <input type="hidden" name="source_key" value={task.sourceKey ?? ""} />
+        <input type="hidden" name="source_snapshot" value={JSON.stringify(task.sourceSnapshot)} />
+        <div className="grid gap-2 md:grid-cols-[1fr_100px]">
+          <input name="title_template" defaultValue={task.titleTemplate} className="h-8 rounded border bg-background px-2 text-sm" aria-label="Task title" />
+          <input name="sort_order" type="number" min="1" defaultValue={task.sortOrder} className="h-8 rounded border bg-background px-2 text-sm" aria-label="Task order" />
+        </div>
+        <textarea name="description" defaultValue={task.description ?? ""} rows={2} className="rounded border bg-background p-2 text-sm" placeholder="Notes" />
+        <div className="grid gap-2 md:grid-cols-3">
+          <input name="source_url" type="url" defaultValue={task.sourceUrl ?? ""} className="h-8 rounded border bg-background px-2 text-sm" placeholder="Source URL" />
+          <select name="due_mode" defaultValue={task.dueMode} className="h-8 rounded border bg-background px-2 text-sm">
+            <option value="source_deadline">Official deadline</option>
+            <option value="fixed_date">Fixed date</option>
+            <option value="none">No date</option>
+          </select>
+          <input name="due_date" type="date" defaultValue={task.dueDate ?? ""} className="h-8 rounded border bg-background px-2 text-sm" />
+        </div>
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <span>{task.kind}{task.sourceKey ? ` · ${task.sourceKey}` : ""}</span>
+          <Button type="submit" variant="outline" size="sm">Save task</Button>
+        </div>
+      </form>
+      {task.id && !task.retiredAt ? (
+        <form action={retireCourseTaskAction} className="mt-2 text-right">
+          <input type="hidden" name="id" value={task.id} />
+          <input type="hidden" name="course_id" value={course.id} />
+          <Button type="submit" variant="ghost" size="sm">Retire task</Button>
+        </form>
+      ) : null}
+    </div>
+  );
+}
+
+function CourseTaskEditor({
+  course,
+  definitions,
+}: {
+  course: Tables<"courses">;
+  definitions: Tables<"course_task_definitions">[];
+}) {
+  const existingKeys = new Set(definitions.map((definition) => definition.source_key));
+  const candidates = deriveCourseTaskCandidates(course).filter(
+    (candidate) => !existingKeys.has(candidate.sourceKey),
+  );
+  const displayed = definitions.map((definition) => ({
+    id: definition.id,
+    kind: definition.kind,
+    sourceKey: definition.source_key,
+    titleTemplate: definition.title_template,
+    description: definition.description,
+    sourceUrl: definition.source_url,
+    dueMode: definition.due_mode,
+    dueDate: definition.due_date,
+    sourceSnapshot: definition.source_snapshot,
+    sortOrder: definition.sort_order,
+    retiredAt: definition.retired_at,
+  }));
+
+  return (
+    <section className="mt-3 grid gap-2 border-t pt-3">
+      <div>
+        <h4 className="text-sm font-semibold">Course tasks</h4>
+        <p className="text-xs text-muted-foreground">Generated deadline and requirement tasks, plus custom tasks. Pending-course edits publish on approval.</p>
+      </div>
+      {displayed.map((task) => <CourseTaskForm key={task.id} course={course} task={task} />)}
+      {candidates.map((candidate, index) => (
+        <CourseTaskForm key={candidate.sourceKey} course={course} task={{
+          kind: candidate.kind,
+          sourceKey: candidate.sourceKey,
+          titleTemplate: candidate.titleTemplate,
+          description: candidate.description,
+          sourceUrl: candidate.sourceUrl,
+          dueMode: candidate.dueMode,
+          dueDate: null,
+          sourceSnapshot: candidate.sourceSnapshot as Json,
+          sortOrder: 30 + definitions.length + index,
+        }} />
+      ))}
+      <CourseTaskForm course={course} task={{
+        kind: "custom", sourceKey: null, titleTemplate: "", description: null,
+        sourceUrl: null, dueMode: "none", dueDate: null, sourceSnapshot: null,
+        sortOrder: 30 + definitions.length + candidates.length,
+      }} />
+    </section>
+  );
+}
+
+function CourseEditForm({ course, definitions }: { course: Tables<"courses">; definitions: Tables<"course_task_definitions">[] }) {
   // Per-field-group extraction method — AI-filled groups need human eyes.
   const groups = (course.field_extraction ?? {}) as Record<string, string>;
   const ai = (group: string) => groups[group] === "ai";
 
   return (
+    <>
     <form action={updateCourseAction} className="mt-3 grid gap-3">
       <input type="hidden" name="id" value={course.id} />
       <label className="grid gap-1 text-[11px] font-medium uppercase text-muted-foreground">
@@ -157,10 +274,12 @@ function CourseEditForm({ course }: { course: Tables<"courses"> }) {
         </Button>
       </div>
     </form>
+    <CourseTaskEditor course={course} definitions={definitions} />
+    </>
   );
 }
 
-export function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
+export function CourseQueue({ courses, definitionsByCourse }: { courses: Tables<"courses">[]; definitionsByCourse: Map<string, Tables<"course_task_definitions">[]> }) {
   return (
     <section className="rounded-lg border bg-card p-4">
       <div className="flex items-baseline justify-between gap-3">
@@ -208,7 +327,7 @@ export function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
               </div>
             </div>
 
-            <CourseEditForm course={course} />
+            <CourseEditForm course={course} definitions={definitionsByCourse.get(course.id) ?? []} />
           </article>
         ))}
       </div>
@@ -218,6 +337,61 @@ export function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
           No pending courses need review.
         </p>
       )}
+    </section>
+  );
+}
+
+export function CourseTaskLibrary({
+  courses,
+  definitionsByCourse,
+}: {
+  courses: Tables<"courses">[];
+  definitionsByCourse: Map<string, Tables<"course_task_definitions">[]>;
+}) {
+  return (
+    <section className="rounded-lg border bg-card p-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold">Approved course task library</h2>
+          <p className="text-xs text-muted-foreground">Task edits publish to all students currently planning that course.</p>
+        </div>
+        <span className="text-xs text-muted-foreground">{courses.length} approved</span>
+      </div>
+      <div className="mt-3 grid gap-3">
+        {courses.map((course) => (
+          <article key={course.id} className="rounded-lg border p-3">
+            <h3 className="text-sm font-semibold">{course.name ?? "Untitled course"}</h3>
+            <p className="text-xs text-muted-foreground">{course.university_name ?? "University not extracted"}</p>
+            <CourseTaskEditor course={course} definitions={definitionsByCourse.get(course.id) ?? []} />
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function CourseTaskSourceReviewQueue({
+  reviews,
+}: {
+  reviews: Tables<"course_task_source_reviews">[];
+}) {
+  if (reviews.length === 0) return null;
+  return (
+    <section className="rounded-lg border bg-card p-4">
+      <h2 className="text-sm font-semibold">Official source task changes</h2>
+      <p className="mt-1 text-xs text-muted-foreground">Students keep the current task until you adopt or keep each source change.</p>
+      <div className="mt-3 grid gap-2">
+        {reviews.map((review) => (
+          <article key={review.id} className="rounded border p-3 text-sm">
+            <p><strong>{review.change_type}</strong> · {review.candidate_key}</p>
+            <pre className="mt-2 overflow-auto rounded bg-muted p-2 text-xs">{JSON.stringify({ old: review.old_snapshot, proposed: review.new_snapshot }, null, 2)}</pre>
+            <div className="mt-2 flex gap-2">
+              <form action={adoptCourseTaskSourceReviewAction}><input type="hidden" name="id" value={review.id} /><Button type="submit" size="sm">Adopt source change</Button></form>
+              <form action={keepCourseTaskSourceReviewAction}><input type="hidden" name="id" value={review.id} /><Button type="submit" size="sm" variant="outline">Keep current task</Button></form>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -260,7 +434,7 @@ export function ConflictQueue({ conflicts }: { conflicts: ConflictCourse[] }) {
                     >
                       {conflict.old_course.source_url}
                     </a>
-                    <CourseEditForm course={conflict.old_course} />
+                    <CourseEditForm course={conflict.old_course} definitions={[]} />
                   </>
                 ) : (
                   <p className="mt-2 text-sm text-muted-foreground">
@@ -284,7 +458,7 @@ export function ConflictQueue({ conflicts }: { conflicts: ConflictCourse[] }) {
                 >
                   {conflict.source_url}
                 </a>
-                <CourseEditForm course={conflict} />
+                <CourseEditForm course={conflict} definitions={[]} />
               </div>
             </div>
 

@@ -2,9 +2,14 @@
 // GeneratedTask lists, plus deadline parsing and Now/Next/Later bucketing.
 // Zero I/O — materialize.ts writes the output to the DB, view.ts renders it.
 // Task identity is the `key` (`rule:<id>:step:<n>`, `app:<id>:submit`,
-// `app:<id>:req:<hash>`). Materialization adds each key once; the resulting
-// task is then owned entirely by the user.
+// `app:<id>:req:<hash>`); regeneration reconciles by key so user state
+// (done, preferred bucket) survives.
 import type { Citation, Result, Term } from "@/lib/engine/evaluate";
+import type { Json } from "@/lib/db/database.types";
+import {
+  renderCourseTaskTitle,
+  type CourseTaskDefinition,
+} from "@/lib/tasks/course-tasks";
 
 export type GeneratedTask = {
   key: string;
@@ -14,6 +19,9 @@ export type GeneratedTask = {
   order: number;
   applicationId: string | null;
   ruleId: string | null;
+  courseTaskDefinitionId: string | null;
+  adminSnapshot: Json | null;
+  definitionRevision: number | null;
   source: { url: string; verifiedAt: string | null } | null;
 };
 
@@ -26,6 +34,7 @@ export type CourseForTaskGeneration = {
   source_url: string;
   created_at: string;
   review_status: string;
+  task_definitions?: CourseTaskDefinition[];
 };
 
 export type ApplicationForTaskGeneration = {
@@ -54,6 +63,10 @@ export type ExistingGeneratedTask = {
   generated_from_rule_id: string | null;
   done: boolean;
   generated_active: boolean;
+  course_task_definition_id: string | null;
+  admin_snapshot: unknown;
+  definition_revision: number | null;
+  has_personal_edits: boolean;
 };
 
 export type GeneratedTaskUpsert = {
@@ -68,6 +81,9 @@ export type GeneratedTaskUpsert = {
   application_id: string | null;
   generated_from_rule_id: string | null;
   generated_active: boolean;
+  course_task_definition_id: string | null;
+  admin_snapshot: Json | null;
+  definition_revision: number | null;
 };
 
 const MONTHS: Record<string, number> = {
@@ -333,6 +349,9 @@ export function generateGlobalTasks(result: Result | null): GeneratedTask[] {
         order: step.order,
         applicationId: null,
         ruleId: step.ruleId,
+        courseTaskDefinitionId: null,
+        adminSnapshot: null,
+        definitionRevision: null,
         source: citation
           ? { url: citation.sourceUrl, verifiedAt: citation.verifiedAt }
           : null,
@@ -352,8 +371,45 @@ export function generateCourseTasks(
 
   for (const application of applications) {
     const course = application.course;
-    if (!course || course.review_status === "rejected") continue;
+    if (!course || course.review_status !== "approved") continue;
     if (application.status === "applied" || application.status === "admitted") {
+      continue;
+    }
+
+    const definitions = course.task_definitions;
+    if (definitions) {
+      for (const definition of definitions) {
+        if (definition.retiredAt) continue;
+        const snapshot = definition.sourceSnapshot as { deadlines?: unknown } | null;
+        const deadlineLines = snapshot ? asStrings(snapshot.deadlines) : [];
+        const selected = definition.dueMode === "source_deadline"
+          ? selectSubmissionDeadline(deadlineLines, todayIso, intake)
+          : { date: definition.dueDate, verbatim: definition.dueDate };
+        const title = renderCourseTaskTitle(definition.titleTemplate, courseLabel(course));
+        const adminSnapshot = {
+          title,
+          description: definition.description,
+          source_url: definition.sourceUrl,
+          due_date: selected.date,
+          verbatim_due: selected.verbatim,
+          sort_order: definition.sortOrder,
+        };
+        generated.push({
+          key: `app:${application.id}:course-task:${definition.id}`,
+          title,
+          dueDate: selected.date,
+          verbatimDue: selected.verbatim,
+          order: definition.sortOrder,
+          applicationId: application.id,
+          ruleId: null,
+          courseTaskDefinitionId: definition.id,
+          adminSnapshot,
+          definitionRevision: definition.revision,
+          source: definition.sourceUrl
+            ? { url: definition.sourceUrl, verifiedAt: course.created_at }
+            : null,
+        });
+      }
       continue;
     }
 
@@ -372,6 +428,9 @@ export function generateCourseTasks(
         order: 30,
         applicationId: application.id,
         ruleId: null,
+        courseTaskDefinitionId: null,
+        adminSnapshot: null,
+        definitionRevision: null,
         source,
       });
     }
@@ -385,6 +444,9 @@ export function generateCourseTasks(
         order: 28,
         applicationId: application.id,
         ruleId: null,
+        courseTaskDefinitionId: null,
+        adminSnapshot: null,
+        definitionRevision: null,
         source,
       });
     }
@@ -462,13 +524,14 @@ export function prepareGeneratedTaskMaterialization(
   existing: ExistingGeneratedTask[],
 ): {
   upsertRows: GeneratedTaskUpsert[];
+  staleOpenKeysToDelete: string[];
+  staleDoneKeysToDeactivate: string[];
 } {
-  const existingKeys = new Set(
-    existing.flatMap((task) => (task.task_key ? [task.task_key] : [])),
+  const desiredKeys = new Set(desired.map((task) => task.key));
+  const existingByKey = new Map(
+    existing.flatMap((task) => (task.task_key ? [[task.task_key, task]] : [])),
   );
-  const upsertRows = desired.flatMap((task) => {
-    if (existingKeys.has(task.key)) return [];
-    return [{
+  const desiredRows = desired.map((task) => ({
     user_id: userId,
     task_key: task.key,
     title: task.title,
@@ -479,10 +542,34 @@ export function prepareGeneratedTaskMaterialization(
     source_verified_at: task.source?.verifiedAt ?? null,
     application_id: task.applicationId,
     generated_from_rule_id: task.ruleId,
+    course_task_definition_id: task.courseTaskDefinitionId,
+    admin_snapshot: task.adminSnapshot,
+    definition_revision: task.definitionRevision,
     generated_active: true,
-    }];
-  });
+  }));
   return {
-    upsertRows,
+    upsertRows: desiredRows.filter((row) => {
+      const existingRow = existingByKey.get(row.task_key);
+      if (!existingRow) return true;
+      // Existing rows are user-owned after first materialization. Admin
+      // definition fan-out is handled by the scoped SQL synchronizer; render
+      // or profile materialization must never overwrite a user's copy.
+      return false;
+    }),
+    staleOpenKeysToDelete: existing.flatMap((task) =>
+      task.task_key !== null && !task.done && !desiredKeys.has(task.task_key) &&
+      !(task.course_task_definition_id !== null && task.has_personal_edits)
+        ? [task.task_key]
+        : [],
+    ),
+    staleDoneKeysToDeactivate: existing.flatMap((task) =>
+      task.task_key !== null &&
+      task.done &&
+      task.generated_active &&
+      !desiredKeys.has(task.task_key) &&
+      !(task.course_task_definition_id !== null && task.has_personal_edits)
+        ? [task.task_key]
+        : [],
+    ),
   };
 }

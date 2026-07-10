@@ -7,12 +7,15 @@ import type {
   Database,
   Enums,
   Tables,
+  TablesInsert,
   TablesUpdate,
 } from "@/lib/db/database.types";
 import { EngineRuleSchema } from "@/lib/engine/evaluate";
+import type { CourseTaskDefinition } from "@/lib/tasks/course-tasks";
 import { unwrap } from "@/lib/db/unwrap";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
+type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
 
 export type AdminRuleFilters = {
   country?: string;
@@ -183,6 +186,130 @@ export async function updateAdminCourse(
   return unwrap(
     await db.from("courses").update(course).eq("id", id).select().single(),
   );
+}
+
+export async function getAdminCourse(db: Db, id: string): Promise<Tables<"courses">> {
+  return unwrap(await db.from("courses").select().eq("id", id).single());
+}
+
+export async function listAdminCourses(db: Db): Promise<Tables<"courses">[]> {
+  return unwrap(
+    await db
+      .from("courses")
+      .select()
+      .neq("review_status", "rejected")
+      .order("updated_at", { ascending: false }),
+  );
+}
+
+export async function listAdminCourseTaskDefinitions(
+  db: Db,
+  courseId: string,
+): Promise<Tables<"course_task_definitions">[]> {
+  return unwrap(
+    await db
+      .from("course_task_definitions")
+      .select()
+      .eq("course_id", courseId)
+      .order("sort_order"),
+  );
+}
+
+export async function insertAdminCourseTaskDefinition(
+  db: Db,
+  definition: TablesInsert<"course_task_definitions">,
+): Promise<Tables<"course_task_definitions">> {
+  return unwrap(
+    await db.from("course_task_definitions").insert(definition).select().single(),
+  );
+}
+
+export async function updateAdminCourseTaskDefinition(
+  db: Db,
+  id: string,
+  definition: TablesUpdate<"course_task_definitions">,
+): Promise<Tables<"course_task_definitions">> {
+  return unwrap(
+    await db
+      .from("course_task_definitions")
+      .update(definition)
+      .eq("id", id)
+      .select()
+      .single(),
+  );
+}
+
+export async function syncAdminCourseTaskDefinitions(
+  db: RpcDb,
+  courseId: string,
+): Promise<void> {
+  const { error } = await db.rpc("sync_course_task_definitions", {
+    p_course_id: courseId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function createAdminCourseTaskSourceReview(
+  db: Db,
+  review: TablesInsert<"course_task_source_reviews">,
+): Promise<void> {
+  const { error } = await db
+    .from("course_task_source_reviews")
+    .upsert(review, { onConflict: "course_id,candidate_key,status", ignoreDuplicates: true });
+  if (error) throw new Error(error.message);
+}
+
+export async function listPendingCourseTaskSourceReviews(
+  db: Db,
+): Promise<Tables<"course_task_source_reviews">[]> {
+  return unwrap(
+    await db
+      .from("course_task_source_reviews")
+      .select()
+      .eq("status", "pending")
+      .order("created_at"),
+  );
+}
+
+export async function getAdminCourseTaskSourceReview(
+  db: Db,
+  id: string,
+): Promise<Tables<"course_task_source_reviews">> {
+  return unwrap(
+    await db.from("course_task_source_reviews").select().eq("id", id).single(),
+  );
+}
+
+export async function resolveAdminCourseTaskSourceReview(
+  db: Db,
+  id: string,
+  status: "adopted" | "kept",
+): Promise<void> {
+  const { error } = await db
+    .from("course_task_source_reviews")
+    .update({ status, resolved_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export function toCourseTaskDefinition(
+  row: Tables<"course_task_definitions">,
+): CourseTaskDefinition {
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    kind: row.kind,
+    sourceKey: row.source_key,
+    titleTemplate: row.title_template,
+    description: row.description,
+    sourceUrl: row.source_url,
+    dueMode: row.due_mode,
+    dueDate: row.due_date,
+    sortOrder: row.sort_order,
+    sourceSnapshot: row.source_snapshot,
+    revision: row.revision,
+    retiredAt: row.retired_at,
+  };
 }
 
 export async function listRecentAdminAuditEvents(

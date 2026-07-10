@@ -3,10 +3,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ThemeToggle } from "@/components/app/theme-toggle";
-import { getCourseById } from "@/lib/db/queries";
+import {
+  getCourseById,
+  listActiveCourseTaskDefinitions,
+  listApplications,
+  listTasks,
+} from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
 
 import styles from "./course.module.css";
+import { CourseTaskList } from "./course-task-list";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +56,18 @@ export default async function CoursePage({
   const requirements = asStrings(course.requirements);
   const tuition = typeof course.tuition === "string" ? course.tuition : null;
   const host = new URL(course.source_url).hostname;
+  const definitions = await listActiveCourseTaskDefinitions(db, course.id);
+  const { data: auth } = await db.auth.getUser();
+  let myTasks: Awaited<ReturnType<typeof listTasks>> | null = null;
+  if (auth.user) {
+    const applications = await listApplications(db, auth.user.id);
+    const application = applications.find((item) => item.course_id === course.id);
+    if (application) {
+      myTasks = (await listTasks(db, auth.user.id)).filter(
+        (task) => task.application_id === application.id && task.course_task_definition_id !== null,
+      );
+    }
+  }
 
   return (
     <div className={styles.shell}>
@@ -166,6 +184,13 @@ export default async function CoursePage({
             </ul>
           )}
         </section>
+
+        <CourseTaskList
+          definitions={definitions}
+          myTasks={myTasks}
+          courseLabel={course.university_name ?? course.name ?? "this university"}
+          styles={styles}
+        />
       </div>
     </div>
   );

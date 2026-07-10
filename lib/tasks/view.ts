@@ -27,7 +27,7 @@ type Db = Pick<SupabaseClient<Database>, "from">;
 export type DashboardTask = {
   id: string;
   key: string;
-  kind: "generated" | "manual";
+  kind: "generated" | "course_task" | "manual";
   title: string;
   description: string | null;
   done: boolean;
@@ -38,6 +38,8 @@ export type DashboardTask = {
   applicationId: string | null;
   source: { url: string; verifiedAt: string | null } | null;
   scope: "global" | "university";
+  adminChangeState: "current" | "update_pending" | "removal_pending";
+  adminSnapshot: Record<string, unknown> | null;
 };
 
 export type RailApplication = {
@@ -85,10 +87,12 @@ function preferredBucket(
 function displayTasks(dbTasks: Tables<"tasks">[]): DashboardTask[] {
   return dbTasks.map((task) => {
     const generated = task.task_key !== null;
+    const courseTask = task.course_task_definition_id !== null;
+    const snapshot = task.admin_snapshot;
     return {
       id: task.id,
       key: task.task_key ?? `manual:${task.id}`,
-      kind: generated ? "generated" : "manual",
+      kind: courseTask ? "course_task" : generated ? "generated" : "manual",
       title: task.title,
       description: task.description,
       done: task.done,
@@ -101,6 +105,11 @@ function displayTasks(dbTasks: Tables<"tasks">[]): DashboardTask[] {
         ? { url: task.source_url, verifiedAt: task.source_verified_at }
         : null,
       scope: task.application_id ? "university" : "global",
+      adminChangeState: task.admin_change_state,
+      adminSnapshot:
+        snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
+          ? snapshot as Record<string, unknown>
+          : null,
     };
   });
 }

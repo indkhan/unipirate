@@ -15,6 +15,8 @@ import {
   setTaskDone,
   updateTask as updateTaskRow,
   updateApplicationStatus,
+  updateCourseTaskAssignment as updateCourseTaskAssignmentRow,
+  resolveCourseTaskAssignment,
 } from "@/lib/db/queries";
 import { materializeCourseTasksForApplication } from "@/lib/tasks/materialize";
 
@@ -127,6 +129,32 @@ export async function updateTask(input: unknown): Promise<void> {
     due_date: task.dueDate,
     application_id: task.applicationId,
   });
+  revalidatePath("/dashboard");
+}
+
+const courseTaskEditSchema = taskSchema.extend({ id: z.string().uuid() });
+
+export async function updateCourseTask(input: unknown): Promise<void> {
+  const task = courseTaskEditSchema.parse(input);
+  const { db, user } = await requireUser();
+  await updateCourseTaskAssignmentRow(db, user.id, task.id, {
+    title: task.title,
+    description: task.description,
+    source_url: task.sourceUrl,
+    due_date: task.dueDate,
+  });
+  revalidatePath("/dashboard");
+}
+
+const courseTaskResolutionSchema = z.object({
+  id: z.string().uuid(),
+  resolution: z.enum(["adopt", "keep", "remove", "manual"]),
+});
+
+export async function resolveCourseTaskUpdate(input: unknown): Promise<void> {
+  const { id, resolution } = courseTaskResolutionSchema.parse(input);
+  const { db, user } = await requireUser();
+  await resolveCourseTaskAssignment(db, user.id, id, resolution);
   revalidatePath("/dashboard");
 }
 

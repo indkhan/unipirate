@@ -6,11 +6,7 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 
 import type { DashboardTask, RailApplication } from "@/lib/tasks/view";
 
-import {
-  createTask,
-  deleteTask,
-  updateTask,
-} from "./actions";
+import { createTask, deleteTask, updateTask, updateCourseTask } from "./actions";
 import styles from "./dashboard.module.css";
 
 function applicationLabel(application: RailApplication): string {
@@ -82,7 +78,11 @@ function TaskDialog({
                 applicationId: applicationId || null,
               };
               if (isEdit) {
-                await updateTask({ id: initialTask.id, ...payload });
+                if (initialTask.kind === "course_task") {
+                  await updateCourseTask({ id: initialTask.id, ...payload });
+                } else {
+                  await updateTask({ id: initialTask.id, ...payload });
+                }
               } else {
                 await createTask(payload);
               }
@@ -184,18 +184,20 @@ export function TaskActions({
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
 
+  if (task.kind !== "manual" && task.kind !== "course_task") return null;
+
   return (
     <>
       <div className={styles.taskActionRow} aria-label="Task actions">
-        <button
+        {task.kind === "manual" ? <button
           className={styles.taskIconButton}
           type="button"
           aria-label="Edit task"
           onClick={() => setEditing(true)}
         >
           <Pencil size={14} aria-hidden />
-        </button>
-        <button
+        </button> : null}
+        {task.kind === "manual" ? <button
           className={styles.taskIconButton}
           type="button"
           aria-label="Delete task"
@@ -208,7 +210,7 @@ export function TaskActions({
           }}
         >
           <Trash2 size={14} aria-hidden />
-        </button>
+        </button> : null}
       </div>
       {editing ? (
         <TaskDialog
