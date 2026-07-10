@@ -60,7 +60,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Script id="theme-init" strategy="beforeInteractive">
-          {`(() => { const key = "unipirate.theme"; const saved = localStorage.getItem(key); const dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches; document.documentElement.classList.toggle("dark", dark); })()`}
+          {`(() => { const key = "unipirate.theme"; const saved = localStorage.getItem(key); const dark = saved === "dark"; document.documentElement.classList.toggle("dark", dark); })()`}
         </Script>
         <PostHogProvider>
           {children}
