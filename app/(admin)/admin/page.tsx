@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ThemeToggle } from "@/components/app/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { requireAdmin } from "@/lib/auth/session";
 import {
@@ -62,9 +63,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             Verify rules, review extracted courses, and inspect audit history.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/dashboard">Back to app</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button asChild variant="outline" size="sm">
+            <Link href="/dashboard">Back to app</Link>
+          </Button>
+        </div>
       </header>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_520px]">

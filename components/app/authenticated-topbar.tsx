@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { AssistantSidebar } from "./assistant-sidebar";
 import styles from "./authenticated-topbar.module.css";
+import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
 type AuthenticatedTopbarProps = {
@@ -26,6 +27,7 @@ export function AuthenticatedTopbar({
       <div className={styles.actions}>
         {children}
         <AssistantSidebar initialUsed={initialAssistantUsed} />
+        <ThemeToggle />
         <UserMenu email={email} isAdmin={isAdmin} />
       </div>
     </div>

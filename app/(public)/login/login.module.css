@@ -1,7 +1,7 @@
 .page {
   min-height: 100dvh;
   background:
-    linear-gradient(180deg, rgba(233, 238, 250, 0.9), rgba(242, 244, 247, 0) 360px),
+    linear-gradient(180deg, var(--route-blue-tint), transparent 360px),
     var(--paper);
   color: var(--ink);
   font-family: var(--font-body);
@@ -9,7 +9,7 @@
 
 .nav {
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--surface);
   backdrop-filter: blur(16px);
 }
 
@@ -38,6 +38,12 @@
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
+}
+
+.navActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .shell {

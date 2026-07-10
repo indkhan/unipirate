@@ -539,7 +539,7 @@
 
 .tagGlobal {
   background: var(--ink);
-  color: var(--ink-inverse);
+  color: var(--paper);
 }
 
 .tagUniversity {

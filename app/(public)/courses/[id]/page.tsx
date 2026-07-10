@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ThemeToggle } from "@/components/app/theme-toggle";
 import { getCourseById } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
 
@@ -57,7 +58,10 @@ export default async function CoursePage({
           <Link className={styles.brand} href="/">
             UniPirate
           </Link>
-          <span className={styles.meta}>Course facts · from the source</span>
+          <div className={styles.headerActions}>
+            <span className={styles.meta}>Course facts · from the source</span>
+            <ThemeToggle />
+          </div>
         </header>
 
         {course.review_status !== "approved" ? (
