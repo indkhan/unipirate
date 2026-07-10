@@ -28,6 +28,22 @@ const PATH_LABELS: Record<Result["path"], string> = {
   unknown: "Your admission route still needs confirmation.",
 };
 
+const BOARD_LABELS: Record<string, string> = {
+  cbse: "CBSE",
+  cisce: "CISCE",
+  state_board: "State board",
+  fsc: "FSc/HSSC",
+  tawjihiyah: "Tawjihiyah",
+  private_school: "Private-school certificate",
+};
+
+const CURRICULUM_LABELS: Record<Profile["curriculumType"], string> = {
+  national: "National board",
+  ib: "IB Diploma",
+  gce: "GCE A-Levels",
+  other: "Other curriculum",
+};
+
 function flagLabel(
   name: string,
   value: Result["aps"],
@@ -108,9 +124,24 @@ export function visibleUnknowns(result: Result, profile: Profile): string[] {
 }
 
 export function buildRoute(result: Result): RouteStation[] {
+  if (result.path === "unknown") {
+    return [
+      { label: "Confirm eligibility", state: "current" },
+      { label: "Applications", state: "todo" },
+      { label: "Visa", state: "todo" },
+      { label: "Germany", state: "todo" },
+    ];
+  }
+  if (result.path === "insufficient") {
+    return [
+      { label: "Review alternatives", state: "current" },
+      { label: "Applications", state: "todo" },
+      { label: "Visa", state: "todo" },
+      { label: "Germany", state: "todo" },
+    ];
+  }
+
   const pending: string[] = [];
-  if (result.path === "unknown") pending.push("Confirm eligibility");
-  if (result.path === "insufficient") pending.push("Review alternatives");
   if (result.path === "studienkolleg") pending.push("Studienkolleg");
   if (result.aps === "required") pending.push("APS");
   if (result.testAS === "required") pending.push("TestAS");
@@ -146,22 +177,24 @@ export function countryLabel(profile: Profile): string {
 
 export function profileSummary(profile: Profile): string {
   const parts = [
-    profile.board?.toUpperCase(),
+    profile.targetDegree === "master" ? "Master's applicant" : undefined,
+    profile.board ? (BOARD_LABELS[profile.board] ?? profile.board) : undefined,
     profile.schoolGradePercent !== undefined
       ? `${profile.schoolGradePercent}%`
       : undefined,
-    !profile.board ? profile.curriculumType.toUpperCase() : undefined,
+    profile.targetDegree !== "master" && !profile.board
+      ? CURRICULUM_LABELS[profile.curriculumType]
+      : undefined,
   ];
   return parts.filter(Boolean).join(" · ");
 }
 
 export function intakeLabel(profile: Profile): string | null {
   if (!profile.intake) return null;
-  const { term, year } = profile.intake;
-  // German winter semesters span two years — "Winter 2026/27", matching the
-  // intake options in the checker.
-  return term === "winter"
-    ? `Winter ${year}/${String(year + 1).slice(2)}`
-    : `Summer ${year}`;
+  if (profile.intake.term === "winter") {
+    const nextYear = String((profile.intake.year + 1) % 100).padStart(2, "0");
+    return `Winter ${profile.intake.year}/${nextYear}`;
+  }
+  return `Summer ${profile.intake.year}`;
 }
 

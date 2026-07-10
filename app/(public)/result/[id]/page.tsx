@@ -32,6 +32,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const ResultIdSchema = z.string().uuid();
+
 export const metadata = {
   title: "Your result — UniPirate",
 };
@@ -50,26 +52,30 @@ export default async function ResultPage({
   searchParams: Promise<{ claim?: string }>;
 }) {
   const { id } = await params;
-  // Mangled share links (truncated copy/paste) must 404, not hit Postgres
-  // with a non-uuid and 500.
-  if (!z.string().uuid().safeParse(id).success) notFound();
+  const parsedId = ResultIdSchema.safeParse(id);
+  if (!parsedId.success) notFound();
   const shouldClaim = (await searchParams).claim === "1";
   const db = await createClient();
   const {
     data: { user },
   } = await db.auth.getUser();
-  const check = await getCheck(db, id);
+  const check = await getCheck(db, parsedId.data);
   if (!check) notFound();
 
   const result = check.result as unknown as Result;
   const profile = check.profile as unknown as Profile;
-  const viewer = await viewerFor(id);
-  const resultDate = formatDate(check.created_at);
+  const viewer = await viewerFor(parsedId.data);
+  const resultDate = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(check.created_at));
 
   return (
     <main className={styles.page}>
       <ResultAnalytics
-        checkId={id}
+        checkId={parsedId.data}
         viewer={viewer}
         country={profile.certificateCountry ?? profile.nationality ?? null}
         path={result.path}
@@ -87,7 +93,7 @@ export default async function ResultPage({
             ) : (
               <Link
                 className={styles.dashboardLink}
-                href={`/login?next=${encodeURIComponent(`/result/${id}?claim=1`)}`}
+                href={`/login?next=${encodeURIComponent(`/result/${parsedId.data}?claim=1`)}`}
               >
                 Sign in
               </Link>
@@ -95,7 +101,7 @@ export default async function ResultPage({
           </div>
         </header>
 
-        {shouldClaim && <ClaimOnReturn checkId={id} />}
+        {shouldClaim && <ClaimOnReturn checkId={parsedId.data} />}
 
         {(viewer === "public" || isBetaCountry(profile)) && (
           <div className={styles.banners}>
@@ -117,8 +123,8 @@ export default async function ResultPage({
           <div className={styles.secondary}>
             <DocumentsCard result={result} viewer={viewer} />
             <TimelineCard profile={profile} />
-            <ShareControls checkId={id} />
-            <ConversionCard checkId={id} viewer={viewer} />
+            <ShareControls checkId={parsedId.data} />
+            <ConversionCard checkId={parsedId.data} viewer={viewer} />
           </div>
         </div>
 

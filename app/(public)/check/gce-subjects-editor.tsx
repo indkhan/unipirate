@@ -1,13 +1,24 @@
 "use client";
 
 import styles from "./check.module.css";
-import { GCE_GRADES, GCE_SUBJECTS, type GceSubjectAnswer } from "./steps";
+import {
+  GCE_GRADES,
+  GCE_SUBJECTS,
+  hasDuplicateGceSubjects,
+  type GceSubjectAnswer,
+} from "./steps";
 
 const emptySubject: GceSubjectAnswer = {
   subjectId: "mathematics",
   level: "AL",
   grade: "A",
 };
+
+function nextSubject(subjects: GceSubjectAnswer[]): GceSubjectAnswer {
+  const used = new Set(subjects.map((subject) => subject.subjectId));
+  const subject = GCE_SUBJECTS.find((candidate) => !used.has(candidate.id));
+  return { ...emptySubject, subjectId: subject?.id ?? emptySubject.subjectId };
+}
 
 export function GceSubjectsEditor({
   subjects,
@@ -35,7 +46,14 @@ export function GceSubjectsEditor({
               }}
             >
               {GCE_SUBJECTS.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option
+                  disabled={subjects.some(
+                    (subject, subjectIndex) =>
+                      subjectIndex !== i && subject.subjectId === c.id,
+                  )}
+                  key={c.id}
+                  value={c.id}
+                >
                   {c.label}
                 </option>
               ))}
@@ -86,10 +104,14 @@ export function GceSubjectsEditor({
       <button
         type="button"
         className={styles.addBtn}
-        onClick={() => onChange([...subjects, { ...emptySubject }])}
+        disabled={subjects.length >= GCE_SUBJECTS.length}
+        onClick={() => onChange([...subjects, nextSubject(subjects)])}
       >
         + Add {subjects.length === 0 ? "a subject" : "another subject"}
       </button>
+      {hasDuplicateGceSubjects(subjects) && (
+        <p className={styles.fieldError}>Add each subject only once.</p>
+      )}
     </div>
   );
 }

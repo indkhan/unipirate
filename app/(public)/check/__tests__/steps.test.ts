@@ -10,6 +10,7 @@ import { evaluate } from "@/lib/engine/evaluate";
 import {
   AnswersSchema,
   buildProfile,
+  hasDuplicateGceSubjects,
   isAnswered,
   visibleSteps,
   withAnswer,
@@ -134,25 +135,32 @@ describe("visibleSteps", () => {
     ).toBe(false);
   });
 
-  it("blocks Continue on out-of-range marks instead of failing at submit", () => {
-    expect(isAnswered(p1Answers, "schoolGradePercent")).toBe(true);
+  it("rejects impossible school percentages before submission", () => {
     expect(
-      isAnswered(
-        { ...p1Answers, schoolGradePercent: 150 },
-        "schoolGradePercent",
-      ),
+      isAnswered({ ...p1Answers, schoolGradePercent: 150 }, "schoolGradePercent"),
     ).toBe(false);
     expect(
-      isAnswered(
-        { ...p1Answers, schoolGradePercent: -5 },
-        "schoolGradePercent",
-      ),
+      isAnswered({ ...p1Answers, schoolGradePercent: -1 }, "schoolGradePercent"),
     ).toBe(false);
     expect(
-      isAnswered(
-        { ...p1Answers, schoolGradePercent: undefined },
-        "schoolGradePercent",
-      ),
+      AnswersSchema.safeParse({ ...p1Answers, schoolGradePercent: 150 })
+        .success,
+    ).toBe(false);
+  });
+
+  it("does not count duplicate GCE subjects as a complete answer", () => {
+    const duplicateSubjects = [
+      { subjectId: "mathematics", level: "AL", grade: "A" },
+      { subjectId: "mathematics", level: "AL", grade: "B" },
+    ] satisfies Answers["gceSubjects"];
+
+    expect(hasDuplicateGceSubjects(duplicateSubjects)).toBe(true);
+    expect(
+      isAnswered({ ...p11Answers, gceSubjects: duplicateSubjects }, "gceSubjects"),
+    ).toBe(false);
+    expect(
+      AnswersSchema.safeParse({ ...p11Answers, gceSubjects: duplicateSubjects })
+        .success,
     ).toBe(false);
   });
 });

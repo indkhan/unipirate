@@ -80,19 +80,59 @@ export function LoginForm({
     setConfirmPassword("");
   }
 
-  function validatePasswords() {
-    if (!showPassword) return true;
-    if (password.length < 6) {
-      setTone("error");
-      setMessage("Use at least 6 characters for your password.");
+  function setErrorMessage(nextMessage: string) {
+    setTone("error");
+    setMessage(nextMessage);
+  }
+
+  function validateEmail() {
+    if (!showEmail) return true;
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrorMessage("Enter your email address.");
       return false;
     }
-    if (showConfirmPassword && password !== confirmPassword) {
-      setTone("error");
-      setMessage("The passwords do not match yet.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setErrorMessage("Enter a valid email address.");
       return false;
     }
     return true;
+  }
+
+  function validatePasswords() {
+    if (!showPassword) return true;
+    if (password.length < 6) {
+      setErrorMessage("Use at least 6 characters for your password.");
+      return false;
+    }
+    if (showConfirmPassword && password !== confirmPassword) {
+      setErrorMessage("The passwords do not match yet.");
+      return false;
+    }
+    return true;
+  }
+
+  function authErrorMessage(error: { message: string }) {
+    const rawMessage = error.message.toLowerCase();
+    if (
+      rawMessage.includes("email or phone") ||
+      rawMessage.includes("email address")
+    ) {
+      return "Enter your email address.";
+    }
+    if (
+      rawMessage.includes("invalid login credentials") ||
+      rawMessage.includes("invalid credentials")
+    ) {
+      return "Check your email and password, then try again.";
+    }
+    if (rawMessage.includes("email not confirmed")) {
+      return "Please confirm your email before signing in.";
+    }
+    if (rawMessage.includes("rate limit") || rawMessage.includes("too many")) {
+      return "Too many attempts. Please wait a moment and try again.";
+    }
+    return "That did not work. Check the details and try again.";
   }
 
   function buildConfirmUrl(next = safeNextPath) {
@@ -101,19 +141,22 @@ export function LoginForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!validatePasswords()) return;
+    if (!validateEmail() || !validatePasswords()) return;
 
     setIsLoading(true);
     setMessage(null);
     setTone("info");
     const supabase = createClient();
+    const normalizedEmail = email.trim();
 
     if (mode === "signin") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
       setIsLoading(false);
       if (error) {
-        setTone("error");
-        setMessage(error.message);
+        setErrorMessage(authErrorMessage(error));
         return;
       }
       window.location.href = safeNextPath;
@@ -122,7 +165,7 @@ export function LoginForm({
 
     if (mode === "signup") {
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           emailRedirectTo: buildConfirmUrl(safeNextPath),
@@ -130,8 +173,7 @@ export function LoginForm({
       });
       setIsLoading(false);
       if (error) {
-        setTone("error");
-        setMessage(error.message);
+        setErrorMessage(authErrorMessage(error));
         return;
       }
       if (data.session) {
@@ -145,27 +187,31 @@ export function LoginForm({
 
     if (mode === "magic") {
       const { error } = await supabase.auth.signInWithOtp({
-        email,
+        email: normalizedEmail,
         options: {
           emailRedirectTo: buildConfirmUrl(safeNextPath),
         },
       });
       setIsLoading(false);
       setTone(error ? "error" : "success");
-      setMessage(error ? error.message : "Check your email for your magic link.");
+      setMessage(
+        error
+          ? authErrorMessage(error)
+          : "Check your email for your magic link.",
+      );
       return;
     }
 
     if (mode === "forgot") {
       const resetNext = `/login?mode=reset&next=${encodeURIComponent(safeNextPath)}`;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
         redirectTo: buildConfirmUrl(resetNext),
       });
       setIsLoading(false);
       setTone(error ? "error" : "success");
       setMessage(
         error
-          ? error.message
+          ? authErrorMessage(error)
           : "Check your email for a password reset link. It will bring you back here.",
       );
       return;
@@ -174,8 +220,7 @@ export function LoginForm({
     const { error } = await supabase.auth.updateUser({ password });
     setIsLoading(false);
     if (error) {
-      setTone("error");
-      setMessage(error.message);
+      setErrorMessage(authErrorMessage(error));
       return;
     }
     setTone("success");
@@ -195,8 +240,7 @@ export function LoginForm({
       },
     });
     if (error) {
-      setTone("error");
-      setMessage(error.message);
+      setErrorMessage(authErrorMessage(error));
       setIsLoading(false);
     }
   }
@@ -255,7 +299,7 @@ export function LoginForm({
         </>
       )}
 
-      <form className={styles.form} onSubmit={handleSubmit}>
+      <form className={styles.form} noValidate onSubmit={handleSubmit}>
         {showEmail && (
           <label className={styles.field}>
             <span className={styles.fieldLabel}>Email</span>
@@ -350,7 +394,11 @@ export function LoginForm({
       </form>
 
       {message && (
-        <p className={styles.message} data-tone={tone} role="status">
+        <p
+          className={styles.message}
+          data-tone={tone}
+          role={tone === "error" ? "alert" : "status"}
+        >
           {message}
         </p>
       )}

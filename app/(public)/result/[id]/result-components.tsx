@@ -113,9 +113,11 @@ export function DocumentsCard({ result, viewer }: { result: Result; viewer: View
     <section className={`${styles.card} ${styles.documentsCard}`}>
       <div className={styles.cardHeading}>
         <h2>Your documents</h2>
-        <span className={styles.mono}>
-          {preview.visible.length} of {result.documents.length} shown
-        </span>
+        {result.documents.length > 0 && (
+          <span className={styles.mono}>
+            {preview.visible.length} of {result.documents.length} shown
+          </span>
+        )}
       </div>
       {preview.visible.length > 0 ? (
         <ul className={styles.documents}>

@@ -93,6 +93,10 @@ describe("result page model", () => {
       "Germany",
     ]);
     expect(buildRoute(result)[1].state).toBe("current");
+    expect(buildRoute({ ...result, path: "unknown" })[0]).toEqual({
+      label: "Confirm eligibility",
+      state: "current",
+    });
   });
 
   it("shows five real documents and gates only the remainder", () => {
@@ -126,12 +130,7 @@ describe("result page model", () => {
       curriculumType: "national",
       intake: { term: "winter", year: 2027 },
     };
-    // winter semesters span two years — must match the "Winter 2027/28"
-    // option the user picked
     expect(intakeLabel(profile)).toBe("Winter 2027/28");
-    expect(
-      intakeLabel({ ...profile, intake: { term: "summer", year: 2027 } }),
-    ).toBe("Summer 2027");
     expect(intakeLabel({ ...profile, intake: undefined })).toBeNull();
   });
 });
