@@ -9,16 +9,6 @@ import styles from "./check.module.css";
 import { QUESTIONS, buildOptions, type Option } from "./check-questions";
 import { GceSubjectsEditor } from "./gce-subjects-editor";
 import {
-<<<<<<< HEAD
-  AWARDING_BODIES,
-  BOARD_IDS,
-  GCE_GRADES,
-  GCE_SUBJECTS,
-  INTAKE_OPTIONS,
-  TARGET_FIELDS,
-  hasDuplicateGceSubjects,
-=======
->>>>>>> d44a76a73163da5f326016ef45081b448348ead3
   isAnswered,
   visibleSteps,
   withAnswer,
@@ -35,7 +25,6 @@ type CheckFlowProps = {
   userMenu?: ReactNode;
 };
 
-<<<<<<< HEAD
 type SavedCheckState = {
   answers: PartialAnswers;
   stepIndex: number;
@@ -44,66 +33,12 @@ type SavedCheckState = {
 const CHECK_HISTORY_STEP_KEY = "__unipirateCheckStep";
 const CHECK_STORAGE_PREFIX = "unipirate.check.v1";
 
-const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
-  targetDegree: { question: "Which degree level are you applying for?" },
-  nationality: { question: "What is your nationality?" },
-  certificateCountry: {
-    question: "Where did you finish school?",
-    subtitle: "Or where you will finish it — the country of your certificate.",
-  },
-  visaApplicationCountry: {
-    question: "Where will you apply for your German visa?",
-    subtitle:
-      "The country you'll file your student-visa application from — usually where you live. It decides which embassy's rules (like APS) apply.",
-  },
-  curriculumType: {
-    question: "Which curriculum did you study?",
-    subtitle: "This decides which rules apply to you.",
-  },
-  board: { question: "Which board is your certificate from?" },
-  schoolGradePercent: {
-    question: "What is your overall Class 12 result?",
-    subtitle: "Your overall percentage across subjects.",
-  },
-  jeeAdvanced: {
-    question: "Do you have a valid JEE Advanced result?",
-    subtitle: "A qualifying JEE Advanced rank changes your admission path.",
-  },
-  hasExistingApsCertificate: {
-    question: "Do you already have an APS certificate?",
-  },
-  gceAwardingBody: { question: "Which awarding body issued your A-Levels?" },
-  gceSubjects: {
-    question: "Which subjects did you take?",
-    subtitle: "Add each A-Level (AL) and AS subject with its grade.",
-  },
-  targetField: { question: "What do you want to study?" },
-  intake: { question: "When do you want to start?" },
-};
-
 const MASTER_CURRICULUM_QUESTION = {
   question: "Which school curriculum did you finish?",
   subtitle:
     "Master's guidance is limited for now. We'll confirm what our verified rules can support.",
 };
 
-const emptySubject: GceSubjectAnswer = {
-  subjectId: "mathematics",
-  level: "AL",
-  grade: "A",
-};
-
-function nextSubject(subjects: GceSubjectAnswer[]): GceSubjectAnswer {
-  const used = new Set(subjects.map((subject) => subject.subjectId));
-  const subject = GCE_SUBJECTS.find((candidate) => !used.has(candidate.id));
-  return {
-    ...emptySubject,
-    subjectId: subject?.id ?? emptySubject.subjectId,
-  };
-}
-
-=======
->>>>>>> d44a76a73163da5f326016ef45081b448348ead3
 export function CheckFlow({
   countries,
   boards,
@@ -212,81 +147,7 @@ export function CheckFlow({
   }, [answers, restored]);
 
   function optionsFor(stepId: StepId): Option[] {
-<<<<<<< HEAD
-    switch (stepId) {
-      case "targetDegree":
-        return [
-          { value: "bachelor", label: "A Bachelor's degree", key: "bachelor" },
-          { value: "master", label: "A Master's degree", key: "master" },
-        ];
-      case "nationality":
-        return countries
-          .filter((c) => c.code !== "de")
-          .map((c) => ({ value: c.code, label: c.name, key: c.code }))
-          .concat({ value: "other", label: "Another country", key: "other" });
-      case "certificateCountry":
-        return countries
-          .filter((c) => c.code !== "de")
-          .map((c) => ({ value: c.code, label: c.name, key: c.code }));
-      case "visaApplicationCountry":
-        return [
-          ...countries
-            .filter((c) => c.code !== "de")
-            .map((c) => ({ value: c.code, label: c.name, key: c.code })),
-          { value: "other", label: "Another country", key: "other" },
-        ];
-      case "curriculumType":
-        return [
-          {
-            value: "national",
-            label: "National board (CBSE, FSc, Tawjihiyah …)",
-            key: "national",
-          },
-          { value: "ib", label: "IB Diploma", key: "ib" },
-          { value: "gce", label: "GCE A-Levels", key: "gce" },
-          { value: "other", label: "Something else", key: "other" },
-        ];
-      case "board":
-        return boards
-          .filter((b) => b.countryCode === answers.certificateCountry)
-          .map((b) => ({
-            value: BOARD_IDS[b.label] ?? b.label.toLowerCase(),
-            label: b.label,
-            key: b.label,
-          }));
-      case "jeeAdvanced":
-      case "hasExistingApsCertificate":
-        return [
-          { value: true, label: "Yes", key: "yes" },
-          { value: false, label: "No", key: "no" },
-        ];
-      case "gceAwardingBody":
-        return AWARDING_BODIES.map((b) => ({
-          value: b.id,
-          label: b.label,
-          key: b.id,
-        }));
-      case "targetField":
-        return TARGET_FIELDS.map((f) => ({
-          value: f.id,
-          label: f.label,
-          key: f.id,
-        }));
-      case "intake":
-        return [
-          ...INTAKE_OPTIONS.map((o) => ({
-            value: { term: o.term, year: o.year },
-            label: o.label,
-            key: `${o.term}-${o.year}`,
-          })),
-          { value: null, label: "Not sure yet", key: "unsure" },
-        ];
-      default:
-        return [];
-    }
-=======
     return buildOptions(stepId, { countries, boards, answers });
->>>>>>> d44a76a73163da5f326016ef45081b448348ead3
   }
 
   function currentKey(stepId: StepId): string | undefined {
@@ -364,10 +225,6 @@ export function CheckFlow({
   }
 
   const subjects = answers.gceSubjects ?? [];
-  const gceDuplicateError =
-    step === "gceSubjects" && hasDuplicateGceSubjects(subjects)
-      ? "Add each subject only once."
-      : null;
 
   return (
     <div className={styles.shell}>
@@ -440,7 +297,6 @@ export function CheckFlow({
               />
               <span className={styles.percentSuffix}>%</span>
             </div>
-<<<<<<< HEAD
             {gradeError && (
               <p id="grade-percent-error" className={styles.fieldError}>
                 {gradeError}
@@ -448,112 +304,10 @@ export function CheckFlow({
             )}
           </div>
         ) : step === "gceSubjects" ? (
-          <div className={styles.options}>
-            {subjects.map((s, i) => (
-              <div key={i} className={styles.subjectRow}>
-                <div className={styles.subjectSelects}>
-                  <select
-                    className={styles.select}
-                    aria-label="Subject"
-                    value={s.subjectId}
-                    onChange={(e) => {
-                      const next = subjects.slice();
-                      next[i] = {
-                        ...s,
-                        subjectId: e.target.value as GceSubjectAnswer["subjectId"],
-                      };
-                      select("gceSubjects", next);
-                    }}
-                  >
-                    {GCE_SUBJECTS.map((c) => (
-                      <option
-                        disabled={subjects.some(
-                          (subject, subjectIndex) =>
-                            subjectIndex !== i && subject.subjectId === c.id,
-                        )}
-                        key={c.id}
-                        value={c.id}
-                      >
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className={styles.select}
-                    aria-label="Level"
-                    value={s.level}
-                    onChange={(e) => {
-                      const next = subjects.slice();
-                      next[i] = { ...s, level: e.target.value as "AL" | "AS" };
-                      select("gceSubjects", next);
-                    }}
-                  >
-                    <option value="AL">A-Level</option>
-                    <option value="AS">AS</option>
-                  </select>
-                  <select
-                    className={styles.select}
-                    aria-label="Grade"
-                    value={s.grade}
-                    onChange={(e) => {
-                      const next = subjects.slice();
-                      next[i] = {
-                        ...s,
-                        grade: e.target.value as GceSubjectAnswer["grade"],
-                      };
-                      select("gceSubjects", next);
-                    }}
-                  >
-                    {GCE_GRADES.map((g) => (
-                      <option key={g} value={g}>
-                        {g}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  className={styles.removeBtn}
-                  aria-label="Remove subject"
-                  onClick={() =>
-                    select(
-                      "gceSubjects",
-                      subjects.filter((_, j) => j !== i),
-                    )
-                  }
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              className={styles.addBtn}
-              onClick={() =>
-                select("gceSubjects", [...subjects, nextSubject(subjects)])
-              }
-            >
-              + Add {subjects.length === 0 ? "a subject" : "another subject"}
-            </button>
-            {gceDuplicateError && (
-              <p className={styles.fieldError}>{gceDuplicateError}</p>
-            )}
-          </div>
-=======
-            {answers.schoolGradePercent !== undefined &&
-              (answers.schoolGradePercent < 0 ||
-                answers.schoolGradePercent > 100) && (
-                <div className={styles.error}>
-                  Enter your overall percentage between 0 and 100.
-                </div>
-              )}
-          </div>
-        ) : step === "gceSubjects" ? (
           <GceSubjectsEditor
             subjects={subjects}
             onChange={(next) => select("gceSubjects", next)}
           />
->>>>>>> d44a76a73163da5f326016ef45081b448348ead3
         ) : (
           <div className={styles.options}>
             {optionsFor(step).map((o) => {
