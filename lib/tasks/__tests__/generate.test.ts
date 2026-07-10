@@ -272,6 +272,10 @@ function existingGenerated(
     generated_from_rule_id: overrides.generated_from_rule_id ?? null,
     done: overrides.done ?? false,
     generated_active: overrides.generated_active ?? true,
+    course_task_definition_id: overrides.course_task_definition_id ?? null,
+    admin_snapshot: overrides.admin_snapshot ?? null,
+    definition_revision: overrides.definition_revision ?? null,
+    has_personal_edits: overrides.has_personal_edits ?? false,
   };
 }
 

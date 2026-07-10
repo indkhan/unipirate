@@ -12,6 +12,7 @@ import {
   getProfile,
   getPublishedRules,
   listApplicationsWithCourses,
+  listActiveCourseTaskDefinitions,
   listGeneratedTasksByPrefix,
   upsertGeneratedTasks,
   type ApplicationWithCourse,
@@ -33,6 +34,7 @@ type Db = Pick<SupabaseClient<Database>, "from">;
 
 function toGenerationApplication(
   application: ApplicationWithCourse,
+  taskDefinitions: Awaited<ReturnType<typeof listActiveCourseTaskDefinitions>>,
 ): ApplicationForTaskGeneration {
   return {
     id: application.id,
@@ -47,6 +49,7 @@ function toGenerationApplication(
           source_url: application.courses.source_url,
           created_at: application.courses.created_at,
           review_status: application.courses.review_status,
+          task_definitions: taskDefinitions,
         }
       : null,
   };
@@ -84,8 +87,11 @@ async function materializeCourseTasksForApplicationRow(
   application: ApplicationWithCourse,
   intake?: TargetIntake,
 ): Promise<void> {
+  const taskDefinitions = application.courses
+    ? await listActiveCourseTaskDefinitions(db, application.courses.id)
+    : [];
   const desired = generateCourseTasks(
-    [toGenerationApplication(application)],
+    [toGenerationApplication(application, taskDefinitions)],
     todayIsoBerlin(),
     intake,
   );

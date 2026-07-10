@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { requireAdmin } from "@/lib/auth/session";
 import {
   listAdminRules,
+  listAdminCourses,
   listConflictCourses,
+  listAdminCourseTaskDefinitions,
+  listPendingCourseTaskSourceReviews,
   listPendingCourses,
   listRecentAdminAuditEvents,
   type AdminRuleFilters,
@@ -14,7 +17,7 @@ import type { Enums } from "@/lib/db/database.types";
 import { getCountries } from "@/lib/db/queries";
 
 import { AuditLog } from "./audit-log";
-import { ConflictQueue, CourseQueue } from "./course-queue";
+import { ConflictQueue, CourseQueue, CourseTaskLibrary, CourseTaskSourceReviewQueue } from "./course-queue";
 import { RuleEditor, RulesTable, ruleStatuses } from "./rules-panel";
 
 export const dynamic = "force-dynamic";
@@ -44,15 +47,25 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   const { db } = await requireAdmin();
   const filters: AdminRuleFilters = { country, status };
-  const [countries, rules, pendingCourses, conflictCourses, auditEvents] =
+  const [countries, rules, pendingCourses, conflictCourses, auditEvents, adminCourses, sourceTaskReviews] =
     await Promise.all([
       getCountries(db),
       listAdminRules(db, filters),
       listPendingCourses(db),
       listConflictCourses(db),
       listRecentAdminAuditEvents(db),
+      listAdminCourses(db),
+      listPendingCourseTaskSourceReviews(db),
     ]);
   const selectedRule = rules.find((rule) => rule.id === selectedRuleId);
+  const courseTaskDefinitions = new Map(
+    await Promise.all(
+      adminCourses.map(async (course) => [
+        course.id,
+        await listAdminCourseTaskDefinitions(db, course.id),
+      ] as const),
+    ),
+  );
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
@@ -125,7 +138,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         <RuleEditor rule={selectedRule} countries={countries} />
       </section>
 
-      <CourseQueue courses={pendingCourses} />
+      <CourseQueue courses={pendingCourses} definitionsByCourse={courseTaskDefinitions} />
+      <CourseTaskLibrary
+        courses={adminCourses.filter((course) => course.review_status === "approved")}
+        definitionsByCourse={courseTaskDefinitions}
+      />
+      <CourseTaskSourceReviewQueue reviews={sourceTaskReviews} />
       <ConflictQueue conflicts={conflictCourses} />
       <AuditLog events={auditEvents} />
     </main>

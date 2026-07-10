@@ -6,10 +6,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type {
   Database,
+  Json,
   Tables,
   TablesInsert,
 } from "@/lib/db/database.types";
 import type { GeneratedTaskUpsert } from "@/lib/tasks/generate";
+import type { CourseTaskDefinition } from "@/lib/tasks/course-tasks";
 import { unwrap } from "@/lib/db/unwrap";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
@@ -200,6 +202,35 @@ export async function getApplicationWithCourse(
   ) as ApplicationWithCourse | null;
 }
 
+export async function listActiveCourseTaskDefinitions(
+  db: Db,
+  courseId: string,
+): Promise<CourseTaskDefinition[]> {
+  const rows = unwrap(
+    await db
+      .from("course_task_definitions")
+      .select()
+      .eq("course_id", courseId)
+      .is("retired_at", null)
+      .order("sort_order"),
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    courseId: row.course_id,
+    kind: row.kind,
+    sourceKey: row.source_key,
+    titleTemplate: row.title_template,
+    description: row.description,
+    sourceUrl: row.source_url,
+    dueMode: row.due_mode,
+    dueDate: row.due_date,
+    sortOrder: row.sort_order,
+    sourceSnapshot: row.source_snapshot,
+    revision: row.revision,
+    retiredAt: row.retired_at,
+  }));
+}
+
 export async function deleteApplicationForCourse(
   db: Db,
   userId: string,
@@ -284,6 +315,100 @@ export async function updateManualTask(
       .select()
       .single(),
   );
+}
+
+export async function getCourseTaskAssignment(
+  db: Db,
+  userId: string,
+  id: string,
+): Promise<Tables<"tasks"> | null> {
+  return unwrap(
+    await db
+      .from("tasks")
+      .select()
+      .eq("id", id)
+      .eq("user_id", userId)
+      .not("course_task_definition_id", "is", null)
+      .maybeSingle(),
+  );
+}
+
+export async function updateCourseTaskAssignment(
+  db: Db,
+  userId: string,
+  id: string,
+  task: Pick<
+    TablesInsert<"tasks">,
+    "title" | "description" | "source_url" | "due_date"
+  >,
+): Promise<void> {
+  const { error } = await db
+    .from("tasks")
+    .update({ ...task, has_personal_edits: true })
+    .eq("id", id)
+    .eq("user_id", userId)
+    .not("course_task_definition_id", "is", null);
+  if (error) throw new Error(error.message);
+}
+
+export async function resolveCourseTaskAssignment(
+  db: Db,
+  userId: string,
+  id: string,
+  resolution: "adopt" | "keep" | "remove" | "manual",
+): Promise<void> {
+  const task = await getCourseTaskAssignment(db, userId, id);
+  if (!task) throw new Error("Course task not found");
+  if (resolution === "remove") {
+    const { error } = await db.from("tasks").delete().eq("id", id).eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+  if (resolution === "manual") {
+    const { error } = await db
+      .from("tasks")
+      .update({
+        task_key: null,
+        course_task_definition_id: null,
+        admin_snapshot: null,
+        definition_revision: null,
+        has_personal_edits: false,
+        admin_change_state: "current",
+      })
+      .eq("id", id)
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+  if (resolution === "keep") {
+    const { error } = await db
+      .from("tasks")
+      .update({ admin_change_state: "current" })
+      .eq("id", id)
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+  const snapshot = task.admin_snapshot;
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    throw new Error("Admin task version is unavailable");
+  }
+  const value = snapshot as Record<string, Json | undefined>;
+  const { error } = await db
+    .from("tasks")
+    .update({
+      title: typeof value.title === "string" ? value.title : task.title,
+      description: typeof value.description === "string" ? value.description : null,
+      source_url: typeof value.source_url === "string" ? value.source_url : null,
+      due_date: typeof value.due_date === "string" ? value.due_date : null,
+      verbatim_due: typeof value.verbatim_due === "string" ? value.verbatim_due : null,
+      sort_order: typeof value.sort_order === "number" ? value.sort_order : task.sort_order,
+      has_personal_edits: false,
+      admin_change_state: "current",
+    })
+    .eq("id", id)
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteManualTask(

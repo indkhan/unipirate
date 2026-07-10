@@ -107,9 +107,11 @@ uses them.
 - **Application** — the user↔course link that puts a course on the
   dashboard (`applications` row with a status: planning/applied/admitted/
   rejected).
-- **Task** — a dashboard to-do. *Generated* tasks (non-null `task_key`) are
-  derived from rules and course facts and are reconciled by key; *manual*
-  tasks (`task_key = null`) belong entirely to the user.
+- **Task** — a dashboard to-do. Rule tasks and course-task assignments have
+  a non-null `task_key`; manual tasks have `task_key = null`. Every course
+  task (submission deadline, requirement, or custom reminder) starts as an
+  admin-managed `course_task_definitions` row and is copied to each planning
+  application. Student detail edits are protected from later admin changes.
 - **KB chunk** — an embedded text rendering of a rule (or curated snippet)
   the assistant retrieves and cites.
 
@@ -184,16 +186,19 @@ fixture the seed uses.
 The task pipeline is split into three modules under `lib/tasks/` with a
 strict direction of data flow:
 
-- **`generate.ts` (pure)** — turns an engine result into global tasks
-  (`rule:<id>:step:<n>`) and tracked courses into per-university tasks
-  (`app:<id>:submit`, `app:<id>:req:<hash>`). Also owns deadline parsing
-  (`selectSubmissionDeadline` picks the line matching the user's intake
-  without inventing dates) and Now/Next/Later bucketing.
+- **`generate.ts` + `course-tasks.ts` (pure)** — turns an engine result into
+  global tasks and turns approved course-task definitions into per-university
+  assignments (`app:<id>:course-task:<definition-id>`). The candidate helper
+  derives the initial submission/requirement definitions from verbatim course
+  facts; admins may edit, add, order, or retire every task. It also owns
+  deadline parsing (`selectSubmissionDeadline` picks the line matching the
+  user's intake without inventing dates) and Now/Next/Later bucketing.
 - **`materialize.ts` (write)** — runs at event time (profile saved, result
-  claimed, course added, status changed), never during render. Reconciles by
-  `task_key`: changed rows upserted, stale open rows deleted, stale done
-  rows deactivated so a returning key restores its checkmark. Never touches
-  `done` or `preferred_bucket` — user state survives regeneration.
+  claimed, course added, status changed), never during render. Admin edits
+  fan out through the scoped `sync_course_task_definitions` DB function.
+  Untouched copies update immediately; student-edited copies keep their
+  values and become an explicit “use admin / keep mine” decision. Never
+  touches `done` or `preferred_bucket`.
 - **`view.ts` (read)** — builds the dashboard view model: buckets (user's
   dragged `preferred_bucket` wins over computed buckets), the applications
   rail, calendar events, and the next deadline. Strictly read-only.
@@ -254,7 +259,9 @@ Schema lives in `supabase/migrations/` (append-only). Regenerate types with
 | `courses` | extracted course facts, verbatim; `normalized_url` dedupe key; `conflicts_with` marks update submissions; `review_status` pending/approved/rejected | approved public; owners see own pending |
 | `profiles` | one per user: `country_code` + checker `answers` jsonb | owner CRUD, admin read |
 | `applications` | user × course with status — THE dashboard link | owner CRUD |
-| `tasks` | generated (`task_key` set) + manual (`task_key` null) tasks; unique `(user_id, task_key)` makes upsert-reconciliation work | owner CRUD, admin read |
+| `tasks` | rule-generated, admin-defined course-task assignments, and manual tasks; unique `(user_id, task_key)` makes reconciliation work | owner CRUD, admin read |
+| `course_task_definitions` | ordered admin definitions for every course submission/requirement/custom task; pending-course definitions publish on approval | approved public read, admin write |
+| `course_task_source_reviews` | durable admin queue for official deadline/requirement changes; no student task changes until an admin resolves the review | admin only |
 | `checks` | anonymous check records; private ownership columns hidden by RLS | insert by anyone; shareable fields readable by UUID |
 | `kb_chunks` | assistant corpus with pgvector embeddings; `match_kb_chunks()` does exact cosine scan (fine below ~10k rows) | public read, admin write |
 | `assistant_messages` | full Q&A log; today's `role='user'` count is the quota | owner insert/read, admin read |

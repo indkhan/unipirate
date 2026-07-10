@@ -5,7 +5,7 @@ import { useTransition } from "react";
 import type { DashboardTask, RailApplication } from "@/lib/tasks/view";
 import { daysUntil } from "@/lib/tasks/generate";
 
-import { toggleTask } from "./actions";
+import { resolveCourseTaskUpdate, toggleTask } from "./actions";
 import { formatDate } from "./format";
 import { ManualTaskActions } from "./manual-task";
 import styles from "./dashboard.module.css";
@@ -57,6 +57,39 @@ function TaskToggle({
   );
 }
 
+function CourseTaskChange({ task }: { task: DashboardTask }) {
+  const [isPending, startTransition] = useTransition();
+  if (task.kind !== "course_task" || task.adminChangeState === "current") return null;
+  const removed = task.adminChangeState === "removal_pending";
+  const adminTitle = typeof task.adminSnapshot?.title === "string"
+    ? task.adminSnapshot.title
+    : "the latest admin task";
+  const resolve = (resolution: "adopt" | "keep" | "remove" | "manual") => {
+    startTransition(async () => {
+      await resolveCourseTaskUpdate({ id: task.id, resolution });
+      window.location.reload();
+    });
+  };
+  return (
+    <div className={styles.taskActionRow} aria-label="Admin task update">
+      <span className={styles.taskDue}>
+        {removed ? "Admin removed this task." : `Admin updated this task: ${adminTitle}`}
+      </span>
+      {removed ? (
+        <>
+          <button className={styles.taskIconButton} type="button" disabled={isPending} onClick={() => resolve("manual")}>Keep mine</button>
+          <button className={styles.taskIconButton} type="button" disabled={isPending} onClick={() => resolve("remove")}>Remove</button>
+        </>
+      ) : (
+        <>
+          <button className={styles.taskIconButton} type="button" disabled={isPending} onClick={() => resolve("keep")}>Keep mine</button>
+          <button className={styles.taskIconButton} type="button" disabled={isPending} onClick={() => resolve("adopt")}>Use admin</button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function NowTask({
   task,
   todayIso,
@@ -101,6 +134,7 @@ export function NowTask({
         </div>
         <Stamp source={task.source} />
         <ManualTaskActions task={task} applications={applications} />
+        <CourseTaskChange task={task} />
       </div>
     </article>
   );

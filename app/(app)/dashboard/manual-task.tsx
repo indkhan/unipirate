@@ -10,6 +10,7 @@ import {
   createManualTask,
   deleteManualTask,
   updateManualTask,
+  updateCourseTask,
 } from "./actions";
 import styles from "./dashboard.module.css";
 
@@ -82,7 +83,11 @@ function ManualTaskDialog({
                 applicationId: applicationId || null,
               };
               if (isEdit) {
-                await updateManualTask({ id: initialTask.id, ...payload });
+                if (initialTask.kind === "course_task") {
+                  await updateCourseTask({ id: initialTask.id, ...payload });
+                } else {
+                  await updateManualTask({ id: initialTask.id, ...payload });
+                }
               } else {
                 await createManualTask(payload);
               }
@@ -184,19 +189,19 @@ export function ManualTaskActions({
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
 
-  if (task.kind !== "manual") return null;
+  if (task.kind !== "manual" && task.kind !== "course_task") return null;
 
   return (
     <>
       <div className={styles.taskActionRow} aria-label="Manual task actions">
-        <button
+        {task.kind === "manual" ? <button
           className={styles.taskIconButton}
           type="button"
           aria-label="Edit task"
           onClick={() => setEditing(true)}
         >
           <Pencil size={14} aria-hidden />
-        </button>
+        </button> : null}
         <button
           className={styles.taskIconButton}
           type="button"
