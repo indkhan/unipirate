@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { ThemeToggle } from "@/components/app/theme-toggle";
+
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
 import { QUESTIONS, buildOptions, type Option } from "./check-questions";
@@ -237,7 +239,10 @@ export function CheckFlow({
           <span className={styles.stepLabel}>
             Step {Math.min(stepIndex, steps.length - 1) + 1}
           </span>
-          {userMenu ? <div className={styles.userMenu}>{userMenu}</div> : null}
+          <div className={styles.headerActions}>
+            <ThemeToggle />
+            {userMenu ? <div className={styles.userMenu}>{userMenu}</div> : null}
+          </div>
         </div>
       </header>
 

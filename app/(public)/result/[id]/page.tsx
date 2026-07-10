@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { ThemeToggle } from "@/components/app/theme-toggle";
 import { UserMenu } from "@/components/app/user-menu";
 import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
 import { getCheck, getResultViewer } from "@/lib/db/queries";
@@ -85,6 +86,7 @@ export default async function ResultPage({
           <Link className={styles.brand} href="/">UniPirate</Link>
           <div className={styles.headerActions}>
             <span className={styles.headerMeta}>Result · {resultDate}</span>
+            <ThemeToggle />
             {user ? (
               <UserMenu
                 email={user.email ?? null}

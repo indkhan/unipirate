@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { ThemeToggle } from "@/components/app/theme-toggle";
+
 import styles from "./home.module.css";
 
 const routeStations = ["Eligibility", "APS", "Applications", "Visa", "Germany"];
@@ -24,9 +26,12 @@ export default function HomePage() {
           <Link className={styles.brand} href="/">
             UniPirate
           </Link>
-          <Link className={styles.signIn} href="/login">
-            Sign in
-          </Link>
+          <div className={styles.navActions}>
+            <Link className={styles.signIn} href="/login">
+              Sign in
+            </Link>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

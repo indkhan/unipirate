@@ -27,7 +27,7 @@ export function ThemeToggle() {
       aria-label={`Switch to ${dark ? "light" : "dark"} mode`}
       title={`Switch to ${dark ? "light" : "dark"} mode`}
       onClick={toggle}
-      className="fixed right-4 top-4 z-30 grid size-11 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[var(--shadow-overlay)] transition hover:border-[var(--line-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--route-blue)]"
+      className="grid size-11 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition hover:border-[var(--line-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--route-blue)]"
     >
       <span aria-hidden="true">{dark ? "☀" : "☾"}</span>
     </button>

@@ -10,7 +10,6 @@ import {
 import "./globals.css";
 
 import { PostHogProvider } from "@/components/app/posthog-provider";
-import { ThemeToggle } from "@/components/app/theme-toggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -65,7 +64,6 @@ export default function RootLayout({
         </Script>
         <PostHogProvider>
           {children}
-          <ThemeToggle />
         </PostHogProvider>
       </body>
     </html>

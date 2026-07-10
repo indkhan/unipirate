@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { safeNextPath } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/db/server";
+import { ThemeToggle } from "@/components/app/theme-toggle";
 
 import { LoginForm } from "./login-form";
 import styles from "./login.module.css";
@@ -37,9 +38,12 @@ export default async function LoginPage({
           <Link className={styles.brand} href="/">
             UniPirate
           </Link>
-          <Link className={styles.navLink} href="/check">
-            Check eligibility
-          </Link>
+          <div className={styles.navActions}>
+            <Link className={styles.navLink} href="/check">
+              Check eligibility
+            </Link>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

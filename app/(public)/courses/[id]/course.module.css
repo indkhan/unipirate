@@ -31,6 +31,12 @@
   padding-top: 14px;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .brand {
   font-family: var(--font-display);
   font-weight: 800;
