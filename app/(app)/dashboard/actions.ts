@@ -6,20 +6,17 @@ import { z } from "zod";
 import { requireUser, type Session } from "@/lib/auth/session";
 import {
   deleteApplicationForCourse,
-  deleteManualTask as deleteManualTaskRow,
+  deleteTask as deleteTaskRow,
   insertAnswerReport,
   insertTask,
   listApplications,
   removeMyCourse,
   setTaskPreferredBucket,
   setTaskDone,
-  updateManualTask as updateManualTaskRow,
+  updateTask as updateTaskRow,
   updateApplicationStatus,
 } from "@/lib/db/queries";
-import {
-  materializeCourseTasksForApplication,
-  removeOpenGeneratedTasksForApplication,
-} from "@/lib/tasks/materialize";
+import { materializeCourseTasksForApplication } from "@/lib/tasks/materialize";
 
 const removeCourseSchema = z.object({
   id: z.string().uuid(),
@@ -63,7 +60,7 @@ const taskDateSchema = z.preprocess(
   z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
 );
 
-const manualTaskSchema = z.object({
+const taskSchema = z.object({
   title: z.string().trim().min(1).max(240),
   description: z
     .preprocess(
@@ -98,8 +95,8 @@ async function assertOwnedApplication(
   }
 }
 
-export async function createManualTask(input: unknown): Promise<void> {
-  const task = manualTaskSchema.parse(input);
+export async function createTask(input: unknown): Promise<void> {
+  const task = taskSchema.parse(input);
   const { db, user } = await requireUser();
 
   await assertOwnedApplication(db, user.id, task.applicationId);
@@ -114,16 +111,16 @@ export async function createManualTask(input: unknown): Promise<void> {
   revalidatePath("/dashboard");
 }
 
-const updateManualTaskSchema = manualTaskSchema.extend({
+const updateTaskSchema = taskSchema.extend({
   id: z.string().uuid(),
 });
 
-export async function updateManualTask(input: unknown): Promise<void> {
-  const task = updateManualTaskSchema.parse(input);
+export async function updateTask(input: unknown): Promise<void> {
+  const task = updateTaskSchema.parse(input);
   const { db, user } = await requireUser();
 
   await assertOwnedApplication(db, user.id, task.applicationId);
-  await updateManualTaskRow(db, user.id, task.id, {
+  await updateTaskRow(db, user.id, task.id, {
     title: task.title,
     description: task.description,
     source_url: task.sourceUrl,
@@ -133,15 +130,15 @@ export async function updateManualTask(input: unknown): Promise<void> {
   revalidatePath("/dashboard");
 }
 
-const deleteManualTaskSchema = z.object({
+const deleteTaskSchema = z.object({
   id: z.string().uuid(),
 });
 
-export async function deleteManualTask(input: unknown): Promise<void> {
-  const { id } = deleteManualTaskSchema.parse(input);
+export async function deleteTask(input: unknown): Promise<void> {
+  const { id } = deleteTaskSchema.parse(input);
   const { db, user } = await requireUser();
 
-  await deleteManualTaskRow(db, user.id, id);
+  await deleteTaskRow(db, user.id, id);
   revalidatePath("/dashboard");
 }
 
@@ -155,11 +152,6 @@ export async function setApplicationStatus(input: unknown): Promise<void> {
   const { db, user } = await requireUser();
 
   await updateApplicationStatus(db, id, status);
-  if (status === "planning") {
-    await materializeCourseTasksForApplication(db, user.id, id);
-  } else {
-    await removeOpenGeneratedTasksForApplication(db, user.id, id);
-  }
   revalidatePath("/dashboard");
 }
 

@@ -2,8 +2,8 @@
 // GeneratedTask lists, plus deadline parsing and Now/Next/Later bucketing.
 // Zero I/O — materialize.ts writes the output to the DB, view.ts renders it.
 // Task identity is the `key` (`rule:<id>:step:<n>`, `app:<id>:submit`,
-// `app:<id>:req:<hash>`); regeneration reconciles by key so user state
-// (done, preferred bucket) survives.
+// `app:<id>:req:<hash>`). Materialization adds each key once; the resulting
+// task is then owned entirely by the user.
 import type { Citation, Result, Term } from "@/lib/engine/evaluate";
 
 export type GeneratedTask = {
@@ -462,14 +462,13 @@ export function prepareGeneratedTaskMaterialization(
   existing: ExistingGeneratedTask[],
 ): {
   upsertRows: GeneratedTaskUpsert[];
-  staleOpenKeysToDelete: string[];
-  staleDoneKeysToDeactivate: string[];
 } {
-  const desiredKeys = new Set(desired.map((task) => task.key));
-  const existingByKey = new Map(
-    existing.flatMap((task) => (task.task_key ? [[task.task_key, task]] : [])),
+  const existingKeys = new Set(
+    existing.flatMap((task) => (task.task_key ? [task.task_key] : [])),
   );
-  const desiredRows = desired.map((task) => ({
+  const upsertRows = desired.flatMap((task) => {
+    if (existingKeys.has(task.key)) return [];
+    return [{
     user_id: userId,
     task_key: task.key,
     title: task.title,
@@ -481,35 +480,9 @@ export function prepareGeneratedTaskMaterialization(
     application_id: task.applicationId,
     generated_from_rule_id: task.ruleId,
     generated_active: true,
-  }));
+    }];
+  });
   return {
-    upsertRows: desiredRows.filter((row) => {
-      const existingRow = existingByKey.get(row.task_key);
-      return (
-        !existingRow ||
-        existingRow.title !== row.title ||
-        existingRow.due_date !== row.due_date ||
-        existingRow.verbatim_due !== row.verbatim_due ||
-        existingRow.sort_order !== row.sort_order ||
-        existingRow.source_url !== row.source_url ||
-        existingRow.source_verified_at !== row.source_verified_at ||
-        existingRow.application_id !== row.application_id ||
-        existingRow.generated_from_rule_id !== row.generated_from_rule_id ||
-        existingRow.generated_active !== row.generated_active
-      );
-    }),
-    staleOpenKeysToDelete: existing.flatMap((task) =>
-      task.task_key !== null && !task.done && !desiredKeys.has(task.task_key)
-        ? [task.task_key]
-        : [],
-    ),
-    staleDoneKeysToDeactivate: existing.flatMap((task) =>
-      task.task_key !== null &&
-      task.done &&
-      task.generated_active &&
-      !desiredKeys.has(task.task_key)
-        ? [task.task_key]
-        : [],
-    ),
+    upsertRows,
   };
 }
