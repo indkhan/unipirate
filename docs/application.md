@@ -72,7 +72,7 @@ app/
     dashboard/         tasks (Now/Next/Later + calendar), applications rail
     courses/           course finder + add-by-URL sheet
     profile/           edit saved checker answers
-  (admin)/admin/     rule verification, course review queues, audit log
+  (admin)/admin/     task-oriented operations workspace: overview, review queues, rules, course tasks, audit
   api/
     courses/import/    POST — course lookup / import / update submission
     assistant/chat/    POST — streaming strict-RAG chat
@@ -138,6 +138,17 @@ verdict) and `unknowns[]` (honest gaps). Tests in
 fixture the seed uses.
 
 ## Core flows
+
+### Admin operations workspace
+
+`/admin` is a bookmarkable, task-oriented workspace. `view=overview|reviews|rules|tasks|audit`
+selects a focused surface; review queues and selected records are represented in the URL.
+The overview exposes real attention counts, while each view loads task definitions only for
+the selected course rather than expanding every course at once. Rules use guided condition
+rows backed by the same JSON draft, with advanced JSON retained as an escape hatch. Publishing,
+rejection, conflict resolution, source adoption, and task retirement require explicit
+confirmation, and successful actions return to the relevant workspace with feedback. RLS,
+server-side zod validation, audit triggers, and deterministic eligibility behavior are unchanged.
 
 ### 1. Eligibility check → shareable result → claim
 

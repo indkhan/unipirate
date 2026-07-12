@@ -1,21 +1,19 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import type { Enums, Json, Tables } from "@/lib/db/database.types";
+import type { Enums, Tables } from "@/lib/db/database.types";
 import { cn } from "@/lib/utils";
 
 import { reverifyRuleAction, updateRuleAction } from "./actions";
 import { formatDate, statusBadge } from "./admin-shared";
+import { GuidedRuleFields } from "./guided-rule-editor";
+import { ActionButton } from "./action-button";
 
 export const ruleStatuses = [
   "draft",
   "beta",
   "verified",
 ] as const satisfies readonly Enums<"rule_status">[];
-
-function formatJson(value: Json): string {
-  return JSON.stringify(value, null, 2);
-}
 
 function isOlderThanSixMonths(value: string | null): boolean {
   if (!value) return true;
@@ -74,9 +72,7 @@ export function RuleEditor({
         </div>
         <form action={reverifyRuleAction}>
           <input type="hidden" name="id" value={rule.id} />
-          <Button type="submit" size="sm">
-            Verify now
-          </Button>
+          <ActionButton pendingText="Verifying…" confirm="Publish this saved rule as verified? Verified rules can affect eligibility results.">Verify saved rule</ActionButton>
         </form>
       </div>
 
@@ -112,26 +108,7 @@ export function RuleEditor({
           </select>
         </label>
 
-        <div className="grid gap-3 lg:grid-cols-2">
-          <label className="grid gap-1 text-xs font-medium">
-            Conditions JSON
-            <textarea
-              name="conditions"
-              defaultValue={formatJson(rule.conditions)}
-              rows={12}
-              className="rounded-md border bg-background p-2 font-mono text-xs"
-            />
-          </label>
-          <label className="grid gap-1 text-xs font-medium">
-            Outcomes JSON
-            <textarea
-              name="outcomes"
-              defaultValue={formatJson(rule.outcomes)}
-              rows={12}
-              className="rounded-md border bg-background p-2 font-mono text-xs"
-            />
-          </label>
-        </div>
+        <GuidedRuleFields conditions={rule.conditions} outcomes={rule.outcomes} />
 
         <label className="grid gap-1 text-xs font-medium">
           Source URL
@@ -169,9 +146,7 @@ export function RuleEditor({
           <p className="text-xs text-muted-foreground">
             Last verified: {reviewAgeBadge(rule)}
           </p>
-          <Button type="submit" size="sm">
-            Save rule
-          </Button>
+          <ActionButton pendingText="Saving…">Save rule changes</ActionButton>
         </div>
       </form>
     </section>
@@ -228,7 +203,7 @@ export function RulesTable({
               </td>
               <td className="px-3 py-2">
                 <Button asChild variant="outline" size="sm">
-                  <Link href={`/admin?rule=${rule.id}`}>Edit</Link>
+                  <Link href={`/admin?view=rules&rule=${rule.id}`}>Edit</Link>
                 </Button>
               </td>
             </tr>

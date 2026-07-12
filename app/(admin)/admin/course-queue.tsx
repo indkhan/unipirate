@@ -14,6 +14,7 @@ import {
   updateCourseAction,
 } from "./actions";
 import { statusBadge } from "./admin-shared";
+import { ActionButton } from "./action-button";
 
 function compactJson(value: Json | null): string {
   if (value === null) return "Not extracted";
@@ -118,7 +119,7 @@ function CourseTaskForm({
         <form action={retireCourseTaskAction} className="mt-2 text-right">
           <input type="hidden" name="id" value={task.id} />
           <input type="hidden" name="course_id" value={course.id} />
-          <Button type="submit" variant="ghost" size="sm">Retire task</Button>
+          <ActionButton variant="destructive" pendingText="Retiring…" confirm={`Retire “${task.titleTemplate}”? Students using an edited copy will keep their changes.`}>Retire task</ActionButton>
         </form>
       ) : null}
     </div>
@@ -313,16 +314,12 @@ export function CourseQueue({ courses, definitionsByCourse }: { courses: Tables<
                 <form action={reviewCourseAction}>
                   <input type="hidden" name="id" value={course.id} />
                   <input type="hidden" name="review_status" value="approved" />
-                  <Button type="submit" size="sm">
-                    Approve
-                  </Button>
+                  <ActionButton pendingText="Approving…">Approve course</ActionButton>
                 </form>
                 <form action={reviewCourseAction}>
                   <input type="hidden" name="id" value={course.id} />
                   <input type="hidden" name="review_status" value="rejected" />
-                  <Button type="submit" variant="outline" size="sm">
-                    Reject
-                  </Button>
+                  <ActionButton variant="destructive" pendingText="Rejecting…" confirm={`Reject “${course.name ?? "this course"}”? It will remain private and leave this queue.`}>Reject course</ActionButton>
                 </form>
               </div>
             </div>
@@ -384,10 +381,10 @@ export function CourseTaskSourceReviewQueue({
         {reviews.map((review) => (
           <article key={review.id} className="rounded border p-3 text-sm">
             <p><strong>{review.change_type}</strong> · {review.candidate_key}</p>
-            <pre className="mt-2 overflow-auto rounded bg-muted p-2 text-xs">{JSON.stringify({ old: review.old_snapshot, proposed: review.new_snapshot }, null, 2)}</pre>
+            <div className="mt-2 grid gap-2 md:grid-cols-2"><div className="rounded bg-muted p-3"><span className="text-xs font-semibold uppercase text-muted-foreground">Current source value</span><pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(review.old_snapshot, null, 2) ?? "None"}</pre></div><div className="rounded border border-amber-300 bg-amber-50 p-3 text-amber-950"><span className="text-xs font-semibold uppercase">Proposed source value</span><pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(review.new_snapshot, null, 2) ?? "Removed"}</pre></div></div>
             <div className="mt-2 flex gap-2">
-              <form action={adoptCourseTaskSourceReviewAction}><input type="hidden" name="id" value={review.id} /><Button type="submit" size="sm">Adopt source change</Button></form>
-              <form action={keepCourseTaskSourceReviewAction}><input type="hidden" name="id" value={review.id} /><Button type="submit" size="sm" variant="outline">Keep current task</Button></form>
+              <form action={adoptCourseTaskSourceReviewAction}><input type="hidden" name="id" value={review.id} /><ActionButton pendingText="Applying…" confirm="Use this official source change? Student tasks may receive an update decision.">Use source change</ActionButton></form>
+              <form action={keepCourseTaskSourceReviewAction}><input type="hidden" name="id" value={review.id} /><ActionButton pendingText="Keeping…" variant="outline" confirm="Keep the current task and dismiss this source change?">Keep current task</ActionButton></form>
             </div>
           </article>
         ))}
@@ -466,16 +463,12 @@ export function ConflictQueue({ conflicts }: { conflicts: ConflictCourse[] }) {
               <form action={resolveConflictAction}>
                 <input type="hidden" name="id" value={conflict.id} />
                 <input type="hidden" name="keep_new" value="false" />
-                <Button type="submit" variant="outline" size="sm">
-                  Keep existing (reject update)
-                </Button>
+                <ActionButton pendingText="Resolving…" variant="outline" confirm="Keep the existing course and reject this submission? Linked dashboards remain on the existing course.">Keep existing (reject update)</ActionButton>
               </form>
               <form action={resolveConflictAction}>
                 <input type="hidden" name="id" value={conflict.id} />
                 <input type="hidden" name="keep_new" value="true" />
-                <Button type="submit" size="sm">
-                  Replace with update (approve)
-                </Button>
+                <ActionButton pendingText="Replacing…" confirm="Replace the existing course with this update? Linked dashboards will move to the submitted record.">Replace with update (approve)</ActionButton>
               </form>
             </div>
           </article>

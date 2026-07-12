@@ -162,7 +162,7 @@ export async function updateRuleAction(formData: FormData) {
     status: values.status,
   });
 
-  redirect(`/admin?rule=${values.id}`);
+  redirect(`/admin?view=rules&rule=${values.id}&message=${encodeURIComponent("Rule changes saved.")}`);
 }
 
 export async function reverifyRuleAction(formData: FormData) {
@@ -171,7 +171,7 @@ export async function reverifyRuleAction(formData: FormData) {
 
   await reverifyAdminRule(db, values.id);
 
-  redirect(`/admin?rule=${values.id}`);
+  redirect(`/admin?view=rules&rule=${values.id}&message=${encodeURIComponent("Rule verified and published.")}`);
 }
 
 export async function reviewCourseAction(formData: FormData) {
@@ -187,7 +187,7 @@ export async function reviewCourseAction(formData: FormData) {
     await syncAdminCourseTaskDefinitions(db, course.id);
   }
 
-  redirect("/admin");
+  redirect(`/admin?view=reviews&queue=pending&message=${encodeURIComponent(values.review_status === "approved" ? "Course approved." : "Course rejected.")}`);
 }
 
 async function ensureSourceTaskDefinitions(
@@ -279,7 +279,7 @@ export async function saveCourseTaskAction(formData: FormData) {
   if (course.review_status === "approved") {
     await syncAdminCourseTaskDefinitions(db, course.id);
   }
-  redirect("/admin");
+  redirect(`/admin?view=tasks&course=${course.id}&message=${encodeURIComponent("Task changes saved.")}`);
 }
 
 export async function retireCourseTaskAction(formData: FormData) {
@@ -293,7 +293,7 @@ export async function retireCourseTaskAction(formData: FormData) {
   if (course.review_status === "approved") {
     await syncAdminCourseTaskDefinitions(db, course.id);
   }
-  redirect("/admin");
+  redirect(`/admin?view=tasks&course=${course.id}&message=${encodeURIComponent("Task retired.")}`);
 }
 
 const sourceReviewSchema = z.object({ id: z.string().uuid() });
@@ -302,7 +302,7 @@ export async function keepCourseTaskSourceReviewAction(formData: FormData) {
   const { db } = await requireAdmin();
   const { id } = sourceReviewSchema.parse({ id: formData.get("id") });
   await resolveAdminCourseTaskSourceReview(db, id, "kept");
-  redirect("/admin");
+  redirect(`/admin?view=reviews&queue=source-changes&message=${encodeURIComponent("Current task kept.")}`);
 }
 
 export async function adoptCourseTaskSourceReviewAction(formData: FormData) {
@@ -347,7 +347,7 @@ export async function adoptCourseTaskSourceReviewAction(formData: FormData) {
   }
   await resolveAdminCourseTaskSourceReview(db, id, "adopted");
   await syncAdminCourseTaskDefinitions(db, course.id);
-  redirect("/admin");
+  redirect(`/admin?view=reviews&queue=source-changes&message=${encodeURIComponent("Official source change applied.")}`);
 }
 
 const conflictResolveSchema = z.object({
@@ -364,7 +364,7 @@ export async function resolveConflictAction(formData: FormData) {
 
   await resolveCourseConflict(db, values.id, values.keep_new === "true");
 
-  redirect("/admin");
+  redirect(`/admin?view=reviews&queue=conflicts&message=${encodeURIComponent("Course conflict resolved.")}`);
 }
 
 export async function updateCourseAction(formData: FormData) {
@@ -449,5 +449,5 @@ export async function updateCourseAction(formData: FormData) {
     ]);
   }
 
-  redirect("/admin");
+  redirect(`/admin?view=reviews&queue=pending&course=${values.id}&message=${encodeURIComponent("Course edits saved.")}`);
 }

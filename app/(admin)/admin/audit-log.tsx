@@ -1,6 +1,6 @@
 import type { Tables } from "@/lib/db/database.types";
 
-import { formatDate } from "./admin-shared";
+import { formatDateTime } from "./admin-shared";
 
 export function AuditLog({ events }: { events: Tables<"admin_audit_events">[] }) {
   return (
@@ -22,7 +22,7 @@ export function AuditLog({ events }: { events: Tables<"admin_audit_events">[] })
             {events.map((event) => (
               <tr key={event.id} className="border-b last:border-b-0">
                 <td className="px-3 py-2 text-xs">
-                  {formatDate(event.created_at)}
+                  {formatDateTime(event.created_at)}
                 </td>
                 <td className="px-3 py-2">{event.table_name}</td>
                 <td className="px-3 py-2 font-mono text-xs">{event.row_id}</td>

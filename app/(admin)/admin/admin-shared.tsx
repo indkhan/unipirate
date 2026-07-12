@@ -8,6 +8,11 @@ export function formatDate(value: string | null): string {
   }).format(new Date(value));
 }
 
+export function formatDateTime(value: string | null): string {
+  if (!value) return "Never";
+  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
 export function statusBadge(status: string) {
   return (
     <span className="inline-flex rounded-md border bg-muted px-1.5 py-0.5 text-xs font-medium">
