@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   deriveCourseTaskCandidates,
+  courseTaskAdminPreview,
   reconcileCourseTaskAssignment,
   type CourseTaskDefinition,
 } from "../course-tasks";
@@ -44,6 +45,19 @@ describe("deriveCourseTaskCandidates", () => {
       "requirement:Certified school transcript",
       "requirement:Proof of English",
     ]);
+  });
+});
+
+describe("courseTaskAdminPreview", () => {
+  it("shows admins the title and verbatim source deadline students receive", () => {
+    expect(courseTaskAdminPreview({
+      titleTemplate: "Submit application — {{course}}",
+      dueMode: "source_deadline",
+      sourceSnapshot: { deadlines: ["Winter semester: 15 July 2026"] },
+    }, "Computer Science")).toEqual({
+      title: "Submit application — Computer Science",
+      sourceDeadlineLines: ["Winter semester: 15 July 2026"],
+    });
   });
 });
 

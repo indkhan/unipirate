@@ -83,6 +83,18 @@ export function renderCourseTaskTitle(template: string, courseLabel: string): st
   return template.replaceAll("{{course}}", courseLabel);
 }
 
+/** Presentation-only admin preview; source deadlines remain verbatim. */
+export function courseTaskAdminPreview(
+  task: Pick<CourseTaskDefinition, "titleTemplate" | "dueMode" | "sourceSnapshot">,
+  courseLabel: string,
+): { title: string; sourceDeadlineLines: string[] } {
+  const snapshot = task.sourceSnapshot;
+  const deadlines = task.dueMode === "source_deadline" && snapshot && typeof snapshot === "object" && "deadlines" in snapshot
+    ? strings(snapshot.deadlines)
+    : [];
+  return { title: renderCourseTaskTitle(task.titleTemplate, courseLabel), sourceDeadlineLines: deadlines };
+}
+
 export function reconcileCourseTaskAssignment(
   assignment: { hasPersonalEdits: boolean; changeState: CourseTaskChangeState },
   definition: Pick<CourseTaskDefinition, "retiredAt">,

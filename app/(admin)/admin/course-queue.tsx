@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import type { Json, Tables } from "@/lib/db/database.types";
 import type { ConflictCourse } from "@/lib/db/admin-queries";
-import { deriveCourseTaskCandidates } from "@/lib/tasks/course-tasks";
+import { courseTaskAdminPreview, deriveCourseTaskCandidates } from "@/lib/tasks/course-tasks";
 import { cn } from "@/lib/utils";
 
 import {
@@ -88,6 +88,7 @@ function CourseTaskForm({
     retiredAt?: string | null;
   };
 }) {
+  const preview = courseTaskAdminPreview(task, course.name ?? course.university_name ?? "this course");
   return (
     <div className="rounded-md border p-2">
       <form action={saveCourseTaskAction} className="grid gap-2">
@@ -96,9 +97,9 @@ function CourseTaskForm({
         <input type="hidden" name="kind" value={task.kind} />
         <input type="hidden" name="source_key" value={task.sourceKey ?? ""} />
         <input type="hidden" name="source_snapshot" value={JSON.stringify(task.sourceSnapshot)} />
-        <div className="grid gap-2 md:grid-cols-[1fr_100px]">
-          <input name="title_template" defaultValue={task.titleTemplate} className="h-8 rounded border bg-background px-2 text-sm" aria-label="Task title" />
-          <input name="sort_order" type="number" min="1" defaultValue={task.sortOrder} className="h-8 rounded border bg-background px-2 text-sm" aria-label="Task order" />
+        <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(0,1fr)_100px]">
+          <label className="grid min-w-0 gap-1 text-xs font-medium">Student task title<input name="title_template" defaultValue={preview.title} className="h-8 w-full min-w-0 rounded border bg-background px-2 text-sm" /></label>
+          <label className="grid min-w-0 gap-1 text-xs font-medium">Order<input name="sort_order" type="number" min="1" defaultValue={task.sortOrder} className="h-8 w-full min-w-0 rounded border bg-background px-2 text-sm" /></label>
         </div>
         <textarea name="description" defaultValue={task.description ?? ""} rows={2} className="rounded border bg-background p-2 text-sm" placeholder="Notes" />
         <div className="grid gap-2 md:grid-cols-3">
@@ -110,6 +111,7 @@ function CourseTaskForm({
           </select>
           <input name="due_date" type="date" defaultValue={task.dueDate ?? ""} className="h-8 rounded border bg-background px-2 text-sm" />
         </div>
+        {preview.sourceDeadlineLines.length > 0 && <div className="rounded-md border border-[var(--verified-line)] bg-[var(--verified-tint)] p-2 text-xs text-[var(--ink)]"><strong>Official deadline shown to students</strong><ul className="mt-1 list-disc pl-4">{preview.sourceDeadlineLines.map((line) => <li key={line}>{line}</li>)}</ul></div>}
         <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <span>{task.kind}{task.sourceKey ? ` · ${task.sourceKey}` : ""}</span>
           <Button type="submit" variant="outline" size="sm">Save task</Button>
@@ -119,7 +121,7 @@ function CourseTaskForm({
         <form action={retireCourseTaskAction} className="mt-2 text-right">
           <input type="hidden" name="id" value={task.id} />
           <input type="hidden" name="course_id" value={course.id} />
-          <ActionButton variant="destructive" pendingText="Retiring…" confirm={`Retire “${task.titleTemplate}”? Students using an edited copy will keep their changes.`}>Retire task</ActionButton>
+          <ActionButton variant="destructive" pendingText="Removing…" confirm={`Remove “${task.titleTemplate}” from future student task lists? Students using an edited copy will keep their changes.`}>Remove task</ActionButton>
         </form>
       ) : null}
     </div>
@@ -171,11 +173,15 @@ function CourseTaskEditor({
           sortOrder: 30 + definitions.length + index,
         }} />
       ))}
-      <CourseTaskForm course={course} task={{
-        kind: "custom", sourceKey: null, titleTemplate: "", description: null,
-        sourceUrl: null, dueMode: "none", dueDate: null, sourceSnapshot: null,
-        sortOrder: 30 + definitions.length + candidates.length,
-      }} />
+      <details className="rounded-md border bg-muted/20 p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-[var(--route-blue)]">Add custom task</summary>
+        <p className="mt-1 text-xs text-muted-foreground">Create a task that is not generated from the course source.</p>
+        <div className="mt-3"><CourseTaskForm course={course} task={{
+          kind: "custom", sourceKey: null, titleTemplate: "", description: null,
+          sourceUrl: null, dueMode: "none", dueDate: null, sourceSnapshot: null,
+          sortOrder: 30 + definitions.length + candidates.length,
+        }} /></div>
+      </details>
     </section>
   );
 }
