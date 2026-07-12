@@ -1,0 +1,10 @@
+▲ Next.js 16.2.10 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.178.106:3000
+✓ Ready in 717ms
+
+○ Compiling /login ...
+ GET /login 200 in 8.0s (next.js: 7.1s, proxy.ts: 284ms, application-code: 567ms)
+ GET /login 200 in 129ms (next.js: 6ms, proxy.ts: 12ms, application-code: 111ms)
+ GET / 200 in 4.0s (next.js: 2.5s, proxy.ts: 37ms, application-code: 1499ms)
+ GET /login 200 in 763ms (next.js: 70ms, proxy.ts: 205ms, application-code: 488ms)

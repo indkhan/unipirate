@@ -603,6 +603,14 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     expect(profiles).toHaveLength(1);
   });
 
+  it("admin can read the course task source review queue", async () => {
+    const { error } = await admin
+      .from("course_task_source_reviews")
+      .select("id")
+      .eq("status", "pending");
+    expect(error).toBeNull();
+  });
+
   it("admin updates a rule", async () => {
     const { data, error } = await admin
       .from("rules")

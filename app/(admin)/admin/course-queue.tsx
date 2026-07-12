@@ -1,14 +1,20 @@
 import { Button } from "@/components/ui/button";
 import type { Json, Tables } from "@/lib/db/database.types";
 import type { ConflictCourse } from "@/lib/db/admin-queries";
+import { courseTaskAdminPreview, deriveCourseTaskCandidates } from "@/lib/tasks/course-tasks";
 import { cn } from "@/lib/utils";
 
 import {
   resolveConflictAction,
+  adoptCourseTaskSourceReviewAction,
+  keepCourseTaskSourceReviewAction,
   reviewCourseAction,
+  retireCourseTaskAction,
+  saveCourseTaskAction,
   updateCourseAction,
 } from "./actions";
 import { statusBadge } from "./admin-shared";
+import { ActionButton } from "./action-button";
 
 function compactJson(value: Json | null): string {
   if (value === null) return "Not extracted";
@@ -63,12 +69,130 @@ function CourseEditField({
   );
 }
 
-function CourseEditForm({ course }: { course: Tables<"courses"> }) {
+function CourseTaskForm({
+  course,
+  task,
+}: {
+  course: Tables<"courses">;
+  task: {
+    id?: string;
+    kind: "submission" | "requirement" | "custom";
+    sourceKey: string | null;
+    titleTemplate: string;
+    description: string | null;
+    sourceUrl: string | null;
+    dueMode: "source_deadline" | "fixed_date" | "none";
+    dueDate: string | null;
+    sourceSnapshot: Json | null;
+    sortOrder: number;
+    retiredAt?: string | null;
+  };
+}) {
+  const preview = courseTaskAdminPreview(task, course.name ?? course.university_name ?? "this course");
+  return (
+    <div className="rounded-md border p-2">
+      <form action={saveCourseTaskAction} className="grid gap-2">
+        <input type="hidden" name="id" value={task.id ?? ""} />
+        <input type="hidden" name="course_id" value={course.id} />
+        <input type="hidden" name="kind" value={task.kind} />
+        <input type="hidden" name="source_key" value={task.sourceKey ?? ""} />
+        <input type="hidden" name="source_snapshot" value={JSON.stringify(task.sourceSnapshot)} />
+        <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(0,1fr)_100px]">
+          <label className="grid min-w-0 gap-1 text-xs font-medium">Student task title<input name="title_template" defaultValue={preview.title} className="h-8 w-full min-w-0 rounded border bg-background px-2 text-sm" /></label>
+          <label className="grid min-w-0 gap-1 text-xs font-medium">Order<input name="sort_order" type="number" min="1" defaultValue={task.sortOrder} className="h-8 w-full min-w-0 rounded border bg-background px-2 text-sm" /></label>
+        </div>
+        <textarea name="description" defaultValue={task.description ?? ""} rows={2} className="rounded border bg-background p-2 text-sm" placeholder="Notes" />
+        <div className="grid gap-2 md:grid-cols-3">
+          <input name="source_url" type="url" defaultValue={task.sourceUrl ?? ""} className="h-8 rounded border bg-background px-2 text-sm" placeholder="Source URL" />
+          <select name="due_mode" defaultValue={task.dueMode} className="h-8 rounded border bg-background px-2 text-sm">
+            <option value="source_deadline">Official deadline</option>
+            <option value="fixed_date">Fixed date</option>
+            <option value="none">No date</option>
+          </select>
+          <input name="due_date" type="date" defaultValue={task.dueDate ?? ""} className="h-8 rounded border bg-background px-2 text-sm" />
+        </div>
+        {preview.sourceDeadlineLines.length > 0 && <div className="rounded-md border border-[var(--verified-line)] bg-[var(--verified-tint)] p-2 text-xs text-[var(--ink)]"><strong>Official deadline shown to students</strong><ul className="mt-1 list-disc pl-4">{preview.sourceDeadlineLines.map((line) => <li key={line}>{line}</li>)}</ul></div>}
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <span>{task.kind}{task.sourceKey ? ` · ${task.sourceKey}` : ""}</span>
+          <Button type="submit" variant="outline" size="sm">Save task</Button>
+        </div>
+      </form>
+      {task.id && !task.retiredAt ? (
+        <form action={retireCourseTaskAction} className="mt-2 text-right">
+          <input type="hidden" name="id" value={task.id} />
+          <input type="hidden" name="course_id" value={course.id} />
+          <ActionButton variant="destructive" pendingText="Removing…" confirm={`Remove “${task.titleTemplate}” from future student task lists? Students using an edited copy will keep their changes.`}>Remove task</ActionButton>
+        </form>
+      ) : null}
+    </div>
+  );
+}
+
+function CourseTaskEditor({
+  course,
+  definitions,
+}: {
+  course: Tables<"courses">;
+  definitions: Tables<"course_task_definitions">[];
+}) {
+  const existingKeys = new Set(definitions.map((definition) => definition.source_key));
+  const candidates = deriveCourseTaskCandidates(course).filter(
+    (candidate) => !existingKeys.has(candidate.sourceKey),
+  );
+  const displayed = definitions.map((definition) => ({
+    id: definition.id,
+    kind: definition.kind,
+    sourceKey: definition.source_key,
+    titleTemplate: definition.title_template,
+    description: definition.description,
+    sourceUrl: definition.source_url,
+    dueMode: definition.due_mode,
+    dueDate: definition.due_date,
+    sourceSnapshot: definition.source_snapshot,
+    sortOrder: definition.sort_order,
+    retiredAt: definition.retired_at,
+  }));
+
+  return (
+    <section className="mt-3 grid gap-2 border-t pt-3">
+      <div>
+        <h4 className="text-sm font-semibold">Course tasks</h4>
+        <p className="text-xs text-muted-foreground">Generated deadline and requirement tasks, plus custom tasks. Pending-course edits publish on approval.</p>
+      </div>
+      {displayed.map((task) => <CourseTaskForm key={task.id} course={course} task={task} />)}
+      {candidates.map((candidate, index) => (
+        <CourseTaskForm key={candidate.sourceKey} course={course} task={{
+          kind: candidate.kind,
+          sourceKey: candidate.sourceKey,
+          titleTemplate: candidate.titleTemplate,
+          description: candidate.description,
+          sourceUrl: candidate.sourceUrl,
+          dueMode: candidate.dueMode,
+          dueDate: null,
+          sourceSnapshot: candidate.sourceSnapshot as Json,
+          sortOrder: 30 + definitions.length + index,
+        }} />
+      ))}
+      <details className="rounded-md border bg-muted/20 p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-[var(--route-blue)]">Add custom task</summary>
+        <p className="mt-1 text-xs text-muted-foreground">Create a task that is not generated from the course source.</p>
+        <div className="mt-3"><CourseTaskForm course={course} task={{
+          kind: "custom", sourceKey: null, titleTemplate: "", description: null,
+          sourceUrl: null, dueMode: "none", dueDate: null, sourceSnapshot: null,
+          sortOrder: 30 + definitions.length + candidates.length,
+        }} /></div>
+      </details>
+    </section>
+  );
+}
+
+function CourseEditForm({ course, definitions }: { course: Tables<"courses">; definitions: Tables<"course_task_definitions">[] }) {
   // Per-field-group extraction method — AI-filled groups need human eyes.
   const groups = (course.field_extraction ?? {}) as Record<string, string>;
   const ai = (group: string) => groups[group] === "ai";
 
   return (
+    <>
     <form action={updateCourseAction} className="mt-3 grid gap-3">
       <input type="hidden" name="id" value={course.id} />
       <label className="grid gap-1 text-[11px] font-medium uppercase text-muted-foreground">
@@ -157,10 +281,12 @@ function CourseEditForm({ course }: { course: Tables<"courses"> }) {
         </Button>
       </div>
     </form>
+    <CourseTaskEditor course={course} definitions={definitions} />
+    </>
   );
 }
 
-export function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
+export function CourseQueue({ courses, definitionsByCourse }: { courses: Tables<"courses">[]; definitionsByCourse: Map<string, Tables<"course_task_definitions">[]> }) {
   return (
     <section className="rounded-lg border bg-card p-4">
       <div className="flex items-baseline justify-between gap-3">
@@ -194,21 +320,17 @@ export function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
                 <form action={reviewCourseAction}>
                   <input type="hidden" name="id" value={course.id} />
                   <input type="hidden" name="review_status" value="approved" />
-                  <Button type="submit" size="sm">
-                    Approve
-                  </Button>
+                  <ActionButton pendingText="Approving…">Approve course</ActionButton>
                 </form>
                 <form action={reviewCourseAction}>
                   <input type="hidden" name="id" value={course.id} />
                   <input type="hidden" name="review_status" value="rejected" />
-                  <Button type="submit" variant="outline" size="sm">
-                    Reject
-                  </Button>
+                  <ActionButton variant="destructive" pendingText="Rejecting…" confirm={`Reject “${course.name ?? "this course"}”? It will remain private and leave this queue.`}>Reject course</ActionButton>
                 </form>
               </div>
             </div>
 
-            <CourseEditForm course={course} />
+            <CourseEditForm course={course} definitions={definitionsByCourse.get(course.id) ?? []} />
           </article>
         ))}
       </div>
@@ -218,6 +340,61 @@ export function CourseQueue({ courses }: { courses: Tables<"courses">[] }) {
           No pending courses need review.
         </p>
       )}
+    </section>
+  );
+}
+
+export function CourseTaskLibrary({
+  courses,
+  definitionsByCourse,
+}: {
+  courses: Tables<"courses">[];
+  definitionsByCourse: Map<string, Tables<"course_task_definitions">[]>;
+}) {
+  return (
+    <section className="rounded-lg border bg-card p-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold">Approved course task library</h2>
+          <p className="text-xs text-muted-foreground">Task edits publish to all students currently planning that course.</p>
+        </div>
+        <span className="text-xs text-muted-foreground">{courses.length} approved</span>
+      </div>
+      <div className="mt-3 grid gap-3">
+        {courses.map((course) => (
+          <article key={course.id} className="rounded-lg border p-3">
+            <h3 className="text-sm font-semibold">{course.name ?? "Untitled course"}</h3>
+            <p className="text-xs text-muted-foreground">{course.university_name ?? "University not extracted"}</p>
+            <CourseTaskEditor course={course} definitions={definitionsByCourse.get(course.id) ?? []} />
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function CourseTaskSourceReviewQueue({
+  reviews,
+}: {
+  reviews: Tables<"course_task_source_reviews">[];
+}) {
+  if (reviews.length === 0) return null;
+  return (
+    <section className="rounded-lg border bg-card p-4">
+      <h2 className="text-sm font-semibold">Official source task changes</h2>
+      <p className="mt-1 text-xs text-muted-foreground">Students keep the current task until you adopt or keep each source change.</p>
+      <div className="mt-3 grid gap-2">
+        {reviews.map((review) => (
+          <article key={review.id} className="rounded border p-3 text-sm">
+            <p><strong>{review.change_type}</strong> · {review.candidate_key}</p>
+            <div className="mt-2 grid gap-2 md:grid-cols-2"><div className="rounded bg-muted p-3"><span className="text-xs font-semibold uppercase text-muted-foreground">Current source value</span><pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(review.old_snapshot, null, 2) ?? "None"}</pre></div><div className="rounded border border-amber-300 bg-amber-50 p-3 text-amber-950"><span className="text-xs font-semibold uppercase">Proposed source value</span><pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(review.new_snapshot, null, 2) ?? "Removed"}</pre></div></div>
+            <div className="mt-2 flex gap-2">
+              <form action={adoptCourseTaskSourceReviewAction}><input type="hidden" name="id" value={review.id} /><ActionButton pendingText="Applying…" confirm="Use this official source change? Student tasks may receive an update decision.">Use source change</ActionButton></form>
+              <form action={keepCourseTaskSourceReviewAction}><input type="hidden" name="id" value={review.id} /><ActionButton pendingText="Keeping…" variant="outline" confirm="Keep the current task and dismiss this source change?">Keep current task</ActionButton></form>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -260,7 +437,7 @@ export function ConflictQueue({ conflicts }: { conflicts: ConflictCourse[] }) {
                     >
                       {conflict.old_course.source_url}
                     </a>
-                    <CourseEditForm course={conflict.old_course} />
+                    <CourseEditForm course={conflict.old_course} definitions={[]} />
                   </>
                 ) : (
                   <p className="mt-2 text-sm text-muted-foreground">
@@ -284,7 +461,7 @@ export function ConflictQueue({ conflicts }: { conflicts: ConflictCourse[] }) {
                 >
                   {conflict.source_url}
                 </a>
-                <CourseEditForm course={conflict} />
+                <CourseEditForm course={conflict} definitions={[]} />
               </div>
             </div>
 
@@ -292,16 +469,12 @@ export function ConflictQueue({ conflicts }: { conflicts: ConflictCourse[] }) {
               <form action={resolveConflictAction}>
                 <input type="hidden" name="id" value={conflict.id} />
                 <input type="hidden" name="keep_new" value="false" />
-                <Button type="submit" variant="outline" size="sm">
-                  Keep existing (reject update)
-                </Button>
+                <ActionButton pendingText="Resolving…" variant="outline" confirm="Keep the existing course and reject this submission? Linked dashboards remain on the existing course.">Keep existing (reject update)</ActionButton>
               </form>
               <form action={resolveConflictAction}>
                 <input type="hidden" name="id" value={conflict.id} />
                 <input type="hidden" name="keep_new" value="true" />
-                <Button type="submit" size="sm">
-                  Replace with update (approve)
-                </Button>
+                <ActionButton pendingText="Replacing…" confirm="Replace the existing course with this update? Linked dashboards will move to the submitted record.">Replace with update (approve)</ActionButton>
               </form>
             </div>
           </article>

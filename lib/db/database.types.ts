@@ -224,6 +224,122 @@ export type Database = {
         }
         Relationships: []
       }
+      course_task_definitions: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string | null
+          due_date: string | null
+          due_mode: Database["public"]["Enums"]["course_task_due_mode"]
+          id: string
+          kind: Database["public"]["Enums"]["course_task_kind"]
+          retired_at: string | null
+          revision: number
+          sort_order: number
+          source_key: string | null
+          source_snapshot: Json | null
+          source_url: string | null
+          title_template: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          due_mode?: Database["public"]["Enums"]["course_task_due_mode"]
+          id?: string
+          kind: Database["public"]["Enums"]["course_task_kind"]
+          retired_at?: string | null
+          revision?: number
+          sort_order?: number
+          source_key?: string | null
+          source_snapshot?: Json | null
+          source_url?: string | null
+          title_template: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          due_mode?: Database["public"]["Enums"]["course_task_due_mode"]
+          id?: string
+          kind?: Database["public"]["Enums"]["course_task_kind"]
+          retired_at?: string | null
+          revision?: number
+          sort_order?: number
+          source_key?: string | null
+          source_snapshot?: Json | null
+          source_url?: string | null
+          title_template?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_task_definitions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_task_source_reviews: {
+        Row: {
+          candidate_key: string
+          change_type: Database["public"]["Enums"]["course_task_source_change"]
+          course_id: string
+          course_task_definition_id: string | null
+          created_at: string
+          id: string
+          new_snapshot: Json | null
+          old_snapshot: Json | null
+          resolved_at: string | null
+          status: Database["public"]["Enums"]["course_task_source_review_status"]
+        }
+        Insert: {
+          candidate_key: string
+          change_type: Database["public"]["Enums"]["course_task_source_change"]
+          course_id: string
+          course_task_definition_id?: string | null
+          created_at?: string
+          id?: string
+          new_snapshot?: Json | null
+          old_snapshot?: Json | null
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["course_task_source_review_status"]
+        }
+        Update: {
+          candidate_key?: string
+          change_type?: Database["public"]["Enums"]["course_task_source_change"]
+          course_id?: string
+          course_task_definition_id?: string | null
+          created_at?: string
+          id?: string
+          new_snapshot?: Json | null
+          old_snapshot?: Json | null
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["course_task_source_review_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_task_source_reviews_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_task_source_reviews_course_task_definition_id_fkey"
+            columns: ["course_task_definition_id"]
+            isOneToOne: false
+            referencedRelation: "course_task_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           conflicts_with: string | null
@@ -531,61 +647,76 @@ export type Database = {
       }
       tasks: {
         Row: {
+          admin_change_state: Database["public"]["Enums"]["course_task_change_state"]
+          admin_snapshot: Json | null
           application_id: string | null
+          course_task_definition_id: string | null
           created_at: string
+          definition_revision: number | null
           description: string | null
           done: boolean
           due_date: string | null
           generated_active: boolean
           generated_from_rule_id: string | null
+          has_personal_edits: boolean
           id: string
           preferred_bucket: string | null
           sort_order: number
-          source_verified_at: string | null
           source_url: string | null
+          source_verified_at: string | null
           task_key: string | null
           title: string
           updated_at: string
-          verbatim_due: string | null
           user_id: string
+          verbatim_due: string | null
         }
         Insert: {
+          admin_change_state?: Database["public"]["Enums"]["course_task_change_state"]
+          admin_snapshot?: Json | null
           application_id?: string | null
+          course_task_definition_id?: string | null
           created_at?: string
+          definition_revision?: number | null
           description?: string | null
           done?: boolean
           due_date?: string | null
           generated_active?: boolean
           generated_from_rule_id?: string | null
+          has_personal_edits?: boolean
           id?: string
           preferred_bucket?: string | null
           sort_order?: number
-          source_verified_at?: string | null
           source_url?: string | null
+          source_verified_at?: string | null
           task_key?: string | null
           title: string
           updated_at?: string
-          verbatim_due?: string | null
           user_id: string
+          verbatim_due?: string | null
         }
         Update: {
+          admin_change_state?: Database["public"]["Enums"]["course_task_change_state"]
+          admin_snapshot?: Json | null
           application_id?: string | null
+          course_task_definition_id?: string | null
           created_at?: string
+          definition_revision?: number | null
           description?: string | null
           done?: boolean
           due_date?: string | null
           generated_active?: boolean
           generated_from_rule_id?: string | null
+          has_personal_edits?: boolean
           id?: string
           preferred_bucket?: string | null
           sort_order?: number
-          source_verified_at?: string | null
           source_url?: string | null
+          source_verified_at?: string | null
           task_key?: string | null
           title?: string
           updated_at?: string
-          verbatim_due?: string | null
           user_id?: string
+          verbatim_due?: string | null
         }
         Relationships: [
           {
@@ -593,6 +724,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_course_task_definition_id_fkey"
+            columns: ["course_task_definition_id"]
+            isOneToOne: false
+            referencedRelation: "course_task_definitions"
             referencedColumns: ["id"]
           },
           {
@@ -663,9 +801,18 @@ export type Database = {
         Args: { p_check_id: string; p_token_hash?: string }
         Returns: string
       }
+      sync_course_task_definitions: {
+        Args: { p_course_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       course_review_status: "pending" | "approved" | "rejected"
+      course_task_change_state: "current" | "update_pending" | "removal_pending"
+      course_task_due_mode: "source_deadline" | "fixed_date" | "none"
+      course_task_kind: "submission" | "requirement" | "custom"
+      course_task_source_change: "changed" | "new" | "removed"
+      course_task_source_review_status: "pending" | "adopted" | "kept"
       extraction_method: "library" | "ai" | "manual"
       qualification_level: "school" | "bachelor" | "master"
       rule_status: "draft" | "beta" | "verified"
@@ -800,6 +947,15 @@ export const Constants = {
   public: {
     Enums: {
       course_review_status: ["pending", "approved", "rejected"],
+      course_task_change_state: [
+        "current",
+        "update_pending",
+        "removal_pending",
+      ],
+      course_task_due_mode: ["source_deadline", "fixed_date", "none"],
+      course_task_kind: ["submission", "requirement", "custom"],
+      course_task_source_change: ["changed", "new", "removed"],
+      course_task_source_review_status: ["pending", "adopted", "kept"],
       extraction_method: ["library", "ai", "manual"],
       qualification_level: ["school", "bachelor", "master"],
       rule_status: ["draft", "beta", "verified"],

@@ -6,7 +6,7 @@ import type { CalendarEvent, DashboardTask, RailApplication } from "@/lib/tasks/
 
 import { moveTaskToBucket } from "./actions";
 import { Calendar } from "./calendar";
-import { ManualTaskForm } from "./manual-task";
+import { TaskForm } from "./manual-task";
 import { NowTask } from "./task-card";
 import styles from "./dashboard.module.css";
 
@@ -162,7 +162,7 @@ export function DashboardViews({
             Calendar
           </button>
         </div>
-        <ManualTaskForm applications={applications} />
+        <TaskForm applications={applications} />
       </div>
 
       {view === "tasks" ? (
