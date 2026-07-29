@@ -50,6 +50,43 @@ export const GCE_SUBJECTS = [
 
 export type GceSubjectId = (typeof GCE_SUBJECTS)[number]["id"];
 
+export const IB_GRADES = ["7", "6", "5", "4", "3", "2", "1"] as const;
+
+export const IB_LEVELS = [
+  { value: "HL", label: "Higher Level (HL)" },
+  { value: "SL", label: "Standard Level (SL)" },
+] as const;
+
+// Trade-off: static catalog of common IB subjects with their group and DAAD
+// category, mirroring
+// https://www.daad.de/en/studying-in-germany/requirements/ib-diploma/ — the
+// same page the seeded ib-* rules cite. Group 1 is language and literature,
+// group 2 is language acquisition (hence foreignLanguage), groups 3-6 are
+// individuals and societies, sciences, mathematics and the arts.
+// Only subjects DAAD recognizes are listed, so `ib_all_subjects_recognized`
+// cannot currently come back false; add unrecognized entries here rather than
+// guessing a classification. Move into the DB alongside `qualifications` when
+// the list needs to grow.
+export const IB_SUBJECTS = [
+  { id: "language_a", label: "Language A (literature)", group: 1, category: "language" },
+  { id: "language_b", label: "Language B (acquisition)", group: 2, category: "language", foreignLanguage: true },
+  { id: "german_b", label: "German B", group: 2, category: "language", foreignLanguage: true },
+  { id: "history", label: "History", group: 3, category: "other" },
+  { id: "geography", label: "Geography", group: 3, category: "other" },
+  { id: "economics", label: "Economics", group: 3, category: "other" },
+  { id: "psychology", label: "Psychology", group: 3, category: "other" },
+  { id: "business_management", label: "Business Management", group: 3, category: "other" },
+  { id: "biology", label: "Biology", group: 4, category: "biology" },
+  { id: "chemistry", label: "Chemistry", group: 4, category: "chemistry" },
+  { id: "physics", label: "Physics", group: 4, category: "physics" },
+  { id: "computer_science", label: "Computer Science", group: 4, category: "other" },
+  { id: "mathematics", label: "Mathematics", group: 5, category: "math" },
+  { id: "visual_arts", label: "Visual Arts", group: 6, category: "other" },
+  { id: "music", label: "Music", group: 6, category: "other" },
+] as const;
+
+export type IbSubjectId = (typeof IB_SUBJECTS)[number]["id"];
+
 // Field ids match the vocabularies the seeded rules condition on
 // (scripts/rules.bootstrap.ts STEM/TECHNICAL/SOCIAL_ECONOMICS/HUMANITIES).
 export const TARGET_FIELDS = [
@@ -97,6 +134,49 @@ const GceSubjectAnswerSchema = z.object({
 
 export type GceSubjectAnswer = z.infer<typeof GceSubjectAnswerSchema>;
 
+const IbSubjectAnswerSchema = z.object({
+  subjectId: z.enum(IB_SUBJECTS.map((s) => s.id) as [IbSubjectId, ...IbSubjectId[]]),
+  level: z.enum(["HL", "SL"]),
+  grade: z.enum(IB_GRADES),
+});
+
+export type IbSubjectAnswer = z.infer<typeof IbSubjectAnswerSchema>;
+
+/**
+ * Steps rendered as a bare number input rather than option cards. `error` is
+ * shown when a value is present but fails `isAnswered`.
+ */
+export const NUMBER_STEPS = {
+  schoolGradePercent: {
+    label: "Overall marks · required",
+    suffix: "%",
+    min: 0,
+    max: 100,
+    placeholder: "85",
+    error: "Enter a percentage from 0 to 100.",
+  },
+  ibExamYear: {
+    label: "Exam year · required",
+    min: 1990,
+    max: 2035,
+    placeholder: "2026",
+    error: "Enter the year you sat your IB exams.",
+  },
+  ibTotalPoints: {
+    label: "Total points · required",
+    min: 0,
+    max: 45,
+    placeholder: "36",
+    error: "Enter your total points, from 0 to 45.",
+  },
+} as const;
+
+export type NumberStepId = keyof typeof NUMBER_STEPS;
+
+export function isNumberStep(step: StepId): step is NumberStepId {
+  return step in NUMBER_STEPS;
+}
+
 export const AnswersSchema = z
   .object({
     targetDegree: z.enum(["bachelor", "master"]),
@@ -113,6 +193,12 @@ export const AnswersSchema = z
       .enum(AWARDING_BODIES.map((b) => b.id) as [string, ...string[]])
       .optional(),
     gceSubjects: z.array(GceSubjectAnswerSchema).min(1).optional(),
+    ibFullDiploma: z.boolean().optional(),
+    ibExamYear: z.number().int().min(1990).max(2035).optional(),
+    ibSchoolYears: z.union([z.literal(12), z.literal(13)]).optional(),
+    ibTotalPoints: z.number().int().min(0).max(45).optional(),
+    ibSubjects: z.array(IbSubjectAnswerSchema).min(1).optional(),
+    ibMathCourse: z.enum(["AA", "AI", "other"]).optional(),
     targetField: z.string().min(1),
     // null = "not sure yet" — intake is omitted from the profile
     intake: z
@@ -152,15 +238,22 @@ export type StepId =
   | "hasExistingApsCertificate"
   | "gceAwardingBody"
   | "gceSubjects"
+  | "ibFullDiploma"
+  | "ibExamYear"
+  | "ibSchoolYears"
+  | "ibTotalPoints"
+  | "ibSubjects"
+  | "ibMathCourse"
   | "targetField"
   | "intake";
 
 /**
  * Ordered question list for the current answers. Branches:
  * curriculum type is asked BEFORE the board (a board only makes sense for a
- * national curriculum) and routes national-board vs GCE questions; IB/other
- * collect no curriculum detail yet, so the engine returns honest unknowns
- * instead of guessing.
+ * national curriculum) and routes national-board, GCE and IB questions; an IB
+ * certificate short of the full diploma skips the rest, since no rule can give
+ * it a path. "Something else" collects no curriculum detail, so the engine
+ * returns honest unknowns instead of guessing.
  */
 export function visibleSteps(answers: PartialAnswers): StepId[] {
   const steps: StepId[] = [
@@ -177,6 +270,20 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   }
   if (bachelor && answers.curriculumType === "gce") {
     steps.push("gceAwardingBody", "gceSubjects");
+  }
+  if (bachelor && answers.curriculumType === "ib") {
+    steps.push("ibFullDiploma");
+    // An IB Certificate is never accepted as a Diploma, so the detail questions
+    // cannot change the outcome — don't ask them.
+    if (answers.ibFullDiploma) {
+      steps.push(
+        "ibExamYear",
+        "ibSchoolYears",
+        "ibTotalPoints",
+        "ibSubjects",
+        "ibMathCourse",
+      );
+    }
   }
   // no APS on the Riyadh checklist, so an existing certificate is irrelevant
   // when the visa is filed from Saudi Arabia
@@ -209,23 +316,26 @@ export function withAnswer<K extends StepId>(
 
 export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
   if (step === "intake") return answers.intake !== undefined;
-  if (step === "gceSubjects") {
-    const subjects = answers.gceSubjects ?? [];
-    return subjects.length > 0 && !hasDuplicateGceSubjects(subjects);
+  if (step === "gceSubjects" || step === "ibSubjects") {
+    const subjects = answers[step] ?? [];
+    return subjects.length > 0 && !hasDuplicateSubjects(subjects);
   }
-  if (step === "schoolGradePercent") {
-    const grade = answers.schoolGradePercent;
+  if (isNumberStep(step)) {
+    const { min, max } = NUMBER_STEPS[step];
+    const value = answers[step];
     return (
-      typeof grade === "number" &&
-      Number.isFinite(grade) &&
-      grade >= 0 &&
-      grade <= 100
+      typeof value === "number" &&
+      Number.isFinite(value) &&
+      value >= min &&
+      value <= max
     );
   }
   return answers[step] !== undefined;
 }
 
-export function hasDuplicateGceSubjects(subjects: GceSubjectAnswer[]): boolean {
+export function hasDuplicateSubjects(
+  subjects: { subjectId: string }[],
+): boolean {
   const subjectIds = new Set<string>();
   for (const subject of subjects) {
     if (subjectIds.has(subject.subjectId)) return true;
@@ -280,6 +390,34 @@ export function buildProfile(answers: Answers): Profile {
           category: subject.category,
         };
       }),
+    };
+  }
+  if (answers.curriculumType === "ib" && answers.ibFullDiploma !== undefined) {
+    const subjects = answers.ibSubjects?.map((s) => {
+      const subject = IB_SUBJECTS.find((c) => c.id === s.subjectId)!;
+      return {
+        group: subject.group,
+        level: s.level,
+        grade: Number(s.grade),
+        category: subject.category,
+        ...("foreignLanguage" in subject
+          ? { foreignLanguage: subject.foreignLanguage }
+          : {}),
+        // The catalog lists only subjects DAAD recognizes — see IB_SUBJECTS.
+        recognizedForGermany: true,
+      };
+    });
+    // Only the diploma question is asked when the answer is "no": nothing below
+    // it can change the outcome, so those facts stay genuinely unknown.
+    profile.ib = {
+      fullDiploma: answers.ibFullDiploma,
+      totalPoints: answers.ibTotalPoints,
+      examYear: answers.ibExamYear,
+      schoolYears: answers.ibSchoolYears,
+      mathCourse: answers.ibMathCourse ?? null,
+      mathLevel:
+        subjects?.find((s) => s.category === "math")?.level ?? null,
+      subjects,
     };
   }
   return profile;

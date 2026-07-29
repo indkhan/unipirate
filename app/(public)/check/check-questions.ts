@@ -43,6 +43,31 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> 
     question: "Which subjects did you take?",
     subtitle: "Add each A-Level (AL) and AS subject with its grade.",
   },
+  ibFullDiploma: {
+    question: "Did you complete the full IB Diploma?",
+    subtitle:
+      "German universities do not accept an IB Certificate in place of the Diploma.",
+  },
+  ibExamYear: {
+    question: "Which year did you sit your IB exams?",
+    subtitle: "The requirements changed from the 2025 exam year onward.",
+  },
+  ibSchoolYears: {
+    question: "How many school years did you complete in total?",
+  },
+  ibTotalPoints: {
+    question: "What was your total IB score?",
+    subtitle: "Out of 45, including the bonus points.",
+  },
+  ibSubjects: {
+    question: "Which six subjects did you take?",
+    subtitle: "Add each subject with its level (HL or SL) and grade.",
+  },
+  ibMathCourse: {
+    question: "Which Mathematics course did you take?",
+    subtitle:
+      "Analysis and Approaches or Applications and Interpretation — this decides which subjects you can be admitted to.",
+  },
   targetField: { question: "What do you want to study?" },
   intake: { question: "When do you want to start?" },
 };
@@ -102,9 +127,21 @@ export function buildOptions(
         }));
     case "jeeAdvanced":
     case "hasExistingApsCertificate":
+    case "ibFullDiploma":
       return [
         { value: true, label: "Yes", key: "yes" },
         { value: false, label: "No", key: "no" },
+      ];
+    case "ibSchoolYears":
+      return [
+        { value: 12, label: "12 years", key: "12" },
+        { value: 13, label: "13 years", key: "13" },
+      ];
+    case "ibMathCourse":
+      return [
+        { value: "AA", label: "Analysis and Approaches (AA)", key: "AA" },
+        { value: "AI", label: "Applications and Interpretation (AI)", key: "AI" },
+        { value: "other", label: "Another Mathematics course", key: "other" },
       ];
     case "gceAwardingBody":
       return AWARDING_BODIES.map((b) => ({

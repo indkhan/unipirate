@@ -29,14 +29,17 @@ export type Profile = {
   apsDocumentsShippedAt?: string; // ISO date
   hasExistingApsCertificate?: boolean;
   isExchangeOrPartnershipProgram?: boolean;
+  // Everything below `fullDiploma` is optional: an IB Certificate is never
+  // accepted as a Diploma, so the checker stops asking once the answer is "no"
+  // and the remaining facts stay undefined rather than being invented.
   ib?: {
     fullDiploma: boolean;
-    totalPoints: number;
-    examYear: number;
-    schoolYears: number;
+    totalPoints?: number;
+    examYear?: number;
+    schoolYears?: number;
     mathLevel: "HL" | "SL" | null;
     mathCourse: "AA" | "AI" | "other" | null;
-    subjects: {
+    subjects?: {
       group: 1 | 2 | 3 | 4 | 5 | 6;
       level: "HL" | "SL";
       grade: number;
@@ -305,13 +308,15 @@ function deriveFacts(p: Profile): Record<string, Fact> {
     partnership_program: p.isExchangeOrPartnershipProgram,
   };
   if (p.ib) {
-    const subjects = p.ib.subjects;
     raw.ib_full_diploma = p.ib.fullDiploma;
     raw.ib_total_points = p.ib.totalPoints;
     raw.ib_exam_year = p.ib.examYear;
     raw.ib_school_years = p.ib.schoolYears;
     raw.ib_math_level = p.ib.mathLevel ?? undefined;
     raw.ib_math_course = p.ib.mathCourse ?? undefined;
+  }
+  if (p.ib?.subjects) {
+    const subjects = p.ib.subjects;
     raw.ib_subject_count = subjects.length;
     raw.ib_hl_count = subjects.filter((subject) => subject.level === "HL").length;
     raw.ib_min_subject_grade =

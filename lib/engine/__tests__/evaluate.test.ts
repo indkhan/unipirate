@@ -432,7 +432,7 @@ describe("engine behavior", () => {
       ib: {
         ...p.p13IbInIndia.ib!,
         mathLevel: "HL",
-        subjects: p.p13IbInIndia.ib!.subjects.map((subject, index) => ({
+        subjects: p.p13IbInIndia.ib!.subjects!.map((subject, index) => ({
           ...subject,
           level: index === 0 ? "HL" : "SL",
         })),

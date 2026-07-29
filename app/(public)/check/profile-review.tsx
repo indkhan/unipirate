@@ -8,18 +8,19 @@ import { ThemeToggle } from "@/components/app/theme-toggle";
 
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
+import { GceSubjectsEditor } from "./gce-subjects-editor";
+import { IbSubjectsEditor } from "./ib-subjects-editor";
 import {
   AWARDING_BODIES,
   BOARD_IDS,
-  GCE_GRADES,
-  GCE_SUBJECTS,
   INTAKE_OPTIONS,
+  NUMBER_STEPS,
   TARGET_FIELDS,
   isAnswered,
+  isNumberStep,
   visibleSteps,
   withAnswer,
   type Answers,
-  type GceSubjectAnswer,
   type PartialAnswers,
   type StepId,
 } from "./steps";
@@ -45,14 +46,14 @@ const QUESTIONS: Record<StepId, string> = {
   hasExistingApsCertificate: "APS certificate",
   gceAwardingBody: "A-Level awarding body",
   gceSubjects: "A-Level subjects",
+  ibFullDiploma: "Full IB Diploma",
+  ibExamYear: "IB exam year",
+  ibSchoolYears: "School years",
+  ibTotalPoints: "IB total points",
+  ibSubjects: "IB subjects",
+  ibMathCourse: "IB Mathematics course",
   targetField: "Study field",
   intake: "Intake",
-};
-
-const emptySubject: GceSubjectAnswer = {
-  subjectId: "mathematics",
-  level: "AL",
-  grade: "A",
 };
 
 export function ProfileReview({
@@ -172,101 +173,47 @@ export function ProfileReview({
   }
 
   function field(step: StepId) {
-    if (step === "schoolGradePercent") {
+    if (isNumberStep(step)) {
+      const config = NUMBER_STEPS[step];
       return (
         <div className={styles.percentInputWrap}>
           <input
             className={styles.input}
             type="number"
             inputMode="decimal"
-            min={0}
-            max={100}
-            placeholder="85"
-            value={answers.schoolGradePercent ?? ""}
+            min={config.min}
+            max={config.max}
+            placeholder={config.placeholder}
+            value={answers[step] ?? ""}
             onChange={(event) =>
               select(
-                "schoolGradePercent",
+                step,
                 event.target.value === "" ? undefined : Number(event.target.value),
               )
             }
           />
-          <span className={styles.percentSuffix}>%</span>
+          {"suffix" in config && (
+            <span className={styles.percentSuffix}>{config.suffix}</span>
+          )}
         </div>
       );
     }
 
     if (step === "gceSubjects") {
-      const subjects = answers.gceSubjects ?? [];
       return (
-        <div className={styles.options}>
-          {subjects.map((subject, index) => (
-            <div key={index} className={styles.subjectRow}>
-              <div className={styles.subjectSelects}>
-                <select
-                  className={styles.select}
-                  value={subject.subjectId}
-                  aria-label="Subject"
-                  onChange={(event) => {
-                    const next = subjects.slice();
-                    next[index] = {
-                      ...subject,
-                      subjectId: event.target.value as GceSubjectAnswer["subjectId"],
-                    };
-                    select("gceSubjects", next);
-                  }}
-                >
-                  {GCE_SUBJECTS.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className={styles.select}
-                  value={subject.level}
-                  aria-label="Level"
-                  onChange={(event) => {
-                    const next = subjects.slice();
-                    next[index] = {
-                      ...subject,
-                      level: event.target.value as "AL" | "AS",
-                    };
-                    select("gceSubjects", next);
-                  }}
-                >
-                  <option value="AL">A-Level</option>
-                  <option value="AS">AS</option>
-                </select>
-                <select
-                  className={styles.select}
-                  value={subject.grade}
-                  aria-label="Grade"
-                  onChange={(event) => {
-                    const next = subjects.slice();
-                    next[index] = {
-                      ...subject,
-                      grade: event.target.value as GceSubjectAnswer["grade"],
-                    };
-                    select("gceSubjects", next);
-                  }}
-                >
-                  {GCE_GRADES.map((grade) => (
-                    <option key={grade} value={grade}>
-                      {grade}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          ))}
-          <button
-            type="button"
-            className={styles.addBtn}
-            onClick={() => select("gceSubjects", [...subjects, { ...emptySubject }])}
-          >
-            + Add subject
-          </button>
-        </div>
+        <GceSubjectsEditor
+          subjects={answers.gceSubjects ?? []}
+          onChange={(next) => select("gceSubjects", next)}
+        />
+      );
+    }
+
+    if (step === "ibSubjects") {
+      return (
+        <IbSubjectsEditor
+          subjects={answers.ibSubjects ?? []}
+          onChange={(next) => select("ibSubjects", next)}
+        />
       );
     }
 
