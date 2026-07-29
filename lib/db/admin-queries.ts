@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Database,
   Enums,
+  Json,
   Tables,
   TablesInsert,
   TablesUpdate,
@@ -15,6 +16,7 @@ import { toCourseTaskDefinition } from "@/lib/tasks/course-tasks";
 import {
   generateCourseTasks,
   prepareCourseTaskDefinitionSync,
+  type GeneratedTaskUpsert,
 } from "@/lib/tasks/generate";
 import type { ApplicationWithCourse } from "@/lib/db/queries";
 import { profileFromAnswers } from "@/lib/tasks/profile";
@@ -254,6 +256,18 @@ export async function updateAdminCourseTaskDefinition(
   );
 }
 
+/**
+ * Fans an admin's course-task definition edits out to every student tracking the
+ * course, using the same intake-aware generator as initial materialization —
+ * SQL cannot do the deadline selection, and a second parser would eventually
+ * disagree with the first about which deadline line applies.
+ *
+ * Trade-off: not transactional. Every write is idempotent and keyed on
+ * (user_id, task_key), so a partial failure leaves some students synced and the
+ * rest untouched — never a half-written task — and re-saving the definition
+ * converges. Upgrade path: hand these pre-computed rows to one security-definer
+ * SQL function as jsonb, which buys atomicity while keeping one parser.
+ */
 export async function syncAdminCourseTaskDefinitions(
   db: Db,
   courseId: string,
@@ -276,6 +290,17 @@ export async function syncAdminCourseTaskDefinitions(
   const profilesByUser = new Map(profiles.map((profile) => [profile.user_id, profile]));
   const definitionsForGeneration = definitions.map(toCourseTaskDefinition);
 
+  const today = todayIsoBerlin();
+  const upsertRows: GeneratedTaskUpsert[] = [];
+  const deactivateKeys: string[] = [];
+  const removalPendingKeys: string[] = [];
+  const personalUpdates: {
+    userId: string;
+    taskKey: string;
+    adminSnapshot: Json | null;
+    definitionRevision: number | null;
+  }[] = [];
+
   for (const application of applications) {
     if (!application.courses) continue;
     const profile = profileFromAnswers(profilesByUser.get(application.user_id) ?? null).profile;
@@ -286,39 +311,62 @@ export async function syncAdminCourseTaskDefinitions(
         ...application.courses,
         task_definitions: definitionsForGeneration,
       },
-    }], todayIsoBerlin(), profile?.intake);
+    }], today, profile?.intake);
     const sync = prepareCourseTaskDefinitionSync(
       application.user_id,
       desired,
       tasks.filter((task) => task.application_id === application.id),
     );
-    if (sync.upsertRows.length > 0) {
-      const { error } = await db
+
+    upsertRows.push(...sync.upsertRows);
+    deactivateKeys.push(...sync.deactivateKeys);
+    removalPendingKeys.push(...sync.removalPendingKeys);
+    personalUpdates.push(
+      ...sync.personalUpdates.map((update) => ({
+        userId: application.user_id,
+        ...update,
+      })),
+    );
+  }
+
+  // task_key embeds the application uuid, so the key sets are globally unique;
+  // the user_id filters are kept so the planner uses the (user_id, task_key) index.
+  if (upsertRows.length > 0) {
+    unwrap(await db.from("tasks").upsert(upsertRows, { onConflict: "user_id,task_key" }));
+  }
+  if (deactivateKeys.length > 0) {
+    unwrap(
+      await db
         .from("tasks")
-        .upsert(sync.upsertRows, { onConflict: "user_id,task_key" });
-      if (error) throw new Error(error.message);
-    }
-    await Promise.all([
-      ...sync.personalUpdates.map(({ taskKey, adminSnapshot, definitionRevision }) =>
-        db.from("tasks").update({
-          admin_snapshot: adminSnapshot,
-          definition_revision: definitionRevision,
+        .update({ generated_active: false })
+        .in("user_id", userIds)
+        .in("task_key", deactivateKeys),
+    );
+  }
+  if (removalPendingKeys.length > 0) {
+    unwrap(
+      await db
+        .from("tasks")
+        .update({ admin_change_state: "removal_pending" })
+        .in("user_id", userIds)
+        .in("task_key", removalPendingKeys),
+    );
+  }
+  // ponytail: one update per personalized copy — each carries a distinct
+  // admin_snapshot, so it cannot batch. Fine below ~50 trackers per course.
+  for (const update of personalUpdates) {
+    unwrap(
+      await db
+        .from("tasks")
+        .update({
+          admin_snapshot: update.adminSnapshot,
+          definition_revision: update.definitionRevision,
           admin_change_state: "update_pending",
           generated_active: true,
-        }).eq("user_id", application.user_id).eq("task_key", taskKey),
-      ),
-      sync.deactivateKeys.length > 0
-        ? db.from("tasks").update({ generated_active: false })
-          .eq("user_id", application.user_id).in("task_key", sync.deactivateKeys)
-        : Promise.resolve({ error: null }),
-      sync.removalPendingKeys.length > 0
-        ? db.from("tasks").update({ admin_change_state: "removal_pending" })
-          .eq("user_id", application.user_id).in("task_key", sync.removalPendingKeys)
-        : Promise.resolve({ error: null }),
-    ]).then((results) => {
-      const error = results.find((result) => result.error)?.error;
-      if (error) throw new Error(error.message);
-    });
+        })
+        .eq("user_id", update.userId)
+        .eq("task_key", update.taskKey),
+    );
   }
 }
 
