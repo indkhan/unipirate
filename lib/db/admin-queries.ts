@@ -11,11 +11,12 @@ import type {
   TablesUpdate,
 } from "@/lib/db/database.types";
 import { EngineRuleSchema } from "@/lib/engine/evaluate";
-import type { CourseTaskDefinition } from "@/lib/tasks/course-tasks";
+import { toCourseTaskDefinition } from "@/lib/tasks/course-tasks";
 import {
   generateCourseTasks,
   prepareCourseTaskDefinitionSync,
 } from "@/lib/tasks/generate";
+import type { ApplicationWithCourse } from "@/lib/db/queries";
 import { profileFromAnswers } from "@/lib/tasks/profile";
 import { todayIsoBerlin } from "@/lib/tasks/dates";
 import { unwrap } from "@/lib/db/unwrap";
@@ -117,7 +118,15 @@ export type ConflictCourse = Tables<"courses"> & {
   old_course: Tables<"courses"> | null;
 };
 
-/** Pending "the page changed" submissions with the course they dispute. */
+/**
+ * Pending "the page changed" submissions with the course they dispute.
+ *
+ * Trade-off: two round trips rather than a PostgREST embed on the
+ * `conflicts_with` self-FK — the generated types resolve that embed to an array
+ * rather than a to-one object, so it cannot be typed without a cast that hides
+ * whether the shape is right. Upgrade path: switch to
+ * `courses!courses_conflicts_with_fkey(*)` once verified against the project.
+ */
 export async function listConflictCourses(db: Db): Promise<ConflictCourse[]> {
   const updates = unwrap(
     await db
@@ -146,11 +155,12 @@ export async function resolveCourseConflict(
   newCourseId: string,
   keepNew: boolean,
 ): Promise<void> {
-  const { error } = await db.rpc("resolve_course_conflict", {
-    p_new_course_id: newCourseId,
-    p_keep_new: keepNew,
-  });
-  if (error) throw new Error(error.message);
+  unwrap(
+    await db.rpc("resolve_course_conflict", {
+      p_new_course_id: newCourseId,
+      p_keep_new: keepNew,
+    }),
+  );
 }
 
 export async function updateCourseReviewStatus(
@@ -254,7 +264,7 @@ export async function syncAdminCourseTaskDefinitions(
       .select("*, courses(*)")
       .eq("course_id", courseId)
       .eq("status", "planning"),
-  ) as (Tables<"applications"> & { courses: Tables<"courses"> | null })[];
+  ) as ApplicationWithCourse[];
   if (applications.length === 0) return;
 
   const userIds = applications.map((application) => application.user_id);
@@ -316,10 +326,11 @@ export async function createAdminCourseTaskSourceReview(
   db: Db,
   review: TablesInsert<"course_task_source_reviews">,
 ): Promise<void> {
-  const { error } = await db
-    .from("course_task_source_reviews")
-    .upsert(review, { onConflict: "course_id,candidate_key,status", ignoreDuplicates: true });
-  if (error) throw new Error(error.message);
+  unwrap(
+    await db
+      .from("course_task_source_reviews")
+      .upsert(review, { onConflict: "course_id,candidate_key,status", ignoreDuplicates: true }),
+  );
 }
 
 export async function listPendingCourseTaskSourceReviews(
@@ -348,31 +359,12 @@ export async function resolveAdminCourseTaskSourceReview(
   id: string,
   status: "adopted" | "kept",
 ): Promise<void> {
-  const { error } = await db
-    .from("course_task_source_reviews")
-    .update({ status, resolved_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw new Error(error.message);
-}
-
-export function toCourseTaskDefinition(
-  row: Tables<"course_task_definitions">,
-): CourseTaskDefinition {
-  return {
-    id: row.id,
-    courseId: row.course_id,
-    kind: row.kind,
-    sourceKey: row.source_key,
-    titleTemplate: row.title_template,
-    description: row.description,
-    sourceUrl: row.source_url,
-    dueMode: row.due_mode,
-    dueDate: row.due_date,
-    sortOrder: row.sort_order,
-    sourceSnapshot: row.source_snapshot,
-    revision: row.revision,
-    retiredAt: row.retired_at,
-  };
+  unwrap(
+    await db
+      .from("course_task_source_reviews")
+      .update({ status, resolved_at: new Date().toISOString() })
+      .eq("id", id),
+  );
 }
 
 export async function listRecentAdminAuditEvents(

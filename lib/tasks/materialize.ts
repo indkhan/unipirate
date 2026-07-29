@@ -3,6 +3,7 @@
 // dashboard render. Each task_key is inserted once; after that the task is
 // owned by the user and generation never changes or recreates it.
 import {
+  ensureApplication,
   getApplicationWithCourse,
   getProfile,
   getPublishedRules,
@@ -100,6 +101,17 @@ export async function materializeCourseTasksForApplication(
     application,
     profile?.intake,
   );
+}
+
+/** Put a course on the user's dashboard and materialize its admin-defined tasks. */
+export async function trackCourse(
+  db: Db,
+  userId: string,
+  courseId: string,
+): Promise<string> {
+  const application = await ensureApplication(db, userId, courseId);
+  await materializeCourseTasksForApplication(db, userId, application.id);
+  return application.id;
 }
 
 export async function materializeAllTasksForUser(

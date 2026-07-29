@@ -11,7 +11,10 @@ import type {
   TablesInsert,
 } from "@/lib/db/database.types";
 import type { GeneratedTaskUpsert } from "@/lib/tasks/generate";
-import type { CourseTaskDefinition } from "@/lib/tasks/course-tasks";
+import {
+  toCourseTaskDefinition,
+  type CourseTaskDefinition,
+} from "@/lib/tasks/course-tasks";
 import { unwrap } from "@/lib/db/unwrap";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
@@ -155,13 +158,14 @@ export async function ensureApplication(
   userId: string,
   courseId: string,
 ): Promise<Tables<"applications">> {
-  const { error } = await db
-    .from("applications")
-    .upsert(
-      { user_id: userId, course_id: courseId },
-      { onConflict: "user_id,course_id", ignoreDuplicates: true },
-    );
-  if (error) throw new Error(error.message);
+  unwrap(
+    await db
+      .from("applications")
+      .upsert(
+        { user_id: userId, course_id: courseId },
+        { onConflict: "user_id,course_id", ignoreDuplicates: true },
+      ),
+  );
   return unwrap(
     await db
       .from("applications")
@@ -214,21 +218,7 @@ export async function listActiveCourseTaskDefinitions(
       .is("retired_at", null)
       .order("sort_order"),
   );
-  return rows.map((row) => ({
-    id: row.id,
-    courseId: row.course_id,
-    kind: row.kind,
-    sourceKey: row.source_key,
-    titleTemplate: row.title_template,
-    description: row.description,
-    sourceUrl: row.source_url,
-    dueMode: row.due_mode,
-    dueDate: row.due_date,
-    sortOrder: row.sort_order,
-    sourceSnapshot: row.source_snapshot,
-    revision: row.revision,
-    retiredAt: row.retired_at,
-  }));
+  return rows.map(toCourseTaskDefinition);
 }
 
 export async function deleteApplicationForCourse(
@@ -236,12 +226,13 @@ export async function deleteApplicationForCourse(
   userId: string,
   courseId: string,
 ): Promise<void> {
-  const { error } = await db
-    .from("applications")
-    .delete()
-    .eq("user_id", userId)
-    .eq("course_id", courseId);
-  if (error) throw new Error(error.message);
+  unwrap(
+    await db
+      .from("applications")
+      .delete()
+      .eq("user_id", userId)
+      .eq("course_id", courseId),
+  );
 }
 
 // -------------------------------------------------------------------- tasks
@@ -342,13 +333,14 @@ export async function updateCourseTaskAssignment(
     "title" | "description" | "source_url" | "due_date"
   >,
 ): Promise<void> {
-  const { error } = await db
-    .from("tasks")
-    .update({ ...task, has_personal_edits: true })
-    .eq("id", id)
-    .eq("user_id", userId)
-    .not("course_task_definition_id", "is", null);
-  if (error) throw new Error(error.message);
+  unwrap(
+    await db
+      .from("tasks")
+      .update({ ...task, has_personal_edits: true })
+      .eq("id", id)
+      .eq("user_id", userId)
+      .not("course_task_definition_id", "is", null),
+  );
 }
 
 export async function resolveCourseTaskAssignment(
@@ -360,33 +352,34 @@ export async function resolveCourseTaskAssignment(
   const task = await getCourseTaskAssignment(db, userId, id);
   if (!task) throw new Error("Course task not found");
   if (resolution === "remove") {
-    const { error } = await db.from("tasks").delete().eq("id", id).eq("user_id", userId);
-    if (error) throw new Error(error.message);
+    unwrap(await db.from("tasks").delete().eq("id", id).eq("user_id", userId));
     return;
   }
   if (resolution === "manual") {
-    const { error } = await db
-      .from("tasks")
-      .update({
-        task_key: null,
-        course_task_definition_id: null,
-        admin_snapshot: null,
-        definition_revision: null,
-        has_personal_edits: false,
-        admin_change_state: "current",
-      })
-      .eq("id", id)
-      .eq("user_id", userId);
-    if (error) throw new Error(error.message);
+    unwrap(
+      await db
+        .from("tasks")
+        .update({
+          task_key: null,
+          course_task_definition_id: null,
+          admin_snapshot: null,
+          definition_revision: null,
+          has_personal_edits: false,
+          admin_change_state: "current",
+        })
+        .eq("id", id)
+        .eq("user_id", userId),
+    );
     return;
   }
   if (resolution === "keep") {
-    const { error } = await db
-      .from("tasks")
-      .update({ admin_change_state: "current" })
-      .eq("id", id)
-      .eq("user_id", userId);
-    if (error) throw new Error(error.message);
+    unwrap(
+      await db
+        .from("tasks")
+        .update({ admin_change_state: "current" })
+        .eq("id", id)
+        .eq("user_id", userId),
+    );
     return;
   }
   const snapshot = task.admin_snapshot;
@@ -394,21 +387,22 @@ export async function resolveCourseTaskAssignment(
     throw new Error("Admin task version is unavailable");
   }
   const value = snapshot as Record<string, Json | undefined>;
-  const { error } = await db
-    .from("tasks")
-    .update({
-      title: typeof value.title === "string" ? value.title : task.title,
-      description: typeof value.description === "string" ? value.description : null,
-      source_url: typeof value.source_url === "string" ? value.source_url : null,
-      due_date: typeof value.due_date === "string" ? value.due_date : null,
-      verbatim_due: typeof value.verbatim_due === "string" ? value.verbatim_due : null,
-      sort_order: typeof value.sort_order === "number" ? value.sort_order : task.sort_order,
-      has_personal_edits: false,
-      admin_change_state: "current",
-    })
-    .eq("id", id)
-    .eq("user_id", userId);
-  if (error) throw new Error(error.message);
+  unwrap(
+    await db
+      .from("tasks")
+      .update({
+        title: typeof value.title === "string" ? value.title : task.title,
+        description: typeof value.description === "string" ? value.description : null,
+        source_url: typeof value.source_url === "string" ? value.source_url : null,
+        due_date: typeof value.due_date === "string" ? value.due_date : null,
+        verbatim_due: typeof value.verbatim_due === "string" ? value.verbatim_due : null,
+        sort_order: typeof value.sort_order === "number" ? value.sort_order : task.sort_order,
+        has_personal_edits: false,
+        admin_change_state: "current",
+      })
+      .eq("id", id)
+      .eq("user_id", userId),
+  );
 }
 
 export async function deleteManualTask(
@@ -416,13 +410,14 @@ export async function deleteManualTask(
   userId: string,
   id: string,
 ): Promise<void> {
-  const { error } = await db
-    .from("tasks")
-    .delete()
-    .eq("user_id", userId)
-    .eq("id", id)
-    .is("task_key", null);
-  if (error) throw new Error(error.message);
+  unwrap(
+    await db
+      .from("tasks")
+      .delete()
+      .eq("user_id", userId)
+      .eq("id", id)
+      .is("task_key", null),
+  );
 }
 
 export async function setTaskDone(
@@ -479,10 +474,7 @@ export async function upsertGeneratedTasks(
   rows: GeneratedTaskUpsert[],
 ): Promise<void> {
   if (rows.length === 0) return;
-  const { error } = await db
-    .from("tasks")
-    .upsert(rows, { onConflict: "user_id,task_key" });
-  if (error) throw new Error(error.message);
+  unwrap(await db.from("tasks").upsert(rows, { onConflict: "user_id,task_key" }));
 }
 
 // ------------------------------------------------------------------- checks
@@ -558,8 +550,7 @@ export async function insertAnswerReport(
   db: Db,
   report: TablesInsert<"answer_reports">,
 ): Promise<void> {
-  const { error } = await db.from("answer_reports").insert(report);
-  if (error) throw new Error(error.message);
+  unwrap(await db.from("answer_reports").insert(report));
 }
 
 // --------------------------------------------------------------- assistant
@@ -603,6 +594,5 @@ export async function insertAssistantMessage(
   db: Db,
   message: TablesInsert<"assistant_messages">,
 ): Promise<void> {
-  const { error } = await db.from("assistant_messages").insert(message);
-  if (error) throw new Error(error.message);
+  unwrap(await db.from("assistant_messages").insert(message));
 }

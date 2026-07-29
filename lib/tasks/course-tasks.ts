@@ -1,5 +1,7 @@
 // Pure course-task definition helpers. Course facts become explicit admin-owned
 // definitions before they are materialized for a student's application.
+import type { Tables } from "@/lib/db/database.types";
+
 export type CourseTaskKind = "submission" | "requirement" | "custom";
 export type CourseTaskDueMode = "source_deadline" | "fixed_date" | "none";
 
@@ -37,10 +39,31 @@ type CourseFacts = {
   created_at: string;
 };
 
-function strings(value: unknown): string[] {
+/** Non-empty strings out of a jsonb column. */
+export function strings(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string" && item.trim() !== "")
     : [];
+}
+
+export function toCourseTaskDefinition(
+  row: Tables<"course_task_definitions">,
+): CourseTaskDefinition {
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    kind: row.kind,
+    sourceKey: row.source_key,
+    titleTemplate: row.title_template,
+    description: row.description,
+    sourceUrl: row.source_url,
+    dueMode: row.due_mode,
+    dueDate: row.due_date,
+    sortOrder: row.sort_order,
+    sourceSnapshot: row.source_snapshot,
+    revision: row.revision,
+    retiredAt: row.retired_at,
+  };
 }
 
 export function deriveCourseTaskCandidates(course: CourseFacts): CourseTaskCandidate[] {

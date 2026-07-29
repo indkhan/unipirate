@@ -65,7 +65,13 @@ const courseUpdateSchema = z.object({
   requirements: z.string().min(2),
 });
 
-function parseJsonObject(value: string, field: string): Json {
+/** Rule conditions/outcomes and course facts are edited as raw JSON textareas. */
+function parseJson<T>(
+  value: string,
+  field: string,
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+  shape: string,
+): T {
   let parsed: unknown;
 
   try {
@@ -74,46 +80,16 @@ function parseJsonObject(value: string, field: string): Json {
     throw new Error(`${field} must be valid JSON.`);
   }
 
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`${field} must be a JSON object.`);
-  }
-
-  return parsed as Json;
-}
-
-function parseJsonArray(value: string, field: string): string[] {
-  let parsed: unknown;
-
-  try {
-    parsed = JSON.parse(value);
-  } catch {
-    throw new Error(`${field} must be valid JSON.`);
-  }
-
-  const result = z.array(z.string().min(1)).safeParse(parsed);
-  if (!result.success) {
-    throw new Error(`${field} must be a JSON array of non-empty strings.`);
-  }
+  const result = schema.safeParse(parsed);
+  if (!result.success) throw new Error(`${field} must be ${shape}.`);
 
   return result.data;
 }
 
-function parseNullableJsonString(value: string, field: string): string | null {
-  let parsed: unknown;
-
-  try {
-    parsed = JSON.parse(value);
-  } catch {
-    throw new Error(`${field} must be valid JSON.`);
-  }
-
-  const result = z.string().min(1).nullable().safeParse(parsed);
-  if (!result.success) {
-    throw new Error(`${field} must be a JSON string or null.`);
-  }
-
-  return result.data;
-}
+// zod cannot express the recursive Json type; parsing proves it is an object.
+const jsonObject = z.record(z.string(), z.unknown()).transform((value) => value as Json);
+const jsonStringArray = z.array(z.string().min(1));
+const nullableJsonString = z.string().min(1).nullable();
 
 function nullableText(value: string): string | null {
   const trimmed = value.trim();
@@ -133,8 +109,8 @@ export async function updateRuleAction(formData: FormData) {
     status: formData.get("status"),
   });
 
-  const conditions = parseJsonObject(values.conditions, "conditions");
-  const outcomes = parseJsonObject(values.outcomes, "outcomes");
+  const conditions = parseJson(values.conditions, "conditions", jsonObject, "a JSON object");
+  const outcomes = parseJson(values.outcomes, "outcomes", jsonObject, "a JSON object");
   const existing = await getAdminRule(db, values.id);
   const publishing =
     values.status !== "draft" && values.status !== existing.status;
@@ -393,9 +369,9 @@ export async function updateCourseAction(formData: FormData) {
     degree: nullableText(values.degree),
     language: nullableText(values.language),
     description: nullableText(values.description),
-    tuition: parseNullableJsonString(values.tuition, "tuition"),
-    deadlines: parseJsonArray(values.deadlines, "deadlines"),
-    requirements: parseJsonArray(values.requirements, "requirements"),
+    tuition: parseJson(values.tuition, "tuition", nullableJsonString, "a JSON string or null"),
+    deadlines: parseJson(values.deadlines, "deadlines", jsonStringArray, "a JSON array of non-empty strings"),
+    requirements: parseJson(values.requirements, "requirements", jsonStringArray, "a JSON array of non-empty strings"),
     extraction_method: "manual",
     field_extraction: {
       core: "manual",

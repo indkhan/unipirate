@@ -3,6 +3,14 @@
 // source_quote is the semantic payload, the rendered conditions/outcomes make
 // the retrieved text precise enough to answer from without guessing.
 
+/**
+ * Shared by the write path (scripts/embed-kb.ts) and the read path
+ * (lib/ai/assistant.ts). These two MUST agree: embeddings from different
+ * models are not comparable, and a mismatch returns plausible-looking but
+ * wrong neighbours with no error.
+ */
+export const EMBEDDING_MODEL = "openai/text-embedding-3-small";
+
 type Primitive = string | number | boolean;
 type Condition =
   | Primitive

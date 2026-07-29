@@ -9,6 +9,7 @@ import type { Citation, Result, Term } from "@/lib/engine/evaluate";
 import type { Json } from "@/lib/db/database.types";
 import {
   renderCourseTaskTitle,
+  strings,
   type CourseTaskDefinition,
 } from "@/lib/tasks/course-tasks";
 
@@ -199,12 +200,6 @@ export function daysUntil(isoDate: string, todayIso: string): number {
   return Math.round((toUtc(isoDate) - toUtc(todayIso)) / 86_400_000);
 }
 
-function asStrings(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && item.trim() !== "")
-    : [];
-}
-
 function parseDayMonth(input: string): { month: number; day: number }[] {
   const monthAlternation = Object.keys(MONTHS)
     .sort((a, b) => b.length - a.length)
@@ -381,7 +376,7 @@ export function generateCourseTasks(
     for (const definition of course.task_definitions) {
       if (definition.retiredAt) continue;
       const snapshot = definition.sourceSnapshot as { deadlines?: unknown } | null;
-      const deadlineLines = snapshot ? asStrings(snapshot.deadlines) : [];
+      const deadlineLines = snapshot ? strings(snapshot.deadlines) : [];
       const selected = definition.dueMode === "source_deadline"
         ? selectSubmissionDeadline(deadlineLines, todayIso, intake)
         : { date: definition.dueDate, verbatim: definition.dueDate };
