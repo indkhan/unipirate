@@ -1,4 +1,5 @@
 import { UserMenu } from "@/components/app/user-menu";
+import { isAdminRole } from "@/lib/auth/roles";
 import { getCountries, getQualifications } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
 
@@ -43,7 +44,7 @@ export default async function CheckPage({
   const userMenu = user ? (
     <UserMenu
       email={user.email ?? null}
-      isAdmin={user.app_metadata?.role === "admin"}
+      isAdmin={isAdminRole(user.app_metadata)}
     />
   ) : undefined;
 

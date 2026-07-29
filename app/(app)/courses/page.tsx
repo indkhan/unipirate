@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AuthenticatedTopbar } from "@/components/app/authenticated-topbar";
+import { isAdminRole } from "@/lib/auth/roles";
 import { requireUser } from "@/lib/auth/session";
 import {
   countTodayAssistantQuestions,
@@ -35,7 +36,7 @@ export default async function CourseFinderPage() {
         <header className={styles.header}>
           <AuthenticatedTopbar
             email={user.email ?? null}
-            isAdmin={user.app_metadata?.role === "admin"}
+            isAdmin={isAdminRole(user.app_metadata)}
             initialAssistantUsed={questionsUsed}
           >
             <AddCourseSheet

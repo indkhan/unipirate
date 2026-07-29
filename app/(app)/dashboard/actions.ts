@@ -8,8 +8,8 @@ import {
   deleteApplicationForCourse,
   deleteManualTask as deleteTaskRow,
   insertAnswerReport,
+  hasApplication,
   insertTask,
-  listApplications,
   removeMyCourse,
   setTaskPreferredBucket,
   setTaskDone,
@@ -84,14 +84,14 @@ const taskSchema = z.object({
     .default(null),
 });
 
+/** Trust-boundary check: a forged applicationId must not attach to a new task. */
 async function assertOwnedApplication(
   db: Session["db"],
   userId: string,
   applicationId: string | null,
 ): Promise<void> {
   if (!applicationId) return;
-  const applications = await listApplications(db, userId);
-  if (!applications.some((application) => application.id === applicationId)) {
+  if (!(await hasApplication(db, userId, applicationId))) {
     throw new Error("Application not found");
   }
 }

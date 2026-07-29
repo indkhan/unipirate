@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { ThemeToggle } from "@/components/app/theme-toggle";
 import { UserMenu } from "@/components/app/user-menu";
+import { isAdminRole } from "@/lib/auth/roles";
 import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
 import { getCheck, getResultViewer } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
@@ -89,7 +90,7 @@ export default async function ResultPage({
             {user ? (
               <UserMenu
                 email={user.email ?? null}
-                isAdmin={user.app_metadata?.role === "admin"}
+                isAdmin={isAdminRole(user.app_metadata)}
               />
             ) : (
               <Link

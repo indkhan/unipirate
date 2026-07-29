@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { UserMenu } from "@/components/app/user-menu";
+import { isAdminRole } from "@/lib/auth/roles";
 import { requireUser } from "@/lib/auth/session";
 import { getCountries, getProfile, getQualifications } from "@/lib/db/queries";
 
@@ -37,7 +38,7 @@ export default async function ProfilePage() {
       userMenu={
         <UserMenu
           email={user.email ?? null}
-          isAdmin={user.app_metadata?.role === "admin"}
+          isAdmin={isAdminRole(user.app_metadata)}
         />
       }
     />

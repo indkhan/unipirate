@@ -5,6 +5,7 @@
 import type { User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 
+import { isAdminRole } from "@/lib/auth/roles";
 import { createClient } from "@/lib/db/server";
 
 export type Session = {
@@ -30,11 +31,15 @@ export async function requireUser(nextPath?: string): Promise<Session> {
 }
 
 /**
- * `requireUser` plus the admin-role check (`app_metadata.role === 'admin'`,
- * the same claim proxy.ts gates /admin on). Non-admins land on /dashboard.
+ * `requireUser` plus the admin-role check — the same claim proxy.ts gates
+ * /admin on and `public.is_admin()` reads. Non-admins land on /dashboard.
+ *
+ * Deliberately built on `getUser()`, not `getClaims()`: this guard fronts every
+ * admin server action, and a locally-verified JWT stays valid until `exp`, so a
+ * banned or deleted user would keep access for the rest of the token lifetime.
  */
 export async function requireAdmin(): Promise<Session> {
   const session = await requireUser();
-  if (session.user.app_metadata?.role !== "admin") redirect("/dashboard");
+  if (!isAdminRole(session.user.app_metadata)) redirect("/dashboard");
   return session;
 }

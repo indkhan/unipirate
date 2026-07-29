@@ -135,6 +135,21 @@ export async function hasApplicationForCourse(
   return (count ?? 0) > 0;
 }
 
+/** Bounded ownership check — RLS scopes the row, this keeps the payload at a count. */
+export async function hasApplication(
+  db: Db,
+  userId: string,
+  applicationId: string,
+): Promise<boolean> {
+  const { count, error } = await db
+    .from("applications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("id", applicationId);
+  if (error) throw new Error(error.message);
+  return (count ?? 0) > 0;
+}
+
 export type ApplicationWithCourse = Tables<"applications"> & {
   courses: Tables<"courses"> | null;
 };
