@@ -444,6 +444,56 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     expect(otherView).toHaveLength(0);
   });
 
+  it("admin sees definition-linked task copies but not private manual tasks", async () => {
+    const { data: manual, error: manualError } = await owner
+      .from("tasks")
+      .insert({ user_id: ownerUser.id, title: "rls private manual task" })
+      .select("id")
+      .single();
+    expect(manualError).toBeNull();
+
+    // A definition-linked copy is what the admin course-task sync fans out.
+    const { data: definition, error: definitionError } = await service
+      .from("course_task_definitions")
+      .insert({
+        course_id: pendingCourseId,
+        kind: "submission",
+        title_template: "Submit application — {{course}}",
+        due_mode: "source_deadline",
+        sort_order: 30,
+      })
+      .select("id")
+      .single();
+    expect(definitionError).toBeNull();
+
+    const { data: assigned, error: assignedError } = await service
+      .from("tasks")
+      .insert({
+        user_id: ownerUser.id,
+        title: "rls course task copy",
+        task_key: `app:${randomUUID()}:course-task:${definition!.id}`,
+        course_task_definition_id: definition!.id,
+      })
+      .select("id")
+      .single();
+    expect(assignedError).toBeNull();
+
+    const { data: adminManualView } = await admin
+      .from("tasks")
+      .select("id")
+      .eq("id", manual!.id);
+    expect(adminManualView).toHaveLength(0);
+
+    const { data: adminCopyView } = await admin
+      .from("tasks")
+      .select("id")
+      .eq("id", assigned!.id);
+    expect(adminCopyView).toHaveLength(1);
+
+    await service.from("tasks").delete().eq("id", assigned!.id);
+    await service.from("course_task_definitions").delete().eq("id", definition!.id);
+  });
+
   it("owner reads own pending course but cannot approve it", async () => {
     const { data } = await owner
       .from("courses")

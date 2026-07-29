@@ -289,7 +289,6 @@ function existingGenerated(
     source_url: overrides.source_url ?? null,
     source_verified_at: overrides.source_verified_at ?? null,
     application_id: overrides.application_id ?? null,
-    generated_from_rule_id: overrides.generated_from_rule_id ?? null,
     done: overrides.done ?? false,
     generated_active: overrides.generated_active ?? true,
     course_task_definition_id: overrides.course_task_definition_id ?? null,

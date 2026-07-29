@@ -60,7 +60,6 @@ export type ExistingGeneratedTask = {
   source_url: string | null;
   source_verified_at: string | null;
   application_id: string | null;
-  generated_from_rule_id: string | null;
   done: boolean;
   generated_active: boolean;
   course_task_definition_id: string | null;
@@ -79,7 +78,6 @@ export type GeneratedTaskUpsert = {
   source_url: string | null;
   source_verified_at: string | null;
   application_id: string | null;
-  generated_from_rule_id: string | null;
   generated_active: boolean;
   course_task_definition_id: string | null;
   admin_snapshot: Json | null;
@@ -489,7 +487,6 @@ function toGeneratedTaskUpsert(userId: string, task: GeneratedTask): GeneratedTa
     source_url: task.source?.url ?? null,
     source_verified_at: task.source?.verifiedAt ?? null,
     application_id: task.applicationId,
-    generated_from_rule_id: task.ruleId,
     course_task_definition_id: task.courseTaskDefinitionId,
     admin_snapshot: task.adminSnapshot,
     definition_revision: task.definitionRevision,
