@@ -47,11 +47,3 @@ export function adminHref(values: Partial<AdminState>): string {
   for (const [key, value] of Object.entries(values)) if (value) query.set(key, value);
   return `/admin${query.size ? `?${query}` : ""}`;
 }
-
-export function safeAdminReturnTo(value: unknown): string {
-  if (typeof value !== "string" || !value.startsWith("/admin") || value.startsWith("//")) return "/admin";
-  try {
-    const url = new URL(value, "http://local");
-    return url.origin === "http://local" && url.pathname === "/admin" ? `${url.pathname}${url.search}` : "/admin";
-  } catch { return "/admin"; }
-}

@@ -6,14 +6,14 @@ import { z } from "zod";
 import { requireUser, type Session } from "@/lib/auth/session";
 import {
   deleteApplicationForCourse,
-  deleteTask as deleteTaskRow,
+  deleteManualTask as deleteTaskRow,
   insertAnswerReport,
   insertTask,
   listApplications,
   removeMyCourse,
   setTaskPreferredBucket,
   setTaskDone,
-  updateTask as updateTaskRow,
+  updateManualTask as updateTaskRow,
   updateApplicationStatus,
   updateCourseTaskAssignment as updateCourseTaskAssignmentRow,
   resolveCourseTaskAssignment,
@@ -39,9 +39,9 @@ const toggleTaskSchema = z.object({
 
 export async function toggleTask(input: unknown): Promise<void> {
   const { id, done } = toggleTaskSchema.parse(input);
-  const { db } = await requireUser();
+  const { db, user } = await requireUser();
 
-  await setTaskDone(db, id, done);
+  await setTaskDone(db, user.id, id, done);
 }
 
 const moveTaskSchema = z.object({

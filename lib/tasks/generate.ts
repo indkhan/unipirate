@@ -1,9 +1,10 @@
 // Pure task generation: engine results and tracked courses → deterministic
 // GeneratedTask lists, plus deadline parsing and Now/Next/Later bucketing.
 // Zero I/O — materialize.ts writes the output to the DB, view.ts renders it.
-// Task identity is the `key` (`rule:<id>:step:<n>`, `app:<id>:submit`,
-// `app:<id>:req:<hash>`); regeneration reconciles by key so user state
-// (done, preferred bucket) survives.
+// Task identity is the `key` (`rule:<id>:step:<n>` for engine steps,
+// `app:<id>:course-task:<definition-id>` for admin-defined course tasks);
+// regeneration reconciles by key so user state (done, preferred bucket)
+// survives.
 import type { Citation, Result, Term } from "@/lib/engine/evaluate";
 import type { Json } from "@/lib/db/database.types";
 import {
@@ -29,12 +30,10 @@ export type CourseForTaskGeneration = {
   id: string;
   name: string | null;
   university_name: string | null;
-  deadlines: unknown;
-  requirements: unknown;
   source_url: string;
   created_at: string;
   review_status: string;
-  task_definitions?: CourseTaskDefinition[];
+  task_definitions: CourseTaskDefinition[];
 };
 
 export type ApplicationForTaskGeneration = {
@@ -328,14 +327,6 @@ export function selectSubmissionDeadline(
   return { date: null, verbatim: undated ?? null };
 }
 
-function hashDjb2(input: string): string {
-  let hash = 5381;
-  for (let index = 0; index < input.length; index += 1) {
-    hash = ((hash << 5) + hash + input.charCodeAt(index)) >>> 0;
-  }
-  return hash.toString(36);
-}
-
 function courseLabel(course: CourseForTaskGeneration): string {
   return course.university_name ?? course.name ?? "this university";
 }
@@ -387,95 +378,41 @@ export function generateCourseTasks(
       continue;
     }
 
-    const definitions = course.task_definitions;
-    if (definitions) {
-      for (const definition of definitions) {
-        if (definition.retiredAt) continue;
-        const snapshot = definition.sourceSnapshot as { deadlines?: unknown } | null;
-        const deadlineLines = snapshot ? asStrings(snapshot.deadlines) : [];
-        const selected = definition.dueMode === "source_deadline"
-          ? selectSubmissionDeadline(deadlineLines, todayIso, intake)
-          : { date: definition.dueDate, verbatim: definition.dueDate };
-        const title = renderCourseTaskTitle(definition.titleTemplate, courseLabel(course));
-        const adminSnapshot = {
-          title,
-          description: definition.description,
-          source_url: definition.sourceUrl,
-          due_date: selected.date,
-          verbatim_due: selected.verbatim,
-          sort_order: definition.sortOrder,
-        };
-        generated.push({
-          key: `app:${application.id}:course-task:${definition.id}`,
-          title,
-          dueDate: selected.date,
-          verbatimDue: selected.verbatim,
-          order: definition.sortOrder,
-          applicationId: application.id,
-          ruleId: null,
-          courseTaskDefinitionId: definition.id,
-          adminSnapshot,
-          definitionRevision: definition.revision,
-          source: definition.sourceUrl
-            ? { url: definition.sourceUrl, verifiedAt: course.created_at }
-            : null,
-        });
-      }
-      continue;
-    }
-
-    const deadlines = asStrings(course.deadlines);
-    const requirements = asStrings(course.requirements);
-    const submitDeadline = selectSubmissionDeadline(deadlines, todayIso, intake);
-    const label = courseLabel(course);
-    const source = { url: course.source_url, verifiedAt: course.created_at };
-
-    if (submitDeadline.verbatim) {
+    for (const definition of course.task_definitions) {
+      if (definition.retiredAt) continue;
+      const snapshot = definition.sourceSnapshot as { deadlines?: unknown } | null;
+      const deadlineLines = snapshot ? asStrings(snapshot.deadlines) : [];
+      const selected = definition.dueMode === "source_deadline"
+        ? selectSubmissionDeadline(deadlineLines, todayIso, intake)
+        : { date: definition.dueDate, verbatim: definition.dueDate };
+      const title = renderCourseTaskTitle(definition.titleTemplate, courseLabel(course));
+      const adminSnapshot = {
+        title,
+        description: definition.description,
+        source_url: definition.sourceUrl,
+        due_date: selected.date,
+        verbatim_due: selected.verbatim,
+        sort_order: definition.sortOrder,
+      };
       generated.push({
-        key: `app:${application.id}:submit`,
-        title: `Submit application — ${label}`,
-        dueDate: submitDeadline.date,
-        verbatimDue: submitDeadline.verbatim,
-        order: 30,
+        key: `app:${application.id}:course-task:${definition.id}`,
+        title,
+        dueDate: selected.date,
+        verbatimDue: selected.verbatim,
+        order: definition.sortOrder,
         applicationId: application.id,
         ruleId: null,
-        courseTaskDefinitionId: null,
-        adminSnapshot: null,
-        definitionRevision: null,
-        source,
-      });
-    }
-
-    for (const requirement of requirements) {
-      generated.push({
-        key: `app:${application.id}:req:${hashDjb2(requirement)}`,
-        title: `Prepare: ${requirement} — ${label}`,
-        dueDate: submitDeadline.date,
-        verbatimDue: submitDeadline.verbatim,
-        order: 28,
-        applicationId: application.id,
-        ruleId: null,
-        courseTaskDefinitionId: null,
-        adminSnapshot: null,
-        definitionRevision: null,
-        source,
+        courseTaskDefinitionId: definition.id,
+        adminSnapshot,
+        definitionRevision: definition.revision,
+        source: definition.sourceUrl
+          ? { url: definition.sourceUrl, verifiedAt: course.created_at }
+          : null,
       });
     }
   }
 
   return generated.sort((a, b) => a.key.localeCompare(b.key));
-}
-
-export function generateTasks(
-  result: Result | null,
-  applications: ApplicationForTaskGeneration[],
-  todayIso?: string,
-  intake?: TargetIntake,
-): GeneratedTask[] {
-  return [
-    ...generateGlobalTasks(result),
-    ...generateCourseTasks(applications, todayIso, intake),
-  ].sort((a, b) => a.key.localeCompare(b.key));
 }
 
 function band(order: number): number {
@@ -529,45 +466,21 @@ export function bucketTasks<
   return { now, next, later };
 }
 
-export function prepareGeneratedTaskMaterialization(
+/**
+ * Rows for source keys the user does not have yet. Existing rows are user-owned
+ * after first materialization, and `upsertGeneratedTasks` conflicts on
+ * `(user_id, task_key)` — so an unfiltered row would overwrite the student's
+ * edited title and due date. Admin fan-out is `prepareCourseTaskDefinitionSync`.
+ */
+export function newGeneratedTaskRows(
   userId: string,
   desired: GeneratedTask[],
   existing: ExistingGeneratedTask[],
-): {
-  upsertRows: GeneratedTaskUpsert[];
-  staleOpenKeysToDelete: string[];
-  staleDoneKeysToDeactivate: string[];
-} {
-  const desiredKeys = new Set(desired.map((task) => task.key));
-  const existingByKey = new Map(
-    existing.flatMap((task) => (task.task_key ? [[task.task_key, task]] : [])),
-  );
-  const desiredRows = desired.map((task) => toGeneratedTaskUpsert(userId, task));
-  return {
-    upsertRows: desiredRows.filter((row) => {
-      const existingRow = existingByKey.get(row.task_key);
-      if (!existingRow) return true;
-      // Existing rows are user-owned after first materialization. Admin
-      // definition fan-out is handled by the scoped SQL synchronizer; render
-      // or profile materialization must never overwrite a user's copy.
-      return false;
-    }),
-    staleOpenKeysToDelete: existing.flatMap((task) =>
-      task.task_key !== null && !task.done && !desiredKeys.has(task.task_key) &&
-      !(task.course_task_definition_id !== null && task.has_personal_edits)
-        ? [task.task_key]
-        : [],
-    ),
-    staleDoneKeysToDeactivate: existing.flatMap((task) =>
-      task.task_key !== null &&
-      task.done &&
-      task.generated_active &&
-      !desiredKeys.has(task.task_key) &&
-      !(task.course_task_definition_id !== null && task.has_personal_edits)
-        ? [task.task_key]
-        : [],
-    ),
-  };
+): GeneratedTaskUpsert[] {
+  const existingKeys = new Set(existing.map((task) => task.task_key));
+  return desired
+    .filter((task) => !existingKeys.has(task.key))
+    .map((task) => toGeneratedTaskUpsert(userId, task));
 }
 
 function toGeneratedTaskUpsert(userId: string, task: GeneratedTask): GeneratedTaskUpsert {

@@ -17,7 +17,7 @@ import { evaluate, type Profile } from "@/lib/engine/evaluate";
 import {
   generateCourseTasks,
   generateGlobalTasks,
-  prepareGeneratedTaskMaterialization,
+  newGeneratedTaskRows,
   type ApplicationForTaskGeneration,
   type TargetIntake,
 } from "@/lib/tasks/generate";
@@ -39,8 +39,6 @@ function toGenerationApplication(
           id: application.courses.id,
           name: application.courses.name,
           university_name: application.courses.university_name,
-          deadlines: application.courses.deadlines,
-          requirements: application.courses.requirements,
           source_url: application.courses.source_url,
           created_at: application.courses.created_at,
           review_status: application.courses.review_status,
@@ -62,12 +60,7 @@ async function materializeGeneratedPrefix(
   desired: ReturnType<typeof generateGlobalTasks>,
 ): Promise<void> {
   const existing = await listGeneratedTasksByPrefix(db, userId, prefix);
-  const reconciliation = prepareGeneratedTaskMaterialization(
-    userId,
-    desired,
-    existing,
-  );
-  await upsertGeneratedTasks(db, reconciliation.upsertRows);
+  await upsertGeneratedTasks(db, newGeneratedTaskRows(userId, desired, existing));
 }
 
 async function materializeCourseTasksForApplicationRow(

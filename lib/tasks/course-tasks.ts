@@ -2,10 +2,6 @@
 // definitions before they are materialized for a student's application.
 export type CourseTaskKind = "submission" | "requirement" | "custom";
 export type CourseTaskDueMode = "source_deadline" | "fixed_date" | "none";
-export type CourseTaskChangeState =
-  | "current"
-  | "update_pending"
-  | "removal_pending";
 
 export type CourseTaskDefinition = {
   id: string;
@@ -93,18 +89,4 @@ export function courseTaskAdminPreview(
     ? strings(snapshot.deadlines)
     : [];
   return { title: renderCourseTaskTitle(task.titleTemplate, courseLabel), sourceDeadlineLines: deadlines };
-}
-
-export function reconcileCourseTaskAssignment(
-  assignment: { hasPersonalEdits: boolean; changeState: CourseTaskChangeState },
-  definition: Pick<CourseTaskDefinition, "retiredAt">,
-): { action: "replace" | "keep_personal" | "deactivate"; nextChangeState: CourseTaskChangeState } {
-  if (definition.retiredAt) {
-    return assignment.hasPersonalEdits
-      ? { action: "keep_personal", nextChangeState: "removal_pending" }
-      : { action: "deactivate", nextChangeState: "current" };
-  }
-  return assignment.hasPersonalEdits
-    ? { action: "keep_personal", nextChangeState: "update_pending" }
-    : { action: "replace", nextChangeState: "current" };
 }

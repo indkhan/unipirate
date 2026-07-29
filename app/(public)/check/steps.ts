@@ -112,7 +112,6 @@ export const AnswersSchema = z
     gceAwardingBody: z
       .enum(AWARDING_BODIES.map((b) => b.id) as [string, ...string[]])
       .optional(),
-    gceSchoolYears: z.union([z.literal(12), z.literal(13)]).optional(),
     gceSubjects: z.array(GceSubjectAnswerSchema).min(1).optional(),
     targetField: z.string().min(1),
     // null = "not sure yet" — intake is omitted from the profile

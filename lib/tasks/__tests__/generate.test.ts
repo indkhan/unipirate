@@ -3,13 +3,16 @@ import { describe, expect, it } from "vitest";
 import { evaluate, type EngineRule } from "@/lib/engine/evaluate";
 import { p1CbseNoJee } from "@/lib/engine/__tests__/personas";
 import { ruleData } from "@/scripts/rules.bootstrap";
+import type { CourseTaskDefinition } from "@/lib/tasks/course-tasks";
 
 import {
   bucketTasks,
-  generateTasks,
+  generateCourseTasks,
+  generateGlobalTasks,
+  newGeneratedTaskRows,
   parseDeadlineDate,
   prepareCourseTaskDefinitionSync,
-  prepareGeneratedTaskMaterialization,
+  selectSubmissionDeadline,
   type ApplicationForTaskGeneration,
   type ExistingGeneratedTask,
 } from "../generate";
@@ -25,23 +28,65 @@ const promotedRules: EngineRule[] = ruleData.map((rule) =>
   PROCESS_RULE_IDS.has(rule.id) ? { ...rule, status: "beta" } : rule,
 );
 
+function definition(
+  overrides: Partial<CourseTaskDefinition> & Pick<CourseTaskDefinition, "id" | "courseId">,
+): CourseTaskDefinition {
+  return {
+    kind: "submission",
+    sourceKey: "submission",
+    titleTemplate: "Submit application — {{course}}",
+    description: null,
+    sourceUrl: "https://uni.example/course",
+    dueMode: "source_deadline",
+    dueDate: null,
+    sortOrder: 30,
+    sourceSnapshot: { deadlines: [] },
+    revision: 1,
+    retiredAt: null,
+    ...overrides,
+  };
+}
+
+/** One tracked course with a submission definition plus a requirement definition. */
 function app(
   index: number,
-  deadline: string,
-  requirement = "Certified school transcript",
+  deadlines: string[],
+  requirement: string | null = "Certified school transcript",
 ): ApplicationForTaskGeneration {
+  const courseId = `10000000-0000-4000-8000-00000000000${index}`;
+  const sourceUrl = `https://uni${index}.example/course`;
   return {
     id: `00000000-0000-4000-8000-00000000000${index}`,
     status: "planning",
     course: {
-      id: `10000000-0000-4000-8000-00000000000${index}`,
+      id: courseId,
       name: `Computer Science ${index}`,
       university_name: `University ${index}`,
-      deadlines: ["Non-EU students:", deadline],
-      requirements: [requirement],
-      source_url: `https://uni${index}.example/course`,
+      source_url: sourceUrl,
       created_at: "2026-07-04T00:00:00Z",
       review_status: "approved",
+      task_definitions: [
+        definition({
+          id: `d-submit-${index}`,
+          courseId,
+          sourceUrl,
+          sourceSnapshot: { deadlines },
+        }),
+        ...(requirement
+          ? [
+              definition({
+                id: `d-req-${index}`,
+                courseId,
+                sourceUrl,
+                kind: "requirement",
+                sourceKey: `requirement:${requirement}`,
+                titleTemplate: `Prepare: ${requirement} — {{course}}`,
+                sortOrder: 28,
+                sourceSnapshot: { deadlines },
+              }),
+            ]
+          : []),
+      ],
     },
   };
 }
@@ -61,14 +106,91 @@ describe("parseDeadlineDate", () => {
   });
 });
 
-describe("generateTasks", () => {
+describe("selectSubmissionDeadline", () => {
+  it("picks a single line even when the source lists several", () => {
+    expect(
+      selectSubmissionDeadline(
+        [
+          "Normal deadline: 15 May",
+          "Early deadline: 15 November",
+          "Early deadline: 15 May",
+          "Normal deadline: 15 November",
+        ],
+        "2026-07-06",
+      ),
+    ).toMatchObject({ verbatim: "Normal deadline: 15 May" });
+  });
+
+  it("selects the line matching the chosen winter intake", () => {
+    expect(
+      selectSubmissionDeadline(
+        ["Normal deadline: 15 May", "Normal deadline: 15 November"],
+        "2026-07-06",
+        { term: "winter", year: 2026 },
+      ),
+    ).toEqual({ date: null, verbatim: "Normal deadline: 15 May" });
+  });
+
+  it("selects the line matching the chosen summer intake", () => {
+    expect(
+      selectSubmissionDeadline(
+        ["Normal deadline: 15 May", "Normal deadline: 15 November"],
+        "2026-07-06",
+        { term: "summer", year: 2027 },
+      ),
+    ).toEqual({ date: null, verbatim: "Normal deadline: 15 November" });
+  });
+
+  it("computes the selected intake deadline date from DAAD semester wording", () => {
+    const lines = [
+      "Non-EU students:",
+      "15 April to 31 May of the year for the winter semester",
+      "15 October to 30 November of the previous year for the summer semester",
+    ];
+
+    expect(
+      selectSubmissionDeadline(lines, "2026-07-06", { term: "winter", year: 2026 }),
+    ).toEqual({
+      date: "2026-05-31",
+      verbatim: "15 April to 31 May of the year for the winter semester",
+    });
+    expect(
+      selectSubmissionDeadline(lines, "2026-07-06", { term: "summer", year: 2027 }),
+    ).toEqual({
+      date: "2026-11-30",
+      verbatim:
+        "15 October to 30 November of the previous year for the summer semester",
+    });
+  });
+
+  it("uses the next upcoming parsed deadline when no intake is chosen", () => {
+    expect(
+      selectSubmissionDeadline(
+        [
+          "Application deadline: 15 May 2026",
+          "Application deadline: 15 November 2026",
+          "Application deadline: 15 May 2027",
+        ],
+        "2026-07-06",
+      ),
+    ).toEqual({
+      date: "2026-11-15",
+      verbatim: "Application deadline: 15 November 2026",
+    });
+  });
+});
+
+describe("generateCourseTasks", () => {
   it("merges global rule steps with three per-university plans", () => {
     const result = evaluate(p1CbseNoJee, promotedRules);
-    const tasks = generateTasks(result, [
-      app(1, "Application deadline: 15 July 2026"),
-      app(2, "Application deadline: 2026-08-15"),
-      app(3, "Application deadline: 15.09.2026"),
-    ]);
+    const tasks = [
+      ...generateGlobalTasks(result),
+      ...generateCourseTasks([
+        app(1, ["Application deadline: 15 July 2026"]),
+        app(2, ["Application deadline: 2026-08-15"]),
+        app(3, ["Application deadline: 15.09.2026"]),
+      ]),
+    ];
 
     expect(tasks.some((task) => /Register for APS India/.test(task.title))).toBe(
       true,
@@ -91,134 +213,31 @@ describe("generateTasks", () => {
   });
 
   it("is deterministic for unchanged inputs", () => {
-    const result = evaluate(p1CbseNoJee, promotedRules);
     const applications = [
-      app(1, "Application deadline: 15 July 2026"),
-      app(2, "Application deadline: 2026-08-15"),
-      app(3, "Application deadline: 15.09.2026"),
+      app(1, ["Application deadline: 15 July 2026"]),
+      app(2, ["Application deadline: 2026-08-15"]),
+      app(3, ["Application deadline: 15.09.2026"]),
     ];
 
-    expect(generateTasks(result, applications)).toEqual(
-      generateTasks(result, applications),
+    expect(generateCourseTasks(applications)).toEqual(
+      generateCourseTasks(applications),
     );
   });
 
   it("omits per-app tasks once the application has been submitted", () => {
-    const result = evaluate(p1CbseNoJee, promotedRules);
-    const submitted = { ...app(1, "Application deadline: 15 July 2026"), status: "applied" };
+    const submitted = {
+      ...app(1, ["Application deadline: 15 July 2026"]),
+      status: "applied",
+    };
 
-    expect(
-      generateTasks(result, [submitted]).some((task) =>
-        task.key.startsWith(`app:${submitted.id}:`),
-      ),
-    ).toBe(false);
+    expect(generateCourseTasks([submitted])).toEqual([]);
   });
 
-  it("creates one submit task per application even when the source has several deadline lines", () => {
-    const result = evaluate(p1CbseNoJee, promotedRules);
-    const application = app(1, "Normal deadline: 15 May");
-    application.course!.deadlines = [
-      "Normal deadline: 15 May",
-      "Early deadline: 15 November",
-      "Early deadline: 15 May",
-      "Normal deadline: 15 November",
-    ];
+  it("skips retired definitions", () => {
+    const application = app(1, ["Application deadline: 15 July 2026"], null);
+    application.course!.task_definitions[0].retiredAt = "2026-07-01T00:00:00Z";
 
-    const submitTasks = generateTasks(result, [application], "2026-07-06").filter(
-      (task) => task.title.startsWith("Submit application"),
-    );
-
-    expect(submitTasks).toHaveLength(1);
-    expect(submitTasks[0]).toMatchObject({
-      key: `app:${application.id}:submit`,
-      verbatimDue: "Normal deadline: 15 May",
-    });
-  });
-
-  it("selects the deadline line matching the chosen winter intake", () => {
-    const result = evaluate(p1CbseNoJee, promotedRules);
-    const application = app(1, "Normal deadline: 15 May");
-    application.course!.deadlines = [
-      "Normal deadline: 15 May",
-      "Normal deadline: 15 November",
-    ];
-
-    const submitTask = generateTasks(result, [application], "2026-07-06", {
-      term: "winter",
-      year: 2026,
-    }).find((task) => task.title.startsWith("Submit application"));
-
-    expect(submitTask).toMatchObject({
-      dueDate: null,
-      verbatimDue: "Normal deadline: 15 May",
-    });
-  });
-
-  it("selects the deadline line matching the chosen summer intake", () => {
-    const result = evaluate(p1CbseNoJee, promotedRules);
-    const application = app(1, "Normal deadline: 15 May");
-    application.course!.deadlines = [
-      "Normal deadline: 15 May",
-      "Normal deadline: 15 November",
-    ];
-
-    const submitTask = generateTasks(result, [application], "2026-07-06", {
-      term: "summer",
-      year: 2027,
-    }).find((task) => task.title.startsWith("Submit application"));
-
-    expect(submitTask).toMatchObject({
-      dueDate: null,
-      verbatimDue: "Normal deadline: 15 November",
-    });
-  });
-
-  it("computes the selected intake deadline date from DAAD semester wording", () => {
-    const result = evaluate(p1CbseNoJee, promotedRules);
-    const application = app(1, "15 April to 31 May of the year for the winter semester");
-    application.course!.deadlines = [
-      "Non-EU students:",
-      "15 April to 31 May of the year for the winter semester",
-      "15 October to 30 November of the previous year for the summer semester",
-    ];
-
-    const winterTask = generateTasks(result, [application], "2026-07-06", {
-      term: "winter",
-      year: 2026,
-    }).find((task) => task.title.startsWith("Submit application"));
-    const summerTask = generateTasks(result, [application], "2026-07-06", {
-      term: "summer",
-      year: 2027,
-    }).find((task) => task.title.startsWith("Submit application"));
-
-    expect(winterTask).toMatchObject({
-      dueDate: "2026-05-31",
-      verbatimDue: "15 April to 31 May of the year for the winter semester",
-    });
-    expect(summerTask).toMatchObject({
-      dueDate: "2026-11-30",
-      verbatimDue:
-        "15 October to 30 November of the previous year for the summer semester",
-    });
-  });
-
-  it("uses the next upcoming parsed deadline for a course submission task", () => {
-    const result = evaluate(p1CbseNoJee, promotedRules);
-    const application = app(1, "Application deadline: 15 May 2026");
-    application.course!.deadlines = [
-      "Application deadline: 15 May 2026",
-      "Application deadline: 15 November 2026",
-      "Application deadline: 15 May 2027",
-    ];
-
-    const submitTask = generateTasks(result, [application], "2026-07-06").find(
-      (task) => task.title.startsWith("Submit application"),
-    );
-
-    expect(submitTask).toMatchObject({
-      dueDate: "2026-11-15",
-      verbatimDue: "Application deadline: 15 November 2026",
-    });
+    expect(generateCourseTasks([application])).toEqual([]);
   });
 });
 
@@ -280,50 +299,35 @@ function existingGenerated(
   };
 }
 
-describe("prepareGeneratedTaskMaterialization", () => {
+describe("newGeneratedTaskRows", () => {
+  const desiredFor = () => [
+    ...generateGlobalTasks(evaluate(p1CbseNoJee, promotedRules)),
+    ...generateCourseTasks([app(1, ["Application deadline: 15 July 2026"])]),
+  ];
+
   it("produces no rows for source keys that already exist", () => {
-    const result = evaluate(p1CbseNoJee, promotedRules);
-    const desired = generateTasks(result, [app(1, "Application deadline: 15 July 2026")]);
-    const existing = desired.map((task) => existingGenerated({
-      task_key: task.key,
-      title: task.title,
-      due_date: task.dueDate,
-      verbatim_due: task.verbatimDue,
-      sort_order: task.order,
-      source_url: task.source?.url ?? null,
-      source_verified_at: task.source?.verifiedAt ?? null,
-      application_id: task.applicationId,
-      generated_from_rule_id: task.ruleId,
-      generated_active: true,
-    }));
+    const desired = desiredFor();
+    const existing = desired.map((task) => existingGenerated({ task_key: task.key }));
 
-    const materialization = prepareGeneratedTaskMaterialization(
-      "user-1",
-      desired,
-      existing,
-    );
-
-    expect(materialization.upsertRows).toEqual([]);
+    expect(newGeneratedTaskRows("user-1", desired, existing)).toEqual([]);
   });
 
-  it("does not include done in generated upsert payloads", () => {
-    const result = evaluate(p1CbseNoJee, promotedRules);
-    const desired = generateTasks(result, [app(1, "Application deadline: 15 July 2026")]);
+  it("does not include done or preferred_bucket in generated upsert payloads", () => {
+    const desired = desiredFor();
 
-    const materialization = prepareGeneratedTaskMaterialization("user-1", desired, []);
+    const rows = newGeneratedTaskRows("user-1", desired, []);
 
-    expect(materialization.upsertRows).toHaveLength(desired.length);
-    expect(materialization.upsertRows.every((row) => !("done" in row))).toBe(true);
-    expect(materialization.upsertRows.every((row) => !("preferred_bucket" in row))).toBe(true);
-    expect(materialization.upsertRows.every((row) => row.generated_active)).toBe(true);
+    expect(rows).toHaveLength(desired.length);
+    expect(rows.every((row) => !("done" in row))).toBe(true);
+    expect(rows.every((row) => !("preferred_bucket" in row))).toBe(true);
+    expect(rows.every((row) => row.generated_active)).toBe(true);
   });
 
-  it("adds only newly discovered source keys", () => {
-    const result = evaluate(p1CbseNoJee, promotedRules);
-    const desired = generateTasks(result, [app(1, "Application deadline: 15 July 2026")]);
+  it("adds only newly discovered source keys, leaving a user-edited copy alone", () => {
+    const desired = desiredFor();
     const first = desired[0];
 
-    const materialization = prepareGeneratedTaskMaterialization("user-1", desired, [
+    const rows = newGeneratedTaskRows("user-1", desired, [
       existingGenerated({
         task_key: first.key,
         title: "User-edited title",
@@ -332,61 +336,45 @@ describe("prepareGeneratedTaskMaterialization", () => {
       }),
     ]);
 
-    expect(materialization.upsertRows.map((row) => row.task_key)).toEqual(
+    expect(rows.map((row) => row.task_key)).toEqual(
       desired.slice(1).map((task) => task.key),
     );
   });
 
-  it("does not recreate a user-deleted source task", () => {
-    const result = evaluate(p1CbseNoJee, promotedRules);
-    const desired = generateTasks(result, [app(1, "Application deadline: 15 July 2026")]);
-    const first = desired[0];
+  it("does not reactivate a deactivated source task", () => {
+    const first = desiredFor()[0];
 
-    const materialization = prepareGeneratedTaskMaterialization("user-1", [first], [
+    const rows = newGeneratedTaskRows("user-1", [first], [
       existingGenerated({
         task_key: first.key,
-        title: first.title,
-        due_date: first.dueDate,
-        verbatim_due: first.verbatimDue,
-        sort_order: first.order,
-        source_url: first.source?.url ?? null,
-        source_verified_at: first.source?.verifiedAt ?? null,
-        application_id: first.applicationId,
-        generated_from_rule_id: first.ruleId,
         done: true,
         generated_active: false,
       }),
     ]);
 
-    expect(materialization.upsertRows).toEqual([]);
+    expect(rows).toEqual([]);
   });
 });
 
 describe("prepareCourseTaskDefinitionSync", () => {
   it("updates an untouched assignment with its intake-specific deadline", () => {
-    const application = app(1, "ignored");
-    application.course!.task_definitions = [{
-      id: "definition-1",
-      courseId: application.course!.id,
-      kind: "submission",
-      sourceKey: "submission",
-      titleTemplate: "Submit application — {{course}}",
-      description: null,
-      sourceUrl: application.course!.source_url,
-      dueMode: "source_deadline",
-      dueDate: null,
-      sortOrder: 30,
-      sourceSnapshot: {
-        deadlines: [
-          "Introduction",
-          "15 April to 31 May of the year for the winter semester",
-          "15 October to 30 November of the previous year for the summer semester",
-        ],
-      },
-      revision: 2,
-      retiredAt: null,
-    }];
-    const desired = generateTasks(null, [application], "2026-07-06", {
+    const application = app(1, [], null);
+    application.course!.task_definitions = [
+      definition({
+        id: "definition-1",
+        courseId: application.course!.id,
+        sourceUrl: application.course!.source_url,
+        revision: 2,
+        sourceSnapshot: {
+          deadlines: [
+            "Introduction",
+            "15 April to 31 May of the year for the winter semester",
+            "15 October to 30 November of the previous year for the summer semester",
+          ],
+        },
+      }),
+    ];
+    const desired = generateCourseTasks([application], "2026-07-06", {
       term: "summer",
       year: 2027,
     });
@@ -405,5 +393,22 @@ describe("prepareCourseTaskDefinitionSync", () => {
       verbatim_due: "15 October to 30 November of the previous year for the summer semester",
       definition_revision: 2,
     }]);
+  });
+
+  it("keeps a personally edited copy and flags it for a decision", () => {
+    const application = app(1, ["Application deadline: 15 July 2026"], null);
+    const desired = generateCourseTasks([application], "2026-07-06");
+
+    const sync = prepareCourseTaskDefinitionSync("user-1", desired, [
+      existingGenerated({
+        task_key: desired[0].key,
+        course_task_definition_id: "d-submit-1",
+        has_personal_edits: true,
+      }),
+    ]);
+
+    expect(sync.upsertRows).toEqual([]);
+    expect(sync.personalUpdates).toHaveLength(1);
+    expect(sync.personalUpdates[0].taskKey).toBe(desired[0].key);
   });
 });

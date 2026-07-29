@@ -3,8 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   deriveCourseTaskCandidates,
   courseTaskAdminPreview,
-  reconcileCourseTaskAssignment,
-  type CourseTaskDefinition,
 } from "../course-tasks";
 
 const course = {
@@ -58,50 +56,5 @@ describe("courseTaskAdminPreview", () => {
       title: "Submit application — Computer Science",
       sourceDeadlineLines: ["Winter semester: 15 July 2026"],
     });
-  });
-});
-
-const definition: CourseTaskDefinition = {
-  id: "definition-1",
-  courseId: "course-1",
-  kind: "custom",
-  sourceKey: null,
-  titleTemplate: "Send portfolio — {{course}}",
-  description: "Use the official upload portal.",
-  sourceUrl: "https://example.edu/portfolio",
-  dueMode: "fixed_date",
-  dueDate: "2026-08-01",
-  sortOrder: 40,
-  sourceSnapshot: null,
-  revision: 2,
-  retiredAt: null,
-};
-
-describe("reconcileCourseTaskAssignment", () => {
-  it("updates untouched copies without touching completion or dashboard placement", () => {
-    expect(
-      reconcileCourseTaskAssignment({
-        hasPersonalEdits: false,
-        changeState: "current",
-      }, definition),
-    ).toEqual({ action: "replace", nextChangeState: "current" });
-  });
-
-  it("protects personalized copies and requests a review", () => {
-    expect(
-      reconcileCourseTaskAssignment({
-        hasPersonalEdits: true,
-        changeState: "current",
-      }, definition),
-    ).toEqual({ action: "keep_personal", nextChangeState: "update_pending" });
-  });
-
-  it("asks before removing a personalized copy", () => {
-    expect(
-      reconcileCourseTaskAssignment(
-        { hasPersonalEdits: true, changeState: "current" },
-        { ...definition, retiredAt: "2026-07-10T12:00:00Z" },
-      ),
-    ).toEqual({ action: "keep_personal", nextChangeState: "removal_pending" });
   });
 });

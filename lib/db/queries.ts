@@ -317,9 +317,6 @@ export async function updateManualTask(
   );
 }
 
-// Compatibility names used by the dashboard task editor.
-export const updateTask = updateManualTask;
-
 export async function getCourseTaskAssignment(
   db: Db,
   userId: string,
@@ -428,15 +425,20 @@ export async function deleteManualTask(
   if (error) throw new Error(error.message);
 }
 
-export const deleteTask = deleteManualTask;
-
 export async function setTaskDone(
   db: Db,
+  userId: string,
   id: string,
   done: boolean,
 ): Promise<Tables<"tasks">> {
   return unwrap(
-    await db.from("tasks").update({ done }).eq("id", id).select().single(),
+    await db
+      .from("tasks")
+      .update({ done })
+      .eq("user_id", userId)
+      .eq("id", id)
+      .select()
+      .single(),
   );
 }
 
@@ -480,50 +482,6 @@ export async function upsertGeneratedTasks(
   const { error } = await db
     .from("tasks")
     .upsert(rows, { onConflict: "user_id,task_key" });
-  if (error) throw new Error(error.message);
-}
-
-export async function deleteStaleGeneratedTasks(
-  db: Db,
-  userId: string,
-  staleKeys: string[],
-): Promise<void> {
-  if (staleKeys.length === 0) return;
-  const { error } = await db
-    .from("tasks")
-    .delete()
-    .eq("user_id", userId)
-    .eq("done", false)
-    .in("task_key", staleKeys);
-  if (error) throw new Error(error.message);
-}
-
-export async function deactivateGeneratedTasks(
-  db: Db,
-  userId: string,
-  keys: string[],
-): Promise<void> {
-  if (keys.length === 0) return;
-  const { error } = await db
-    .from("tasks")
-    .update({ generated_active: false })
-    .eq("user_id", userId)
-    .in("task_key", keys);
-  if (error) throw new Error(error.message);
-}
-
-export async function deleteOpenGeneratedTasksForApplication(
-  db: Db,
-  userId: string,
-  applicationId: string,
-): Promise<void> {
-  const { error } = await db
-    .from("tasks")
-    .delete()
-    .eq("user_id", userId)
-    .eq("application_id", applicationId)
-    .eq("done", false)
-    .not("task_key", "is", null);
   if (error) throw new Error(error.message);
 }
 
