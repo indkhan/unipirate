@@ -18,17 +18,8 @@ export type Profile = {
   board?: string; // 'cbse' | 'fsc' | 'tawjihiyah' | ...
   schoolGradePercent?: number; // Class XII overall %
   jeeAdvanced?: boolean;
-  yearsOfUniversityStudy?: number; // completed years in home country
-  universityStudyField?: string;
-  universityStudyInstitutionRecognized?: boolean;
-  schoolCertificateRequirementsMet?: boolean;
-  priorDegree?: { years: number; field: string };
   visaApplicationCountry?: string;
-  apsApplicationSubmittedAt?: string; // ISO date; transition rules compare YYYYMMDD facts
-  apsRegistrationCompletedAt?: string; // ISO date
-  apsDocumentsShippedAt?: string; // ISO date
   hasExistingApsCertificate?: boolean;
-  isExchangeOrPartnershipProgram?: boolean;
   // Everything below `fullDiploma` is optional: an IB Certificate is never
   // accepted as a Diploma, so the checker stops asking once the answer is "no"
   // and the remaining facts stay undefined rather than being invented.
@@ -121,9 +112,6 @@ const ConditionSchema = z.union([
 type Condition = z.infer<typeof ConditionSchema>;
 
 const FactKeySchema = z.enum([
-  "aps_application_day",
-  "aps_documents_shipped_day",
-  "aps_registration_day",
   "board",
   "certificate_country",
   "class12_percent",
@@ -158,16 +146,9 @@ const FactKeySchema = z.enum([
   "ib_total_points",
   "intake_index",
   "jee_advanced",
-  "partnership_program",
-  "prior_degree_field",
-  "prior_degree_years",
-  "school_certificate_requirements_met",
   "target_degree",
   "target_field",
-  "university_study_field_matches_target",
-  "university_study_institution_recognized",
   "visa_application_country",
-  "years_of_university_study",
 ]);
 type FactKey = z.infer<typeof FactKeySchema>;
 
@@ -259,8 +240,7 @@ export type Result = {
   testAS: z.infer<typeof FlagValue>;
   dMAT: z.infer<typeof FlagValue>;
   documents: string[];
-  steps: string[]; // ordered
-  stepsDetailed: { order: number; text: string; ruleId: string }[];
+  stepsDetailed: { order: number; text: string; ruleId: string }[]; // ordered
   citations: Citation[];
   unknowns: string[]; // honest gaps: "no rule covers X — confirm with [source]"
 };
@@ -275,11 +255,6 @@ type Fact = Primitive;
  * (70%, ≥3 A-Levels, ≥24 IB points, semester cutoffs…) lives in rule data.
  */
 function deriveFacts(p: Profile): Record<string, Fact> {
-  const dateIndex = (value: string | undefined): number | undefined => {
-    if (!value) return undefined;
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-    return match ? Number(`${match[1]}${match[2]}${match[3]}`) : undefined;
-  };
   const raw: Partial<Record<FactKey, Fact>> = {
     target_degree: p.targetDegree,
     intake_index: p.intake && intakeIndex(p.intake.term, p.intake.year),
@@ -288,24 +263,9 @@ function deriveFacts(p: Profile): Record<string, Fact> {
     board: p.board,
     class12_percent: p.schoolGradePercent,
     jee_advanced: p.jeeAdvanced,
-    years_of_university_study: p.yearsOfUniversityStudy,
-    university_study_institution_recognized:
-      p.universityStudyInstitutionRecognized,
-    school_certificate_requirements_met:
-      p.schoolCertificateRequirementsMet,
-    university_study_field_matches_target:
-      p.universityStudyField !== undefined && p.targetField !== undefined
-        ? p.universityStudyField === p.targetField
-        : undefined,
-    prior_degree_years: p.priorDegree?.years,
-    prior_degree_field: p.priorDegree?.field,
     visa_application_country: p.visaApplicationCountry,
     target_field: p.targetField,
-    aps_application_day: dateIndex(p.apsApplicationSubmittedAt),
-    aps_registration_day: dateIndex(p.apsRegistrationCompletedAt),
-    aps_documents_shipped_day: dateIndex(p.apsDocumentsShippedAt),
     has_existing_aps: p.hasExistingApsCertificate,
-    partnership_program: p.isExchangeOrPartnershipProgram,
   };
   if (p.ib) {
     raw.ib_full_diploma = p.ib.fullDiploma;
@@ -561,7 +521,6 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     testAS,
     dMAT,
     documents,
-    steps: stepsDetailed.map((s) => s.text),
     stepsDetailed,
     citations,
     unknowns,

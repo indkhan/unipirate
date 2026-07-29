@@ -1,6 +1,7 @@
 import {
   AWARDING_BODIES,
-  BOARD_IDS,
+  BOARDS,
+  COUNTRIES,
   INTAKE_OPTIONS,
   TARGET_FIELDS,
   type PartialAnswers,
@@ -72,18 +73,15 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> 
   intake: { question: "When do you want to start?" },
 };
 
-type OptionsContext = {
-  countries: { code: string; name: string }[];
-  boards: { countryCode: string; label: string }[];
-  answers: PartialAnswers;
-};
+const countryOptions = COUNTRIES.map((c) => ({
+  value: c.code,
+  label: c.name,
+  key: c.code,
+}));
 
 /** The selectable options for a single-choice step. Grade/subject steps render
  * their own bespoke inputs and return []. */
-export function buildOptions(
-  stepId: StepId,
-  { countries, boards, answers }: OptionsContext,
-): Option[] {
+export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
   switch (stepId) {
     case "targetDegree":
       return [
@@ -91,21 +89,13 @@ export function buildOptions(
         { value: "master", label: "A Master's degree", key: "master" },
       ];
     case "nationality":
-      return countries
-        .filter((c) => c.code !== "de")
-        .map((c) => ({ value: c.code, label: c.name, key: c.code }))
-        .concat({ value: "other", label: "Another country", key: "other" });
-    case "certificateCountry":
-      return countries
-        .filter((c) => c.code !== "de")
-        .map((c) => ({ value: c.code, label: c.name, key: c.code }));
     case "visaApplicationCountry":
       return [
-        ...countries
-          .filter((c) => c.code !== "de")
-          .map((c) => ({ value: c.code, label: c.name, key: c.code })),
+        ...countryOptions,
         { value: "other", label: "Another country", key: "other" },
       ];
+    case "certificateCountry":
+      return countryOptions;
     case "curriculumType":
       return [
         {
@@ -118,13 +108,9 @@ export function buildOptions(
         { value: "other", label: "Something else", key: "other" },
       ];
     case "board":
-      return boards
-        .filter((b) => b.countryCode === answers.certificateCountry)
-        .map((b) => ({
-          value: BOARD_IDS[b.label] ?? b.label.toLowerCase(),
-          label: b.label,
-          key: b.label,
-        }));
+      return BOARDS
+        .filter((b) => b.country === answers.certificateCountry)
+        .map((b) => ({ value: b.id, label: b.label, key: b.id }));
     case "jeeAdvanced":
     case "hasExistingApsCertificate":
     case "ibFullDiploma":

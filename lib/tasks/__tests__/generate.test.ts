@@ -41,7 +41,6 @@ function definition(
     dueDate: null,
     sortOrder: 30,
     sourceSnapshot: { deadlines: [] },
-    revision: 1,
     retiredAt: null,
     ...overrides,
   };
@@ -293,7 +292,6 @@ function existingGenerated(
     generated_active: overrides.generated_active ?? true,
     course_task_definition_id: overrides.course_task_definition_id ?? null,
     admin_snapshot: overrides.admin_snapshot ?? null,
-    definition_revision: overrides.definition_revision ?? null,
     has_personal_edits: overrides.has_personal_edits ?? false,
   };
 }
@@ -363,7 +361,6 @@ describe("prepareCourseTaskDefinitionSync", () => {
         id: "definition-1",
         courseId: application.course!.id,
         sourceUrl: application.course!.source_url,
-        revision: 2,
         sourceSnapshot: {
           deadlines: [
             "Introduction",
@@ -382,7 +379,6 @@ describe("prepareCourseTaskDefinitionSync", () => {
       existingGenerated({
         task_key: desired[0].key,
         course_task_definition_id: "definition-1",
-        definition_revision: 1,
       }),
     ]);
 
@@ -390,7 +386,6 @@ describe("prepareCourseTaskDefinitionSync", () => {
       task_key: desired[0].key,
       due_date: "2026-11-30",
       verbatim_due: "15 October to 30 November of the previous year for the summer semester",
-      definition_revision: 2,
     }]);
   });
 

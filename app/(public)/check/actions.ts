@@ -35,13 +35,11 @@ export async function submitCheck(
     owner_token_hash: ownerToken ? hashOwnerToken(ownerToken) : null,
     claimed_by: user?.id,
     claimed_at: user ? new Date().toISOString() : null,
-    profile: profile as unknown as Json,
     result: result as unknown as Json,
   });
   if (user) {
     await upsertProfile(db, {
       user_id: user.id,
-      country_code: profile.certificateCountry ?? profile.nationality ?? null,
       answers: parsed.data as unknown as Json,
     });
     await materializeAllTasksForUser(db, user.id);

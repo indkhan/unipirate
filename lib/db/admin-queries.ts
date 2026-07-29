@@ -298,7 +298,6 @@ export async function syncAdminCourseTaskDefinitions(
     userId: string;
     taskKey: string;
     adminSnapshot: Json | null;
-    definitionRevision: number | null;
   }[] = [];
 
   for (const application of applications) {
@@ -360,7 +359,6 @@ export async function syncAdminCourseTaskDefinitions(
         .from("tasks")
         .update({
           admin_snapshot: update.adminSnapshot,
-          definition_revision: update.definitionRevision,
           admin_change_state: "update_pending",
           generated_active: true,
         })
@@ -370,50 +368,9 @@ export async function syncAdminCourseTaskDefinitions(
   }
 }
 
-export async function createAdminCourseTaskSourceReview(
-  db: Db,
-  review: TablesInsert<"course_task_source_reviews">,
-): Promise<void> {
-  unwrap(
-    await db
-      .from("course_task_source_reviews")
-      .upsert(review, { onConflict: "course_id,candidate_key,status", ignoreDuplicates: true }),
-  );
-}
 
-export async function listPendingCourseTaskSourceReviews(
-  db: Db,
-): Promise<Tables<"course_task_source_reviews">[]> {
-  return unwrap(
-    await db
-      .from("course_task_source_reviews")
-      .select()
-      .eq("status", "pending")
-      .order("created_at"),
-  );
-}
 
-export async function getAdminCourseTaskSourceReview(
-  db: Db,
-  id: string,
-): Promise<Tables<"course_task_source_reviews">> {
-  return unwrap(
-    await db.from("course_task_source_reviews").select().eq("id", id).single(),
-  );
-}
 
-export async function resolveAdminCourseTaskSourceReview(
-  db: Db,
-  id: string,
-  status: "adopted" | "kept",
-): Promise<void> {
-  unwrap(
-    await db
-      .from("course_task_source_reviews")
-      .update({ status, resolved_at: new Date().toISOString() })
-      .eq("id", id),
-  );
-}
 
 export async function listRecentAdminAuditEvents(
   db: Db,

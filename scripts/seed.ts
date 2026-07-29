@@ -23,43 +23,8 @@ function check(label: string) {
 }
 
 async function main() {
-  await db
-    .from("countries")
-    .upsert([
-      { code: "in", name: "India" },
-      { code: "pk", name: "Pakistan" },
-      { code: "sa", name: "Saudi Arabia" },
-      { code: "de", name: "Germany" },
-    ])
-    .then(check("countries"));
-
-  await db
-    .from("qualifications")
-    .upsert(
-      [
-        { country_code: "in", level: "school", board_or_type: "CBSE" },
-        { country_code: "in", level: "school", board_or_type: "CISCE" },
-        { country_code: "in", level: "school", board_or_type: "State board" },
-        { country_code: "in", level: "bachelor", board_or_type: "Bachelor (3-year)" },
-        { country_code: "in", level: "bachelor", board_or_type: "Bachelor (4-year)" },
-        { country_code: "pk", level: "school", board_or_type: "FSc/HSSC" },
-        { country_code: "pk", level: "bachelor", board_or_type: "HEC 2-year BA/BSc" },
-        { country_code: "pk", level: "bachelor", board_or_type: "HEC 4-year BS" },
-        { country_code: "sa", level: "school", board_or_type: "Tawjihiyah" },
-        {
-          country_code: "sa",
-          level: "school",
-          board_or_type: "Private-school certificate",
-        },
-        { country_code: "sa", level: "bachelor", board_or_type: "Saudi bachelor" },
-        // country_code null = international curricula, own rule tree
-        { country_code: null, level: "school", board_or_type: "IB Diploma" },
-        { country_code: null, level: "school", board_or_type: "GCE A-Levels" },
-      ] satisfies Database["public"]["Tables"]["qualifications"]["Insert"][],
-      { onConflict: "country_code,level,board_or_type" },
-    )
-    .then(check("qualifications"));
-
+  // Countries and school boards are static catalogs in
+  // app/(public)/check/steps.ts — the seed only carries rule candidates.
   const { error: legacyError } = await db
     .from("rules")
     .delete()

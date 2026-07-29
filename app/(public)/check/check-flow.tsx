@@ -23,8 +23,6 @@ import {
 } from "./steps";
 
 type CheckFlowProps = {
-  countries: { code: string; name: string }[];
-  boards: { countryCode: string; label: string }[];
   initialAnswers?: PartialAnswers;
   initialStepIndex?: number;
   userMenu?: ReactNode;
@@ -45,8 +43,6 @@ const MASTER_CURRICULUM_QUESTION = {
 };
 
 export function CheckFlow({
-  countries,
-  boards,
   initialAnswers = {},
   initialStepIndex = 0,
   userMenu,
@@ -150,7 +146,7 @@ export function CheckFlow({
   }, [answers, restored]);
 
   function optionsFor(stepId: StepId): Option[] {
-    return buildOptions(stepId, { countries, boards, answers });
+    return buildOptions(stepId, answers);
   }
 
   function currentKey(stepId: StepId): string | undefined {

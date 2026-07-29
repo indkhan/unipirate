@@ -9,7 +9,9 @@ import { isAdminRole } from "@/lib/auth/roles";
 import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
 import { getCheck, getResultViewer } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
-import type { Profile, Result } from "@/lib/engine/evaluate";
+import type { Result } from "@/lib/engine/evaluate";
+
+import { AnswersSchema, buildProfile } from "@/app/(public)/check/steps";
 
 import { ClaimOnReturn } from "./claim-on-return";
 import { ResultAnalytics, ShareControls } from "./result-client";
@@ -64,7 +66,10 @@ export default async function ResultPage({
   if (!check) notFound();
 
   const result = check.result as unknown as Result;
-  const profile = check.profile as unknown as Profile;
+  // answers is the stored source of truth; the profile is derived, never stored
+  const answers = AnswersSchema.safeParse(check.answers);
+  if (!answers.success) notFound();
+  const profile = buildProfile(answers.data);
   const viewer = await viewerFor(parsedId.data);
   const resultDate = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",

@@ -20,24 +20,6 @@ import { unwrap } from "@/lib/db/unwrap";
 type Db = Pick<SupabaseClient<Database>, "from">;
 type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
 
-// ---------------------------------------------------------- reference data
-
-export async function getCountries(db: Db): Promise<Tables<"countries">[]> {
-  return unwrap(await db.from("countries").select().order("name"));
-}
-
-export async function getQualifications(
-  db: Db,
-  countryCode?: string,
-): Promise<Tables<"qualifications">[]> {
-  let query = db.from("qualifications").select().order("board_or_type");
-  // null country_code = international curricula (IB, GCE) — always included
-  if (countryCode) {
-    query = query.or(`country_code.eq.${countryCode},country_code.is.null`);
-  }
-  return unwrap(await query);
-}
-
 // ------------------------------------------------------------------- rules
 
 /** Beta + verified rules — everything RLS exposes to the public. */
@@ -378,7 +360,6 @@ export async function resolveCourseTaskAssignment(
           task_key: null,
           course_task_definition_id: null,
           admin_snapshot: null,
-          definition_revision: null,
           has_personal_edits: false,
           admin_change_state: "current",
         })
@@ -509,12 +490,12 @@ export async function getCheck(
   db: Db,
   id: string,
 ): Promise<
-  Pick<Tables<"checks">, "id" | "profile" | "result" | "created_at"> | null
+  Pick<Tables<"checks">, "id" | "answers" | "result" | "created_at"> | null
 > {
   return unwrap(
     await db
       .from("checks")
-      .select("id, profile, result, created_at")
+      .select("id, answers, result, created_at")
       .eq("id", id)
       .maybeSingle(),
   );

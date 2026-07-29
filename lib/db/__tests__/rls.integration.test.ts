@@ -203,8 +203,6 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
         action: "update",
         old_status: "draft",
         new_status: "draft",
-        old_row: { fixture: "before" },
-        new_row: { fixture: "after" },
       });
     if (auditFixtureError) throw new Error(auditFixtureError.message);
   }, 60_000);
@@ -266,7 +264,6 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
       .insert({
         answers: { targetDegree: "bachelor" },
         owner_token_hash: "a".repeat(64),
-        profile: { targetDegree: "bachelor" },
         result: { path: "unknown" },
       })
       .select("id")
@@ -282,7 +279,7 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
 
     const { data: publicCheck, error: publicError } = await anon
       .from("checks")
-      .select("id, profile, result, created_at")
+      .select("id, answers, result, created_at")
       .eq("id", anonymousCheckId)
       .single();
     expect(publicError).toBeNull();
@@ -345,7 +342,6 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
   it("owner upserts own profile; other user cannot see it", async () => {
     const { error } = await owner.from("profiles").upsert({
       user_id: ownerUser.id,
-      country_code: "in",
       answers: { class12_percent: 82 },
     });
     expect(error).toBeNull();
@@ -369,13 +365,12 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     const { data: check, error: insertError } = await service
       .from("checks")
       .insert({
-        answers: { targetDegree: "bachelor", nationality: "in" },
-        owner_token_hash: tokenHash,
-        profile: {
+        answers: {
           targetDegree: "bachelor",
           nationality: "in",
           certificateCountry: "in",
         },
+        owner_token_hash: tokenHash,
         result: { path: "unknown" },
       })
       .select("id")
@@ -651,14 +646,6 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
       .select("user_id")
       .eq("user_id", ownerUser.id);
     expect(profiles).toHaveLength(1);
-  });
-
-  it("admin can read the course task source review queue", async () => {
-    const { error } = await admin
-      .from("course_task_source_reviews")
-      .select("id")
-      .eq("status", "pending");
-    expect(error).toBeNull();
   });
 
   it("admin updates a rule", async () => {

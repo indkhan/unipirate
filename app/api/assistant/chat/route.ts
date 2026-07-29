@@ -98,11 +98,15 @@ export async function POST(request: Request) {
   });
 
   const profile = await getProfile(db, user.id);
+  // country lives inside the saved checker answers — profiles has no copy
+  const answers = profile?.answers as
+    | { certificateCountry?: string; nationality?: string }
+    | null;
 
   const result = await runAssistant({
     db,
     userId: user.id,
-    countryCode: profile?.country_code ?? null,
+    countryCode: answers?.certificateCountry ?? answers?.nationality ?? null,
     messages: messages as unknown as UIMessage[],
     openrouterApiKey: env.OPENROUTER_API_KEY,
     tavilyApiKey: env.TAVILY_API_KEY,

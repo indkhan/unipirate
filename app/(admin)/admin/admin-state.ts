@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const AdminViewSchema = z.enum(["overview", "reviews", "rules", "tasks", "audit"]);
-export const ReviewQueueSchema = z.enum(["pending", "source-changes", "conflicts"]);
+export const ReviewQueueSchema = z.enum(["pending", "conflicts"]);
 
 const uuid = z.string().uuid();
 const single = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;

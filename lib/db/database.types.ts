@@ -45,9 +45,7 @@ export type Database = {
           actor_user_id: string | null
           created_at: string
           id: string
-          new_row: Json
           new_status: string | null
-          old_row: Json
           old_status: string | null
           row_id: string
           table_name: string
@@ -57,9 +55,7 @@ export type Database = {
           actor_user_id?: string | null
           created_at?: string
           id?: string
-          new_row: Json
           new_status?: string | null
-          old_row: Json
           old_status?: string | null
           row_id: string
           table_name: string
@@ -69,9 +65,7 @@ export type Database = {
           actor_user_id?: string | null
           created_at?: string
           id?: string
-          new_row?: Json
           new_status?: string | null
-          old_row?: Json
           old_status?: string | null
           row_id?: string
           table_name?: string
@@ -84,8 +78,6 @@ export type Database = {
           created_at: string
           id: string
           message: string
-          status: string
-          updated_at: string
           user_id: string | null
         }
         Insert: {
@@ -93,8 +85,6 @@ export type Database = {
           created_at?: string
           id?: string
           message: string
-          status?: string
-          updated_at?: string
           user_id?: string | null
         }
         Update: {
@@ -102,8 +92,6 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string
-          status?: string
-          updated_at?: string
           user_id?: string | null
         }
         Relationships: []
@@ -113,7 +101,6 @@ export type Database = {
           course_id: string
           created_at: string
           id: string
-          notes: string | null
           status: string
           updated_at: string
           user_id: string
@@ -122,7 +109,6 @@ export type Database = {
           course_id: string
           created_at?: string
           id?: string
-          notes?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -131,7 +117,6 @@ export type Database = {
           course_id?: string
           created_at?: string
           id?: string
-          notes?: string | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -175,52 +160,31 @@ export type Database = {
       }
       checks: {
         Row: {
-          answers: Json | null
+          answers: Json
           claimed_at: string | null
           claimed_by: string | null
           created_at: string
           id: string
           owner_token_hash: string | null
-          profile: Json
           result: Json
         }
         Insert: {
-          answers?: Json | null
+          answers: Json
           claimed_at?: string | null
           claimed_by?: string | null
           created_at?: string
           id?: string
           owner_token_hash?: string | null
-          profile: Json
           result: Json
         }
         Update: {
-          answers?: Json | null
+          answers?: Json
           claimed_at?: string | null
           claimed_by?: string | null
           created_at?: string
           id?: string
           owner_token_hash?: string | null
-          profile?: Json
           result?: Json
-        }
-        Relationships: []
-      }
-      countries: {
-        Row: {
-          code: string
-          created_at: string
-          name: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          name: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          name?: string
         }
         Relationships: []
       }
@@ -234,7 +198,6 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["course_task_kind"]
           retired_at: string | null
-          revision: number
           sort_order: number
           source_key: string | null
           source_snapshot: Json | null
@@ -251,7 +214,6 @@ export type Database = {
           id?: string
           kind: Database["public"]["Enums"]["course_task_kind"]
           retired_at?: string | null
-          revision?: number
           sort_order?: number
           source_key?: string | null
           source_snapshot?: Json | null
@@ -268,7 +230,6 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["course_task_kind"]
           retired_at?: string | null
-          revision?: number
           sort_order?: number
           source_key?: string | null
           source_snapshot?: Json | null
@@ -282,60 +243,6 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      course_task_source_reviews: {
-        Row: {
-          candidate_key: string
-          change_type: Database["public"]["Enums"]["course_task_source_change"]
-          course_id: string
-          course_task_definition_id: string | null
-          created_at: string
-          id: string
-          new_snapshot: Json | null
-          old_snapshot: Json | null
-          resolved_at: string | null
-          status: Database["public"]["Enums"]["course_task_source_review_status"]
-        }
-        Insert: {
-          candidate_key: string
-          change_type: Database["public"]["Enums"]["course_task_source_change"]
-          course_id: string
-          course_task_definition_id?: string | null
-          created_at?: string
-          id?: string
-          new_snapshot?: Json | null
-          old_snapshot?: Json | null
-          resolved_at?: string | null
-          status?: Database["public"]["Enums"]["course_task_source_review_status"]
-        }
-        Update: {
-          candidate_key?: string
-          change_type?: Database["public"]["Enums"]["course_task_source_change"]
-          course_id?: string
-          course_task_definition_id?: string | null
-          created_at?: string
-          id?: string
-          new_snapshot?: Json | null
-          old_snapshot?: Json | null
-          resolved_at?: string | null
-          status?: Database["public"]["Enums"]["course_task_source_review_status"]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "course_task_source_reviews_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "course_task_source_reviews_course_task_definition_id_fkey"
-            columns: ["course_task_definition_id"]
-            isOneToOne: false
-            referencedRelation: "course_task_definitions"
             referencedColumns: ["id"]
           },
         ]
@@ -465,13 +372,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "kb_chunks_country_code_fkey"
-            columns: ["country_code"]
-            isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["code"]
-          },
-          {
             foreignKeyName: "kb_chunks_rule_id_fkey"
             columns: ["rule_id"]
             isOneToOne: false
@@ -483,69 +383,23 @@ export type Database = {
       profiles: {
         Row: {
           answers: Json
-          country_code: string | null
           created_at: string
           updated_at: string
           user_id: string
         }
         Insert: {
           answers?: Json
-          country_code?: string | null
           created_at?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           answers?: Json
-          country_code?: string | null
           created_at?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_country_code_fkey"
-            columns: ["country_code"]
-            isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["code"]
-          },
-        ]
-      }
-      qualifications: {
-        Row: {
-          board_or_type: string
-          country_code: string | null
-          created_at: string
-          id: string
-          level: Database["public"]["Enums"]["qualification_level"]
-          notes: string | null
-        }
-        Insert: {
-          board_or_type: string
-          country_code?: string | null
-          created_at?: string
-          id?: string
-          level: Database["public"]["Enums"]["qualification_level"]
-          notes?: string | null
-        }
-        Update: {
-          board_or_type?: string
-          country_code?: string | null
-          created_at?: string
-          id?: string
-          level?: Database["public"]["Enums"]["qualification_level"]
-          notes?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "qualifications_country_code_fkey"
-            columns: ["country_code"]
-            isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["code"]
-          },
-        ]
+        Relationships: []
       }
       rules: {
         Row: {
@@ -590,15 +444,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["rule_status"]
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "rules_country_code_fkey"
-            columns: ["country_code"]
-            isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["code"]
-          },
-        ]
+        Relationships: []
       }
       tasks: {
         Row: {
@@ -607,7 +453,6 @@ export type Database = {
           application_id: string | null
           course_task_definition_id: string | null
           created_at: string
-          definition_revision: number | null
           description: string | null
           done: boolean
           due_date: string | null
@@ -630,7 +475,6 @@ export type Database = {
           application_id?: string | null
           course_task_definition_id?: string | null
           created_at?: string
-          definition_revision?: number | null
           description?: string | null
           done?: boolean
           due_date?: string | null
@@ -653,7 +497,6 @@ export type Database = {
           application_id?: string | null
           course_task_definition_id?: string | null
           created_at?: string
-          definition_revision?: number | null
           description?: string | null
           done?: boolean
           due_date?: string | null
@@ -725,10 +568,7 @@ export type Database = {
       course_task_change_state: "current" | "update_pending" | "removal_pending"
       course_task_due_mode: "source_deadline" | "fixed_date" | "none"
       course_task_kind: "submission" | "requirement" | "custom"
-      course_task_source_change: "changed" | "new" | "removed"
-      course_task_source_review_status: "pending" | "adopted" | "kept"
       extraction_method: "library" | "ai" | "manual"
-      qualification_level: "school" | "bachelor" | "master"
       rule_status: "draft" | "beta" | "verified"
     }
     CompositeTypes: {
@@ -868,10 +708,7 @@ export const Constants = {
       ],
       course_task_due_mode: ["source_deadline", "fixed_date", "none"],
       course_task_kind: ["submission", "requirement", "custom"],
-      course_task_source_change: ["changed", "new", "removed"],
-      course_task_source_review_status: ["pending", "adopted", "kept"],
       extraction_method: ["library", "ai", "manual"],
-      qualification_level: ["school", "bachelor", "master"],
       rule_status: ["draft", "beta", "verified"],
     },
   },

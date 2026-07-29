@@ -1,10 +1,9 @@
 import { UserMenu } from "@/components/app/user-menu";
 import { isAdminRole } from "@/lib/auth/roles";
-import { getCountries, getQualifications } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
 
 import { CheckFlow } from "./check-flow";
-import type { PartialAnswers } from "./steps";
+import { COUNTRIES, type PartialAnswers } from "./steps";
 
 export const dynamic = "force-dynamic";
 
@@ -21,26 +20,18 @@ export default async function CheckPage({
   const {
     data: { user },
   } = await db.auth.getUser();
-  const [countries, qualifications] = await Promise.all([
-    getCountries(db),
-    getQualifications(db),
-  ]);
   const params = await searchParams;
   const requestedCountry = params.country;
-  const certificateCountry = countries.some(
-    (country) => country.code === requestedCountry && country.code !== "de",
+  const certificateCountry = COUNTRIES.some(
+    (country) => country.code === requestedCountry,
   )
     ? requestedCountry
     : undefined;
-  const boards = qualifications
-    .filter((q) => q.level === "school" && q.country_code !== null)
-    .map((q) => ({ countryCode: q.country_code as string, label: q.board_or_type }));
   const initialAnswers: PartialAnswers = {
     ...(certificateCountry ? { certificateCountry } : {}),
   };
   const initialStepIndex = certificateCountry ? 1 : 0;
 
-  const countryOptions = countries.map((c) => ({ code: c.code, name: c.name }));
   const userMenu = user ? (
     <UserMenu
       email={user.email ?? null}
@@ -50,8 +41,6 @@ export default async function CheckPage({
 
   return (
     <CheckFlow
-      countries={countryOptions}
-      boards={boards}
       initialAnswers={initialAnswers}
       initialStepIndex={initialStepIndex}
       userMenu={userMenu}

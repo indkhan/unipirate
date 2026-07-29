@@ -8,14 +8,11 @@ import { ThemeToggle } from "@/components/app/theme-toggle";
 
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
+import { buildOptions, type Option } from "./check-questions";
 import { GceSubjectsEditor } from "./gce-subjects-editor";
 import { IbSubjectsEditor } from "./ib-subjects-editor";
 import {
-  AWARDING_BODIES,
-  BOARD_IDS,
-  INTAKE_OPTIONS,
   NUMBER_STEPS,
-  TARGET_FIELDS,
   isAnswered,
   isNumberStep,
   visibleSteps,
@@ -26,13 +23,9 @@ import {
 } from "./steps";
 
 type ProfileReviewProps = {
-  countries: { code: string; name: string }[];
-  boards: { countryCode: string; label: string }[];
   initialAnswers: PartialAnswers;
   userMenu?: ReactNode;
 };
-
-type Option = { value: unknown; label: string; key: string };
 
 const QUESTIONS: Record<StepId, string> = {
   targetDegree: "Study level",
@@ -56,12 +49,7 @@ const QUESTIONS: Record<StepId, string> = {
   intake: "Intake",
 };
 
-export function ProfileReview({
-  countries,
-  boards,
-  initialAnswers,
-  userMenu,
-}: ProfileReviewProps) {
+export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
   const [answers, setAnswers] = useState<PartialAnswers>(initialAnswers);
@@ -70,71 +58,9 @@ export function ProfileReview({
   const steps = visibleSteps(answers);
   const complete = steps.every((step) => isAnswered(answers, step));
 
-  function optionsFor(stepId: StepId): Option[] {
-    switch (stepId) {
-      case "targetDegree":
-        return [
-          { value: "bachelor", label: "Bachelor's", key: "bachelor" },
-          { value: "master", label: "Master's", key: "master" },
-        ];
-      case "nationality":
-      case "certificateCountry":
-        return countries
-          .filter((c) => c.code !== "de")
-          .map((c) => ({ value: c.code, label: c.name, key: c.code }));
-      case "visaApplicationCountry":
-        return [
-          ...countries
-            .filter((c) => c.code !== "de")
-            .map((c) => ({ value: c.code, label: c.name, key: c.code })),
-          { value: "other", label: "Another country", key: "other" },
-        ];
-      case "curriculumType":
-        return [
-          { value: "national", label: "National board", key: "national" },
-          { value: "ib", label: "IB Diploma", key: "ib" },
-          { value: "gce", label: "GCE A-Levels", key: "gce" },
-          { value: "other", label: "Something else", key: "other" },
-        ];
-      case "board":
-        return boards
-          .filter((b) => b.countryCode === answers.certificateCountry)
-          .map((b) => ({
-            value: BOARD_IDS[b.label] ?? b.label.toLowerCase(),
-            label: b.label,
-            key: b.label,
-          }));
-      case "jeeAdvanced":
-      case "hasExistingApsCertificate":
-        return [
-          { value: true, label: "Yes", key: "yes" },
-          { value: false, label: "No", key: "no" },
-        ];
-      case "gceAwardingBody":
-        return AWARDING_BODIES.map((b) => ({
-          value: b.id,
-          label: b.label,
-          key: b.id,
-        }));
-      case "targetField":
-        return TARGET_FIELDS.map((f) => ({
-          value: f.id,
-          label: f.label,
-          key: f.id,
-        }));
-      case "intake":
-        return [
-          ...INTAKE_OPTIONS.map((o) => ({
-            value: { term: o.term, year: o.year },
-            label: o.label,
-            key: `${o.term}-${o.year}`,
-          })),
-          { value: null, label: "Not sure yet", key: "unsure" },
-        ];
-      default:
-        return [];
-    }
-  }
+  // One options source with the checker (the local copy predated the IB steps
+  // and silently rendered them optionless).
+  const optionsFor = (stepId: StepId): Option[] => buildOptions(stepId, answers);
 
   function currentKey(stepId: StepId): string | undefined {
     const value = answers[stepId];

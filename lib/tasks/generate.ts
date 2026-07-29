@@ -23,7 +23,6 @@ export type GeneratedTask = {
   ruleId: string | null;
   courseTaskDefinitionId: string | null;
   adminSnapshot: Json | null;
-  definitionRevision: number | null;
   source: { url: string; verifiedAt: string | null } | null;
 };
 
@@ -64,7 +63,6 @@ export type ExistingGeneratedTask = {
   generated_active: boolean;
   course_task_definition_id: string | null;
   admin_snapshot: unknown;
-  definition_revision: number | null;
   has_personal_edits: boolean;
 };
 
@@ -81,7 +79,6 @@ export type GeneratedTaskUpsert = {
   generated_active: boolean;
   course_task_definition_id: string | null;
   admin_snapshot: Json | null;
-  definition_revision: number | null;
 };
 
 export type CourseTaskDefinitionSync = {
@@ -89,7 +86,6 @@ export type CourseTaskDefinitionSync = {
   personalUpdates: {
     taskKey: string;
     adminSnapshot: Json | null;
-    definitionRevision: number | null;
   }[];
   deactivateKeys: string[];
   removalPendingKeys: string[];
@@ -346,7 +342,6 @@ export function generateGlobalTasks(result: Result | null): GeneratedTask[] {
         ruleId: step.ruleId,
         courseTaskDefinitionId: null,
         adminSnapshot: null,
-        definitionRevision: null,
         source: citation
           ? { url: citation.sourceUrl, verifiedAt: citation.verifiedAt }
           : null,
@@ -397,7 +392,6 @@ export function generateCourseTasks(
         ruleId: null,
         courseTaskDefinitionId: definition.id,
         adminSnapshot,
-        definitionRevision: definition.revision,
         source: definition.sourceUrl
           ? { url: definition.sourceUrl, verifiedAt: course.created_at }
           : null,
@@ -489,7 +483,6 @@ function toGeneratedTaskUpsert(userId: string, task: GeneratedTask): GeneratedTa
     application_id: task.applicationId,
     course_task_definition_id: task.courseTaskDefinitionId,
     admin_snapshot: task.adminSnapshot,
-    definition_revision: task.definitionRevision,
     generated_active: true,
   };
 }
@@ -515,7 +508,6 @@ export function prepareCourseTaskDefinitionSync(
         ? [{
             taskKey: task.key,
             adminSnapshot: task.adminSnapshot,
-            definitionRevision: task.definitionRevision,
           }]
         : [];
     }),

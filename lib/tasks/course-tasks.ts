@@ -17,13 +17,12 @@ export type CourseTaskDefinition = {
   dueDate: string | null;
   sortOrder: number;
   sourceSnapshot: unknown;
-  revision: number;
   retiredAt: string | null;
 };
 
 export type CourseTaskCandidate = Omit<
   CourseTaskDefinition,
-  "id" | "courseId" | "description" | "sourceUrl" | "dueDate" | "sortOrder" | "revision" | "retiredAt"
+  "id" | "courseId" | "description" | "sourceUrl" | "dueDate" | "sortOrder" | "retiredAt"
 > & {
   description: null;
   sourceUrl: string;
@@ -61,7 +60,6 @@ export function toCourseTaskDefinition(
     dueDate: row.due_date,
     sortOrder: row.sort_order,
     sourceSnapshot: row.source_snapshot,
-    revision: row.revision,
     retiredAt: row.retired_at,
   };
 }

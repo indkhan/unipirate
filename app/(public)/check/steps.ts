@@ -107,14 +107,24 @@ export const TARGET_FIELDS = [
 ] as const;
 
 // qualifications.board_or_type (display label in DB) → engine board fact id.
-export const BOARD_IDS: Record<string, string> = {
-  CBSE: "cbse",
-  CISCE: "cisce",
-  "State board": "state_board",
-  "FSc/HSSC": "fsc",
-  Tawjihiyah: "tawjihiyah",
-  "Private-school certificate": "private_school",
-};
+// Trade-off: the supported countries and their school boards are static
+// catalogs, like the subject lists above — three countries and six boards do
+// not earn a database table. Move into the DB when a non-engineer needs to
+// add one without a deploy.
+export const COUNTRIES = [
+  { code: "in", name: "India" },
+  { code: "pk", name: "Pakistan" },
+  { code: "sa", name: "Saudi Arabia" },
+] as const;
+
+export const BOARDS = [
+  { id: "cbse", label: "CBSE", country: "in" },
+  { id: "cisce", label: "CISCE", country: "in" },
+  { id: "state_board", label: "State board", country: "in" },
+  { id: "fsc", label: "FSc/HSSC", country: "pk" },
+  { id: "tawjihiyah", label: "Tawjihiyah", country: "sa" },
+  { id: "private_school", label: "Private-school certificate", country: "sa" },
+] as const;
 
 export const INTAKE_OPTIONS = [
   { term: "winter", year: 2026, label: "Winter 2026/27" },

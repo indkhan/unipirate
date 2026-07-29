@@ -19,7 +19,7 @@ Non-negotiable product rules and code conventions live in
 | Database & auth | Supabase (Postgres + RLS, GoTrue auth, pgvector) |
 | Styling | CSS Modules per surface + Tailwind (admin only) |
 | AI | OpenRouter (chat + embeddings), Tavily (web search), Vercel AI SDK |
-| Analytics / email | PostHog / Resend |
+| Analytics | PostHog (auth emails are sent by Supabase itself) |
 | Tests | Vitest (`__tests__` folders next to the code) |
 
 ## Architecture in one picture
@@ -81,7 +81,7 @@ components/
   app/               shared product components (topbar, assistant sidebar…)
   ui/                shadcn primitives (admin only)
 lib/                 see architecture picture above
-scripts/             seed, KB embed, assistant eval, test email
+scripts/             seed, KB embed, assistant eval
 supabase/migrations/ schema — append-only, applied with `supabase db push`
 docs/                this file, bugs.md
 ```
@@ -287,15 +287,13 @@ Schema lives in `supabase/migrations/` (append-only). Regenerate types with
 
 | Table | What it is | Access |
 | --- | --- | --- |
-| `countries`, `qualifications` | reference data (null `country_code` on a qualification = international curriculum like IB/GCE) | public read, admin write |
 | `rules` | the eligibility engine's source of truth | public read except drafts; admin write |
 | `courses` | extracted course facts, verbatim; `normalized_url` dedupe key; `conflicts_with` marks update submissions; `review_status` pending/approved/rejected; `imported_by` records who submitted a pending import | approved public; importers see own pending |
-| `profiles` | one per user: `country_code` + checker `answers` jsonb | owner CRUD, admin read |
+| `profiles` | one per user: the checker `answers` jsonb (everything else — country, board, engine profile — is derived from it) | owner CRUD, admin read |
 | `applications` | user × course with status — THE dashboard link | owner CRUD |
 | `tasks` | rule-generated, admin-defined course-task assignments, and manual tasks; unique `(user_id, task_key)` makes reconciliation work | owner CRUD; admins reach only rows with a `course_task_definition_id`, never a student's manual or rule tasks |
-| `course_task_definitions` | ordered admin definitions for every course submission/requirement/custom task; pending-course definitions publish on approval | approved public read, admin write |
-| `course_task_source_reviews` | durable admin queue for official deadline/requirement changes; no student task changes until an admin resolves the review | admin only |
-| `checks` | anonymous check records; private ownership columns hidden by RLS | insert by anyone; shareable fields readable by UUID |
+| `course_task_definitions` | ordered admin definitions for every course submission/requirement/custom task; pending-course definitions publish on approval. Official-source changes are shown as a live diff in the admin tasks view (no stored review queue) and student tasks only change when an admin acts | approved public read, admin write |
+| `checks` | anonymous check records: `answers` + stored `result` (the profile is re-derived from answers at read time); private ownership columns hidden by RLS | insert by anyone; shareable fields readable by UUID |
 | `kb_chunks` | assistant corpus with pgvector embeddings; `match_kb_chunks()` does exact cosine scan (fine below ~10k rows) | public read, admin write |
 | `assistant_messages` | full Q&A log; today's `role='user'` count is the quota | owner insert/read, admin read |
 | `answer_reports` | assistant-answer feedback | authenticated insert, owner/admin read |
@@ -326,6 +324,7 @@ keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.
 | Support a new fact in rules | `FactKeySchema` + `deriveFacts` in `lib/engine/evaluate.ts`, label in `lib/ai/kb.ts`, tests in `lib/engine/__tests__/` |
 | Add a checker question | `StepId`, `AnswersSchema`, `visibleSteps`, `buildProfile` in `app/(public)/check/steps.ts`; copy in `check-questions.ts`; label in `profile-review.tsx`; tests in `steps.test.ts` |
 | Add a GCE/IB subject | `GCE_SUBJECTS` / `IB_SUBJECTS` in `app/(public)/check/steps.ts` — both editors and `buildProfile` read the catalog |
+| Add a country or school board | `COUNTRIES` / `BOARDS` in `app/(public)/check/steps.ts` — the checker options, admin rule filter, and result labels all read these catalogs |
 | Publish a seeded rule | `/admin?view=rules`. `pnpm db:seed` writes every bootstrap candidate as a **draft** and the engine skips drafts, so a newly seeded rule changes nothing until a human publishes it |
 | Change dashboard task texts/buckets | `lib/tasks/generate.ts` (+ its tests) |
 | Add a DB query | `lib/db/queries.ts` (user) or `admin-queries.ts` (admin) |

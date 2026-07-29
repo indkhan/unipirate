@@ -43,7 +43,6 @@ const OFFICIAL_DOMAINS = [
 
 // ------------------------------------------------------------------ markers
 
-export { parseMarkers, stripMarkers, type Citation } from "@/lib/ai/markers";
 
 // ------------------------------------------------------------ system prompt
 
@@ -168,9 +167,7 @@ function assistantTools(options: {
             (applicationsByStatus[a.status] ?? 0) + 1;
         }
         return {
-          profile: profile
-            ? { country_code: profile.country_code, answers: profile.answers }
-            : null,
+          profile: profile ? { answers: profile.answers } : null,
           applications: applications.map((a) => ({
             status: a.status,
             course: a.courses

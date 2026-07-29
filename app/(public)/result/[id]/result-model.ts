@@ -6,6 +6,8 @@ import {
   type ResultSupport,
 } from "@/lib/engine/evaluate";
 
+import { BOARDS, COUNTRIES } from "@/app/(public)/check/steps";
+
 export type ViewerVariant = "anonymous_owner" | "claimed_owner" | "public";
 
 export type Verdict = {
@@ -28,14 +30,9 @@ const PATH_LABELS: Record<Result["path"], string> = {
   unknown: "Your admission route still needs confirmation.",
 };
 
-const BOARD_LABELS: Record<string, string> = {
-  cbse: "CBSE",
-  cisce: "CISCE",
-  state_board: "State board",
-  fsc: "FSc/HSSC",
-  tawjihiyah: "Tawjihiyah",
-  private_school: "Private-school certificate",
-};
+const BOARD_LABELS: Record<string, string> = Object.fromEntries(
+  BOARDS.map((board) => [board.id, board.label]),
+);
 
 const CURRICULUM_LABELS: Record<Profile["curriculumType"], string> = {
   national: "National board",
@@ -172,7 +169,7 @@ export function isBetaCountry(profile: Profile): boolean {
 
 export function countryLabel(profile: Profile): string {
   const code = profile.certificateCountry ?? profile.nationality;
-  return { in: "India", pk: "Pakistan", sa: "Saudi Arabia" }[code ?? ""] ?? "your country";
+  return COUNTRIES.find((c) => c.code === code)?.name ?? "your country";
 }
 
 export function profileSummary(profile: Profile): string {

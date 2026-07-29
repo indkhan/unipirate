@@ -56,42 +56,10 @@ const FACT_LABELS: Record<string, string> = {
   jee_advanced: "valid JEE Advanced result",
   certificate_country: "country of the school certificate",
   visa_application_country: "country of visa application",
-  years_of_university_study: "completed years of university study",
-  university_study_institution_recognized:
-    "home university is recognized (anabin H+)",
-  university_study_field_matches_target:
-    "university study field matches the target field",
-  school_certificate_requirements_met:
-    "school certificate requirements are met",
-  prior_degree_years: "years of the prior degree",
-  prior_degree_field: "field of the prior degree",
   target_field: "target field of study",
   has_existing_aps: "already holds an APS certificate",
-  partnership_program: "exchange or partnership program",
   intake_index: "intake semester",
-  aps_application_day: "APS application date",
-  aps_registration_day: "APS registration date",
-  aps_documents_shipped_day: "APS documents shipped date",
 };
-
-const DATE_FACTS = new Set([
-  "aps_application_day",
-  "aps_registration_day",
-  "aps_documents_shipped_day",
-]);
-
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-/** 20260315 → "15 Mar 2026" (matches the design's DD MMM YYYY convention). */
-function renderDay(day: number): string {
-  const s = String(day);
-  if (!/^\d{8}$/.test(s)) return s;
-  const month = MONTHS[Number(s.slice(4, 6)) - 1] ?? s.slice(4, 6);
-  return `${Number(s.slice(6, 8))} ${month} ${s.slice(0, 4)}`;
-}
 
 /** Inverse of intakeIndex in lib/engine/evaluate.ts: 4053 → "winter 2026/27". */
 function renderIntake(index: number): string {
@@ -104,8 +72,6 @@ function renderIntake(index: number): string {
 function renderValue(key: string, value: Primitive): string {
   if (key === "intake_index" && typeof value === "number")
     return renderIntake(value);
-  if (DATE_FACTS.has(key) && typeof value === "number")
-    return renderDay(value);
   return String(value);
 }
 
@@ -116,7 +82,7 @@ function renderCondition(key: string, cond: Condition): string {
       ? cond
       : { op: "eq" as const, value: cond as Primitive };
 
-  const isTime = key === "intake_index" || DATE_FACTS.has(key);
+  const isTime = key === "intake_index";
   switch (op) {
     case "eq":
       return `${label} is ${renderValue(key, value as Primitive)}`;
