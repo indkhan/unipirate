@@ -612,7 +612,6 @@ export type Database = {
           done: boolean
           due_date: string | null
           generated_active: boolean
-          generated_from_rule_id: string | null
           has_personal_edits: boolean
           id: string
           preferred_bucket: string | null
@@ -636,7 +635,6 @@ export type Database = {
           done?: boolean
           due_date?: string | null
           generated_active?: boolean
-          generated_from_rule_id?: string | null
           has_personal_edits?: boolean
           id?: string
           preferred_bucket?: string | null
@@ -660,7 +658,6 @@ export type Database = {
           done?: boolean
           due_date?: string | null
           generated_active?: boolean
-          generated_from_rule_id?: string | null
           has_personal_edits?: boolean
           id?: string
           preferred_bucket?: string | null
@@ -686,13 +683,6 @@ export type Database = {
             columns: ["course_task_definition_id"]
             isOneToOne: false
             referencedRelation: "course_task_definitions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_generated_from_rule_id_fkey"
-            columns: ["generated_from_rule_id"]
-            isOneToOne: false
-            referencedRelation: "rules"
             referencedColumns: ["id"]
           },
         ]

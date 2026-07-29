@@ -22,7 +22,7 @@ export function GceSubjectsEditor({
       catalog={GCE_SUBJECTS}
       levels={GCE_LEVELS}
       grades={GCE_GRADES}
-      addLabel="a subject"
+      noun="subject"
     />
   );
 }

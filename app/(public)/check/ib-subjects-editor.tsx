@@ -18,7 +18,7 @@ export function IbSubjectsEditor({
       levels={IB_LEVELS}
       grades={IB_GRADES}
       gradeLabel={(grade) => `Grade ${grade}`}
-      addLabel="a subject"
+      noun="subject"
     />
   );
 }

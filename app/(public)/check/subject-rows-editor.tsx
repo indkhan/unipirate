@@ -16,7 +16,7 @@ export function SubjectRowsEditor<T extends SubjectRow>({
   levels,
   grades,
   gradeLabel = (grade) => grade,
-  addLabel,
+  noun,
 }: {
   subjects: T[];
   onChange: (subjects: T[]) => void;
@@ -24,7 +24,8 @@ export function SubjectRowsEditor<T extends SubjectRow>({
   levels: readonly { value: string; label: string }[];
   grades: readonly string[];
   gradeLabel?: (grade: string) => string;
-  addLabel: string;
+  /** Singular, unarticled — "subject" becomes "a subject" / "another subject". */
+  noun: string;
 }) {
   // `as T` on each patch: the select options come from the same catalog, level
   // and grade lists that typed T, but TS cannot narrow a string back to them.
@@ -101,7 +102,7 @@ export function SubjectRowsEditor<T extends SubjectRow>({
           onChange([...subjects, nextRow(subjects, catalog, levels, grades)])
         }
       >
-        + Add {subjects.length === 0 ? addLabel : `another ${addLabel}`}
+        + Add {subjects.length === 0 ? `a ${noun}` : `another ${noun}`}
       </button>
       {hasDuplicateSubjects(subjects) && (
         <p className={styles.fieldError}>Add each subject only once.</p>
