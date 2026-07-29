@@ -18,7 +18,6 @@ import {
   updateCourseTaskAssignment as updateCourseTaskAssignmentRow,
   resolveCourseTaskAssignment,
 } from "@/lib/db/queries";
-import { materializeCourseTasksForApplication } from "@/lib/tasks/materialize";
 
 const removeCourseSchema = z.object({
   id: z.string().uuid(),
@@ -177,7 +176,7 @@ const applicationStatusSchema = z.object({
 
 export async function setApplicationStatus(input: unknown): Promise<void> {
   const { id, status } = applicationStatusSchema.parse(input);
-  const { db, user } = await requireUser();
+  const { db } = await requireUser();
 
   await updateApplicationStatus(db, id, status);
   revalidatePath("/dashboard");

@@ -101,7 +101,7 @@ export async function POST(request: Request) {
 
   try {
     const course = await insertCourse(db, {
-      created_by: user.id,
+      imported_by: user.id,
       source_url: url,
       normalized_url: normalizedUrl,
       review_status: "pending",

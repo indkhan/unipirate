@@ -8,6 +8,7 @@ import {
   bucketTasks,
   generateTasks,
   parseDeadlineDate,
+  prepareCourseTaskDefinitionSync,
   prepareGeneratedTaskMaterialization,
   type ApplicationForTaskGeneration,
   type ExistingGeneratedTask,
@@ -358,5 +359,51 @@ describe("prepareGeneratedTaskMaterialization", () => {
     ]);
 
     expect(materialization.upsertRows).toEqual([]);
+  });
+});
+
+describe("prepareCourseTaskDefinitionSync", () => {
+  it("updates an untouched assignment with its intake-specific deadline", () => {
+    const application = app(1, "ignored");
+    application.course!.task_definitions = [{
+      id: "definition-1",
+      courseId: application.course!.id,
+      kind: "submission",
+      sourceKey: "submission",
+      titleTemplate: "Submit application — {{course}}",
+      description: null,
+      sourceUrl: application.course!.source_url,
+      dueMode: "source_deadline",
+      dueDate: null,
+      sortOrder: 30,
+      sourceSnapshot: {
+        deadlines: [
+          "Introduction",
+          "15 April to 31 May of the year for the winter semester",
+          "15 October to 30 November of the previous year for the summer semester",
+        ],
+      },
+      revision: 2,
+      retiredAt: null,
+    }];
+    const desired = generateTasks(null, [application], "2026-07-06", {
+      term: "summer",
+      year: 2027,
+    });
+
+    const sync = prepareCourseTaskDefinitionSync("user-1", desired, [
+      existingGenerated({
+        task_key: desired[0].key,
+        course_task_definition_id: "definition-1",
+        definition_revision: 1,
+      }),
+    ]);
+
+    expect(sync.upsertRows).toMatchObject([{
+      task_key: desired[0].key,
+      due_date: "2026-11-30",
+      verbatim_due: "15 October to 30 November of the previous year for the summer semester",
+      definition_revision: 2,
+    }]);
   });
 });

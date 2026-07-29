@@ -172,7 +172,7 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     const { data: course, error: courseError } = await owner
       .from("courses")
       .insert({
-        created_by: ownerUser.id,
+        imported_by: ownerUser.id,
         source_url: "https://example.com/rls-test/course",
         normalized_url: `example.com/rls-test/course/${randomUUID()}`,
       })
@@ -185,7 +185,7 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     const { data: rejectCourse, error: rejectCourseError } = await owner
       .from("courses")
       .insert({
-        created_by: ownerUser.id,
+        imported_by: ownerUser.id,
         source_url: "https://example.com/rls-test/reject-course",
         normalized_url: `example.com/rls-test/reject-course/${randomUUID()}`,
       })
@@ -465,7 +465,7 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     const { data: course, error: insertError } = await owner
       .from("courses")
       .insert({
-        created_by: ownerUser.id,
+        imported_by: ownerUser.id,
         source_url: "https://example.com/rls-test/delete-course",
         normalized_url: `example.com/rls-test/delete-course/${randomUUID()}`,
       })
@@ -487,10 +487,10 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
 
     const { data: stillOwned } = await service
       .from("courses")
-      .select("created_by")
+      .select("imported_by")
       .eq("id", course!.id)
       .single();
-    expect(stillOwned?.created_by).toBe(ownerUser.id);
+    expect(stillOwned?.imported_by).toBe(ownerUser.id);
 
     const { error: ownerError } = await owner.rpc("remove_my_course", {
       course_id: course!.id,
@@ -506,7 +506,7 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     const { data: approvedCourse, error: approvedInsertError } = await service
       .from("courses")
       .insert({
-        created_by: ownerUser.id,
+        imported_by: ownerUser.id,
         source_url: "https://example.com/rls-test/approved-detach-course",
         normalized_url: `example.com/rls-test/approved-detach-course/${randomUUID()}`,
         review_status: "approved",
@@ -523,11 +523,11 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
 
     const { data: detachedCourse } = await service
       .from("courses")
-      .select("created_by, review_status")
+      .select("imported_by, review_status")
       .eq("id", approvedCourse!.id)
       .single();
     expect(detachedCourse).toEqual(
-      expect.objectContaining({ created_by: null, review_status: "approved" }),
+      expect.objectContaining({ imported_by: null, review_status: "approved" }),
     );
   });
 

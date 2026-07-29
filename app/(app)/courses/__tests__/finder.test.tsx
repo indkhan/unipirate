@@ -17,7 +17,7 @@ function course(overrides: Partial<Tables<"courses">>): Tables<"courses"> {
   return {
     conflicts_with: null,
     created_at: "2026-07-07T00:00:00Z",
-    created_by: null,
+    imported_by: null,
     deadlines: ["15 May for the winter semester"],
     degree: "Master",
     description: null,
@@ -32,7 +32,6 @@ function course(overrides: Partial<Tables<"courses">>): Tables<"courses"> {
     review_status: "approved",
     source_url: "https://example.edu/cs",
     tuition: null,
-    university_id: null,
     university_name: "Example University",
     updated_at: "2026-07-07T00:00:00Z",
     ...overrides,

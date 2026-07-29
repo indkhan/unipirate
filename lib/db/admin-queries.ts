@@ -12,10 +12,15 @@ import type {
 } from "@/lib/db/database.types";
 import { EngineRuleSchema } from "@/lib/engine/evaluate";
 import type { CourseTaskDefinition } from "@/lib/tasks/course-tasks";
+import {
+  generateCourseTasks,
+  prepareCourseTaskDefinitionSync,
+} from "@/lib/tasks/generate";
+import { profileFromAnswers } from "@/lib/tasks/profile";
+import { todayIsoBerlin } from "@/lib/tasks/dates";
 import { unwrap } from "@/lib/db/unwrap";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
-type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
 
 export type AdminRuleFilters = {
   country?: string;
@@ -240,13 +245,71 @@ export async function updateAdminCourseTaskDefinition(
 }
 
 export async function syncAdminCourseTaskDefinitions(
-  db: RpcDb,
+  db: Db,
   courseId: string,
 ): Promise<void> {
-  const { error } = await db.rpc("sync_course_task_definitions", {
-    p_course_id: courseId,
-  });
-  if (error) throw new Error(error.message);
+  const applications = unwrap(
+    await db
+      .from("applications")
+      .select("*, courses(*)")
+      .eq("course_id", courseId)
+      .eq("status", "planning"),
+  ) as (Tables<"applications"> & { courses: Tables<"courses"> | null })[];
+  if (applications.length === 0) return;
+
+  const userIds = applications.map((application) => application.user_id);
+  const [profiles, tasks, definitions] = await Promise.all([
+    unwrap(await db.from("profiles").select().in("user_id", userIds)),
+    unwrap(await db.from("tasks").select().in("application_id", applications.map((application) => application.id))),
+    listAdminCourseTaskDefinitions(db, courseId),
+  ]);
+  const profilesByUser = new Map(profiles.map((profile) => [profile.user_id, profile]));
+  const definitionsForGeneration = definitions.map(toCourseTaskDefinition);
+
+  for (const application of applications) {
+    if (!application.courses) continue;
+    const profile = profileFromAnswers(profilesByUser.get(application.user_id) ?? null).profile;
+    const desired = generateCourseTasks([{
+      id: application.id,
+      status: application.status,
+      course: {
+        ...application.courses,
+        task_definitions: definitionsForGeneration,
+      },
+    }], todayIsoBerlin(), profile?.intake);
+    const sync = prepareCourseTaskDefinitionSync(
+      application.user_id,
+      desired,
+      tasks.filter((task) => task.application_id === application.id),
+    );
+    if (sync.upsertRows.length > 0) {
+      const { error } = await db
+        .from("tasks")
+        .upsert(sync.upsertRows, { onConflict: "user_id,task_key" });
+      if (error) throw new Error(error.message);
+    }
+    await Promise.all([
+      ...sync.personalUpdates.map(({ taskKey, adminSnapshot, definitionRevision }) =>
+        db.from("tasks").update({
+          admin_snapshot: adminSnapshot,
+          definition_revision: definitionRevision,
+          admin_change_state: "update_pending",
+          generated_active: true,
+        }).eq("user_id", application.user_id).eq("task_key", taskKey),
+      ),
+      sync.deactivateKeys.length > 0
+        ? db.from("tasks").update({ generated_active: false })
+          .eq("user_id", application.user_id).in("task_key", sync.deactivateKeys)
+        : Promise.resolve({ error: null }),
+      sync.removalPendingKeys.length > 0
+        ? db.from("tasks").update({ admin_change_state: "removal_pending" })
+          .eq("user_id", application.user_id).in("task_key", sync.removalPendingKeys)
+        : Promise.resolve({ error: null }),
+    ]).then((results) => {
+      const error = results.find((result) => result.error)?.error;
+      if (error) throw new Error(error.message);
+    });
+  }
 }
 
 export async function createAdminCourseTaskSourceReview(

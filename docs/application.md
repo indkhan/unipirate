@@ -206,7 +206,8 @@ strict direction of data flow:
   user's intake without inventing dates) and Now/Next/Later bucketing.
 - **`materialize.ts` (write)** — runs at event time (profile saved, result
   claimed, course added, status changed), never during render. Admin edits
-  fan out through the scoped `sync_course_task_definitions` DB function.
+  fan out through the same intake-aware generator used for initial task
+  materialization.
   Untouched copies update immediately; student-edited copies keep their
   values and become an explicit “use admin / keep mine” decision. Never
   touches `done` or `preferred_bucket`.
@@ -265,18 +266,18 @@ Schema lives in `supabase/migrations/` (append-only). Regenerate types with
 
 | Table | What it is | Access |
 | --- | --- | --- |
-| `countries`, `qualifications`, `universities` | reference data (null `country_code` on a qualification = international curriculum like IB/GCE) | public read, admin write |
+| `countries`, `qualifications` | reference data (null `country_code` on a qualification = international curriculum like IB/GCE) | public read, admin write |
 | `rules` | the eligibility engine's source of truth | public read except drafts; admin write |
-| `courses` | extracted course facts, verbatim; `normalized_url` dedupe key; `conflicts_with` marks update submissions; `review_status` pending/approved/rejected | approved public; owners see own pending |
+| `courses` | extracted course facts, verbatim; `normalized_url` dedupe key; `conflicts_with` marks update submissions; `review_status` pending/approved/rejected; `imported_by` records who submitted a pending import | approved public; importers see own pending |
 | `profiles` | one per user: `country_code` + checker `answers` jsonb | owner CRUD, admin read |
 | `applications` | user × course with status — THE dashboard link | owner CRUD |
-| `tasks` | rule-generated, admin-defined course-task assignments, and manual tasks; unique `(user_id, task_key)` makes reconciliation work | owner CRUD, admin read |
+| `tasks` | rule-generated, admin-defined course-task assignments, and manual tasks; unique `(user_id, task_key)` makes reconciliation work | owner CRUD, admin sync/read |
 | `course_task_definitions` | ordered admin definitions for every course submission/requirement/custom task; pending-course definitions publish on approval | approved public read, admin write |
 | `course_task_source_reviews` | durable admin queue for official deadline/requirement changes; no student task changes until an admin resolves the review | admin only |
 | `checks` | anonymous check records; private ownership columns hidden by RLS | insert by anyone; shareable fields readable by UUID |
 | `kb_chunks` | assistant corpus with pgvector embeddings; `match_kb_chunks()` does exact cosine scan (fine below ~10k rows) | public read, admin write |
 | `assistant_messages` | full Q&A log; today's `role='user'` count is the quota | owner insert/read, admin read |
-| `rule_reports`, `answer_reports` | "this is wrong" feedback, anonymous allowed | insert by anyone |
+| `answer_reports` | assistant-answer feedback | authenticated insert, owner/admin read |
 | `admin_audit_events` | append-only audit of rule/course updates, written by a DB trigger regardless of UI path | admin read |
 
 DB functions worth knowing: `claim_check` (atomic anonymous-result claim),

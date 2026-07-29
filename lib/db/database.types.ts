@@ -344,7 +344,6 @@ export type Database = {
         Row: {
           conflicts_with: string | null
           created_at: string
-          created_by: string | null
           deadlines: Json | null
           degree: string | null
           description: string | null
@@ -353,6 +352,7 @@ export type Database = {
             | null
           field_extraction: Json | null
           id: string
+          imported_by: string | null
           language: string | null
           location: string | null
           name: string | null
@@ -361,14 +361,12 @@ export type Database = {
           review_status: Database["public"]["Enums"]["course_review_status"]
           source_url: string
           tuition: Json | null
-          university_id: string | null
           university_name: string | null
           updated_at: string
         }
         Insert: {
           conflicts_with?: string | null
           created_at?: string
-          created_by?: string | null
           deadlines?: Json | null
           degree?: string | null
           description?: string | null
@@ -377,6 +375,7 @@ export type Database = {
             | null
           field_extraction?: Json | null
           id?: string
+          imported_by?: string | null
           language?: string | null
           location?: string | null
           name?: string | null
@@ -385,14 +384,12 @@ export type Database = {
           review_status?: Database["public"]["Enums"]["course_review_status"]
           source_url: string
           tuition?: Json | null
-          university_id?: string | null
           university_name?: string | null
           updated_at?: string
         }
         Update: {
           conflicts_with?: string | null
           created_at?: string
-          created_by?: string | null
           deadlines?: Json | null
           degree?: string | null
           description?: string | null
@@ -401,6 +398,7 @@ export type Database = {
             | null
           field_extraction?: Json | null
           id?: string
+          imported_by?: string | null
           language?: string | null
           location?: string | null
           name?: string | null
@@ -409,7 +407,6 @@ export type Database = {
           review_status?: Database["public"]["Enums"]["course_review_status"]
           source_url?: string
           tuition?: Json | null
-          university_id?: string | null
           university_name?: string | null
           updated_at?: string
         }
@@ -419,13 +416,6 @@ export type Database = {
             columns: ["conflicts_with"]
             isOneToOne: false
             referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "courses_university_id_fkey"
-            columns: ["university_id"]
-            isOneToOne: false
-            referencedRelation: "universities"
             referencedColumns: ["id"]
           },
         ]
@@ -554,41 +544,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "countries"
             referencedColumns: ["code"]
-          },
-        ]
-      }
-      rule_reports: {
-        Row: {
-          created_at: string
-          id: string
-          message: string
-          rule_id: string
-          status: string
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          message: string
-          rule_id: string
-          status?: string
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          message?: string
-          rule_id?: string
-          status?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rule_reports_rule_id_fkey"
-            columns: ["rule_id"]
-            isOneToOne: false
-            referencedRelation: "rules"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -742,33 +697,6 @@ export type Database = {
           },
         ]
       }
-      universities: {
-        Row: {
-          city: string | null
-          created_at: string
-          id: string
-          name: string
-          uni_assist: boolean
-          website: string | null
-        }
-        Insert: {
-          city?: string | null
-          created_at?: string
-          id?: string
-          name: string
-          uni_assist?: boolean
-          website?: string | null
-        }
-        Update: {
-          city?: string | null
-          created_at?: string
-          id?: string
-          name?: string
-          uni_assist?: boolean
-          website?: string | null
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -800,10 +728,6 @@ export type Database = {
       result_viewer: {
         Args: { p_check_id: string; p_token_hash?: string }
         Returns: string
-      }
-      sync_course_task_definitions: {
-        Args: { p_course_id: string }
-        Returns: undefined
       }
     }
     Enums: {

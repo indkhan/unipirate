@@ -86,6 +86,17 @@ export type GeneratedTaskUpsert = {
   definition_revision: number | null;
 };
 
+export type CourseTaskDefinitionSync = {
+  upsertRows: GeneratedTaskUpsert[];
+  personalUpdates: {
+    taskKey: string;
+    adminSnapshot: Json | null;
+    definitionRevision: number | null;
+  }[];
+  deactivateKeys: string[];
+  removalPendingKeys: string[];
+};
+
 const MONTHS: Record<string, number> = {
   january: 1,
   jan: 1,
@@ -531,22 +542,7 @@ export function prepareGeneratedTaskMaterialization(
   const existingByKey = new Map(
     existing.flatMap((task) => (task.task_key ? [[task.task_key, task]] : [])),
   );
-  const desiredRows = desired.map((task) => ({
-    user_id: userId,
-    task_key: task.key,
-    title: task.title,
-    due_date: task.dueDate,
-    verbatim_due: task.verbatimDue,
-    sort_order: task.order,
-    source_url: task.source?.url ?? null,
-    source_verified_at: task.source?.verifiedAt ?? null,
-    application_id: task.applicationId,
-    generated_from_rule_id: task.ruleId,
-    course_task_definition_id: task.courseTaskDefinitionId,
-    admin_snapshot: task.adminSnapshot,
-    definition_revision: task.definitionRevision,
-    generated_active: true,
-  }));
+  const desiredRows = desired.map((task) => toGeneratedTaskUpsert(userId, task));
   return {
     upsertRows: desiredRows.filter((row) => {
       const existingRow = existingByKey.get(row.task_key);
@@ -568,6 +564,69 @@ export function prepareGeneratedTaskMaterialization(
       task.generated_active &&
       !desiredKeys.has(task.task_key) &&
       !(task.course_task_definition_id !== null && task.has_personal_edits)
+        ? [task.task_key]
+        : [],
+    ),
+  };
+}
+
+function toGeneratedTaskUpsert(userId: string, task: GeneratedTask): GeneratedTaskUpsert {
+  return {
+    user_id: userId,
+    task_key: task.key,
+    title: task.title,
+    due_date: task.dueDate,
+    verbatim_due: task.verbatimDue,
+    sort_order: task.order,
+    source_url: task.source?.url ?? null,
+    source_verified_at: task.source?.verifiedAt ?? null,
+    application_id: task.applicationId,
+    generated_from_rule_id: task.ruleId,
+    course_task_definition_id: task.courseTaskDefinitionId,
+    admin_snapshot: task.adminSnapshot,
+    definition_revision: task.definitionRevision,
+    generated_active: true,
+  };
+}
+
+/** Admin definition edits update untouched copies and request a decision for personal edits. */
+export function prepareCourseTaskDefinitionSync(
+  userId: string,
+  desired: GeneratedTask[],
+  existing: ExistingGeneratedTask[],
+): CourseTaskDefinitionSync {
+  const desiredKeys = new Set(desired.map((task) => task.key));
+  const existingByKey = new Map(
+    existing.flatMap((task) => (task.task_key ? [[task.task_key, task]] : [])),
+  );
+
+  return {
+    upsertRows: desired
+      .filter((task) => !existingByKey.get(task.key)?.has_personal_edits)
+      .map((task) => toGeneratedTaskUpsert(userId, task)),
+    personalUpdates: desired.flatMap((task) => {
+      const current = existingByKey.get(task.key);
+      return current?.has_personal_edits
+        ? [{
+            taskKey: task.key,
+            adminSnapshot: task.adminSnapshot,
+            definitionRevision: task.definitionRevision,
+          }]
+        : [];
+    }),
+    deactivateKeys: existing.flatMap((task) =>
+      task.task_key !== null &&
+      task.course_task_definition_id !== null &&
+      !task.has_personal_edits &&
+      !desiredKeys.has(task.task_key)
+        ? [task.task_key]
+        : [],
+    ),
+    removalPendingKeys: existing.flatMap((task) =>
+      task.task_key !== null &&
+      task.course_task_definition_id !== null &&
+      task.has_personal_edits &&
+      !desiredKeys.has(task.task_key)
         ? [task.task_key]
         : [],
     ),

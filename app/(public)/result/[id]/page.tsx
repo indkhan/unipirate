@@ -21,7 +21,6 @@ import {
   TimelineCard,
   UnknownsCard,
   VerdictCard,
-  formatDate,
 } from "./result-components";
 import styles from "./result.module.css";
 import {
