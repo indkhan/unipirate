@@ -106,7 +106,6 @@ export const TARGET_FIELDS = [
   { id: "other", label: "Something else" },
 ] as const;
 
-// qualifications.board_or_type (display label in DB) → engine board fact id.
 // Trade-off: the supported countries and their school boards are static
 // catalogs, like the subject lists above — three countries and six boards do
 // not earn a database table. Move into the DB when a non-engineer needs to
