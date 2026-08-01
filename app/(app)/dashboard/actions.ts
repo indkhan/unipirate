@@ -6,19 +6,18 @@ import { z } from "zod";
 import { requireUser, type Session } from "@/lib/auth/session";
 import {
   deleteApplicationForCourse,
-  deleteTask as deleteTaskRow,
+  deleteManualTask as deleteTaskRow,
   insertAnswerReport,
+  hasApplication,
   insertTask,
-  listApplications,
   removeMyCourse,
   setTaskPreferredBucket,
   setTaskDone,
-  updateTask as updateTaskRow,
+  updateManualTask as updateTaskRow,
   updateApplicationStatus,
   updateCourseTaskAssignment as updateCourseTaskAssignmentRow,
   resolveCourseTaskAssignment,
 } from "@/lib/db/queries";
-import { materializeCourseTasksForApplication } from "@/lib/tasks/materialize";
 
 const removeCourseSchema = z.object({
   id: z.string().uuid(),
@@ -40,9 +39,9 @@ const toggleTaskSchema = z.object({
 
 export async function toggleTask(input: unknown): Promise<void> {
   const { id, done } = toggleTaskSchema.parse(input);
-  const { db } = await requireUser();
+  const { db, user } = await requireUser();
 
-  await setTaskDone(db, id, done);
+  await setTaskDone(db, user.id, id, done);
 }
 
 const moveTaskSchema = z.object({
@@ -85,14 +84,14 @@ const taskSchema = z.object({
     .default(null),
 });
 
+/** Trust-boundary check: a forged applicationId must not attach to a new task. */
 async function assertOwnedApplication(
   db: Session["db"],
   userId: string,
   applicationId: string | null,
 ): Promise<void> {
   if (!applicationId) return;
-  const applications = await listApplications(db, userId);
-  if (!applications.some((application) => application.id === applicationId)) {
+  if (!(await hasApplication(db, userId, applicationId))) {
     throw new Error("Application not found");
   }
 }
@@ -177,7 +176,7 @@ const applicationStatusSchema = z.object({
 
 export async function setApplicationStatus(input: unknown): Promise<void> {
   const { id, status } = applicationStatusSchema.parse(input);
-  const { db, user } = await requireUser();
+  const { db } = await requireUser();
 
   await updateApplicationStatus(db, id, status);
   revalidatePath("/dashboard");

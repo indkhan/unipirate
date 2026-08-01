@@ -6,16 +6,24 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Database,
   Enums,
+  Json,
   Tables,
   TablesInsert,
   TablesUpdate,
 } from "@/lib/db/database.types";
 import { EngineRuleSchema } from "@/lib/engine/evaluate";
-import type { CourseTaskDefinition } from "@/lib/tasks/course-tasks";
+import { toCourseTaskDefinition } from "@/lib/tasks/course-tasks";
+import {
+  generateCourseTasks,
+  prepareCourseTaskDefinitionSync,
+  type GeneratedTaskUpsert,
+} from "@/lib/tasks/generate";
+import type { ApplicationWithCourse } from "@/lib/db/queries";
+import { profileFromAnswers } from "@/lib/tasks/profile";
+import { todayIsoBerlin } from "@/lib/tasks/dates";
 import { unwrap } from "@/lib/db/unwrap";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
-type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
 
 export type AdminRuleFilters = {
   country?: string;
@@ -112,7 +120,15 @@ export type ConflictCourse = Tables<"courses"> & {
   old_course: Tables<"courses"> | null;
 };
 
-/** Pending "the page changed" submissions with the course they dispute. */
+/**
+ * Pending "the page changed" submissions with the course they dispute.
+ *
+ * Trade-off: two round trips rather than a PostgREST embed on the
+ * `conflicts_with` self-FK — the generated types resolve that embed to an array
+ * rather than a to-one object, so it cannot be typed without a cast that hides
+ * whether the shape is right. Upgrade path: switch to
+ * `courses!courses_conflicts_with_fkey(*)` once verified against the project.
+ */
 export async function listConflictCourses(db: Db): Promise<ConflictCourse[]> {
   const updates = unwrap(
     await db
@@ -141,11 +157,12 @@ export async function resolveCourseConflict(
   newCourseId: string,
   keepNew: boolean,
 ): Promise<void> {
-  const { error } = await db.rpc("resolve_course_conflict", {
-    p_new_course_id: newCourseId,
-    p_keep_new: keepNew,
-  });
-  if (error) throw new Error(error.message);
+  unwrap(
+    await db.rpc("resolve_course_conflict", {
+      p_new_course_id: newCourseId,
+      p_keep_new: keepNew,
+    }),
+  );
 }
 
 export async function updateCourseReviewStatus(
@@ -239,78 +256,121 @@ export async function updateAdminCourseTaskDefinition(
   );
 }
 
+/**
+ * Fans an admin's course-task definition edits out to every student tracking the
+ * course, using the same intake-aware generator as initial materialization —
+ * SQL cannot do the deadline selection, and a second parser would eventually
+ * disagree with the first about which deadline line applies.
+ *
+ * Trade-off: not transactional. Every write is idempotent and keyed on
+ * (user_id, task_key), so a partial failure leaves some students synced and the
+ * rest untouched — never a half-written task — and re-saving the definition
+ * converges. Upgrade path: hand these pre-computed rows to one security-definer
+ * SQL function as jsonb, which buys atomicity while keeping one parser.
+ */
 export async function syncAdminCourseTaskDefinitions(
-  db: RpcDb,
+  db: Db,
   courseId: string,
 ): Promise<void> {
-  const { error } = await db.rpc("sync_course_task_definitions", {
-    p_course_id: courseId,
-  });
-  if (error) throw new Error(error.message);
-}
-
-export async function createAdminCourseTaskSourceReview(
-  db: Db,
-  review: TablesInsert<"course_task_source_reviews">,
-): Promise<void> {
-  const { error } = await db
-    .from("course_task_source_reviews")
-    .upsert(review, { onConflict: "course_id,candidate_key,status", ignoreDuplicates: true });
-  if (error) throw new Error(error.message);
-}
-
-export async function listPendingCourseTaskSourceReviews(
-  db: Db,
-): Promise<Tables<"course_task_source_reviews">[]> {
-  return unwrap(
+  const applications = unwrap(
     await db
-      .from("course_task_source_reviews")
-      .select()
-      .eq("status", "pending")
-      .order("created_at"),
-  );
+      .from("applications")
+      .select("*, courses(*)")
+      .eq("course_id", courseId)
+      .eq("status", "planning"),
+  ) as ApplicationWithCourse[];
+  if (applications.length === 0) return;
+
+  const userIds = applications.map((application) => application.user_id);
+  const [profiles, tasks, definitions] = await Promise.all([
+    unwrap(await db.from("profiles").select().in("user_id", userIds)),
+    unwrap(await db.from("tasks").select().in("application_id", applications.map((application) => application.id))),
+    listAdminCourseTaskDefinitions(db, courseId),
+  ]);
+  const profilesByUser = new Map(profiles.map((profile) => [profile.user_id, profile]));
+  const definitionsForGeneration = definitions.map(toCourseTaskDefinition);
+
+  const today = todayIsoBerlin();
+  const upsertRows: GeneratedTaskUpsert[] = [];
+  const deactivateKeys: string[] = [];
+  const removalPendingKeys: string[] = [];
+  const personalUpdates: {
+    userId: string;
+    taskKey: string;
+    adminSnapshot: Json | null;
+  }[] = [];
+
+  for (const application of applications) {
+    if (!application.courses) continue;
+    const profile = profileFromAnswers(profilesByUser.get(application.user_id) ?? null).profile;
+    const desired = generateCourseTasks([{
+      id: application.id,
+      status: application.status,
+      course: {
+        ...application.courses,
+        task_definitions: definitionsForGeneration,
+      },
+    }], today, profile?.intake);
+    const sync = prepareCourseTaskDefinitionSync(
+      application.user_id,
+      desired,
+      tasks.filter((task) => task.application_id === application.id),
+    );
+
+    upsertRows.push(...sync.upsertRows);
+    deactivateKeys.push(...sync.deactivateKeys);
+    removalPendingKeys.push(...sync.removalPendingKeys);
+    personalUpdates.push(
+      ...sync.personalUpdates.map((update) => ({
+        userId: application.user_id,
+        ...update,
+      })),
+    );
+  }
+
+  // task_key embeds the application uuid, so the key sets are globally unique;
+  // the user_id filters are kept so the planner uses the (user_id, task_key) index.
+  if (upsertRows.length > 0) {
+    unwrap(await db.from("tasks").upsert(upsertRows, { onConflict: "user_id,task_key" }));
+  }
+  if (deactivateKeys.length > 0) {
+    unwrap(
+      await db
+        .from("tasks")
+        .update({ generated_active: false })
+        .in("user_id", userIds)
+        .in("task_key", deactivateKeys),
+    );
+  }
+  if (removalPendingKeys.length > 0) {
+    unwrap(
+      await db
+        .from("tasks")
+        .update({ admin_change_state: "removal_pending" })
+        .in("user_id", userIds)
+        .in("task_key", removalPendingKeys),
+    );
+  }
+  // ponytail: one update per personalized copy — each carries a distinct
+  // admin_snapshot, so it cannot batch. Fine below ~50 trackers per course.
+  for (const update of personalUpdates) {
+    unwrap(
+      await db
+        .from("tasks")
+        .update({
+          admin_snapshot: update.adminSnapshot,
+          admin_change_state: "update_pending",
+          generated_active: true,
+        })
+        .eq("user_id", update.userId)
+        .eq("task_key", update.taskKey),
+    );
+  }
 }
 
-export async function getAdminCourseTaskSourceReview(
-  db: Db,
-  id: string,
-): Promise<Tables<"course_task_source_reviews">> {
-  return unwrap(
-    await db.from("course_task_source_reviews").select().eq("id", id).single(),
-  );
-}
 
-export async function resolveAdminCourseTaskSourceReview(
-  db: Db,
-  id: string,
-  status: "adopted" | "kept",
-): Promise<void> {
-  const { error } = await db
-    .from("course_task_source_reviews")
-    .update({ status, resolved_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw new Error(error.message);
-}
 
-export function toCourseTaskDefinition(
-  row: Tables<"course_task_definitions">,
-): CourseTaskDefinition {
-  return {
-    id: row.id,
-    courseId: row.course_id,
-    kind: row.kind,
-    sourceKey: row.source_key,
-    titleTemplate: row.title_template,
-    description: row.description,
-    sourceUrl: row.source_url,
-    dueMode: row.due_mode,
-    dueDate: row.due_date,
-    sortOrder: row.sort_order,
-    sourceSnapshot: row.source_snapshot,
-    revision: row.revision,
-    retiredAt: row.retired_at,
-  };
-}
+
 
 export async function listRecentAdminAuditEvents(
   db: Db,

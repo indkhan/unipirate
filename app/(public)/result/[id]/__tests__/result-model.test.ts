@@ -25,7 +25,6 @@ const result: Result = {
   testAS: "unknown",
   dMAT: "not_required",
   documents: ["1", "2", "3", "4", "5", "6", "7"],
-  steps: [],
   stepsDetailed: [],
   unknowns: [],
   citations: [

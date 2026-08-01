@@ -7,8 +7,6 @@ import { requireAdmin } from "@/lib/auth/session";
 import {
   getAdminRule,
   getAdminCourse,
-  createAdminCourseTaskSourceReview,
-  getAdminCourseTaskSourceReview,
   insertAdminCourseTaskDefinition,
   listAdminCourseTaskDefinitions,
   resolveCourseConflict,
@@ -18,7 +16,6 @@ import {
   updateAdminRule,
   updateCourseReviewStatus,
   syncAdminCourseTaskDefinitions,
-  resolveAdminCourseTaskSourceReview,
 } from "@/lib/db/admin-queries";
 import { normalizeUrl } from "@/lib/courses/import";
 import type { Json } from "@/lib/db/database.types";
@@ -65,7 +62,13 @@ const courseUpdateSchema = z.object({
   requirements: z.string().min(2),
 });
 
-function parseJsonObject(value: string, field: string): Json {
+/** Rule conditions/outcomes and course facts are edited as raw JSON textareas. */
+function parseJson<T>(
+  value: string,
+  field: string,
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+  shape: string,
+): T {
   let parsed: unknown;
 
   try {
@@ -74,46 +77,16 @@ function parseJsonObject(value: string, field: string): Json {
     throw new Error(`${field} must be valid JSON.`);
   }
 
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`${field} must be a JSON object.`);
-  }
-
-  return parsed as Json;
-}
-
-function parseJsonArray(value: string, field: string): string[] {
-  let parsed: unknown;
-
-  try {
-    parsed = JSON.parse(value);
-  } catch {
-    throw new Error(`${field} must be valid JSON.`);
-  }
-
-  const result = z.array(z.string().min(1)).safeParse(parsed);
-  if (!result.success) {
-    throw new Error(`${field} must be a JSON array of non-empty strings.`);
-  }
+  const result = schema.safeParse(parsed);
+  if (!result.success) throw new Error(`${field} must be ${shape}.`);
 
   return result.data;
 }
 
-function parseNullableJsonString(value: string, field: string): string | null {
-  let parsed: unknown;
-
-  try {
-    parsed = JSON.parse(value);
-  } catch {
-    throw new Error(`${field} must be valid JSON.`);
-  }
-
-  const result = z.string().min(1).nullable().safeParse(parsed);
-  if (!result.success) {
-    throw new Error(`${field} must be a JSON string or null.`);
-  }
-
-  return result.data;
-}
+// zod cannot express the recursive Json type; parsing proves it is an object.
+const jsonObject = z.record(z.string(), z.unknown()).transform((value) => value as Json);
+const jsonStringArray = z.array(z.string().min(1));
+const nullableJsonString = z.string().min(1).nullable();
 
 function nullableText(value: string): string | null {
   const trimmed = value.trim();
@@ -133,8 +106,8 @@ export async function updateRuleAction(formData: FormData) {
     status: formData.get("status"),
   });
 
-  const conditions = parseJsonObject(values.conditions, "conditions");
-  const outcomes = parseJsonObject(values.outcomes, "outcomes");
+  const conditions = parseJson(values.conditions, "conditions", jsonObject, "a JSON object");
+  const outcomes = parseJson(values.outcomes, "outcomes", jsonObject, "a JSON object");
   const existing = await getAdminRule(db, values.id);
   const publishing =
     values.status !== "draft" && values.status !== existing.status;
@@ -256,9 +229,6 @@ export async function saveCourseTaskAction(formData: FormData) {
   });
   const sourceSnapshot = JSON.parse(values.source_snapshot) as Json;
   const course = await getAdminCourse(db, values.course_id);
-  const existing = values.id
-    ? (await listAdminCourseTaskDefinitions(db, values.course_id)).find((row) => row.id === values.id)
-    : undefined;
   const payload = {
     kind: values.kind,
     source_key: values.source_key,
@@ -269,7 +239,6 @@ export async function saveCourseTaskAction(formData: FormData) {
     due_date: values.due_date,
     source_snapshot: sourceSnapshot,
     sort_order: values.sort_order,
-    revision: (existing?.revision ?? 0) + 1,
   };
   if (values.id) {
     await updateAdminCourseTaskDefinition(db, values.id, payload);
@@ -296,38 +265,41 @@ export async function retireCourseTaskAction(formData: FormData) {
   redirect(`/admin?view=tasks&course=${course.id}&message=${encodeURIComponent("Task retired.")}`);
 }
 
-const sourceReviewSchema = z.object({ id: z.string().uuid() });
+const sourceChangeSchema = z.object({
+  courseId: z.string().uuid(),
+  sourceKey: z.string().min(1),
+});
 
-export async function keepCourseTaskSourceReviewAction(formData: FormData) {
+/**
+ * Apply one official-source difference shown in the tasks view. The diff is
+ * recomputed from the course facts and current definitions at render and
+ * adopt time — there is no stored review queue; a difference stays visible
+ * until it is adopted or the definition is edited.
+ */
+export async function adoptCourseTaskSourceChangeAction(formData: FormData) {
   const { db } = await requireAdmin();
-  const { id } = sourceReviewSchema.parse({ id: formData.get("id") });
-  await resolveAdminCourseTaskSourceReview(db, id, "kept");
-  redirect(`/admin?view=reviews&queue=source-changes&message=${encodeURIComponent("Current task kept.")}`);
-}
-
-export async function adoptCourseTaskSourceReviewAction(formData: FormData) {
-  const { db } = await requireAdmin();
-  const { id } = sourceReviewSchema.parse({ id: formData.get("id") });
-  const review = await getAdminCourseTaskSourceReview(db, id);
-  const course = await getAdminCourse(db, review.course_id);
-  const candidates = deriveCourseTaskCandidates(course);
-  const candidate = candidates.find((item) => item.sourceKey === review.candidate_key);
+  const { courseId, sourceKey } = sourceChangeSchema.parse({
+    courseId: formData.get("courseId"),
+    sourceKey: formData.get("sourceKey"),
+  });
+  const course = await getAdminCourse(db, courseId);
+  const candidate = deriveCourseTaskCandidates(course).find(
+    (item) => item.sourceKey === sourceKey,
+  );
   const definitions = await listAdminCourseTaskDefinitions(db, course.id);
-  const definition = review.course_task_definition_id
-    ? definitions.find((item) => item.id === review.course_task_definition_id)
-    : undefined;
+  const definition = definitions.find((item) => item.source_key === sourceKey);
 
-  if (review.change_type === "removed" && definition) {
+  if (definition && !candidate) {
+    // the source no longer proposes this task — retire the definition
     await updateAdminCourseTaskDefinition(db, definition.id, {
       retired_at: new Date().toISOString(),
-      revision: definition.revision + 1,
     });
   } else if (definition && candidate) {
     await updateAdminCourseTaskDefinition(db, definition.id, {
       source_snapshot: candidate.sourceSnapshot as Json,
       due_mode: candidate.dueMode,
       source_url: candidate.sourceUrl,
-      revision: definition.revision + 1,
+      retired_at: null,
     });
   } else if (candidate) {
     await insertAdminCourseTaskDefinition(db, {
@@ -343,11 +315,10 @@ export async function adoptCourseTaskSourceReviewAction(formData: FormData) {
       sort_order: 30 + definitions.length,
     });
   } else {
-    throw new Error("The proposed source task is no longer available; keep or edit the current task instead.");
+    throw new Error("This source change no longer exists; refresh the page.");
   }
-  await resolveAdminCourseTaskSourceReview(db, id, "adopted");
   await syncAdminCourseTaskDefinitions(db, course.id);
-  redirect(`/admin?view=reviews&queue=source-changes&message=${encodeURIComponent("Official source change applied.")}`);
+  redirect(`/admin?view=tasks&course=${course.id}&message=${encodeURIComponent("Official source change applied.")}`);
 }
 
 const conflictResolveSchema = z.object({
@@ -383,7 +354,6 @@ export async function updateCourseAction(formData: FormData) {
     requirements: formData.get("requirements"),
   });
 
-  const before = await getAdminCourse(db, values.id);
   await updateAdminCourse(db, values.id, {
     source_url: values.source_url,
     normalized_url: normalizeUrl(values.source_url),
@@ -393,9 +363,9 @@ export async function updateCourseAction(formData: FormData) {
     degree: nullableText(values.degree),
     language: nullableText(values.language),
     description: nullableText(values.description),
-    tuition: parseNullableJsonString(values.tuition, "tuition"),
-    deadlines: parseJsonArray(values.deadlines, "deadlines"),
-    requirements: parseJsonArray(values.requirements, "requirements"),
+    tuition: parseJson(values.tuition, "tuition", nullableJsonString, "a JSON string or null"),
+    deadlines: parseJson(values.deadlines, "deadlines", jsonStringArray, "a JSON array of non-empty strings"),
+    requirements: parseJson(values.requirements, "requirements", jsonStringArray, "a JSON array of non-empty strings"),
     extraction_method: "manual",
     field_extraction: {
       core: "manual",
@@ -406,48 +376,7 @@ export async function updateCourseAction(formData: FormData) {
     },
   });
 
-  if (before.review_status === "approved") {
-    const definitions = await listAdminCourseTaskDefinitions(db, before.id);
-    const current = await getAdminCourse(db, before.id);
-    const candidates = deriveCourseTaskCandidates(current);
-    const byKey = new Map(definitions.filter((definition) => definition.source_key).map((definition) => [definition.source_key!, definition]));
-    const candidateKeys = new Set(candidates.map((candidate) => candidate.sourceKey));
-    await Promise.all([
-      ...candidates.flatMap((candidate) => {
-        if (!candidate.sourceKey) return [];
-        const definition = byKey.get(candidate.sourceKey);
-        if (!definition) {
-          return [createAdminCourseTaskSourceReview(db, {
-            course_id: current.id,
-            candidate_key: candidate.sourceKey,
-            change_type: "new",
-            new_snapshot: candidate.sourceSnapshot as Json,
-          })];
-        }
-        return JSON.stringify(definition.source_snapshot) === JSON.stringify(candidate.sourceSnapshot)
-          ? []
-          : [createAdminCourseTaskSourceReview(db, {
-              course_id: current.id,
-              course_task_definition_id: definition.id,
-              candidate_key: candidate.sourceKey,
-              change_type: "changed",
-              old_snapshot: definition.source_snapshot,
-              new_snapshot: candidate.sourceSnapshot as Json,
-            })];
-      }),
-      ...definitions.flatMap((definition) =>
-        definition.source_key && !candidateKeys.has(definition.source_key)
-          ? [createAdminCourseTaskSourceReview(db, {
-              course_id: current.id,
-              course_task_definition_id: definition.id,
-              candidate_key: definition.source_key,
-              change_type: "removed",
-              old_snapshot: definition.source_snapshot,
-            })]
-          : [],
-      ),
-    ]);
-  }
-
+  // No review rows to enqueue: the tasks view diffs current course facts
+  // against the definitions live, so any change shows up there immediately.
   redirect(`/admin?view=reviews&queue=pending&course=${values.id}&message=${encodeURIComponent("Course edits saved.")}`);
 }

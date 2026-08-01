@@ -7,7 +7,7 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createClient } from "@supabase/supabase-js";
 import { embedMany } from "ai";
 
-import { ruleToChunk, type KbChunk, type KbRule } from "../lib/ai/kb";
+import { EMBEDDING_MODEL, ruleToChunk, type KbChunk, type KbRule } from "../lib/ai/kb";
 import type { Database } from "../lib/db/database.types";
 import { getServerEnv } from "../lib/env";
 import { kbSnippets } from "./kb.snippets";
@@ -46,7 +46,7 @@ async function main() {
   );
 
   const { embeddings } = await embedMany({
-    model: openrouter.textEmbeddingModel("openai/text-embedding-3-small"),
+    model: openrouter.textEmbeddingModel(EMBEDDING_MODEL),
     values: chunks.map(({ chunk }) => `${chunk.title}\n${chunk.content}`),
   });
 

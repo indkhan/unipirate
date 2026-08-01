@@ -11,7 +11,6 @@ const result = (aps: Result["aps"]): Result =>
     testAS: "unknown",
     dMAT: "not_required",
     documents: [],
-    steps: [],
     stepsDetailed: [],
     citations: [],
     unknowns: [],

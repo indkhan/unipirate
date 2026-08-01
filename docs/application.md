@@ -19,7 +19,7 @@ Non-negotiable product rules and code conventions live in
 | Database & auth | Supabase (Postgres + RLS, GoTrue auth, pgvector) |
 | Styling | CSS Modules per surface + Tailwind (admin only) |
 | AI | OpenRouter (chat + embeddings), Tavily (web search), Vercel AI SDK |
-| Analytics / email | PostHog / Resend |
+| Analytics | PostHog (auth emails are sent by Supabase itself) |
 | Tests | Vitest (`__tests__` folders next to the code) |
 
 ## Architecture in one picture
@@ -81,7 +81,7 @@ components/
   app/               shared product components (topbar, assistant sidebar…)
   ui/                shadcn primitives (admin only)
 lib/                 see architecture picture above
-scripts/             seed, KB embed, assistant eval, test email
+scripts/             seed, KB embed, assistant eval
 supabase/migrations/ schema — append-only, applied with `supabase db push`
 docs/                this file, bugs.md
 ```
@@ -156,8 +156,12 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
    `visibleSteps` (branching), `withAnswer` (prunes answers whose step
    disappeared), `isAnswered` (gates Continue), `buildProfile` — is pure in
    `app/(public)/check/steps.ts`. Branches: curriculum type is asked before
-   the board; GCE collects per-subject rows; the existing-APS question is
-   skipped when the visa is filed from Saudi Arabia.
+   the board; GCE and IB collect per-subject rows (one shared
+   `SubjectRowsEditor`, one static catalog each carrying the DAAD
+   classification); an IB Certificate short of the full diploma skips the
+   detail questions, since no rule can give it a path; the existing-APS
+   question is skipped when the visa is filed from Saudi Arabia. Steps
+   rendered as a number input are listed in `NUMBER_STEPS` with their bounds.
 2. Submit (`submitCheck` server action) zod-validates the answers, evaluates
    against published rules, and inserts a `checks` row → redirect to
    `/result/[id]`.
@@ -205,11 +209,17 @@ strict direction of data flow:
   deadline parsing (`selectSubmissionDeadline` picks the line matching the
   user's intake without inventing dates) and Now/Next/Later bucketing.
 - **`materialize.ts` (write)** — runs at event time (profile saved, result
-  claimed, course added, status changed), never during render. Admin edits
-  fan out through the scoped `sync_course_task_definitions` DB function.
-  Untouched copies update immediately; student-edited copies keep their
-  values and become an explicit “use admin / keep mine” decision. Never
-  touches `done` or `preferred_bucket`.
+  claimed, course added, status changed), never during render. Each key is
+  inserted once: `newGeneratedTaskRows` filters out keys the user already has,
+  because `upsertGeneratedTasks` conflicts on `(user_id, task_key)` and an
+  unfiltered row would overwrite a student's edited title and date.
+  Admin edits fan out separately through `syncAdminCourseTaskDefinitions`,
+  using the same intake-aware generator. Untouched copies update immediately;
+  student-edited copies keep their values and become an explicit “use admin /
+  keep mine” decision. Never touches `done` or `preferred_bucket`. That sync
+  is deliberately non-transactional — every write is idempotent and keyed, so
+  a partial failure converges on the next admin save; the deadline parsing
+  must not be duplicated into SQL.
 - **`view.ts` (read)** — builds the dashboard view model: buckets (user's
   dragged `preferred_bucket` wins over computed buckets), the applications
   rail, calendar events, and the next deadline. Strictly read-only.
@@ -244,19 +254,31 @@ reset) → log the question (aborted streams still count) → `runAssistant`
 
 ### 5. Auth & authorization
 
-- `proxy.ts` (middleware) refreshes the Supabase session on every request,
-  redirects signed-out users away from `/dashboard`, `/profile`, `/courses`,
-  and `/admin`, and requires `app_metadata.role === 'admin'` for `/admin`.
+- `proxy.ts` (middleware) runs **only** on `/dashboard`, `/profile`,
+  `/courses` and `/admin` (`config.matcher`) — everything else, including
+  `/api/*` and the anonymous checker, skips it entirely. On those routes it
+  refreshes the Supabase session, redirects signed-out users to `/login`, and
+  requires the admin role for `/admin`. It uses `getClaims()`, which verifies
+  the JWT locally against the project's asymmetric signing keys rather than
+  calling the auth server.
 - Pages and server actions re-check with `requireUser()` /
   `requireAdmin()` from `lib/auth/session.ts` (defense in depth — the
-  middleware is a convenience redirect, not the security boundary).
+  middleware is a convenience redirect, not the security boundary). These
+  deliberately keep `getUser()`: a locally-verified token stays valid until
+  `exp`, so a banned or deleted user would otherwise keep access for the rest
+  of the token lifetime.
+- `isAdminRole` (`lib/auth/roles.ts`) is the single `app_metadata.role`
+  predicate — the same claim `public.is_admin()` reads.
 - API routes answer 401/403 JSON themselves.
 - All login flows (`/login`) run client-side against Supabase auth:
   password, signup with email confirmation, magic link, Google OAuth, and
   password recovery. Redirect targets are laundered through
   `safeNextPath()` so `next=` can never become an open redirect.
 - The real boundary is RLS: every table has policies; admin writes hinge on
-  the `is_admin()` SQL helper reading the JWT claim.
+  the `is_admin()` SQL helper reading the JWT claim. Policy convention: wrap
+  helper calls in a subquery — `(select public.is_admin())`, `(select
+  auth.uid())` — so the planner caches them as an InitPlan instead of
+  re-evaluating per row.
 
 ## Data model
 
@@ -265,18 +287,16 @@ Schema lives in `supabase/migrations/` (append-only). Regenerate types with
 
 | Table | What it is | Access |
 | --- | --- | --- |
-| `countries`, `qualifications`, `universities` | reference data (null `country_code` on a qualification = international curriculum like IB/GCE) | public read, admin write |
 | `rules` | the eligibility engine's source of truth | public read except drafts; admin write |
-| `courses` | extracted course facts, verbatim; `normalized_url` dedupe key; `conflicts_with` marks update submissions; `review_status` pending/approved/rejected | approved public; owners see own pending |
-| `profiles` | one per user: `country_code` + checker `answers` jsonb | owner CRUD, admin read |
+| `courses` | extracted course facts, verbatim; `normalized_url` dedupe key; `conflicts_with` marks update submissions; `review_status` pending/approved/rejected; `imported_by` records who submitted a pending import | approved public; importers see own pending |
+| `profiles` | one per user: the checker `answers` jsonb (everything else — country, board, engine profile — is derived from it) | owner CRUD, admin read |
 | `applications` | user × course with status — THE dashboard link | owner CRUD |
-| `tasks` | rule-generated, admin-defined course-task assignments, and manual tasks; unique `(user_id, task_key)` makes reconciliation work | owner CRUD, admin read |
-| `course_task_definitions` | ordered admin definitions for every course submission/requirement/custom task; pending-course definitions publish on approval | approved public read, admin write |
-| `course_task_source_reviews` | durable admin queue for official deadline/requirement changes; no student task changes until an admin resolves the review | admin only |
-| `checks` | anonymous check records; private ownership columns hidden by RLS | insert by anyone; shareable fields readable by UUID |
+| `tasks` | rule-generated, admin-defined course-task assignments, and manual tasks; unique `(user_id, task_key)` makes reconciliation work | owner CRUD; admins reach only rows with a `course_task_definition_id`, never a student's manual or rule tasks |
+| `course_task_definitions` | ordered admin definitions for every course submission/requirement/custom task; pending-course definitions publish on approval. Official-source changes are shown as a live diff in the admin tasks view (no stored review queue) and student tasks only change when an admin acts | approved public read, admin write |
+| `checks` | anonymous check records: `answers` + stored `result` (the profile is re-derived from answers at read time); private ownership columns hidden by RLS | insert by anyone; shareable fields readable by UUID |
 | `kb_chunks` | assistant corpus with pgvector embeddings; `match_kb_chunks()` does exact cosine scan (fine below ~10k rows) | public read, admin write |
 | `assistant_messages` | full Q&A log; today's `role='user'` count is the quota | owner insert/read, admin read |
-| `rule_reports`, `answer_reports` | "this is wrong" feedback, anonymous allowed | insert by anyone |
+| `answer_reports` | assistant-answer feedback | authenticated insert, owner/admin read |
 | `admin_audit_events` | append-only audit of rule/course updates, written by a DB trigger regardless of UI path | admin read |
 
 DB functions worth knowing: `claim_check` (atomic anonymous-result claim),
@@ -302,7 +322,10 @@ keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.
 | --- | --- |
 | Add/edit an eligibility rule | `/admin` UI (data change, no deploy); new *candidates* go in `scripts/rules.bootstrap.ts` and are seeded as drafts |
 | Support a new fact in rules | `FactKeySchema` + `deriveFacts` in `lib/engine/evaluate.ts`, label in `lib/ai/kb.ts`, tests in `lib/engine/__tests__/` |
-| Add a checker question | `StepId`, `AnswersSchema`, `visibleSteps`, `buildProfile` in `app/(public)/check/steps.ts`; copy in `check-questions.ts`; tests in `steps.test.ts` |
+| Add a checker question | `StepId`, `AnswersSchema`, `visibleSteps`, `buildProfile` in `app/(public)/check/steps.ts`; copy in `check-questions.ts`; label in `profile-review.tsx`; tests in `steps.test.ts` |
+| Add a GCE/IB subject | `GCE_SUBJECTS` / `IB_SUBJECTS` in `app/(public)/check/steps.ts` — both editors and `buildProfile` read the catalog |
+| Add a country or school board | `COUNTRIES` / `BOARDS` in `app/(public)/check/steps.ts` — the checker options, admin rule filter, and result labels all read these catalogs |
+| Publish a seeded rule | `/admin?view=rules`. `pnpm db:seed` writes every bootstrap candidate as a **draft** and the engine skips drafts, so a newly seeded rule changes nothing until a human publishes it |
 | Change dashboard task texts/buckets | `lib/tasks/generate.ts` (+ its tests) |
 | Add a DB query | `lib/db/queries.ts` (user) or `admin-queries.ts` (admin) |
 | Change the schema | new file in `supabase/migrations/` → `supabase db push` → `pnpm db:types` → RLS test |

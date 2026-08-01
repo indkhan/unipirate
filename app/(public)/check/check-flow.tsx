@@ -10,8 +10,11 @@ import { submitCheck } from "./actions";
 import styles from "./check.module.css";
 import { QUESTIONS, buildOptions, type Option } from "./check-questions";
 import { GceSubjectsEditor } from "./gce-subjects-editor";
+import { IbSubjectsEditor } from "./ib-subjects-editor";
 import {
+  NUMBER_STEPS,
   isAnswered,
+  isNumberStep,
   visibleSteps,
   withAnswer,
   type Answers,
@@ -20,8 +23,6 @@ import {
 } from "./steps";
 
 type CheckFlowProps = {
-  countries: { code: string; name: string }[];
-  boards: { countryCode: string; label: string }[];
   initialAnswers?: PartialAnswers;
   initialStepIndex?: number;
   userMenu?: ReactNode;
@@ -42,8 +43,6 @@ const MASTER_CURRICULUM_QUESTION = {
 };
 
 export function CheckFlow({
-  countries,
-  boards,
   initialAnswers = {},
   initialStepIndex = 0,
   userMenu,
@@ -111,12 +110,10 @@ export function CheckFlow({
     step === "curriculumType" && answers.targetDegree === "master"
       ? MASTER_CURRICULUM_QUESTION
       : QUESTIONS[step];
-  const gradeValue = answers.schoolGradePercent;
-  const gradeError =
-    step === "schoolGradePercent" &&
-    gradeValue !== undefined &&
-    !isAnswered(answers, "schoolGradePercent")
-      ? "Enter a percentage from 0 to 100."
+  const numberStep = isNumberStep(step) ? NUMBER_STEPS[step] : null;
+  const numberError =
+    isNumberStep(step) && answers[step] !== undefined && !canContinue
+      ? numberStep!.error
       : null;
 
   useEffect(() => {
@@ -149,7 +146,7 @@ export function CheckFlow({
   }, [answers, restored]);
 
   function optionsFor(stepId: StepId): Option[] {
-    return buildOptions(stepId, { countries, boards, answers });
+    return buildOptions(stepId, answers);
   }
 
   function currentKey(stepId: StepId): string | undefined {
@@ -226,8 +223,6 @@ export function CheckFlow({
     router.push(`/result/${outcome.id}`);
   }
 
-  const subjects = answers.gceSubjects ?? [];
-
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
@@ -276,42 +271,49 @@ export function CheckFlow({
           )}
         </div>
 
-        {step === "schoolGradePercent" ? (
+        {numberStep && isNumberStep(step) ? (
           <div>
-            <label className={styles.inputLabel} htmlFor="grade-percent">
-              Overall marks · required
+            <label className={styles.inputLabel} htmlFor={`${step}-input`}>
+              {numberStep.label}
             </label>
             <div className={styles.percentInputWrap}>
               <input
-                id="grade-percent"
+                id={`${step}-input`}
                 className={styles.input}
                 type="number"
                 inputMode="decimal"
-                min={0}
-                max={100}
-                aria-invalid={gradeError ? "true" : undefined}
-                aria-describedby={gradeError ? "grade-percent-error" : undefined}
-                placeholder="85"
-                value={answers.schoolGradePercent ?? ""}
+                min={numberStep.min}
+                max={numberStep.max}
+                aria-invalid={numberError ? "true" : undefined}
+                aria-describedby={numberError ? `${step}-error` : undefined}
+                placeholder={numberStep.placeholder}
+                value={answers[step] ?? ""}
                 onChange={(e) =>
                   select(
-                    "schoolGradePercent",
+                    step,
                     e.target.value === "" ? undefined : Number(e.target.value),
                   )
                 }
               />
-              <span className={styles.percentSuffix}>%</span>
+              {"suffix" in numberStep && (
+                <span className={styles.percentSuffix}>{numberStep.suffix}</span>
+              )}
             </div>
-            {gradeError && (
-              <p id="grade-percent-error" className={styles.fieldError}>
-                {gradeError}
+            {numberError && (
+              <p id={`${step}-error`} className={styles.fieldError}>
+                {numberError}
               </p>
             )}
           </div>
         ) : step === "gceSubjects" ? (
           <GceSubjectsEditor
-            subjects={subjects}
+            subjects={answers.gceSubjects ?? []}
             onChange={(next) => select("gceSubjects", next)}
+          />
+        ) : step === "ibSubjects" ? (
+          <IbSubjectsEditor
+            subjects={answers.ibSubjects ?? []}
+            onChange={(next) => select("ibSubjects", next)}
           />
         ) : (
           <div className={styles.options}>

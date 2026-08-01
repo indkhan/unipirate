@@ -34,8 +34,12 @@ async function main() {
 
   await db.from("profiles").upsert({
     user_id: userId,
-    country_code: "in",
-    answers: { targetDegree: "bachelor", board: "cbse", class12_percent: 82 },
+    answers: {
+      targetDegree: "bachelor",
+      certificateCountry: "in",
+      board: "cbse",
+      class12_percent: 82,
+    },
   });
   await db.from("tasks").insert([
     { user_id: userId, title: "Upload APS payment receipt", due_date: "2026-07-20" },

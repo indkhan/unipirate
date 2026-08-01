@@ -30,11 +30,7 @@ export const p3Indian3yrBsc: Profile = {
   nationality: "in",
   certificateCountry: "in",
   curriculumType: "national",
-  priorDegree: { years: 3, field: "cs" },
   hasExistingApsCertificate: false,
-  isExchangeOrPartnershipProgram: false,
-  apsRegistrationCompletedAt: "2026-07-01",
-  apsDocumentsShippedAt: "2026-07-02",
   visaApplicationCountry: "in",
 };
 
@@ -45,7 +41,6 @@ export const p4Indian4yrBtech: Profile = {
   nationality: "in",
   certificateCountry: "in",
   curriculumType: "national",
-  priorDegree: { years: 4, field: "engineering" },
   visaApplicationCountry: "in",
 };
 
@@ -68,7 +63,6 @@ export const p6Pakistani2yrBcom: Profile = {
   nationality: "pk",
   certificateCountry: "pk",
   curriculumType: "national",
-  priorDegree: { years: 2, field: "commerce" },
   visaApplicationCountry: "pk",
 };
 
@@ -78,7 +72,6 @@ export const p7Pakistani4yrBs: Profile = {
   nationality: "pk",
   certificateCountry: "pk",
   curriculumType: "national",
-  priorDegree: { years: 4, field: "cs" },
   visaApplicationCountry: "pk",
 };
 
@@ -113,7 +106,6 @@ export const p10SaudiBachelor: Profile = {
   nationality: "sa",
   certificateCountry: "sa",
   curriculumType: "national",
-  priorDegree: { years: 4, field: "engineering" },
   visaApplicationCountry: "sa",
 };
 

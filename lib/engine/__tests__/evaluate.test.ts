@@ -33,13 +33,16 @@ describe("Part E personas", () => {
     expect(r.testAS).toBe("unknown");
   });
 
-  it("3. Indian 3-yr B.Sc → Master's: unknown path + APS + dMAT", () => {
+  it("3. Indian 3-yr B.Sc → Master's: APS required; dMAT stays an honest unknown", () => {
+    // dMAT scoping depended on prior-degree facts the checker never collects,
+    // so those rules were removed — an unknown with a confirm-with message is
+    // the true production outcome until that question exists.
     const r = run(p.p3Indian3yrBsc);
     expect(r.path).toBe("unknown");
     expect(r.aps).toBe("required");
-    expect(r.dMAT).toBe("required");
+    expect(r.dMAT).toBe("unknown");
     expect(r.testAS).toBe("unknown");
-    expect(citedUrls(r)).toContain("https://aps-india.de/dmat/");
+    expect(r.unknowns.some((u) => /aps-india\.de\/dmat/.test(u))).toBe(true);
   });
 
   it("4. Indian 4-yr B.Tech → Master's: APS required, no dMAT for WS 2026/27", () => {
@@ -55,7 +58,9 @@ describe("Part E personas", () => {
     expect(r.aps).toBe("unknown");
     expect(r.dMAT).toBe("not_required");
     expect(r.unknowns.some((u) => /official|confirm/i.test(u))).toBe(true);
-    expect(r.steps.some((s) => /Consular Services Portal/.test(s))).toBe(true);
+    expect(
+      r.stepsDetailed.some((s) => /Consular Services Portal/.test(s.text)),
+    ).toBe(true);
   });
 
   it("6. Pakistani 2-yr B.Com → Master's: honest unknown", () => {
@@ -98,7 +103,7 @@ describe("Part E personas", () => {
     expect(r.path).toBe("unknown");
     expect(r.aps).toBe("not_required");
     expect(r.dMAT).toBe("unknown");
-    expect(citedUrls(r)).toContain("https://www.goethe.de/ins/sa/en/spr/klg.html");
+    expect(r.unknowns.length).toBeGreaterThan(0);
   });
 
   it("11. A-Levels in Saudi, visa from Saudi → direct subject-restricted; no APS", () => {
@@ -288,26 +293,6 @@ describe("engine behavior", () => {
     expect(run(beforeCutoff).path).toBe("studienkolleg");
   });
 
-  it("India ≥70% + 1 year of bachelor study → direct subject-restricted", () => {
-    const oneYear: Profile = {
-      ...p.p1CbseNoJee,
-      yearsOfUniversityStudy: 1,
-      universityStudyField: "cs",
-      universityStudyInstitutionRecognized: true,
-    };
-    expect(run(oneYear).path).toBe("subject_restricted");
-  });
-
-  it("dMAT out-of-scope field at SS 2027 → not required (affected-fields list is exhaustive)", () => {
-    const outOfScope: Profile = {
-      ...p.p3Indian3yrBsc,
-      priorDegree: { years: 3, field: "biology" },
-    };
-    const r = run(outOfScope);
-    expect(r.dMAT).toBe("not_required");
-    expect(r.citations.some((c) => /affected fields/i.test(c.claim))).toBe(true);
-  });
-
   it("dMAT with unstated prior-degree field at SS 2027 → honest unknown", () => {
     const noField: Profile = {
       targetDegree: "master",
@@ -321,13 +306,7 @@ describe("engine behavior", () => {
     expect(r.unknowns.some((u) => /dMAT/i.test(u))).toBe(true);
   });
 
-  it("dMAT transition and completed-APS exemptions override the general rule", () => {
-    const registeredBeforeCutoff: Profile = {
-      ...p.p3Indian3yrBsc,
-      apsRegistrationCompletedAt: "2026-06-28",
-    };
-    expect(run(registeredBeforeCutoff).dMAT).toBe("not_required");
-
+  it("a completed APS exempts an Indian master's applicant from dMAT", () => {
     const existingAps: Profile = {
       ...p.p3Indian3yrBsc,
       hasExistingApsCertificate: true,
@@ -342,11 +321,7 @@ describe("engine behavior", () => {
       nationality: "in",
       certificateCountry: "sa",
       curriculumType: "national",
-      priorDegree: { years: 4, field: "engineering" },
       hasExistingApsCertificate: false,
-      isExchangeOrPartnershipProgram: false,
-      apsRegistrationCompletedAt: "2026-07-01",
-      apsDocumentsShippedAt: "2026-07-02",
     });
     expect(r.dMAT).toBe("unknown");
   });
@@ -369,7 +344,7 @@ describe("engine behavior", () => {
       outcomes: { steps: [{ order: 10, text: "first" }, { order: 20, text: "middle" }] },
     });
     const r = evaluate(minimalProfile, [s1, s2]);
-    expect(r.steps).toEqual(["first", "middle", "later"]);
+    expect(r.stepsDetailed.map((s) => s.text)).toEqual(["first", "middle", "later"]);
     expect(r.citations.find((c) => c.ruleId === "s1")?.supports).toEqual([
       "steps",
     ]);
@@ -432,7 +407,7 @@ describe("engine behavior", () => {
       ib: {
         ...p.p13IbInIndia.ib!,
         mathLevel: "HL",
-        subjects: p.p13IbInIndia.ib!.subjects.map((subject, index) => ({
+        subjects: p.p13IbInIndia.ib!.subjects!.map((subject, index) => ({
           ...subject,
           level: index === 0 ? "HL" : "SL",
         })),

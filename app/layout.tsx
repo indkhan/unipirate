@@ -58,7 +58,10 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} ${publicSans.variable} ${plexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      {/* Extensions (Grammarly, password managers) inject attributes onto
+          <body> before React hydrates. suppressHydrationWarning applies to
+          this element only, so real mismatches inside the app still report. */}
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <Script id="theme-init" strategy="beforeInteractive">
           {`(() => { const key = "unipirate.theme"; const saved = localStorage.getItem(key); const dark = saved === "dark"; document.documentElement.classList.toggle("dark", dark); })()`}
         </Script>

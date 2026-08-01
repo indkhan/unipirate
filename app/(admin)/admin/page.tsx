@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { requireAdmin } from "@/lib/auth/session";
-import { getCountries } from "@/lib/db/queries";
+import { COUNTRIES } from "@/app/(public)/check/steps";
 import {
   getAdminCourse, getAdminRule, listAdminCourses, listAdminCourseTaskDefinitions,
   listAdminRules, listConflictCourses, listPendingCourses,
-  listPendingCourseTaskSourceReviews, listRecentAdminAuditEvents,
+  listRecentAdminAuditEvents,
 } from "@/lib/db/admin-queries";
 
 import { AdminShell } from "./admin-shell";
 import { adminHref, parseAdminState } from "./admin-state";
 import { AuditLog } from "./audit-log";
-import { ConflictQueue, CourseQueue, CourseTaskLibrary, CourseTaskSourceReviewQueue } from "./course-queue";
+import { ConflictQueue, CourseQueue, CourseTaskLibrary } from "./course-queue";
 import { OverviewPanel } from "./overview-panel";
 import { RuleEditor, RulesTable } from "./rules-panel";
 
@@ -22,22 +22,21 @@ const stale = (date: string | null) => !date || Date.now() - new Date(date).getT
 export default async function AdminPage({ searchParams }: Props) {
   const state = parseAdminState((await searchParams) ?? {});
   const { db } = await requireAdmin();
-  const [allRules, pending, conflicts, sourceReviews, courses] = await Promise.all([
+  const [allRules, pending, conflicts, courses] = await Promise.all([
     listAdminRules(db, {}), listPendingCourses(db), listConflictCourses(db),
-    listPendingCourseTaskSourceReviews(db), listAdminCourses(db),
+    listAdminCourses(db),
   ]);
   const staleRules = allRules.filter(rule => stale(rule.last_verified_at));
-  const counts = { reviews: pending.length + conflicts.length + sourceReviews.length, staleRules: staleRules.length, tasks: courses.filter(c => c.review_status === "approved").length };
+  const counts = { reviews: pending.length + conflicts.length, staleRules: staleRules.length, tasks: courses.filter(c => c.review_status === "approved").length };
   let content: React.ReactNode;
 
   if (state.view === "overview") {
     const events = await listRecentAdminAuditEvents(db, 5);
-    content = <OverviewPanel counts={{ pending: pending.length, source: sourceReviews.length, conflicts: conflicts.length, stale: staleRules.length, drafts: allRules.filter(r => r.status === "draft").length, beta: allRules.filter(r => r.status === "beta").length }} events={events} />;
+    content = <OverviewPanel counts={{ pending: pending.length, conflicts: conflicts.length, stale: staleRules.length, drafts: allRules.filter(r => r.status === "draft").length, beta: allRules.filter(r => r.status === "beta").length }} events={events} />;
   } else if (state.view === "reviews") {
-    const tabs = [["pending", "Pending courses", pending.length], ["source-changes", "Source changes", sourceReviews.length], ["conflicts", "Conflicts", conflicts.length]] as const;
+    const tabs = [["pending", "Pending courses", pending.length], ["conflicts", "Conflicts", conflicts.length]] as const;
     let panel: React.ReactNode;
-    if (state.queue === "source-changes") panel = <CourseTaskSourceReviewQueue reviews={sourceReviews} />;
-    else if (state.queue === "conflicts") panel = <ConflictQueue conflicts={state.course ? conflicts.filter(c => c.id === state.course) : conflicts} />;
+    if (state.queue === "conflicts") panel = <ConflictQueue conflicts={state.course ? conflicts.filter(c => c.id === state.course) : conflicts} />;
     else {
       const selected = state.course ? pending.find(c => c.id === state.course) : pending[0];
       const defs = selected ? await listAdminCourseTaskDefinitions(db, selected.id) : [];
@@ -45,7 +44,7 @@ export default async function AdminPage({ searchParams }: Props) {
     }
     content = <Workspace title="Course reviews" description="Verify imported facts and resolve official source changes."><div className="mb-4 flex gap-2 overflow-x-auto">{tabs.map(([queue,label,n]) => <Button key={queue} asChild variant={state.queue === queue ? "default" : "outline"}><Link href={adminHref({ view: "reviews", queue })}>{label} · {n}</Link></Button>)}</div>{panel}</Workspace>;
   } else if (state.view === "rules") {
-    const countries = await getCountries(db);
+    const countries = COUNTRIES;
     const needle = state.q?.toLowerCase();
     const filtered = allRules.filter(r => (!state.status || r.status === state.status) && (!state.country || r.country_code === state.country) && (state.attention !== "stale" || stale(r.last_verified_at)) && (!needle || `${r.slug} ${r.country_code} ${r.source_url}`.toLowerCase().includes(needle)));
     const selected = state.rule ? await getAdminRule(db, state.rule) : undefined;

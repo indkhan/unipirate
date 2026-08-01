@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const AdminViewSchema = z.enum(["overview", "reviews", "rules", "tasks", "audit"]);
-export const ReviewQueueSchema = z.enum(["pending", "source-changes", "conflicts"]);
+export const ReviewQueueSchema = z.enum(["pending", "conflicts"]);
 
 const uuid = z.string().uuid();
 const single = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
@@ -46,12 +46,4 @@ export function adminHref(values: Partial<AdminState>): string {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(values)) if (value) query.set(key, value);
   return `/admin${query.size ? `?${query}` : ""}`;
-}
-
-export function safeAdminReturnTo(value: unknown): string {
-  if (typeof value !== "string" || !value.startsWith("/admin") || value.startsWith("//")) return "/admin";
-  try {
-    const url = new URL(value, "http://local");
-    return url.origin === "http://local" && url.pathname === "/admin" ? `${url.pathname}${url.search}` : "/admin";
-  } catch { return "/admin"; }
 }

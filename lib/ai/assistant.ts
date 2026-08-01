@@ -17,6 +17,7 @@ import {
 } from "ai";
 import { z } from "zod";
 
+import { EMBEDDING_MODEL } from "@/lib/ai/kb";
 import { parseMarkers } from "@/lib/ai/markers";
 import type { Database } from "@/lib/db/database.types";
 import {
@@ -29,7 +30,6 @@ import {
 
 export const DAILY_QUOTA = 20;
 const CHAT_MODEL = "openai/gpt-5.4-mini";
-const EMBEDDING_MODEL = "openai/text-embedding-3-small";
 
 const OFFICIAL_DOMAINS = [
   "daad.de",
@@ -43,7 +43,6 @@ const OFFICIAL_DOMAINS = [
 
 // ------------------------------------------------------------------ markers
 
-export { parseMarkers, stripMarkers, type Citation } from "@/lib/ai/markers";
 
 // ------------------------------------------------------------ system prompt
 
@@ -120,11 +119,10 @@ async function tavilySearch(
 function assistantTools(options: {
   db: Db;
   userId: string;
-  openrouterApiKey: string;
+  openrouter: ReturnType<typeof createOpenRouter>;
   tavilyApiKey?: string;
 }): ToolSet {
-  const { db, userId, openrouterApiKey, tavilyApiKey } = options;
-  const openrouter = createOpenRouter({ apiKey: openrouterApiKey });
+  const { db, userId, openrouter, tavilyApiKey } = options;
 
   return {
     search_rules: tool({
@@ -169,9 +167,7 @@ function assistantTools(options: {
             (applicationsByStatus[a.status] ?? 0) + 1;
         }
         return {
-          profile: profile
-            ? { country_code: profile.country_code, answers: profile.answers }
-            : null,
+          profile: profile ? { answers: profile.answers } : null,
           applications: applications.map((a) => ({
             status: a.status,
             course: a.courses
@@ -250,7 +246,7 @@ export async function runAssistant(options: {
     model: openrouter(CHAT_MODEL),
     system: buildSystemPrompt(countryCode),
     messages: await convertToModelMessages(messages),
-    tools: assistantTools({ db, userId, openrouterApiKey, tavilyApiKey }),
+    tools: assistantTools({ db, userId, openrouter, tavilyApiKey }),
     stopWhen: stepCountIs(6),
     temperature: 0,
     // Answers are 1-4 sentences per point by design; the cap also bounds cost.

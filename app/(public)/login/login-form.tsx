@@ -44,12 +44,18 @@ const modeCopy: Record<AuthMode, { title: string; body: string; cta: string }> =
   },
 };
 
+const AUTH_ERRORS: Record<string, string> = {
+  expired:
+    "That link has expired or was already used. Request a new one below — and open it in this browser, on the same device you asked from.",
+  auth: "That link could not be verified. Please request a new one.",
+};
+
 export function LoginForm({
   authError,
   initialMode,
   nextPath,
 }: {
-  authError: boolean;
+  authError: string | null;
   initialMode: AuthMode;
   nextPath: string;
 }) {
@@ -58,7 +64,7 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState<string | null>(
-    authError ? "That link could not be verified. Please try again." : null,
+    authError ? (AUTH_ERRORS[authError] ?? AUTH_ERRORS.auth) : null,
   );
   const [tone, setTone] = useState<MessageTone>(authError ? "error" : "info");
   const [isLoading, setIsLoading] = useState(false);
@@ -129,6 +135,13 @@ export function LoginForm({
     if (rawMessage.includes("email not confirmed")) {
       return "Please confirm your email before signing in.";
     }
+    // signInWithOtp with shouldCreateUser: false — the address has no account.
+    if (
+      rawMessage.includes("signups not allowed") ||
+      rawMessage.includes("otp_disabled")
+    ) {
+      return "No account uses that email yet. Sign up first, then magic links will work.";
+    }
     if (rawMessage.includes("rate limit") || rawMessage.includes("too many")) {
       return "Too many attempts. Please wait a moment and try again.";
     }
@@ -190,6 +203,9 @@ export function LoginForm({
         email: normalizedEmail,
         options: {
           emailRedirectTo: buildConfirmUrl(safeNextPath),
+          // A magic link signs you in; it must not quietly create an account
+          // for a mistyped address. Sign-up is its own deliberate step.
+          shouldCreateUser: false,
         },
       });
       setIsLoading(false);
@@ -209,10 +225,13 @@ export function LoginForm({
       });
       setIsLoading(false);
       setTone(error ? "error" : "success");
+      // Supabase answers identically whether or not the address is registered,
+      // so this cannot say "no account for that email" without turning the
+      // form into an email-enumeration oracle. Say so plainly instead.
       setMessage(
         error
           ? authErrorMessage(error)
-          : "Check your email for a password reset link. It will bring you back here.",
+          : `If ${normalizedEmail} has an account, a reset link is on its way — check your inbox and spam. Nothing arriving means there is no account for that address.`,
       );
       return;
     }

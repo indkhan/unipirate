@@ -1,6 +1,7 @@
 import {
   AWARDING_BODIES,
-  BOARD_IDS,
+  BOARDS,
+  COUNTRIES,
   INTAKE_OPTIONS,
   TARGET_FIELDS,
   type PartialAnswers,
@@ -43,22 +44,44 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> 
     question: "Which subjects did you take?",
     subtitle: "Add each A-Level (AL) and AS subject with its grade.",
   },
+  ibFullDiploma: {
+    question: "Did you complete the full IB Diploma?",
+    subtitle:
+      "German universities do not accept an IB Certificate in place of the Diploma.",
+  },
+  ibExamYear: {
+    question: "Which year did you sit your IB exams?",
+    subtitle: "The requirements changed from the 2025 exam year onward.",
+  },
+  ibSchoolYears: {
+    question: "How many school years did you complete in total?",
+  },
+  ibTotalPoints: {
+    question: "What was your total IB score?",
+    subtitle: "Out of 45, including the bonus points.",
+  },
+  ibSubjects: {
+    question: "Which six subjects did you take?",
+    subtitle: "Add each subject with its level (HL or SL) and grade.",
+  },
+  ibMathCourse: {
+    question: "Which Mathematics course did you take?",
+    subtitle:
+      "Analysis and Approaches or Applications and Interpretation — this decides which subjects you can be admitted to.",
+  },
   targetField: { question: "What do you want to study?" },
   intake: { question: "When do you want to start?" },
 };
 
-type OptionsContext = {
-  countries: { code: string; name: string }[];
-  boards: { countryCode: string; label: string }[];
-  answers: PartialAnswers;
-};
+const countryOptions = COUNTRIES.map((c) => ({
+  value: c.code,
+  label: c.name,
+  key: c.code,
+}));
 
 /** The selectable options for a single-choice step. Grade/subject steps render
  * their own bespoke inputs and return []. */
-export function buildOptions(
-  stepId: StepId,
-  { countries, boards, answers }: OptionsContext,
-): Option[] {
+export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
   switch (stepId) {
     case "targetDegree":
       return [
@@ -66,21 +89,13 @@ export function buildOptions(
         { value: "master", label: "A Master's degree", key: "master" },
       ];
     case "nationality":
-      return countries
-        .filter((c) => c.code !== "de")
-        .map((c) => ({ value: c.code, label: c.name, key: c.code }))
-        .concat({ value: "other", label: "Another country", key: "other" });
-    case "certificateCountry":
-      return countries
-        .filter((c) => c.code !== "de")
-        .map((c) => ({ value: c.code, label: c.name, key: c.code }));
     case "visaApplicationCountry":
       return [
-        ...countries
-          .filter((c) => c.code !== "de")
-          .map((c) => ({ value: c.code, label: c.name, key: c.code })),
+        ...countryOptions,
         { value: "other", label: "Another country", key: "other" },
       ];
+    case "certificateCountry":
+      return countryOptions;
     case "curriculumType":
       return [
         {
@@ -93,18 +108,26 @@ export function buildOptions(
         { value: "other", label: "Something else", key: "other" },
       ];
     case "board":
-      return boards
-        .filter((b) => b.countryCode === answers.certificateCountry)
-        .map((b) => ({
-          value: BOARD_IDS[b.label] ?? b.label.toLowerCase(),
-          label: b.label,
-          key: b.label,
-        }));
+      return BOARDS
+        .filter((b) => b.country === answers.certificateCountry)
+        .map((b) => ({ value: b.id, label: b.label, key: b.id }));
     case "jeeAdvanced":
     case "hasExistingApsCertificate":
+    case "ibFullDiploma":
       return [
         { value: true, label: "Yes", key: "yes" },
         { value: false, label: "No", key: "no" },
+      ];
+    case "ibSchoolYears":
+      return [
+        { value: 12, label: "12 years", key: "12" },
+        { value: 13, label: "13 years", key: "13" },
+      ];
+    case "ibMathCourse":
+      return [
+        { value: "AA", label: "Analysis and Approaches (AA)", key: "AA" },
+        { value: "AI", label: "Applications and Interpretation (AI)", key: "AI" },
+        { value: "other", label: "Another Mathematics course", key: "other" },
       ];
     case "gceAwardingBody":
       return AWARDING_BODIES.map((b) => ({

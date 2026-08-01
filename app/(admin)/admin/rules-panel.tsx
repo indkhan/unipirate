@@ -47,7 +47,7 @@ export function RuleEditor({
   countries,
 }: {
   rule: Tables<"rules"> | undefined;
-  countries: Tables<"countries">[];
+  countries: readonly { code: string; name: string }[];
 }) {
   if (!rule) {
     return (

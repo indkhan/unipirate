@@ -1,10 +1,12 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { isAdminRole } from "@/lib/auth/roles";
 import { getClientEnv } from "@/lib/env";
 
-// Refreshes the Supabase auth session on every matched request and redirects
-// unauthenticated users away from protected routes.
+// Refreshes the Supabase auth session on the protected routes in `config.matcher`
+// and redirects unauthenticated users to /login. Convenience only — the security
+// boundary is requireUser()/requireAdmin() plus RLS.
 export default async function proxy(request: NextRequest) {
   const env = getClientEnv();
   let response = NextResponse.next({ request });
@@ -32,29 +34,22 @@ export default async function proxy(request: NextRequest) {
     },
   );
 
-  // Do not run code between createServerClient and getUser() — it can cause
-  // random logouts (see Supabase SSR docs).
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Do not run code between createServerClient and the auth call — it can cause
+  // random logouts (see Supabase SSR docs). getClaims verifies the JWT locally
+  // against the project's asymmetric signing keys, so this costs no round trip;
+  // it still refreshes an about-to-expire session through the cookie handlers.
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims ?? null;
 
-  const isProtectedRoute =
-    request.nextUrl.pathname.startsWith("/dashboard") ||
-    request.nextUrl.pathname.startsWith("/profile") ||
-    request.nextUrl.pathname.startsWith("/admin") ||
-    // course finder; /courses/[id] stays public
-    request.nextUrl.pathname === "/courses";
-
-  if (!user && isProtectedRoute) {
+  if (!claims) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
   if (
-    user &&
     request.nextUrl.pathname.startsWith("/admin") &&
-    user.app_metadata?.role !== "admin"
+    !isAdminRole(claims.app_metadata)
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
@@ -64,8 +59,7 @@ export default async function proxy(request: NextRequest) {
   return response;
 }
 
+// Only the signed-in surfaces. /courses is exact — /courses/[id] is public.
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ["/dashboard/:path*", "/profile/:path*", "/courses", "/admin/:path*"],
 };

@@ -3,10 +3,9 @@ import type { Tables } from "@/lib/db/database.types";
 import { adminHref } from "./admin-state";
 import { formatDateTime } from "./admin-shared";
 
-export function OverviewPanel({ counts, events }: { counts: { pending: number; source: number; conflicts: number; stale: number; drafts: number; beta: number }; events: Tables<"admin_audit_events">[] }) {
+export function OverviewPanel({ counts, events }: { counts: { pending: number; conflicts: number; stale: number; drafts: number; beta: number }; events: Tables<"admin_audit_events">[] }) {
   const cards = [
     ["Pending courses", counts.pending, adminHref({ view: "reviews", queue: "pending" })],
-    ["Source changes", counts.source, adminHref({ view: "reviews", queue: "source-changes" })],
     ["Course conflicts", counts.conflicts, adminHref({ view: "reviews", queue: "conflicts" })],
     ["Stale rules", counts.stale, adminHref({ view: "rules", attention: "stale" })],
     ["Draft rules", counts.drafts, adminHref({ view: "rules", status: "draft" })],

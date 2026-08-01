@@ -1,11 +1,9 @@
 // Pure course-task definition helpers. Course facts become explicit admin-owned
 // definitions before they are materialized for a student's application.
+import type { Tables } from "@/lib/db/database.types";
+
 export type CourseTaskKind = "submission" | "requirement" | "custom";
 export type CourseTaskDueMode = "source_deadline" | "fixed_date" | "none";
-export type CourseTaskChangeState =
-  | "current"
-  | "update_pending"
-  | "removal_pending";
 
 export type CourseTaskDefinition = {
   id: string;
@@ -19,13 +17,12 @@ export type CourseTaskDefinition = {
   dueDate: string | null;
   sortOrder: number;
   sourceSnapshot: unknown;
-  revision: number;
   retiredAt: string | null;
 };
 
 export type CourseTaskCandidate = Omit<
   CourseTaskDefinition,
-  "id" | "courseId" | "description" | "sourceUrl" | "dueDate" | "sortOrder" | "revision" | "retiredAt"
+  "id" | "courseId" | "description" | "sourceUrl" | "dueDate" | "sortOrder" | "retiredAt"
 > & {
   description: null;
   sourceUrl: string;
@@ -41,10 +38,30 @@ type CourseFacts = {
   created_at: string;
 };
 
-function strings(value: unknown): string[] {
+/** Non-empty strings out of a jsonb column. */
+export function strings(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string" && item.trim() !== "")
     : [];
+}
+
+export function toCourseTaskDefinition(
+  row: Tables<"course_task_definitions">,
+): CourseTaskDefinition {
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    kind: row.kind,
+    sourceKey: row.source_key,
+    titleTemplate: row.title_template,
+    description: row.description,
+    sourceUrl: row.source_url,
+    dueMode: row.due_mode,
+    dueDate: row.due_date,
+    sortOrder: row.sort_order,
+    sourceSnapshot: row.source_snapshot,
+    retiredAt: row.retired_at,
+  };
 }
 
 export function deriveCourseTaskCandidates(course: CourseFacts): CourseTaskCandidate[] {
@@ -93,18 +110,4 @@ export function courseTaskAdminPreview(
     ? strings(snapshot.deadlines)
     : [];
   return { title: renderCourseTaskTitle(task.titleTemplate, courseLabel), sourceDeadlineLines: deadlines };
-}
-
-export function reconcileCourseTaskAssignment(
-  assignment: { hasPersonalEdits: boolean; changeState: CourseTaskChangeState },
-  definition: Pick<CourseTaskDefinition, "retiredAt">,
-): { action: "replace" | "keep_personal" | "deactivate"; nextChangeState: CourseTaskChangeState } {
-  if (definition.retiredAt) {
-    return assignment.hasPersonalEdits
-      ? { action: "keep_personal", nextChangeState: "removal_pending" }
-      : { action: "deactivate", nextChangeState: "current" };
-  }
-  return assignment.hasPersonalEdits
-    ? { action: "keep_personal", nextChangeState: "update_pending" }
-    : { action: "replace", nextChangeState: "current" };
 }

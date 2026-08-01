@@ -6,8 +6,7 @@ import { cn } from "@/lib/utils";
 
 import {
   resolveConflictAction,
-  adoptCourseTaskSourceReviewAction,
-  keepCourseTaskSourceReviewAction,
+  adoptCourseTaskSourceChangeAction,
   reviewCourseAction,
   retireCourseTaskAction,
   saveCourseTaskAction,
@@ -365,6 +364,7 @@ export function CourseTaskLibrary({
           <article key={course.id} className="rounded-lg border p-3">
             <h3 className="text-sm font-semibold">{course.name ?? "Untitled course"}</h3>
             <p className="text-xs text-muted-foreground">{course.university_name ?? "University not extracted"}</p>
+            <SourceChanges course={course} definitions={definitionsByCourse.get(course.id) ?? []} />
             <CourseTaskEditor course={course} definitions={definitionsByCourse.get(course.id) ?? []} />
           </article>
         ))}
@@ -373,29 +373,60 @@ export function CourseTaskLibrary({
   );
 }
 
-export function CourseTaskSourceReviewQueue({
-  reviews,
+/**
+ * Live diff between what the course facts propose and the current definitions.
+ * No stored queue: a difference stays visible until it is adopted or the
+ * definition itself is edited, which is the honest state — students keep the
+ * current task until an admin acts either way.
+ */
+function SourceChanges({
+  course,
+  definitions,
 }: {
-  reviews: Tables<"course_task_source_reviews">[];
+  course: Tables<"courses">;
+  definitions: Tables<"course_task_definitions">[];
 }) {
-  if (reviews.length === 0) return null;
+  const candidates = deriveCourseTaskCandidates(course);
+  const bySourceKey = new Map(
+    definitions
+      .filter((definition) => definition.source_key)
+      .map((definition) => [definition.source_key!, definition]),
+  );
+  const candidateKeys = new Set(candidates.map((candidate) => candidate.sourceKey));
+  const changes = [
+    ...candidates.flatMap((candidate) => {
+      if (!candidate.sourceKey) return [];
+      const definition = bySourceKey.get(candidate.sourceKey);
+      if (!definition) {
+        return [{ key: candidate.sourceKey, label: "new", current: null, proposed: candidate.sourceSnapshot }];
+      }
+      if (definition.retired_at) return [];
+      return JSON.stringify(definition.source_snapshot) === JSON.stringify(candidate.sourceSnapshot)
+        ? []
+        : [{ key: candidate.sourceKey, label: "changed", current: definition.source_snapshot, proposed: candidate.sourceSnapshot }];
+    }),
+    ...definitions.flatMap((definition) =>
+      definition.source_key && !definition.retired_at && !candidateKeys.has(definition.source_key)
+        ? [{ key: definition.source_key, label: "removed", current: definition.source_snapshot, proposed: null }]
+        : [],
+    ),
+  ];
+  if (changes.length === 0) return null;
   return (
-    <section className="rounded-lg border bg-card p-4">
-      <h2 className="text-sm font-semibold">Official source task changes</h2>
-      <p className="mt-1 text-xs text-muted-foreground">Students keep the current task until you adopt or keep each source change.</p>
-      <div className="mt-3 grid gap-2">
-        {reviews.map((review) => (
-          <article key={review.id} className="rounded border p-3 text-sm">
-            <p><strong>{review.change_type}</strong> · {review.candidate_key}</p>
-            <div className="mt-2 grid gap-2 md:grid-cols-2"><div className="rounded bg-muted p-3"><span className="text-xs font-semibold uppercase text-muted-foreground">Current source value</span><pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(review.old_snapshot, null, 2) ?? "None"}</pre></div><div className="rounded border border-amber-300 bg-amber-50 p-3 text-amber-950"><span className="text-xs font-semibold uppercase">Proposed source value</span><pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(review.new_snapshot, null, 2) ?? "Removed"}</pre></div></div>
-            <div className="mt-2 flex gap-2">
-              <form action={adoptCourseTaskSourceReviewAction}><input type="hidden" name="id" value={review.id} /><ActionButton pendingText="Applying…" confirm="Use this official source change? Student tasks may receive an update decision.">Use source change</ActionButton></form>
-              <form action={keepCourseTaskSourceReviewAction}><input type="hidden" name="id" value={review.id} /><ActionButton pendingText="Keeping…" variant="outline" confirm="Keep the current task and dismiss this source change?">Keep current task</ActionButton></form>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
+    <div className="mt-3 grid gap-2">
+      <p className="text-xs font-semibold text-amber-700">Official source differs from the current tasks. Students keep the current task until you act.</p>
+      {changes.map((change) => (
+        <article key={change.key} className="rounded border p-3 text-sm">
+          <p><strong>{change.label}</strong> · {change.key}</p>
+          <div className="mt-2 grid gap-2 md:grid-cols-2"><div className="rounded bg-muted p-3"><span className="text-xs font-semibold uppercase text-muted-foreground">Current task source value</span><pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs">{change.current ? JSON.stringify(change.current, null, 2) : "None"}</pre></div><div className="rounded border border-amber-300 bg-amber-50 p-3 text-amber-950"><span className="text-xs font-semibold uppercase">Proposed source value</span><pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs">{change.proposed ? JSON.stringify(change.proposed, null, 2) : "Removed"}</pre></div></div>
+          <form action={adoptCourseTaskSourceChangeAction} className="mt-2">
+            <input type="hidden" name="courseId" value={course.id} />
+            <input type="hidden" name="sourceKey" value={change.key} />
+            <ActionButton pendingText="Applying…" confirm="Use this official source change? Student tasks may receive an update decision.">Use source change</ActionButton>
+          </form>
+        </article>
+      ))}
+    </div>
   );
 }
 

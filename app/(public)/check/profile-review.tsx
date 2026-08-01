@@ -8,30 +8,24 @@ import { ThemeToggle } from "@/components/app/theme-toggle";
 
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
+import { buildOptions, type Option } from "./check-questions";
+import { GceSubjectsEditor } from "./gce-subjects-editor";
+import { IbSubjectsEditor } from "./ib-subjects-editor";
 import {
-  AWARDING_BODIES,
-  BOARD_IDS,
-  GCE_GRADES,
-  GCE_SUBJECTS,
-  INTAKE_OPTIONS,
-  TARGET_FIELDS,
+  NUMBER_STEPS,
   isAnswered,
+  isNumberStep,
   visibleSteps,
   withAnswer,
   type Answers,
-  type GceSubjectAnswer,
   type PartialAnswers,
   type StepId,
 } from "./steps";
 
 type ProfileReviewProps = {
-  countries: { code: string; name: string }[];
-  boards: { countryCode: string; label: string }[];
   initialAnswers: PartialAnswers;
   userMenu?: ReactNode;
 };
-
-type Option = { value: unknown; label: string; key: string };
 
 const QUESTIONS: Record<StepId, string> = {
   targetDegree: "Study level",
@@ -45,22 +39,17 @@ const QUESTIONS: Record<StepId, string> = {
   hasExistingApsCertificate: "APS certificate",
   gceAwardingBody: "A-Level awarding body",
   gceSubjects: "A-Level subjects",
+  ibFullDiploma: "Full IB Diploma",
+  ibExamYear: "IB exam year",
+  ibSchoolYears: "School years",
+  ibTotalPoints: "IB total points",
+  ibSubjects: "IB subjects",
+  ibMathCourse: "IB Mathematics course",
   targetField: "Study field",
   intake: "Intake",
 };
 
-const emptySubject: GceSubjectAnswer = {
-  subjectId: "mathematics",
-  level: "AL",
-  grade: "A",
-};
-
-export function ProfileReview({
-  countries,
-  boards,
-  initialAnswers,
-  userMenu,
-}: ProfileReviewProps) {
+export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
   const [answers, setAnswers] = useState<PartialAnswers>(initialAnswers);
@@ -69,71 +58,9 @@ export function ProfileReview({
   const steps = visibleSteps(answers);
   const complete = steps.every((step) => isAnswered(answers, step));
 
-  function optionsFor(stepId: StepId): Option[] {
-    switch (stepId) {
-      case "targetDegree":
-        return [
-          { value: "bachelor", label: "Bachelor's", key: "bachelor" },
-          { value: "master", label: "Master's", key: "master" },
-        ];
-      case "nationality":
-      case "certificateCountry":
-        return countries
-          .filter((c) => c.code !== "de")
-          .map((c) => ({ value: c.code, label: c.name, key: c.code }));
-      case "visaApplicationCountry":
-        return [
-          ...countries
-            .filter((c) => c.code !== "de")
-            .map((c) => ({ value: c.code, label: c.name, key: c.code })),
-          { value: "other", label: "Another country", key: "other" },
-        ];
-      case "curriculumType":
-        return [
-          { value: "national", label: "National board", key: "national" },
-          { value: "ib", label: "IB Diploma", key: "ib" },
-          { value: "gce", label: "GCE A-Levels", key: "gce" },
-          { value: "other", label: "Something else", key: "other" },
-        ];
-      case "board":
-        return boards
-          .filter((b) => b.countryCode === answers.certificateCountry)
-          .map((b) => ({
-            value: BOARD_IDS[b.label] ?? b.label.toLowerCase(),
-            label: b.label,
-            key: b.label,
-          }));
-      case "jeeAdvanced":
-      case "hasExistingApsCertificate":
-        return [
-          { value: true, label: "Yes", key: "yes" },
-          { value: false, label: "No", key: "no" },
-        ];
-      case "gceAwardingBody":
-        return AWARDING_BODIES.map((b) => ({
-          value: b.id,
-          label: b.label,
-          key: b.id,
-        }));
-      case "targetField":
-        return TARGET_FIELDS.map((f) => ({
-          value: f.id,
-          label: f.label,
-          key: f.id,
-        }));
-      case "intake":
-        return [
-          ...INTAKE_OPTIONS.map((o) => ({
-            value: { term: o.term, year: o.year },
-            label: o.label,
-            key: `${o.term}-${o.year}`,
-          })),
-          { value: null, label: "Not sure yet", key: "unsure" },
-        ];
-      default:
-        return [];
-    }
-  }
+  // One options source with the checker (the local copy predated the IB steps
+  // and silently rendered them optionless).
+  const optionsFor = (stepId: StepId): Option[] => buildOptions(stepId, answers);
 
   function currentKey(stepId: StepId): string | undefined {
     const value = answers[stepId];
@@ -172,101 +99,47 @@ export function ProfileReview({
   }
 
   function field(step: StepId) {
-    if (step === "schoolGradePercent") {
+    if (isNumberStep(step)) {
+      const config = NUMBER_STEPS[step];
       return (
         <div className={styles.percentInputWrap}>
           <input
             className={styles.input}
             type="number"
             inputMode="decimal"
-            min={0}
-            max={100}
-            placeholder="85"
-            value={answers.schoolGradePercent ?? ""}
+            min={config.min}
+            max={config.max}
+            placeholder={config.placeholder}
+            value={answers[step] ?? ""}
             onChange={(event) =>
               select(
-                "schoolGradePercent",
+                step,
                 event.target.value === "" ? undefined : Number(event.target.value),
               )
             }
           />
-          <span className={styles.percentSuffix}>%</span>
+          {"suffix" in config && (
+            <span className={styles.percentSuffix}>{config.suffix}</span>
+          )}
         </div>
       );
     }
 
     if (step === "gceSubjects") {
-      const subjects = answers.gceSubjects ?? [];
       return (
-        <div className={styles.options}>
-          {subjects.map((subject, index) => (
-            <div key={index} className={styles.subjectRow}>
-              <div className={styles.subjectSelects}>
-                <select
-                  className={styles.select}
-                  value={subject.subjectId}
-                  aria-label="Subject"
-                  onChange={(event) => {
-                    const next = subjects.slice();
-                    next[index] = {
-                      ...subject,
-                      subjectId: event.target.value as GceSubjectAnswer["subjectId"],
-                    };
-                    select("gceSubjects", next);
-                  }}
-                >
-                  {GCE_SUBJECTS.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className={styles.select}
-                  value={subject.level}
-                  aria-label="Level"
-                  onChange={(event) => {
-                    const next = subjects.slice();
-                    next[index] = {
-                      ...subject,
-                      level: event.target.value as "AL" | "AS",
-                    };
-                    select("gceSubjects", next);
-                  }}
-                >
-                  <option value="AL">A-Level</option>
-                  <option value="AS">AS</option>
-                </select>
-                <select
-                  className={styles.select}
-                  value={subject.grade}
-                  aria-label="Grade"
-                  onChange={(event) => {
-                    const next = subjects.slice();
-                    next[index] = {
-                      ...subject,
-                      grade: event.target.value as GceSubjectAnswer["grade"],
-                    };
-                    select("gceSubjects", next);
-                  }}
-                >
-                  {GCE_GRADES.map((grade) => (
-                    <option key={grade} value={grade}>
-                      {grade}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          ))}
-          <button
-            type="button"
-            className={styles.addBtn}
-            onClick={() => select("gceSubjects", [...subjects, { ...emptySubject }])}
-          >
-            + Add subject
-          </button>
-        </div>
+        <GceSubjectsEditor
+          subjects={answers.gceSubjects ?? []}
+          onChange={(next) => select("gceSubjects", next)}
+        />
+      );
+    }
+
+    if (step === "ibSubjects") {
+      return (
+        <IbSubjectsEditor
+          subjects={answers.ibSubjects ?? []}
+          onChange={(next) => select("ibSubjects", next)}
+        />
       );
     }
 

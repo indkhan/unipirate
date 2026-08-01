@@ -1,23 +1,4 @@
-import { type EmailOtpType } from "@supabase/supabase-js";
-import { NextResponse } from "next/server";
+import { completeAuthRedirect } from "@/lib/auth/confirm";
 
-import { safeNextPath } from "@/lib/auth/redirect";
-import { createClient } from "@/lib/db/server";
-
-// Email magic-link / OTP verification.
-export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const token_hash = searchParams.get("token_hash");
-  const type = searchParams.get("type") as EmailOtpType | null;
-  const next = safeNextPath(searchParams.get("next"));
-
-  if (token_hash && type) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash });
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
-    }
-  }
-
-  return NextResponse.redirect(`${origin}/login?error=auth`);
-}
+// Email magic-link / signup confirmation / password reset return.
+export const GET = completeAuthRedirect;

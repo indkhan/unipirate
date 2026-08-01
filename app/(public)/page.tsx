@@ -2,15 +2,10 @@ import Link from "next/link";
 
 import { ThemeToggle } from "@/components/app/theme-toggle";
 
+import { COUNTRIES } from "./check/steps";
 import styles from "./home.module.css";
 
 const routeStations = ["Eligibility", "APS", "Applications", "Visa", "Germany"];
-
-const countries = [
-  { code: "in", name: "India" },
-  { code: "pk", name: "Pakistan" },
-  { code: "sa", name: "Saudi Arabia" },
-];
 
 export const metadata = {
   title: "Your path to a German public university — UniPirate",
@@ -73,7 +68,7 @@ export default function HomePage() {
               Choose the country that issued your school certificate.
             </p>
             <div className={styles.countryGrid}>
-              {countries.map((country) => (
+              {COUNTRIES.map((country) => (
                 <Link
                   className={styles.countryCard}
                   href={`/check?country=${country.code}`}

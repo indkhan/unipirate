@@ -70,10 +70,8 @@ export type DashboardView = {
   rail: RailApplication[];
   calendarEvents: CalendarEvent[];
   nextDeadline: { iso: string; verbatim: string; daysUntil: number } | null;
-  allDone: boolean;
   empty: boolean;
   hasProfile: boolean;
-  universityCount: number;
   checkedAt: string;
   result: Result | null;
 };
@@ -229,10 +227,8 @@ export async function buildDashboardView(
     rail,
     calendarEvents,
     nextDeadline: nextDeadline(pendingTasks, todayIso),
-    allDone: allTasks.length > 0 && pendingTasks.length === 0,
     empty: rail.length === 0 && allTasks.length === 0,
     hasProfile,
-    universityCount: rail.length,
     checkedAt: todayIso,
     result,
   };

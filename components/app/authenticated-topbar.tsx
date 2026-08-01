@@ -21,7 +21,7 @@ export function AuthenticatedTopbar({
 }: AuthenticatedTopbarProps) {
   return (
     <div className={styles.topbar}>
-      <Link className={styles.brand} href="/">
+      <Link className={styles.brand} href="/dashboard">
         UniPirate
       </Link>
       <div className={styles.actions}>

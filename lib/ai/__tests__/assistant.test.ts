@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { buildSystemPrompt, parseMarkers, stripMarkers } from "../assistant";
+import { buildSystemPrompt } from "../assistant";
+import { parseMarkers, stripMarkers } from "../markers";
 
 describe("buildSystemPrompt", () => {
   it("marks India as fully verified", () => {

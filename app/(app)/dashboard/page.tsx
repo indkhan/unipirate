@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AuthenticatedTopbar } from "@/components/app/authenticated-topbar";
+import { isAdminRole } from "@/lib/auth/roles";
 import { requireUser } from "@/lib/auth/session";
 import {
   countTodayAssistantQuestions,
@@ -89,7 +90,7 @@ export default async function DashboardPage() {
         <header className={styles.header}>
           <AuthenticatedTopbar
             email={user.email ?? null}
-            isAdmin={user.app_metadata?.role === "admin"}
+            isAdmin={isAdminRole(user.app_metadata)}
             initialAssistantUsed={questionsUsed}
           />
 
