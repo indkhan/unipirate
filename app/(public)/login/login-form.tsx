@@ -135,6 +135,13 @@ export function LoginForm({
     if (rawMessage.includes("email not confirmed")) {
       return "Please confirm your email before signing in.";
     }
+    // signInWithOtp with shouldCreateUser: false — the address has no account.
+    if (
+      rawMessage.includes("signups not allowed") ||
+      rawMessage.includes("otp_disabled")
+    ) {
+      return "No account uses that email yet. Sign up first, then magic links will work.";
+    }
     if (rawMessage.includes("rate limit") || rawMessage.includes("too many")) {
       return "Too many attempts. Please wait a moment and try again.";
     }
@@ -196,6 +203,9 @@ export function LoginForm({
         email: normalizedEmail,
         options: {
           emailRedirectTo: buildConfirmUrl(safeNextPath),
+          // A magic link signs you in; it must not quietly create an account
+          // for a mistyped address. Sign-up is its own deliberate step.
+          shouldCreateUser: false,
         },
       });
       setIsLoading(false);
