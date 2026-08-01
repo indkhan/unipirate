@@ -75,7 +75,7 @@ export default async function LoginPage({
         </div>
 
         <LoginForm
-          authError={params.error === "auth"}
+          authError={params.error ?? null}
           initialMode={initialMode}
           nextPath={nextPath}
         />
