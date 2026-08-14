@@ -63,9 +63,10 @@ Built by a CS student at Saarland University who did this exact journey himself 
 
 ## New to the codebase?
 
-Start with [docs/application.md](docs/application.md) — architecture, core
-flows, data model, and a "where to make common changes" map. Conventions and
-product rules live in [CLAUDE.md](CLAUDE.md), [AGENTS.md](AGENTS.md).
+Start with the [new contributor guide](docs/onboarding/README.md), then read
+[docs/application.md](docs/application.md) for architecture, core flows, the
+data model, and the "where to make common changes" map. Conventions and product
+rules live in [CLAUDE.md](CLAUDE.md) and [AGENTS.md](AGENTS.md).
 
 ## Local setup
 

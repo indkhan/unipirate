@@ -2,9 +2,10 @@
 
 UniPirate is a free web app that tells international students exactly how to
 get into a German public university: a rule-based eligibility checker, a
-course tracker, a task dashboard, and a citations-only AI assistant. This
-document is the onboarding guide — read it top to bottom once and you should
-be able to find and change anything.
+course tracker, a task dashboard, and a citations-only AI assistant. This is
+the canonical architecture guide. New contributors should begin with the
+[onboarding path](onboarding/README.md), then read this document top to bottom
+once to learn where and how to make changes.
 
 Product framing and setup instructions live in the [README](../README.md).
 Non-negotiable product rules and code conventions live in
