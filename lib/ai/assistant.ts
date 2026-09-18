@@ -29,7 +29,7 @@ import {
 } from "@/lib/db/queries";
 
 export const DAILY_QUOTA = 20;
-const CHAT_MODEL = "openai/gpt-5.4-mini";
+export const CHAT_MODEL = "nvidia/nemotron-3.5-lightning:free";
 
 const OFFICIAL_DOMAINS = [
   "daad.de",

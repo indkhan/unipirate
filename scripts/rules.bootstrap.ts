@@ -8,6 +8,10 @@ import { intakeIndex, type EngineRule } from "../lib/engine/evaluate";
 type RuleRecord = EngineRule & { country: string | null };
 
 const SOURCE_CHECKED_AT = "2026-07-04T00:00:00Z";
+// Process-step facts (APS fee/courier flow, uni-assist fees, blocked-account
+// amount, India/Saudi visa appointment routing) re-verified 22 August 2026
+// against aps-india.de, uni-assist.de, india.diplo.de and saudiarabien.diplo.de.
+const PROCESS_SOURCE_CHECKED_AT = "2026-08-22T00:00:00Z";
 // visa-country APS scoping verified 7 July 2026 against aps-india.de/faq and
 // the German Embassy Riyadh student-visa checklist (VFS Global).
 const VISA_SOURCE_CHECKED_AT = "2026-07-07T00:00:00Z";
@@ -246,24 +250,29 @@ export const ruleData: RuleRecord[] = [
       steps: [
         {
           order: 10,
-          text: "Register for APS India and pay the current APS fee — ₹18,000 in the 2026 research notes; skip this chain if you already hold an APS certificate.",
+          text: "Register online at aps-india.de under the APS procedure matching your background (e.g. Class XII, JEE, undergraduates with 2 semesters, graduates/postgraduates) and prepare the documents from that procedure's checklist.",
         },
         {
           order: 11,
-          text: "Courier your APS India documents and expect roughly 3–4 weeks of processing; confirm the current document list before sending.",
+          text: "Pay the APS verification fee of ₹18,000 (non-refundable) via the CCAvenue portal during registration or by bank transfer to the APS account — processing starts only once payment and a complete document set have arrived.",
         },
         {
           order: 12,
-          text: "Receive your APS digital certificate before starting German university and visa submissions.",
+          text: "Courier your printed and signed application form plus checklist documents to APS India in New Delhi; personal drop-offs are not accepted. Keep your courier tracking details.",
+        },
+        {
+          order: 13,
+          text: "Track your application in your APS account. Successful candidates receive the digitally signed APS certificate as a PDF by email — submit it unchanged to universities, uni-assist, VFS and the visa section.",
         },
       ],
-      note: "Draft process sequence for APS India. Keep as draft until the fee, courier steps, and processing time are confirmed by a human reviewer.",
+      note: "APS India publishes no fixed processing time — verification length depends on application volume and how quickly schools, boards and universities answer verification queries.",
     },
-    status: "draft",
-    source_url: "https://aps-india.de/",
+    status: "verified",
+    source_url:
+      "https://aps-india.de/wp-content/uploads/2023/05/Leaflet_XII-Grade-1.pdf",
     source_quote:
-      "APS India basics: mandatory since Nov 2022 for degree study; fee ₹18,000; ~3–4 weeks processing; digital certificate.",
-    last_verified_at: SOURCE_CHECKED_AT,
+      "Transfer the APS verification fee of 18,000/- INR … (NON-REFUNDABLE); Submit the required documents, including the printed and signed application form via courier to APS India; Successful candidates will receive a digital APS certificate via email.",
+    last_verified_at: PROCESS_SOURCE_CHECKED_AT,
   },
   {
     id: "uni-assist-vpd-process",
@@ -273,60 +282,82 @@ export const ruleData: RuleRecord[] = [
       steps: [
         {
           order: 20,
-          text: "Create your uni-assist account and start the VPD or application check for each target university that uses uni-assist.",
+          text: "Create your My assist account at my.uni-assist.de and select each target university's course — or request a VPD if the university applies directly but wants the pre-check documentation.",
         },
         {
           order: 21,
-          text: "Pay the uni-assist handling fee — research note says about €75 for the first application plus €30 for each extra course; confirm current fees before paying.",
+          text: "Pay the uni-assist handling fees: €75 for the first chosen course of study per semester and €30 for each additional course in the same semester. The fees are identical for standard applications and the VPD procedure, are due regardless of the result, and some universities cover them for their applicants.",
         },
       ],
-      note: "Draft process sequence for uni-assist and VPD handling.",
+      note: "Fees are charged per chosen study course per semester; reapplying in a new semester restarts at €75 for the first course.",
     },
-    status: "draft",
-    source_url: "https://www.uni-assist.de/en/",
+    status: "verified",
+    source_url:
+      "https://www.uni-assist.de/en/how-to-apply/pay-all-fees/handling-fees/",
     source_quote:
-      "uni-assist VPD process & fees need official confirmation; secondary sources say ~€75 first + €30 each.",
-    last_verified_at: SOURCE_CHECKED_AT,
+      "In one semester these handling fees apply: Cost for the first chosen course of study: EUR 75.00. For each additional chosen course of study: EUR 30.00 … The costs are the same for all forms of application, whether standard or VPD procedure.",
+    last_verified_at: PROCESS_SOURCE_CHECKED_AT,
   },
   {
     id: "blocked-account-open",
     country: null,
-    conditions: {},
+    conditions: { visa_application_country: "in" },
     outcomes: {
       steps: [
         {
           order: 41,
-          text: "Open your blocked account after the admission letter and at least 8 weeks before the visa appointment — 2026 research amount €11,904/year (€992/month); re-verify when BAföG rates change.",
+          text: "After you hold the admission letter — and at least 8 weeks before your visa appointment — open a blocked account with a provider of your choice and deposit €11,904 for the first year of studies; the blocking confirmation must state that no more than €992 per month can be withdrawn.",
         },
       ],
-      note: "Draft process step for blocked-account timing and 2026 amount.",
+      note: "The amount follows German student support rates and is published by the competent mission — confirm the current figure on the German Missions in India studies checklist before funding the account.",
     },
-    status: "draft",
-    source_url: "https://www.auswaertiges-amt.de/en/sperrkonto-388600",
+    status: "verified",
+    source_url: "https://india.diplo.de/in-en/service/2756350-2756350",
     source_quote:
-      "Blocked account amount varies by stay purpose and is based on German student support rates; research notes record €11,904/year = €992/month for study visas in 2026.",
-    last_verified_at: SOURCE_CHECKED_AT,
+      "Blocked bank account (\u201cSperrkonto\u201d) in Germany with sufficient funds to cover the first year of studies, currently amounting to 11,904.—EUR and with a blocking confirmation stating that no more than 992.—EUR per month can be withdrawn.",
+    last_verified_at: PROCESS_SOURCE_CHECKED_AT,
   },
   {
-    id: "visa-appointment-booking",
-    country: null,
-    conditions: {
-      certificate_country: { op: "in", value: ["in", "sa"] },
-    },
+    id: "visa-appointment-in",
+    country: "in",
+    conditions: { visa_application_country: "in" },
     outcomes: {
       steps: [
         {
           order: 44,
-          text: "Book the German student-visa appointment with the competent mission after admission and proof of funds are ready; confirm the document list on the official diplo.de study-visa page.",
+          text: "Apply through the Consular Services Portal (digital.diplo.de/visa) — for national visas that can be filed online there, including \u201cStudy purposes and seeking a university place\u201d, this is obligatory. Only after the CSP pre-check do you receive the link to book your on-site appointment.",
+        },
+        {
+          order: 45,
+          text: "For national visa categories not covered by the CSP, book your appointment through VFS Global at the location responsible for your place of residence. The visa fee is ₹8,100 / €75 (over 18) or ₹4,100 / €37.50 (under 18), payable in rupees at the appointment; the external service provider charges an additional service fee.",
         },
       ],
-      note: "Draft process step for India and Saudi Arabia visa appointment routing. Pakistan keeps its separate verified Consular Services Portal rule.",
+      note: "Booking an on-site appointment without having completed the CSP upload and pre-check means the application will not be accepted at the appointment.",
     },
-    status: "draft",
-    source_url: "https://digital.diplo.de/navigator/en/visa/study",
+    status: "verified",
+    source_url: "https://india.diplo.de/in-en/service/2755482-2755482",
     source_quote:
-      "The German study-visa pages route applicants to the competent mission and required-document workflow.",
-    last_verified_at: SOURCE_CHECKED_AT,
+      "If a visa application is possible online through the Consular Service Portal (CSP), it is obligatory to do it through the CSP. Only then will you receive a link to book an on-site-appointment at the end of the process. … The visa fee is 8100 inr / 75,—EUR for applicants over 18 years of age and 4100 inr / 37,50 EUR for applicants under the age of 18 years.",
+    last_verified_at: PROCESS_SOURCE_CHECKED_AT,
+  },
+  {
+    id: "visa-appointment-sa",
+    country: "sa",
+    conditions: { visa_application_country: "sa" },
+    outcomes: {
+      steps: [
+        {
+          order: 44,
+          text: "Apply online through the Consular Services Portal (digital.diplo.de) — the German Missions in Saudi Arabia accept the visa for vocational training or university studies there. After you submit your documents they confirm completeness, which makes the in-person appointment quick: present originals, give biometrics, and pay the fee.",
+        },
+      ],
+      note: "Pakistan keeps its separate verified Consular Services Portal rule; applicants in Saudi Arabia file with Embassy Riyadh or Consulate General Jeddah per their jurisdiction.",
+    },
+    status: "verified",
+    source_url: "https://saudiarabien.diplo.de/ksa-en/visa-service",
+    source_quote:
+      "You can apply online for the following types of visas: … Visa for vocational training or university studies … Once you submit your documents, we will inform you whether these are complete. This will make your in-person appointment at the German mission quick and efficient.",
+    last_verified_at: PROCESS_SOURCE_CHECKED_AT,
   },
   // -------------------------------------------------------------- Pakistan
   {

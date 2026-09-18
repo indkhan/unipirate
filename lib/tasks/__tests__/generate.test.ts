@@ -21,7 +21,8 @@ const PROCESS_RULE_IDS = new Set([
   "aps-india-process",
   "uni-assist-vpd-process",
   "blocked-account-open",
-  "visa-appointment-booking",
+  "visa-appointment-in",
+  "visa-appointment-sa",
 ]);
 
 const promotedRules: EngineRule[] = ruleData.map((rule) =>
@@ -191,16 +192,16 @@ describe("generateCourseTasks", () => {
       ]),
     ];
 
-    expect(tasks.some((task) => /Register for APS India/.test(task.title))).toBe(
-      true,
-    );
-    expect(tasks.some((task) => /uni-assist account/.test(task.title))).toBe(true);
+    expect(
+      tasks.some((task) => /Register online at aps-india\.de/.test(task.title)),
+    ).toBe(true);
+    expect(tasks.some((task) => /My assist account/.test(task.title))).toBe(true);
     expect(tasks.filter((task) => task.title.startsWith("Submit application")))
       .toHaveLength(3);
     expect(tasks.some((task) => /blocked account/.test(task.title))).toBe(true);
-    expect(tasks.some((task) => /student-visa appointment/.test(task.title))).toBe(
-      true,
-    );
+    expect(
+      tasks.some((task) => /Consular Services Portal/.test(task.title)),
+    ).toBe(true);
 
     const orders = tasks.map((task) => task.order).sort((a, b) => a - b);
     expect(orders[0]).toBe(10);
