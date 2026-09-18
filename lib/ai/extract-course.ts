@@ -10,6 +10,8 @@ import {
 import { parseDaadText } from "@/lib/courses/parse-daad";
 import { getServerEnv } from "@/lib/env";
 
+export const COURSE_EXTRACTION_MODEL = "nvidia/nemotron-3.5-lightning:free";
+
 // AI never invents facts: the prompt demands verbatim quotes and the output is
 // zod-validated; a failed call degrades to honest gaps (product rule: never
 // invent a fact — see CLAUDE.md).
@@ -20,7 +22,7 @@ async function aiExtract(text: string, url: string): Promise<CourseFacts> {
   }
   const openrouter = createOpenRouter({ apiKey });
   const { object } = await generateObject({
-    model: openrouter("qwen/qwen3.6-flash"),
+    model: openrouter(COURSE_EXTRACTION_MODEL),
     schema: CourseFactsSchema,
     temperature: 0,
     system:

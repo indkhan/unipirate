@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { ruleData } from "../../../scripts/rules.bootstrap";
-import { ruleToChunk, type KbRule } from "../kb";
+import {
+  EMBEDDING_DIMENSIONS,
+  EMBEDDING_MODEL,
+  ruleToChunk,
+  type KbRule,
+} from "../kb";
 
 const bySlug = (slug: string): KbRule => {
   const rule = ruleData.find((r) => r.id === slug);
@@ -18,6 +23,11 @@ const bySlug = (slug: string): KbRule => {
 };
 
 describe("ruleToChunk", () => {
+  it("uses the free Nemotron embedding model with the matching vector size", () => {
+    expect(EMBEDDING_MODEL).toBe("nvidia/nemotron-3-embed-1b:free");
+    expect(EMBEDDING_DIMENSIONS).toBe(2048);
+  });
+
   it("renders conditions, outcomes, and the verbatim source quote", () => {
     const chunk = ruleToChunk(bySlug("in-school-studienkolleg"));
     expect(chunk.slug).toBe("in-school-studienkolleg");

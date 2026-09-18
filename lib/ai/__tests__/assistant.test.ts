@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { buildSystemPrompt } from "../assistant";
+import { buildSystemPrompt, CHAT_MODEL } from "../assistant";
+import { COURSE_EXTRACTION_MODEL } from "../extract-course";
 import { parseMarkers, stripMarkers } from "../markers";
 
 describe("buildSystemPrompt", () => {
@@ -27,6 +28,13 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("[[web:url]]");
     expect(prompt).toContain("[[unknown]]");
     expect(prompt).toContain("Refusing to guess is success");
+  });
+});
+
+describe("model configuration", () => {
+  it("uses the Nemotron model for chat and course extraction", () => {
+    expect(CHAT_MODEL).toBe("nvidia/nemotron-3.5-lightning:free");
+    expect(COURSE_EXTRACTION_MODEL).toBe("nvidia/nemotron-3.5-lightning:free");
   });
 });
 

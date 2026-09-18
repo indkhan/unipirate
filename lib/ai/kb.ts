@@ -9,7 +9,8 @@
  * models are not comparable, and a mismatch returns plausible-looking but
  * wrong neighbours with no error.
  */
-export const EMBEDDING_MODEL = "openai/text-embedding-3-small";
+export const EMBEDDING_MODEL = "nvidia/nemotron-3-embed-1b:free";
+export const EMBEDDING_DIMENSIONS = 2048;
 
 type Primitive = string | number | boolean;
 type Condition =
