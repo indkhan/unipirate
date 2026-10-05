@@ -7,6 +7,7 @@
 // version. Creates its own throwaway user (profile + tasks) and cleans up.
 
 import { createClient } from "@supabase/supabase-js";
+import { AnswersSchema } from "../app/(public)/check/steps";
 
 import { runAssistant } from "../lib/ai/assistant";
 import { parseMarkers } from "../lib/ai/markers";
@@ -34,12 +35,19 @@ async function main() {
 
   await db.from("profiles").upsert({
     user_id: userId,
-    answers: {
+    answers: AnswersSchema.parse({
       targetDegree: "bachelor",
+      nationality: "in",
       certificateCountry: "in",
+      visaApplicationCountry: "in",
+      curriculumType: "national",
       board: "cbse",
-      class12_percent: 82,
-    },
+      schoolGradePercent: 82,
+      jeeAdvanced: false,
+      hasExistingApsCertificate: false,
+      targetField: "cs",
+      intake: null,
+    }),
   });
   await db.from("tasks").insert([
     { user_id: userId, title: "Upload APS payment receipt", due_date: "2026-07-20" },
