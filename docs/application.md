@@ -244,6 +244,13 @@ are used only for sorting, bucketing, and calendar dots.
 reset) → log the question (aborted streams still count) → `runAssistant`
 (`lib/ai/assistant.ts`).
 
+Only user/assistant roles and validated text parts are accepted from the
+browser. Client-supplied system prompts are rejected and tool-result parts are
+discarded; tool evidence is obtained on the server. The prompt requires source
+dates, fees and requirements verbatim and derives coverage from retrieved
+evidence rather than blanket country claims. Prompt compliance still needs a
+successful live assistant evaluation; it is not guaranteed by unit tests.
+
 - Three tools: `search_rules` (embed the query, pgvector `match_kb_chunks`),
   `get_user_context` (profile + applications + tasks via the user's own
   RLS-scoped client), `web_search` (Tavily, official German domains first,

@@ -5,15 +5,18 @@ import { COURSE_EXTRACTION_MODEL } from "../extract-course";
 import { parseMarkers, stripMarkers } from "../markers";
 
 describe("buildSystemPrompt", () => {
-  it("marks India as fully verified", () => {
+  it("requires India coverage to come from retrieved rules", () => {
     const prompt = buildSystemPrompt("in");
-    expect(prompt).toContain("India rules are fully verified");
+    expect(prompt).not.toContain("India rules are fully verified");
+    expect(prompt).toContain("Coverage and verification status come only from retrieved rules");
     expect(prompt).not.toContain("BETA");
   });
 
-  it("marks Pakistan and Saudi Arabia as beta", () => {
-    expect(buildSystemPrompt("pk")).toContain("Pakistan rules are BETA");
-    expect(buildSystemPrompt("sa")).toContain("Saudi Arabia rules are BETA");
+  it("does not assume verification status from a country", () => {
+    expect(buildSystemPrompt("pk")).toContain("country is Pakistan");
+    expect(buildSystemPrompt("sa")).toContain("country is Saudi Arabia");
+    expect(buildSystemPrompt("pk")).not.toContain("rules are BETA");
+    expect(buildSystemPrompt("sa")).not.toContain("rules are BETA");
   });
 
   it("treats unknown or missing countries as uncovered", () => {
@@ -28,6 +31,13 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("[[web:url]]");
     expect(prompt).toContain("[[unknown]]");
     expect(prompt).toContain("Refusing to guess is success");
+  });
+
+  it("contains no hard-coded financial claims or date reformatting instructions", () => {
+    const prompt = buildSystemPrompt("in");
+    expect(prompt).not.toContain("11,904");
+    expect(prompt).not.toContain("Dates as DD MMM YYYY");
+    expect(prompt).toContain("Quote dates, fees, amounts, and requirements verbatim");
   });
 });
 
