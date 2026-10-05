@@ -223,7 +223,7 @@ export async function saveCourseTaskAction(formData: FormData) {
     description: optionalFormText(formData.get("description")),
     source_url: optionalFormText(formData.get("source_url")),
     due_mode: formData.get("due_mode"),
-    due_date: optionalFormText(formData.get("due_date")),
+    due_date: formData.get("due_mode") === "fixed_date" ? optionalFormText(formData.get("due_date")) : null,
     source_snapshot: formData.get("source_snapshot") ?? "null",
     sort_order: formData.get("sort_order"),
   });
@@ -298,6 +298,7 @@ export async function adoptCourseTaskSourceChangeAction(formData: FormData) {
     await updateAdminCourseTaskDefinition(db, definition.id, {
       source_snapshot: candidate.sourceSnapshot as Json,
       due_mode: candidate.dueMode,
+      due_date: null,
       source_url: candidate.sourceUrl,
       retired_at: null,
     });
