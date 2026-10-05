@@ -110,6 +110,7 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
   const createdUserIds: string[] = [];
   const createdRuleIds: string[] = [];
   const createdCourseIds: string[] = [];
+  const createdDefinitionIds: string[] = [];
 
   async function createUser(appMetadata?: Record<string, unknown>) {
     const { data, error } = await service.auth.admin.createUser({
@@ -209,7 +210,7 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
 
   afterAll(async () => {
     if (!service) return;
-    const auditedRowIds = [...createdRuleIds, ...createdCourseIds];
+    const auditedRowIds = [...createdRuleIds, ...createdCourseIds, ...createdDefinitionIds];
     if (auditedRowIds.length > 0)
       await service.from("admin_audit_events").delete().in("row_id", auditedRowIds);
     if (createdCourseIds.length > 0)
@@ -405,15 +406,15 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     });
     expect(crossUser.data).toBe(false);
 
-    const { data: profile } = await owner
+    const { data: profile, error: profileError } = await owner
       .from("profiles")
-      .select("country_code, answers")
+      .select("answers")
       .eq("user_id", ownerUser.id)
       .single();
+    expect(profileError).toBeNull();
     expect(profile).toEqual(
       expect.objectContaining({
-        country_code: "in",
-        answers: expect.objectContaining({ targetDegree: "bachelor" }),
+        answers: expect.objectContaining({ targetDegree: "bachelor", certificateCountry: "in" }),
       }),
     );
   });
@@ -460,6 +461,7 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
       .select("id")
       .single();
     expect(definitionError).toBeNull();
+    createdDefinitionIds.push(definition!.id);
 
     const { data: assigned, error: assignedError } = await service
       .from("tasks")

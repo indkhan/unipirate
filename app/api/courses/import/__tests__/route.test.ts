@@ -1,100 +1,60 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+const mocks = vi.hoisted(() => ({
+  getUser: vi.fn(), getCourseById: vi.fn(), getCourseByNormalizedUrl: vi.fn(),
+  hasApplicationForCourse: vi.fn(), insertCourse: vi.fn(), extractCourse: vi.fn(), trackCourse: vi.fn(),
+}));
+vi.mock("@/lib/db/server", () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser } }) }));
+vi.mock("@/lib/db/queries", () => mocks);
+vi.mock("@/lib/ai/extract-course", () => ({ extractCourse: mocks.extractCourse }));
+vi.mock("@/lib/tasks/materialize", () => ({ trackCourse: mocks.trackCourse }));
 
-import { POST } from "@/app/api/courses/import/route";
+import { POST } from "../route";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
+const url = "https://example.com/course";
+const request = (body: unknown) => new Request("http://localhost/api/courses/import", {
+  method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" },
+});
 
-function makeSupabaseClient() {
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false },
-  });
-}
+beforeEach(() => {
+  vi.resetAllMocks();
+  mocks.getUser.mockResolvedValue({ data: { user: { id: "student" } } });
+  mocks.getCourseByNormalizedUrl.mockResolvedValue(null);
+});
 
 describe("POST /api/courses/import", () => {
   it("returns 401 when user is not signed in", async () => {
-    const db = makeSupabaseClient();
-    const { data: { user } } = await db.auth.signInAnonymously();
-    // anonymous user should get 401
-    const req = new Request(
-      "http://localhost/api/courses/import",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          url: "https://example.com/course",
-          text: "Some course page text",
-        }),
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-    // @ts-ignore - testing without proper auth context
-    const res = await POST(req);
-    expect(res.status).toBe(401);
+    mocks.getUser.mockResolvedValue({ data: { user: null } });
+    expect((await POST(request({ url }))).status).toBe(401);
+    expect(mocks.getCourseByNormalizedUrl).not.toHaveBeenCalled();
   });
-
   it("returns 400 when url is invalid", async () => {
-    const db = makeSupabaseClient();
-    const req = new Request(
-      "http://localhost/api/courses/import",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          url: "not-a-valid-url",
-          text: "Some course page text",
-        }),
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-    // @ts-ignore
-    const res = await POST(req);
-    expect(res.status).toBe(400);
+    expect((await POST(request({ url: "not-a-valid-url" }))).status).toBe(400);
   });
-
   it("returns 400 when text is too short", async () => {
-    const db = makeSupabaseClient();
-    const req = new Request(
-      "http://localhost/api/courses/import",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          url: "https://example.com/course",
-          text: "short",
-        }),
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-    // @ts-ignore
-    const res = await POST(req);
-    expect(res.status).toBe(400);
+    expect((await POST(request({ url, text: "short" }))).status).toBe(400);
+    expect(mocks.extractCourse).not.toHaveBeenCalled();
   });
-
   it("lookup mode returns course when existing and on dashboard", async () => {
-    const db = makeSupabaseClient();
-    // Insert a course first
-    await db.from("courses").insert({
-      name: "Test Course",
-      university_name: "Test University",
-      normalized_url: "https://example.com/course",
-      review_status: "approved",
-      imported_by: "some-user-id",
-    });
-
-    const req = new Request(
-      "http://localhost/api/courses/import",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          url: "https://example.com/course",
-        }),
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-    // @ts-ignore
-    const res = await POST(req);
-    const body = await res.json();
-    expect(body.deduped).toBe(true);
+    const course = { id: "course", name: "Test Course" };
+    mocks.getCourseByNormalizedUrl.mockResolvedValue(course);
+    mocks.hasApplicationForCourse.mockResolvedValue(true);
+    const res = await POST(request({ url }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ course, deduped: true, onDashboard: true });
+    expect(mocks.hasApplicationForCourse).toHaveBeenCalledWith(expect.anything(), "student", "course");
+    expect(mocks.trackCourse).not.toHaveBeenCalled();
+  });
+  it("tracks an existing course without extracting it again", async () => {
+    mocks.getCourseByNormalizedUrl.mockResolvedValue({ id: "course" });
+    expect((await POST(request({ url, text: "x".repeat(200) }))).status).toBe(200);
+    expect(mocks.trackCourse).toHaveBeenCalledWith(expect.anything(), "student", "course");
+    expect(mocks.extractCourse).not.toHaveBeenCalled();
+  });
+  it("reports an invisible pending import collision as 409", async () => {
+    mocks.extractCourse.mockResolvedValue({ facts: { name: "Course", deadlines: [] }, fieldExtraction: {}, extractionMethod: "deterministic" });
+    mocks.insertCourse.mockRejectedValue(new Error("duplicate key value violates unique constraint"));
+    expect((await POST(request({ url, text: "x".repeat(200) }))).status).toBe(409);
+    expect(mocks.trackCourse).not.toHaveBeenCalled();
   });
 });
