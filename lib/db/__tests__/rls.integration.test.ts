@@ -238,6 +238,42 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     expect((await getCourseByNormalizedUrl(owner, normalizedUrl))?.id).toBe(original.data!.id);
   });
 
+  it.each([true, false])("resolves course updates (keep new: %s) without deleting applications or task progress", async (keepNew) => {
+    const normalizedUrl = `https://example.com/rls-test/conflict/${randomUUID()}`;
+    const original = await service.from("courses").insert({ imported_by: ownerUser.id, name: "Original", source_url: normalizedUrl, normalized_url: normalizedUrl, review_status: "approved" }).select("id").single();
+    expect(original.error).toBeNull();
+    createdCourseIds.push(original.data!.id);
+    const update = await owner.from("courses").insert({ imported_by: ownerUser.id, name: "Updated", source_url: normalizedUrl, normalized_url: normalizedUrl, conflicts_with: original.data!.id }).select("id").single();
+    expect(update.error).toBeNull();
+    createdCourseIds.push(update.data!.id);
+    const application = await owner.from("applications").insert({ user_id: ownerUser.id, course_id: original.data!.id, status: "applied" }).select("id").single();
+    expect(application.error).toBeNull();
+    const definition = await service.from("course_task_definitions").insert({ course_id: original.data!.id, kind: "custom", title_template: "Reviewed task", due_mode: "none", sort_order: 30 }).select("id").single();
+    expect(definition.error).toBeNull();
+    createdDefinitionIds.push(definition.data!.id);
+    const task = await owner.from("tasks").insert({ user_id: ownerUser.id, application_id: application.data!.id, course_task_definition_id: definition.data!.id, title: "My edited completed task", done: true, preferred_bucket: "later" }).select("id").single();
+    expect(task.error).toBeNull();
+    const duplicateApplication = await owner.from("applications").insert({ user_id: ownerUser.id, course_id: update.data!.id }).select("id").single();
+    expect(duplicateApplication.error).toBeNull();
+    const updateReminder = await owner.from("tasks").insert({ user_id: ownerUser.id, application_id: duplicateApplication.data!.id, title: "Personal update reminder" }).select("id").single();
+    expect(updateReminder.error).toBeNull();
+    const otherApplication = await other.from("applications").insert({ user_id: otherUser.id, course_id: update.data!.id }).select("id").single();
+    expect(otherApplication.error).toBeNull();
+    expect((await owner.rpc("resolve_course_conflict", { p_new_course_id: update.data!.id, p_keep_new: keepNew })).error).not.toBeNull();
+    expect((await admin.rpc("resolve_course_conflict", { p_new_course_id: update.data!.id, p_keep_new: keepNew })).error).toBeNull();
+    const survivor = await owner.from("courses").select("id,name").eq("id", original.data!.id).single();
+    expect(survivor.data).toEqual({ id: original.data!.id, name: keepNew ? "Updated" : "Original" });
+    const applications = await owner.from("applications").select("id,course_id,status").eq("course_id", original.data!.id);
+    expect(applications.data).toEqual([{ id: application.data!.id, course_id: original.data!.id, status: "applied" }]);
+    const tasks = await owner.from("tasks").select("id,title,done,preferred_bucket,application_id").in("id", [task.data!.id, updateReminder.data!.id]);
+    expect(tasks.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: task.data!.id, title: "My edited completed task", done: true, preferred_bucket: "later", application_id: application.data!.id }),
+      expect.objectContaining({ id: updateReminder.data!.id, title: "Personal update reminder", application_id: application.data!.id }),
+    ]));
+    const moved = await other.from("applications").select("id,course_id").eq("id", otherApplication.data!.id).single();
+    expect(moved.data).toEqual({ id: otherApplication.data!.id, course_id: original.data!.id });
+  });
+
   it("anon reads beta rules but never drafts", async () => {
     const { data, error } = await anon.from("rules").select("id");
     expect(error).toBeNull();

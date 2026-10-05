@@ -333,7 +333,13 @@ export async function resolveConflictAction(formData: FormData) {
     keep_new: formData.get("keep_new"),
   });
 
+  const update = await getAdminCourse(db, values.id);
   await resolveCourseConflict(db, values.id, values.keep_new === "true");
+  if (values.keep_new === "true" && update.conflicts_with) {
+    const course = await getAdminCourse(db, update.conflicts_with);
+    await ensureSourceTaskDefinitions(db, course);
+    await syncAdminCourseTaskDefinitions(db, course.id);
+  }
 
   redirect(`/admin?view=reviews&queue=conflicts&message=${encodeURIComponent("Course conflict resolved.")}`);
 }

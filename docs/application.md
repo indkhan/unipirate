@@ -210,6 +210,11 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
    until an admin approves them in `/admin`. "The page changed" submissions
    carry `conflicts_with` and get a side-by-side resolution UI backed by
    the atomic `resolve_course_conflict` DB function.
+   Resolution preserves the original course identity and application progress.
+   Adopting an update replaces its facts, merges duplicate tracking links while
+   retaining personal reminders, and publishes reviewed task definitions.
+   Existing source-task snapshots remain available for explicit source adoption;
+   completed tasks and student edits survive reconciliation.
 
 ### 3. Tasks: generate → materialize → view
 
