@@ -362,7 +362,7 @@ export function generateCourseTasks(
   for (const application of applications) {
     const course = application.course;
     if (!course || course.review_status !== "approved") continue;
-    if (application.status === "applied" || application.status === "admitted") {
+    if (application.status !== "planning") {
       continue;
     }
 

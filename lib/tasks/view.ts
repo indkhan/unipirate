@@ -183,7 +183,12 @@ export async function buildDashboardView(
     listTasks(db, userId),
   ]);
 
-  const allTasks = displayTasks(dbTasks);
+  const planningIds = new Set(applications.filter((application) => application.status === "planning").map((application) => application.id));
+  // Keep stored edits/completed work; pending preparation tasks resume if the
+  // application returns to planning. Personal reminders are always visible.
+  const allTasks = displayTasks(dbTasks).filter((task) =>
+    task.done || task.kind !== "course_task" || planningIds.has(task.applicationId ?? ""),
+  );
   const pendingTasks = allTasks.filter((task) => !task.done);
   const doneTasks = allTasks.filter((task) => task.done);
   const defaultBuckets = bucketTasks(

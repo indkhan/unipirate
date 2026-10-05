@@ -233,6 +233,10 @@ describe("generateCourseTasks", () => {
     expect(generateCourseTasks([submitted])).toEqual([]);
   });
 
+  it("omits per-app tasks after rejection", () => {
+    expect(generateCourseTasks([{ ...app(1, ["15 July 2026"]), status: "rejected" }])).toEqual([]);
+  });
+
   it("skips retired definitions", () => {
     const application = app(1, ["Application deadline: 15 July 2026"], null);
     application.course!.task_definitions[0].retiredAt = "2026-07-01T00:00:00Z";

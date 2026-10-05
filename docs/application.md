@@ -233,7 +233,11 @@ strict direction of data flow:
   must not be duplicated into SQL.
 - **`view.ts` (read)** — builds the dashboard view model: buckets (user's
   dragged `preferred_bucket` wins over computed buckets), the applications
-  rail, calendar events, and the next deadline. Strictly read-only.
+  rail, calendar events, and the next deadline. Pending course tasks are shown
+  only for planning applications. Applied, admitted and rejected applications
+  hide those pending tasks without deleting them; completed and manual tasks
+  remain visible, and returning to planning restores pending tasks. Generation
+  also runs only for planning applications. Strictly read-only.
 
 Deadlines are always *displayed* verbatim (`verbatim_due`); parsed ISO dates
 are used only for sorting, bucketing, and calendar dots.
