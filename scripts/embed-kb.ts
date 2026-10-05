@@ -50,11 +50,8 @@ async function main() {
     values: chunks.map(({ chunk }) => `${chunk.title}\n${chunk.content}`),
   });
 
-  const { error: deleteError } = await db
-    .from("kb_chunks")
-    .delete()
-    .neq("slug", "");
-  if (deleteError) throw new Error(`clear kb_chunks: ${deleteError.message}`);
+  const { data: existing, error: readError } = await db.from("kb_chunks").select("id, slug");
+  if (readError) throw new Error(`load kb_chunks: ${readError.message}`);
 
   const rows = chunks.map(({ chunk, ruleId }, i) => ({
     source_type: ruleId ? ("rule" as const) : ("snippet" as const),
@@ -67,8 +64,16 @@ async function main() {
     country_code: chunk.country_code,
     embedding: JSON.stringify(embeddings[i]),
   }));
-  const { error: insertError } = await db.from("kb_chunks").insert(rows);
+  const { error: insertError } = await db.from("kb_chunks").upsert(rows, { onConflict: "slug" });
   if (insertError) throw new Error(`insert kb_chunks: ${insertError.message}`);
+
+  // Keep the previous corpus if replacement vectors are rejected by Postgres.
+  const slugs = new Set(rows.map((row) => row.slug));
+  const staleIds = existing.filter((row) => !slugs.has(row.slug)).map((row) => row.id);
+  if (staleIds.length) {
+    const { error: deleteError } = await db.from("kb_chunks").delete().in("id", staleIds);
+    if (deleteError) throw new Error(`clear stale kb_chunks: ${deleteError.message}`);
+  }
 
   console.log(`✓ kb_chunks rebuilt: ${rows.length} rows`);
 }

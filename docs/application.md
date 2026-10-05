@@ -279,7 +279,9 @@ successful live assistant evaluation; it is not guaranteed by unit tests.
   logged to `assistant_messages`.
 - The KB is rebuilt wholesale by `pnpm kb:embed`: published rules are
   rendered to readable chunks (`lib/ai/kb.ts`) and merged with curated
-  snippets from `scripts/kb.snippets.ts`. Rerun it after rule changes.
+  snippets from `scripts/kb.snippets.ts`. Replacement vectors are upserted before
+  stale rows are removed, so a failed write retains the previous corpus.
+  Rerun it after rule changes.
 - `pnpm eval:assistant` runs a 20-question adversarial eval (invented-fact
   traps, out-of-scope traps, personal context) and fails on any uncited
   claim.
