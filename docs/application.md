@@ -3,13 +3,14 @@
 UniPirate is a free web app that tells international students exactly how to
 get into a German public university: a rule-based eligibility checker, a
 course tracker, a task dashboard, and a citations-only AI assistant. This is
-the canonical architecture guide. New contributors should begin with the
-[onboarding path](onboarding/README.md), then read this document top to bottom
-once to learn where and how to make changes.
+the canonical architecture guide. Read this document to learn where and how
+to make changes.
 
 Product framing and setup instructions live in the [README](../README.md).
 Non-negotiable product rules and code conventions live in
-[CLAUDE.md](../CLAUDE.md), [AGENTS.md](../AGENTS.md). Known open issues live in [bugs.md](bugs.md).
+[AGENTS.md](../AGENTS.md). Current verification and blockers live in
+[STATUS.md](STATUS.md); planned release work lives in
+[UNIPIRATE_IMPLEMENTATION_BACKLOG.md](UNIPIRATE_IMPLEMENTATION_BACKLOG.md).
 
 ## Tech stack
 
@@ -86,7 +87,7 @@ components/
 lib/                 see architecture picture above
 scripts/             seed, KB embed, assistant eval
 supabase/migrations/ schema — append-only, applied with `supabase db push`
-docs/                this file, bugs.md
+docs/                architecture, verification status and release backlog
 ```
 
 Naming conventions: route-specific logic lives next to its route (e.g.
