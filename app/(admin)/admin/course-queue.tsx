@@ -297,7 +297,7 @@ export function CourseQueue({ courses, definitionsByCourse }: { courses: Tables<
 
       <div className="mt-3 grid gap-3">
         {courses.map((course) => (
-          <article key={course.id} className="rounded-lg border p-3">
+          <article key={course.id} className="min-w-0 rounded-lg border p-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
