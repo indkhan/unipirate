@@ -487,18 +487,13 @@ export async function insertCheck(
 }
 
 export async function getCheck(
-  db: Db,
+  db: RpcDb,
   id: string,
 ): Promise<
   Pick<Tables<"checks">, "id" | "answers" | "result" | "created_at"> | null
 > {
-  return unwrap(
-    await db
-      .from("checks")
-      .select("id, answers, result, created_at")
-      .eq("id", id)
-      .maybeSingle(),
-  );
+  const rows = unwrap(await db.rpc("get_shared_check", { p_check_id: id }));
+  return rows[0] ?? null;
 }
 
 /**

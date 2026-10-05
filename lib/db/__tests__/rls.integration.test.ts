@@ -259,8 +259,20 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     expect(data).toHaveLength(0);
   });
 
-  it("anon can share a check but cannot read its ownership metadata", async () => {
-    const { data: check, error: insertError } = await anon
+  it("browser clients cannot insert authoritative checks or enumerate them", async () => {
+    for (const client of [anon, owner]) {
+      const { error: insertError } = await client.from("checks").insert({
+        answers: { targetDegree: "bachelor" },
+        result: { path: "direct" },
+      });
+      expect(insertError).not.toBeNull();
+      const { error: readError } = await client.from("checks").select("id, answers, result");
+      expect(readError).not.toBeNull();
+    }
+  });
+
+  it("a shared check lookup exposes only its public projection", async () => {
+    const { data: check, error: insertError } = await service
       .from("checks")
       .insert({
         answers: { targetDegree: "bachelor" },
@@ -278,13 +290,15 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     expect(insertError).toBeNull();
     anonymousCheckId = check!.id;
 
-    const { data: publicCheck, error: publicError } = await anon
-      .from("checks")
-      .select("id, answers, result, created_at")
-      .eq("id", anonymousCheckId)
-      .single();
-    expect(publicError).toBeNull();
-    expect(publicCheck!.id).toBe(anonymousCheckId);
+    const response = await fetch(`${url}/rest/v1/rpc/get_shared_check`, {
+      method: "POST",
+      headers: { apikey: publishableKey!, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_check_id: anonymousCheckId }),
+    });
+    expect(response.status).toBe(200);
+    const [publicCheck] = await response.json();
+    expect(Object.keys(publicCheck).sort()).toEqual(["answers", "created_at", "id", "result"]);
+    expect(publicCheck.id).toBe(anonymousCheckId);
 
     const { error: privateError } = await anon
       .from("checks")

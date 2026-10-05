@@ -9,7 +9,7 @@ import {
 } from "@/lib/checks/ownership";
 import type { Json } from "@/lib/db/database.types";
 import { getPublishedRules, insertCheck, upsertProfile } from "@/lib/db/queries";
-import { createClient } from "@/lib/db/server";
+import { createCheckWriter, createClient } from "@/lib/db/server";
 import { evaluate } from "@/lib/engine/evaluate";
 import { materializeAllTasksForUser } from "@/lib/tasks/materialize";
 
@@ -30,7 +30,7 @@ export async function submitCheck(
   const rules = await getPublishedRules(db);
   const result = evaluate(profile, rules);
   const ownerToken = user ? null : createOwnerToken();
-  const id = await insertCheck(db, {
+  const id = await insertCheck(createCheckWriter(), {
     answers: parsed.data as unknown as Json,
     owner_token_hash: ownerToken ? hashOwnerToken(ownerToken) : null,
     claimed_by: user?.id,

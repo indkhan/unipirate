@@ -55,7 +55,9 @@ Two principles explain most of the layout:
    is a pure module with unit tests. Actions and routes are thin shells that
    load data, call the pure core, and write results.
 2. **RLS is the authorization boundary.** Every query helper takes the
-   caller's session-scoped Supabase client. Postgres row-level security —
+   caller's session-scoped Supabase client, except the dedicated server-only
+   `createCheckWriter()` used after checker validation and evaluation. Browser
+   roles cannot insert or enumerate checks. Postgres row-level security —
    not TypeScript — decides what each user can see and write; the app-level
    guards only decide where to redirect.
 
@@ -164,13 +166,21 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
    question is skipped when the visa is filed from Saudi Arabia. Steps
    rendered as a number input are listed in `NUMBER_STEPS` with their bounds.
 2. Submit (`submitCheck` server action) zod-validates the answers, evaluates
-   against published rules, and inserts a `checks` row → redirect to
+   against published rules, and inserts a `checks` row through the dedicated
+   server-only check writer → redirect to
    `/result/[id]`.
 3. Ownership: anonymous submitters get a random token in an HttpOnly cookie;
    only its SHA-256 hash is stored (`lib/checks/ownership.ts`). Signed-in
    submitters skip tokens — their profile is upserted and dashboard tasks
    are materialized immediately.
-4. `/result/[id]` is public to anyone holding the UUID. The `result_viewer`
+4. `/result/[id]` is public to anyone holding the UUID. `get_shared_check`
+   returns only that UUID's shareable columns; table collection reads and
+   browser writes are forbidden. The page validates stored answers and
+   re-evaluates them against current published rules, rather than trusting
+   stored verdicts (including legacy client-written results). Thus the displayed
+   assessment can change after rule updates; its timestamp is the original
+   check creation time. Sharing still exposes answers to UUID holders; consent,
+   expiry and revocation remain backlog work. The `result_viewer`
    DB function tells the page whether the request is the anonymous owner,
    the claimed owner, or the public; the page adapts its banners and CTA.
 5. Claiming: the result CTA sends the visitor through
@@ -294,13 +304,14 @@ Schema lives in `supabase/migrations/` (append-only). Regenerate types with
 | `applications` | user × course with status — THE dashboard link | owner CRUD |
 | `tasks` | rule-generated, admin-defined course-task assignments, and manual tasks; unique `(user_id, task_key)` makes reconciliation work | owner CRUD; admins reach only rows with a `course_task_definition_id`, never a student's manual or rule tasks |
 | `course_task_definitions` | ordered admin definitions for every course submission/requirement/custom task; pending-course definitions publish on approval. Official-source changes are shown as a live diff in the admin tasks view (no stored review queue) and student tasks only change when an admin acts | approved public read, admin write |
-| `checks` | anonymous check records: `answers` + stored `result` (the profile is re-derived from answers at read time); private ownership columns hidden by RLS | insert by anyone; shareable fields readable by UUID |
+| `checks` | answers + historical stored result; current result re-evaluated on read; ownership columns private | dedicated server writer; UUID-scoped public read through `get_shared_check`, no browser table reads/writes |
 | `kb_chunks` | assistant corpus with pgvector embeddings; `match_kb_chunks()` does exact cosine scan (fine below ~10k rows) | public read, admin write |
 | `assistant_messages` | full Q&A log; today's `role='user'` count is the quota | owner insert/read, admin read |
 | `answer_reports` | assistant-answer feedback | authenticated insert, owner/admin read |
 | `admin_audit_events` | append-only audit of rule/course updates, written by a DB trigger regardless of UI path | admin read |
 
-DB functions worth knowing: `claim_check` (atomic anonymous-result claim),
+DB functions worth knowing: `get_shared_check` (UUID-scoped public projection),
+`claim_check` (atomic anonymous-result claim),
 `result_viewer` (who is looking at a result), `remove_my_course` (detach
 approved / delete own pending), `resolve_course_conflict` (atomic
 keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.

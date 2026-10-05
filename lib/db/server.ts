@@ -1,10 +1,22 @@
 // Supabase client for server components, server actions, and route handlers.
 // The session comes from request cookies; proxy.ts keeps it refreshed.
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 import type { Database } from "@/lib/db/database.types";
-import { getClientEnv } from "@/lib/env";
+import { getClientEnv, getServerEnv } from "@/lib/env";
+
+/** Only check creation bypasses RLS: the action validates and computes it.
+ * Never use this client for user reads, profiles, tasks, or course writes. */
+export function createCheckWriter() {
+  const env = getServerEnv();
+  return createSupabaseClient<Database>(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.SUPABASE_SECRET_KEY,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+}
 
 export async function createClient() {
   const env = getClientEnv();

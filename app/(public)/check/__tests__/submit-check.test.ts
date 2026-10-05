@@ -1,51 +1,59 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { submitCheck } from "@/app/(public)/check/actions";
-import { AnswersSchema } from "@/app/(public)/check/steps";
+const mocks = vi.hoisted(() => ({
+  getUser: vi.fn(), getPublishedRules: vi.fn(), insertCheck: vi.fn(),
+  upsertProfile: vi.fn(), materializeAllTasksForUser: vi.fn(), setCookie: vi.fn(),
+}));
+vi.mock("@/lib/db/server", () => ({
+  createClient: async () => ({ auth: { getUser: mocks.getUser } }),
+  createCheckWriter: () => ({ privileged: true }),
+}));
+vi.mock("@/lib/db/queries", () => mocks);
+vi.mock("@/lib/tasks/materialize", () => ({ materializeAllTasksForUser: mocks.materializeAllTasksForUser }));
+vi.mock("next/headers", () => ({ cookies: async () => ({ set: mocks.setCookie }) }));
+
+import { submitCheck } from "../actions";
+import { AnswersSchema } from "../steps";
+import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
 
 const validAnswers = {
-  targetDegree: "bachelor",
-  nationality: "DE",
-  certificateCountry: "in",
-  visaApplicationCountry: "de",
-  curriculumType: "national",
-  board: "cbse",
-  schoolGradePercent: 82,
-  jeeAdvanced: false,
-  hasExistingApsCertificate: false,
-  targetField: "cs",
-  intake: { term: "winter", year: 2025 },
+  targetDegree: "bachelor", nationality: "in", certificateCountry: "in", visaApplicationCountry: "in",
+  curriculumType: "national", board: "cbse", schoolGradePercent: 82, jeeAdvanced: false,
+  hasExistingApsCertificate: false, targetField: "cs", intake: { term: "winter", year: 2026 },
 };
 
-// Test 1: Zod schema expects answers object directly, not wrapped in { answers }
-const zodValidInput = validAnswers as any;
-const zodInvalidInput = {
-  ...validAnswers,
-  targetDegree: "" as any,
-} as any;
+beforeEach(() => {
+  vi.resetAllMocks();
+  mocks.getUser.mockResolvedValue({ data: { user: null } });
+  mocks.getPublishedRules.mockResolvedValue([]);
+  mocks.insertCheck.mockResolvedValue("check-id");
+});
 
-describe("submitCheck & AnswersSchema", () => {
-  it("AnswersSchema validates valid answers directly", () => {
-    const parsed = AnswersSchema.safeParse(validAnswers);
-    expect(parsed.success).toBe(true);
+describe("submitCheck", () => {
+  it("validates the answers directly, rejecting the old wrapped shape", () => {
+    expect(AnswersSchema.safeParse(validAnswers).success).toBe(true);
+    expect(AnswersSchema.safeParse({ answers: validAnswers }).success).toBe(false);
   });
-
-  it("AnswersSchema rejects invalid answers", () => {
-    const parsed = AnswersSchema.safeParse(zodInvalidInput);
-    expect(parsed.success).toBe(false);
+  it("rejects invalid answers before accessing the database", async () => {
+    expect(await submitCheck({ ...validAnswers, targetDegree: "" })).toEqual({ error: expect.any(String) });
+    expect(mocks.getUser).not.toHaveBeenCalled();
+    expect(mocks.insertCheck).not.toHaveBeenCalled();
   });
-
-  it("submitCheck with valid Zod-validated input", async () => {
-    // This tests the action's Zod validation passes when answers are valid
-    // Note: full action test requires Supabase client, so we just verify Zod passes
-    const result = await submitCheck(validAnswers as any);
-    // If we get here without a Zod error, the action's first validation passed
-    // (Full DB flow test would need proper Supabase setup)
-    expect(result.error).toBeUndefined();
+  it("saves an anonymous check with a hashed ownership token and HttpOnly cookie", async () => {
+    expect(await submitCheck(validAnswers)).toEqual({ id: "check-id" });
+    const [name, token, options] = mocks.setCookie.mock.calls[0];
+    expect(name).toBe(ownerCookieName("check-id"));
+    expect(options).toMatchObject({ httpOnly: true, sameSite: "lax", path: "/" });
+    expect(mocks.insertCheck).toHaveBeenCalledWith({ privileged: true }, expect.objectContaining({
+      answers: validAnswers, owner_token_hash: hashOwnerToken(token), result: expect.objectContaining({ path: "unknown" }),
+    }));
+    expect(mocks.upsertProfile).not.toHaveBeenCalled();
   });
-
-  it("submitCheck returns error for invalid Zod input", async () => {
-    const result = await submitCheck(zodInvalidInput);
-    expect(result.error).toBeDefined();
+  it("saves signed-in answers and materializes tasks without an anonymous cookie", async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: "student" } } });
+    expect(await submitCheck(validAnswers)).toEqual({ id: "check-id" });
+    expect(mocks.upsertProfile).toHaveBeenCalledWith(expect.anything(), { user_id: "student", answers: validAnswers });
+    expect(mocks.materializeAllTasksForUser).toHaveBeenCalledWith(expect.anything(), "student");
+    expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 });
