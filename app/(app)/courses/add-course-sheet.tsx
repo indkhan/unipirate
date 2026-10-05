@@ -250,8 +250,8 @@ export function AddCourseSheet({
             >
               <p className={dashStyles.sheetHint}>
                 {lookup.conflictsWith
-                  ? "Open the course page, select everything (Ctrl+A), copy it, and paste the text here. An admin compares it with the saved version and keeps the correct one."
-                  : "Open the course page, select everything (Ctrl+A), copy it, and paste the text here. We read the deadlines and requirements from it."}
+                  ? "Copy the course overview, requirements and fees into this box. On DAAD, open each relevant tab, select all (Ctrl+A), copy, and append its text here. Hidden tabs are not copied. An admin compares the update with the saved version."
+                  : "Copy the course overview, requirements and fees into this box. On DAAD, open each relevant tab, select all (Ctrl+A), copy, and append its text here. Hidden tabs are not copied; missing facts stay unknown until reviewed."}
               </p>
               <textarea
                 className={dashStyles.textInput}

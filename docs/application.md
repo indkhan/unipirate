@@ -193,6 +193,10 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
 1. A user pastes a course URL (plus the page's Ctrl+A text — the server
    never fetches external pages) into the add-course sheet → `POST
    /api/courses/import`.
+   DAAD's hidden tabs are not included by Ctrl+A: the sheet instructs users
+   to append the overview, requirements and fees tabs. The deterministic
+   parser supports both legacy and current labels, preserves complete
+   source sections, and stops at contact/footer boundaries.
 2. `normalizeUrl` canonicalizes DAAD language variants to one URL for
    dedupe. An existing course is linked to the user's dashboard instead of
    re-imported; a colliding pending import from another user surfaces as

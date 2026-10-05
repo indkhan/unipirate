@@ -19,20 +19,25 @@ const CAPTURE: Record<string, Field> = {
   "Teaching language": "language",
   "Description/content": "description",
   "Application deadline": "deadlines",
+  "Application periods": "deadlines",
+  "Tuition fees per semester": "tuition",
   "Tuition fees per semester in EUR": "tuition",
   "Academic admission requirements": "requirements",
   "Language requirements": "requirements",
+  "German language skills": "requirements",
+  "English language skills": "requirements",
+  "Language requirements exemptions": "requirements",
 };
 
-// Max verbatim lines kept per field.
+// Single-value fields stop after their value; source sections must not be truncated.
 const LIMIT: Record<Field, number> = {
   location: 1,
   degree: 1,
   language: 4,
-  description: 30,
-  deadlines: 10,
+  description: Infinity,
+  deadlines: Infinity,
   tuition: 1,
-  requirements: 15,
+  requirements: Infinity,
 };
 
 // Any known DAAD label/section heading ends the previous field's capture.
@@ -77,6 +82,13 @@ const BOUNDARIES = new Set([
   "Funding opportunities within the university",
   "Application deadline",
   "Submit application to",
+  "Submit application via",
+  "More information on application periods",
+  "Additional information on beginning, duration and mode of study",
+  "Contact",
+  "Imprint",
+  "PDF Download",
+  "Technical equipment and programmes",
   "Possibility of finding part-time employment",
   "Accommodation",
   "Career advisory service",

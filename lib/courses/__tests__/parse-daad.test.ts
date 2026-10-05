@@ -6,6 +6,53 @@ import { parseDaadText } from "../parse-daad";
 import { DAAD_PAGE_TEXT, GARBAGE_TEXT, NON_DAAD_PAGE_TEXT } from "./fixtures";
 
 describe("parseDaadText", () => {
+  it("reads current DAAD period, tuition and language labels without footer leakage", () => {
+    const parsed = parseDaadText(`Data Science
+RWTH Aachen University • Aachen
+Application periods
+Application periods differ for EU and non-EU students.
+More information on application periods
+Please find more details on this website.
+Tuition fees per semester
+None
+Semester contribution
+Approx. 360 EUR
+Academic admission requirements
+A Bachelor's degree in computer science, mathematics, physics or a closely related area
+German language skills
+No minimum language level required
+English language skills
+B2 required, please provide an official language certificate, e.g.:
+IELTS Academic: 5.5
+Language requirements exemptions
+Please find details on the course website.
+Submit application via
+Please check this website.
+Description/content
+Data Science deals with the extraction of knowledge and usable information from data.
+Contact
+RWTH Aachen University
+Imprint`);
+    expect(parsed.deadlines).toEqual(["Application periods differ for EU and non-EU students."]);
+    expect(parsed.tuition).toBe("None");
+    expect(parsed.requirements).toEqual([
+      "A Bachelor's degree in computer science, mathematics, physics or a closely related area",
+      "No minimum language level required",
+      "B2 required, please provide an official language certificate, e.g.:",
+      "IELTS Academic: 5.5",
+      "Please find details on the course website.",
+    ]);
+    expect(parsed.description).toBe("Data Science deals with the extraction of knowledge and usable information from data.");
+  });
+
+  it("preserves long requirement and deadline sections instead of silently truncating them", () => {
+    const requirements = Array.from({ length: 20 }, (_, i) => `Requirement ${i + 1}`);
+    const deadlines = Array.from({ length: 12 }, (_, i) => `Deadline statement ${i + 1}`);
+    const parsed = parseDaadText(`Academic admission requirements\n${requirements.join("\n")}\nApplication deadline\n${deadlines.join("\n")}\nContact\nContact details`);
+    expect(parsed.requirements).toEqual(requirements);
+    expect(parsed.deadlines).toEqual(deadlines);
+  });
+
   const facts = parseDaadText(DAAD_PAGE_TEXT);
 
   it("finds name and university from the heading pair", () => {
