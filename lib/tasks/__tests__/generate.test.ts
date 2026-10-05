@@ -394,6 +394,15 @@ describe("prepareCourseTaskDefinitionSync", () => {
     }]);
   });
 
+  it("does not repeat an admin update after the student kept their edit", () => {
+    const desired = generateCourseTasks([app(1, ["Application deadline: 15 July 2026"], null)], "2026-07-06");
+    const sync = prepareCourseTaskDefinitionSync("user-1", desired, [existingGenerated({
+      task_key: desired[0].key, course_task_definition_id: "d-submit-1",
+      has_personal_edits: true, admin_snapshot: Object.fromEntries(Object.entries(desired[0].adminSnapshot!).reverse()),
+    })]);
+    expect(sync.personalUpdates).toEqual([]);
+  });
+
   it("keeps a personally edited copy and flags it for a decision", () => {
     const application = app(1, ["Application deadline: 15 July 2026"], null);
     const desired = generateCourseTasks([application], "2026-07-06");

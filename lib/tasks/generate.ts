@@ -504,7 +504,9 @@ export function prepareCourseTaskDefinitionSync(
       .map((task) => toGeneratedTaskUpsert(userId, task)),
     personalUpdates: desired.flatMap((task) => {
       const current = existingByKey.get(task.key);
-      return current?.has_personal_edits
+      const previous = current?.admin_snapshot as Record<string, unknown> | null;
+      const changed = Object.entries(task.adminSnapshot ?? {}).some(([key, value]) => previous?.[key] !== value);
+      return current?.has_personal_edits && changed
         ? [{
             taskKey: task.key,
             adminSnapshot: task.adminSnapshot,
