@@ -312,7 +312,8 @@ export function selectSubmissionDeadline(
     return sorted[0];
   }
 
-  const undated = lines.find((line) => /\d/.test(line));
+  const undated = lines.find((line) => /\d/.test(line))
+    ?? lines.find((line) => line.trim() !== "");
   return { date: null, verbatim: undated ?? null };
 }
 

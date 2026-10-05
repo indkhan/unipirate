@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   CourseFactsSchema,
   EMPTY_FACTS,
+  firstDeadline,
   missingRequired,
   normalizeUrl,
 } from "../import";
@@ -51,6 +52,15 @@ describe("normalizeUrl", () => {
 
   it("throws on garbage", () => {
     expect(() => normalizeUrl("not a url")).toThrow();
+  });
+});
+
+describe("firstDeadline", () => {
+  it("shows an undated source statement instead of claiming it is missing", () => {
+    expect(firstDeadline(["Application periods differ for EU and non-EU students."])).toBe("Application periods differ for EU and non-EU students.");
+  });
+  it("still prefers a dated statement over audience headings", () => {
+    expect(firstDeadline(["Non-EU students:", "Apply by 15 July"])).toBe("Apply by 15 July");
   });
 });
 

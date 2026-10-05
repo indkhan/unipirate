@@ -107,6 +107,12 @@ describe("parseDeadlineDate", () => {
 });
 
 describe("selectSubmissionDeadline", () => {
+  it("keeps an undated source statement without inventing a date", () => {
+    expect(selectSubmissionDeadline(["Application periods differ for EU and non-EU students."])).toEqual({
+      date: null,
+      verbatim: "Application periods differ for EU and non-EU students.",
+    });
+  });
   it("picks a single line even when the source lists several", () => {
     expect(
       selectSubmissionDeadline(

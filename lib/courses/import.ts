@@ -51,11 +51,11 @@ export function missingRequired(facts: CourseFacts): boolean {
   );
 }
 
-// First dated line from a course's verbatim deadlines jsonb — skips audience
-// headers like "Non-EU students:".
+// Prefer a dated line, but keep undated source wording when no date is given.
 export function firstDeadline(deadlines: unknown): string | null {
   if (!Array.isArray(deadlines)) return null;
-  const line = deadlines.find((d) => typeof d === "string" && /\d/.test(d));
+  const line = deadlines.find((d) => typeof d === "string" && /\d/.test(d))
+    ?? deadlines.find((d) => typeof d === "string" && d.trim() !== "");
   return typeof line === "string" ? line.replace(/^[:\s]+/, "") : null;
 }
 
