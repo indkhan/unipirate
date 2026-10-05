@@ -30,6 +30,12 @@ beforeEach(() => {
 });
 
 describe("submitCheck", () => {
+  it("returns a retryable error when saving fails instead of leaving the form submitting", async () => {
+    mocks.insertCheck.mockRejectedValueOnce(new Error("Database unavailable"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(submitCheck(validAnswers)).resolves.toEqual({ error: "Could not save your check. Please try again." });
+    log.mockRestore();
+  });
   it("validates the answers directly, rejecting the old wrapped shape", () => {
     expect(AnswersSchema.safeParse(validAnswers).success).toBe(true);
     expect(AnswersSchema.safeParse({ answers: validAnswers }).success).toBe(false);

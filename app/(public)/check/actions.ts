@@ -22,39 +22,44 @@ export async function submitCheck(
   if (!parsed.success) {
     return { error: "Some answers are missing or invalid. Please go back and check them." };
   }
-  const profile = buildProfile(parsed.data);
-  const db = await createClient();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-  const rules = await getPublishedRules(db);
-  const result = evaluate(profile, rules);
-  const ownerToken = user ? null : createOwnerToken();
-  const id = await insertCheck(createCheckWriter(), {
-    answers: parsed.data as unknown as Json,
-    owner_token_hash: ownerToken ? hashOwnerToken(ownerToken) : null,
-    claimed_by: user?.id,
-    claimed_at: user ? new Date().toISOString() : null,
-    result: result as unknown as Json,
-  });
-  if (user) {
-    await upsertProfile(db, {
-      user_id: user.id,
+  try {
+    const profile = buildProfile(parsed.data);
+    const db = await createClient();
+    const {
+      data: { user },
+    } = await db.auth.getUser();
+    const rules = await getPublishedRules(db);
+    const result = evaluate(profile, rules);
+    const ownerToken = user ? null : createOwnerToken();
+    const id = await insertCheck(createCheckWriter(), {
       answers: parsed.data as unknown as Json,
+      owner_token_hash: ownerToken ? hashOwnerToken(ownerToken) : null,
+      claimed_by: user?.id,
+      claimed_at: user ? new Date().toISOString() : null,
+      result: result as unknown as Json,
     });
-    await materializeAllTasksForUser(db, user.id);
-  } else {
-    if (!ownerToken) {
-      return { error: "Could not create a secure owner token. Please try again." };
+    if (user) {
+      await upsertProfile(db, {
+        user_id: user.id,
+        answers: parsed.data as unknown as Json,
+      });
+      await materializeAllTasksForUser(db, user.id);
+    } else {
+      if (!ownerToken) {
+        return { error: "Could not create a secure owner token. Please try again." };
+      }
+      const cookieStore = await cookies();
+      cookieStore.set(ownerCookieName(id), ownerToken, {
+        httpOnly: true,
+        maxAge: 60 * 60 * 24 * 30,
+        path: "/",
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
     }
-    const cookieStore = await cookies();
-    cookieStore.set(ownerCookieName(id), ownerToken, {
-      httpOnly: true,
-      maxAge: 60 * 60 * 24 * 30,
-      path: "/",
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-    });
+    return { id };
+  } catch (error) {
+    console.error("check submission failed:", error);
+    return { error: "Could not save your check. Please try again." };
   }
-  return { id };
 }
