@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 import { adminHref, parseAdminState } from "../admin-state";
 
 describe("admin workspace state", () => {
+  it("retains the selected rule country and ignores invalid country values", () => {
+    expect(parseAdminState({ view: "rules", country: "in" })).toMatchObject({ country: "in" });
+    expect(parseAdminState({ country: "invalid" })).not.toHaveProperty("country");
+    expect(parseAdminState({ country: "" })).not.toHaveProperty("country");
+  });
   it("defaults invalid parameters to the overview", () => {
     expect(parseAdminState({ view: "nope", queue: "bad", course: "bad" })).toEqual({
       view: "overview",

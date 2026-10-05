@@ -24,6 +24,7 @@ export function parseAdminState(params: Record<string, string | string[] | undef
   const queue = ReviewQueueSchema.catch("pending").parse(single(params.queue));
   const course = uuid.safeParse(single(params.course));
   const rule = uuid.safeParse(single(params.rule));
+  const country = z.enum(["in", "pk", "sa"]).safeParse(single(params.country));
   const status = z.enum(["draft", "beta", "verified"]).safeParse(single(params.status));
   const attention = z.enum(["all", "stale"]).safeParse(single(params.attention));
   const state = z.enum(["active", "retired", "all"]).safeParse(single(params.state));
@@ -34,6 +35,7 @@ export function parseAdminState(params: Record<string, string | string[] | undef
     queue,
     ...(course.success ? { course: course.data } : {}),
     ...(rule.success ? { rule: rule.data } : {}),
+    ...(country.success ? { country: country.data } : {}),
     ...(status.success ? { status: status.data } : {}),
     ...(attention.success ? { attention: attention.data } : {}),
     ...(state.success ? { state: state.data } : {}),
