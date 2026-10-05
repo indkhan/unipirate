@@ -7,9 +7,9 @@ import { ThemeToggle } from "@/components/app/theme-toggle";
 import { UserMenu } from "@/components/app/user-menu";
 import { isAdminRole } from "@/lib/auth/roles";
 import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
-import { getCheck, getResultViewer } from "@/lib/db/queries";
+import { getCheck, getPublishedRules, getResultViewer } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
-import type { Result } from "@/lib/engine/evaluate";
+import { evaluate } from "@/lib/engine/evaluate";
 
 import { AnswersSchema, buildProfile } from "@/app/(public)/check/steps";
 
@@ -65,11 +65,13 @@ export default async function ResultPage({
   const check = await getCheck(db, parsedId.data);
   if (!check) notFound();
 
-  const result = check.result as unknown as Result;
   // answers is the stored source of truth; the profile is derived, never stored
   const answers = AnswersSchema.safeParse(check.answers);
   if (!answers.success) notFound();
   const profile = buildProfile(answers.data);
+  // Legacy checks could contain client-written verdicts. Recompute from the
+  // current published rules so shared results never trust that stored JSON.
+  const result = evaluate(profile, await getPublishedRules(db));
   const viewer = await viewerFor(parsedId.data);
   const resultDate = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
