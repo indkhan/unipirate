@@ -21,7 +21,7 @@ export async function completeAuthRedirect(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const next = safeNextPath(searchParams.get("next"));
   const fail = (reason: "expired" | "auth") =>
-    NextResponse.redirect(`${origin}/login?error=${reason}`);
+    NextResponse.redirect(`${origin}/login?error=${reason}&next=${encodeURIComponent(next)}`);
   const done = () => NextResponse.redirect(`${origin}${next}`);
 
   const errorCode = searchParams.get("error_code");
