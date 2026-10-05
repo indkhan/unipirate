@@ -60,6 +60,9 @@ Leibniz University Hannover is one of the largest universities in Lower Saxony.
 export const NON_DAAD_PAGE_TEXT = `TU Example University
 Study programmes
 M.Sc. Data Wizardry
+Master of Science
+English
+Example City
 Our two-year graduate programme teaches applied data things.
 Apply by the end of May each year via our portal.
 Fees: none for EU students.

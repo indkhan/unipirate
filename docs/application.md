@@ -204,7 +204,8 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
 3. Extraction: the deterministic DAAD label parser
    (`lib/courses/parse-daad.ts`) runs first; the AI fallback
    (`lib/ai/extract-course.ts`) fills only the fields the parser missed,
-   with verbatim-quote prompting and zod validation. Facts are stored
+   with verbatim-quote prompting, zod validation and literal substring checks
+   against the pasted source. Unsupported AI values are discarded. Facts are stored
    verbatim — deadlines and tuition are never reformatted.
 4. New imports land as `pending` and are visible only to their importer
    until an admin approves them in `/admin`. "The page changed" submissions

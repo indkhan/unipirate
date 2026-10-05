@@ -68,10 +68,17 @@ export async function extractCourse(
   // (missing key, model error) degrades to honest gaps instead of failing the import.
   let aiFacts: CourseFacts;
   try {
-    aiFacts = await ai(text, url);
+    aiFacts = CourseFactsSchema.parse(await ai(text, url));
   } catch (error) {
     console.error("course AI extraction failed:", error);
     return { facts, fieldExtraction, extractionMethod: "library" };
+  }
+  // Schema validity is not evidence: only literal source quotes may fill gaps.
+  for (const key of [...CORE, "description", "tuition"] as const) {
+    if (aiFacts[key] && !text.includes(aiFacts[key])) aiFacts[key] = null;
+  }
+  for (const key of ["deadlines", "requirements"] as const) {
+    aiFacts[key] = aiFacts[key].filter((quote) => text.includes(quote));
   }
   let aiUsed = false;
   for (const key of CORE) {
