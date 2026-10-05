@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 import { Button } from "@/components/ui/button";
 import type { Json, Tables } from "@/lib/db/database.types";
 import type { ConflictCourse } from "@/lib/db/admin-queries";
@@ -401,7 +403,7 @@ function SourceChanges({
         return [{ key: candidate.sourceKey, label: "new", current: null, proposed: candidate.sourceSnapshot }];
       }
       if (definition.retired_at) return [];
-      return JSON.stringify(definition.source_snapshot) === JSON.stringify(candidate.sourceSnapshot)
+      return isDeepStrictEqual(definition.source_snapshot, candidate.sourceSnapshot)
         ? []
         : [{ key: candidate.sourceKey, label: "changed", current: definition.source_snapshot, proposed: candidate.sourceSnapshot }];
     }),

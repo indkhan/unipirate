@@ -31,6 +31,23 @@ const definition = {
 } as unknown as Tables<"course_task_definitions">;
 
 describe("course task editor", () => {
+  it("does not report a source change when Postgres reorders JSON object keys", () => {
+    const requirement = "Certified school transcript";
+    const reviewedCourse = { ...course, requirements: [requirement] };
+    const reviewedDefinition = {
+      ...definition,
+      kind: "requirement" as const,
+      source_key: `requirement:${requirement}`,
+      source_snapshot: { deadlines: course.deadlines, requirement },
+    };
+    const html = renderToStaticMarkup(<CourseTaskLibrary courses={[reviewedCourse]} definitionsByCourse={new Map([[course.id, [definition, reviewedDefinition]]])} />);
+    expect(html).not.toContain("Official source differs");
+    expect(html).not.toContain("Use source change");
+    const changed = { ...reviewedDefinition, source_snapshot: { deadlines: ["A changed deadline"], requirement } };
+    const changedHtml = renderToStaticMarkup(<CourseTaskLibrary courses={[reviewedCourse]} definitionsByCourse={new Map([[course.id, [definition, changed]]])} />);
+    expect(changedHtml).toContain("Use source change");
+  });
+
   it("provides explicit add and remove task controls", () => {
     const html = renderToStaticMarkup(<CourseTaskLibrary courses={[course]} definitionsByCourse={new Map([[course.id, [definition]]])} />);
     expect(html).toContain("Add custom task");
