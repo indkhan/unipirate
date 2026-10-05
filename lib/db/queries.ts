@@ -58,6 +58,7 @@ export async function getCourseByNormalizedUrl(
       .from("courses")
       .select()
       .eq("normalized_url", normalizedUrl)
+      .is("conflicts_with", null)
       .maybeSingle(),
   );
 }

@@ -15,6 +15,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Database } from "@/lib/db/database.types";
+import { getCourseByNormalizedUrl } from "@/lib/db/queries";
 
 try {
   process.loadEnvFile(".env.local");
@@ -225,6 +226,17 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
   }, 60_000);
 
   // ------------------------------------------------------------------ anon
+
+  it("looks up the canonical course while its importer has a pending update", async () => {
+    const normalizedUrl = `https://example.com/rls-test/lookup/${randomUUID()}`;
+    const original = await owner.from("courses").insert({ imported_by: ownerUser.id, source_url: normalizedUrl, normalized_url: normalizedUrl }).select("id").single();
+    expect(original.error).toBeNull();
+    createdCourseIds.push(original.data!.id);
+    const update = await owner.from("courses").insert({ imported_by: ownerUser.id, source_url: normalizedUrl, normalized_url: normalizedUrl, conflicts_with: original.data!.id }).select("id").single();
+    expect(update.error).toBeNull();
+    createdCourseIds.push(update.data!.id);
+    expect((await getCourseByNormalizedUrl(owner, normalizedUrl))?.id).toBe(original.data!.id);
+  });
 
   it("anon reads beta rules but never drafts", async () => {
     const { data, error } = await anon.from("rules").select("id");
