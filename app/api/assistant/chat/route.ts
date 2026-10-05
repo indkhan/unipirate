@@ -15,14 +15,19 @@ import {
 import { createClient } from "@/lib/db/server";
 import { getServerEnv } from "@/lib/env";
 
-// UIMessage passes through convertToModelMessages; validate just the envelope.
+// Conversation history is untrusted. Only text can return from the browser;
+// tool evidence must come from this request's server-side tools.
 const ChatRequestSchema = z.object({
   messages: z
     .array(
       z.object({
         id: z.string(),
-        role: z.enum(["user", "assistant", "system"]),
-        parts: z.array(z.record(z.unknown())),
+        role: z.enum(["user", "assistant"]),
+        parts: z.array(z.record(z.unknown())).max(100).transform((parts) =>
+          parts.flatMap((part) => part.type === "text" && typeof part.text === "string"
+            ? [{ type: "text" as const, text: part.text }]
+            : []),
+        ).pipe(z.array(z.object({ type: z.literal("text"), text: z.string().max(20_000) }))),
       }),
     )
     .min(1)
