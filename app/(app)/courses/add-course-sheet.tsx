@@ -101,6 +101,7 @@ export function AddCourseSheet({
       router.refresh();
     } catch {
       setError("Something went wrong — try again.");
+    } finally {
       setBusy(false);
     }
   }
