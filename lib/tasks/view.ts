@@ -13,6 +13,7 @@ import type { Database, Tables } from "@/lib/db/database.types";
 import { evaluate, type Result } from "@/lib/engine/evaluate";
 import {
   bucketTasks,
+  isCurrentApsTask,
   daysUntil,
   parseDeadlineDate,
   selectSubmissionDeadline,
@@ -186,7 +187,7 @@ export async function buildDashboardView(
   const planningIds = new Set(applications.filter((application) => application.status === "planning").map((application) => application.id));
   // Keep stored edits/completed work; pending preparation tasks resume if the
   // application returns to planning. Personal reminders are always visible.
-  const allTasks = displayTasks(dbTasks).filter((task) =>
+  const allTasks = displayTasks(dbTasks.filter(task => isCurrentApsTask(task, result))).filter((task) =>
     task.done || task.kind !== "course_task" || planningIds.has(task.applicationId ?? ""),
   );
   const pendingTasks = allTasks.filter((task) => !task.done);

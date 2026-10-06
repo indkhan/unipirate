@@ -64,7 +64,7 @@ describe("ruleToChunk", () => {
     for (const rule of ruleData) {
       const chunk = ruleToChunk(bySlug(rule.id));
       expect(chunk.content.length).toBeGreaterThan(40);
-      expect(chunk.content).toContain("Official source says:");
+      expect(chunk.content).toContain(rule.outcomes.aps ? "scoped applicability unverified" : "Official source says:");
       expect(chunk.source_url).toMatch(/^https:\/\//);
     }
   });

@@ -50,7 +50,7 @@ export function CheckFlow({
 }: CheckFlowProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), qualificationHistoryVersion: 1 }));
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), qualificationHistoryVersion: 1, apsScopeVersion: 1 }));
   const [stepIndex, setStepIndex] = useState(initialStepIndex);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -65,7 +65,7 @@ export function CheckFlow({
   }, [posthog]);
 
   useEffect(() => {
-    const safeInitial = normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), qualificationHistoryVersion: 1 as const });
+    const safeInitial = normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), qualificationHistoryVersion: 1 as const, apsScopeVersion: 1 as const });
     let nextAnswers: PartialAnswers = safeInitial;
     let nextStepIndex = initialStepIndex;
     try {
@@ -80,7 +80,7 @@ export function CheckFlow({
           !initialAnswers.certificateCountry ||
           savedCountry === initialAnswers.certificateCountry
         ) {
-          const recovered = normalizeAnswers(saved.answers);
+          const recovered = normalizeAnswers({ ...saved.answers, apsScopeVersion: 1 as const });
           const savedSteps = visibleSteps(recovered);
           const firstMissing = savedSteps.findIndex((step) => !isAnswered(recovered, step));
           const recoveredStepIndex = Math.min(

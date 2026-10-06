@@ -206,6 +206,11 @@ export function isNumberStep(step: StepId): step is NumberStepId {
 
 const AnswerFieldsSchema = z
   .object({
+    apsScopeVersion: z.literal(1).optional(),
+    schoolQualificationCountry: z.enum(["in", "pk", "sa", "other", "unknown"]).optional(),
+    schoolQualificationContext: z.enum(["national", "international", "unknown"]).optional(),
+    visaMissionContext: z.enum(["saudi_study", "other", "unknown"]).optional(),
+    apsApplicationContext: z.enum(["uni_assist", "unknown"]).optional(),
     qualificationHistoryVersion: z.literal(1).optional(),
     hasPriorUniversityStudy: z.boolean().optional(),
     priorQualificationType: z.enum(["bachelor", "master", "diploma", "other"]).optional(),
@@ -274,6 +279,10 @@ export const AnswersSchema = AnswerFieldsSchema
         message: 'Missing answer for step "curriculumType"' });
     }
     for (const step of visibleSteps(answers)) {
+      // Historical Saudi checks skipped this answer. Read them without
+      // inventing fulfilment; new/edited APS-versioned flows require it.
+      if (step === "hasExistingApsCertificate" && answers.apsScopeVersion !== 1 &&
+          answers.visaApplicationCountry === "sa") continue;
       // Legacy stored checks stay readable. New/edited flows require history.
       if (answers.qualificationHistoryVersion === undefined &&
           !HISTORY_STEPS.some((key) => answers[key] !== undefined) &&
@@ -291,6 +300,10 @@ export const AnswersSchema = AnswerFieldsSchema
 // --------------------------------------------------------------------- steps
 
 export type StepId =
+  | "schoolQualificationCountry"
+  | "schoolQualificationContext"
+  | "visaMissionContext"
+  | "apsApplicationContext"
   | (typeof HISTORY_STEPS)[number]
   | "targetDegree"
   | "nationality"
@@ -361,13 +374,19 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
       }
     }
   }
-  // no APS on the Riyadh checklist, so an existing certificate is irrelevant
-  // when the visa is filed from Saudi Arabia
+  if (answers.apsScopeVersion === 1 && bachelor) {
+    steps.push("schoolQualificationCountry", "schoolQualificationContext");
+  }
+  // Certificate fulfilment is independent of visa filing. Existing answers
+  // remain reachable when only the visa changes, including legacy records.
   if (
-    qualificationCountry(answers) === "in" &&
-    answers.visaApplicationCountry !== "sa"
+    qualificationCountry(answers) === "in" || answers.schoolQualificationCountry === "in"
   ) {
     steps.push("hasExistingApsCertificate");
+  }
+  if (answers.apsScopeVersion === 1) {
+    steps.push("apsApplicationContext");
+    if (answers.visaApplicationCountry === "sa") steps.push("visaMissionContext");
   }
   steps.push("targetField", "intake");
   return steps;
@@ -392,6 +411,8 @@ export function withAnswer<K extends StepId>(
       priorStudyCountry: ["priorStudyCountryOther", "priorQualificationContext", "hasExistingApsCertificate"],
       priorQualificationContext: ["hasExistingApsCertificate"],
       priorStudyInstitution: ["priorStudyCountry", "priorStudyCountryOther", "priorQualificationContext", "hasExistingApsCertificate"],
+      schoolQualificationCountry: ["schoolQualificationContext", "hasExistingApsCertificate"],
+      schoolQualificationContext: ["hasExistingApsCertificate"],
     };
     for (const key of dependents[field] ?? []) delete next[key];
   }
@@ -408,7 +429,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
     changed = false;
     const visible = new Set<string>(visibleSteps(next));
     for (const key of Object.keys(next)) {
-      if (key !== "qualificationHistoryVersion" && !visible.has(key)) {
+      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && !visible.has(key)) {
         delete next[key as StepId];
         changed = true;
       }
@@ -473,6 +494,11 @@ export function buildProfile(answers: Answers): Profile {
     curriculumType: tertiary ? "other" : answers.curriculumType ?? "other",
     targetField: answers.targetField,
   };
+  if (answers.schoolQualificationCountry !== undefined || answers.schoolQualificationContext !== undefined) {
+    profile.schoolQualification = { country: answers.schoolQualificationCountry, context: answers.schoolQualificationContext };
+  }
+  if (answers.visaMissionContext !== undefined) profile.visaMissionContext = answers.visaMissionContext;
+  if (answers.apsApplicationContext !== undefined) profile.apsApplicationContext = answers.apsApplicationContext;
   if (answers.hasPriorUniversityStudy !== undefined) {
     profile.qualificationHistory = answers.hasPriorUniversityStudy ? {
       hasPriorUniversityStudy: true,

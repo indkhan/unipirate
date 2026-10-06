@@ -15,40 +15,43 @@ const run = (profile: Profile) => evaluate(profile, fixtureRules);
 const citedUrls = (r: ReturnType<typeof run>) =>
   r.citations.map((c) => c.sourceUrl);
 
+// UP-ELIG-05: legacy attendance/scalar fixtures cannot prove scoped APS.
+// Official issuer-based acceptance is in aps-scopes.test.ts; admission/test
+// expectations are unchanged. Checklist omission is not an exemption.
 describe("Part E personas", () => {
-  it("1. CBSE 82%, no JEE → Studienkolleg + APS; TestAS remains unverified", () => {
+  it("1. CBSE 82%, no JEE → Studienkolleg; legacy APS scope unresolved; TestAS remains unverified", () => {
     const r = run(p.p1CbseNoJee);
     expect(r.path).toBe("studienkolleg");
-    expect(r.aps).toBe("required");
+    expect(r.aps).toBe("unknown");
     expect(r.testAS).toBe("unknown");
     expect(r.dMAT).toBe("not_required");
     expect(citedUrls(r)).toContain("https://aps-india.de/news/");
-    expect(r.documents.some((d) => d.includes("APS"))).toBe(true);
+    expect(r.documents.some((d) => d.includes("APS"))).toBe(false);
   });
 
   it("2. CBSE + JEE Advanced → direct subject-specific", () => {
     const r = run(p.p2CbseJeeAdvanced);
     expect(r.path).toBe("subject_restricted");
-    expect(r.aps).toBe("required");
+    expect(r.aps).toBe("unknown");
     expect(r.testAS).toBe("unknown");
   });
 
-  it("3. Indian 3-yr B.Sc → Master's: APS required; dMAT stays an honest unknown", () => {
+  it("3. Indian 3-yr B.Sc → Master's: legacy APS scope unresolved; dMAT stays an honest unknown", () => {
     // dMAT scoping depended on prior-degree facts the checker never collects,
     // so those rules were removed — an unknown with a confirm-with message is
     // the true production outcome until that question exists.
     const r = run(p.p3Indian3yrBsc);
     expect(r.path).toBe("unknown");
-    expect(r.aps).toBe("required");
+    expect(r.aps).toBe("unknown");
     expect(r.dMAT).toBe("unknown");
     expect(r.testAS).toBe("unknown");
     expect(r.unknowns.some((u) => /aps-india\.de\/dmat/.test(u))).toBe(true);
   });
 
-  it("4. Indian 4-yr B.Tech → Master's: APS required, no dMAT for WS 2026/27", () => {
+  it("4. Indian 4-yr B.Tech → Master's: legacy APS scope unresolved, no dMAT for WS 2026/27", () => {
     const r = run(p.p4Indian4yrBtech);
     expect(r.path).toBe("unknown");
-    expect(r.aps).toBe("required");
+    expect(r.aps).toBe("unknown");
     expect(r.dMAT).toBe("not_required");
   });
 
@@ -79,37 +82,37 @@ describe("Part E personas", () => {
     expect(r.unknowns.some((u) => /confirm/i.test(u))).toBe(true);
   });
 
-  it("8. Saudi Tawjihiyah 92% → Studienkolleg; no APS when visa filed from Saudi", () => {
+  it("8. Saudi Tawjihiyah 92% → Studienkolleg; APS scope unresolved for legacy Saudi filing", () => {
     const r = run(p.p8SaudiTawjihiyah);
     expect(r.path).toBe("studienkolleg");
-    expect(r.aps).toBe("not_required");
+    expect(r.aps).toBe("unknown");
     expect(citedUrls(r)).toContain(
       "https://saudiarabien.diplo.de/ksa-en/topics/weitere-themen/-/1686436",
     );
   });
 
-  it("9. Indian passport, CBSE in Riyadh → CBSE tree (Studienkolleg), no APS from Riyadh", () => {
+  it("9. Indian passport, CBSE in Riyadh → CBSE tree (Studienkolleg), APS scope unresolved from Riyadh", () => {
     const r = run(p.p9CbseInRiyadh);
     expect(r.path).toBe("studienkolleg");
-    expect(r.aps).toBe("not_required");
+    expect(r.aps).toBe("unknown");
     expect(citedUrls(r)).toContain(
       "https://www.vfsglobal.com/Germany/SaudiArabia/pdf/Checklist_Student_Visa.pdf",
     );
     expect(r.testAS).toBe("unknown");
   });
 
-  it("10. Saudi bachelor (KFUPM) → Master's: no global admission rule, no APS from Saudi", () => {
+  it("10. Saudi bachelor (KFUPM) → Master's: no global admission rule, APS scope unresolved from Saudi", () => {
     const r = run(p.p10SaudiBachelor);
     expect(r.path).toBe("unknown");
-    expect(r.aps).toBe("not_required");
+    expect(r.aps).toBe("unknown");
     expect(r.dMAT).toBe("unknown");
     expect(r.unknowns.length).toBeGreaterThan(0);
   });
 
-  it("11. A-Levels in Saudi, visa from Saudi → direct subject-restricted; no APS", () => {
+  it("11. A-Levels in Saudi, visa from Saudi → direct subject-restricted; legacy APS scope unresolved", () => {
     const r = run(p.p11ALevelsInSaudi);
     expect(r.path).toBe("subject_restricted");
-    expect(r.aps).toBe("not_required");
+    expect(r.aps).toBe("unknown");
     expect(citedUrls(r)).toContain(
       "https://www.daad.de/en/studying-in-germany/requirements/gce/",
     );
@@ -356,8 +359,7 @@ describe("engine behavior", () => {
       status: "beta",
       outcomes: {
         path: "direct",
-        aps: "required",
-        documents: ["APS certificate"],
+        aps_scopes: { application: { value: "required", documents: ["APS certificate"] } },
       },
     });
     const r = evaluate(minimalProfile, [rule]);
@@ -365,7 +367,7 @@ describe("engine behavior", () => {
       expect.objectContaining({
         ruleId: "multi-outcome",
         status: "beta",
-        supports: ["path", "aps", "documents"],
+        supports: ["path", "aps:application", "documents"],
       }),
     );
   });

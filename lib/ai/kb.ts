@@ -25,6 +25,9 @@ export type KbRule = {
   outcomes: {
     path?: string;
     aps?: string;
+    aps_scopes?: Partial<Record<"qualification" | "application" | "visa", {
+      value: string; documents?: string[]; steps?: { order: number; text: string; acquisition?: boolean }[];
+    }>>;
     testas?: string;
     dmat?: string;
     documents?: string[];
@@ -50,6 +53,10 @@ export type KbChunk = {
 // (see FactKeySchema in lib/engine/evaluate.ts). Unlisted keys fall back to
 // the key with underscores replaced by spaces.
 const FACT_LABELS: Record<string, string> = {
+  aps_issuer_country: "country of the relevant qualification issuer",
+  aps_qualification_context: "explicit qualification context",
+  aps_application_context: "confirmed application authority",
+  visa_mission_context: "confirmed responsible-mission checklist context",
   has_prior_university_study: "has previous higher education study",
   prior_qualification_type: "previous qualification type",
   prior_study_institution: "previous institution",
@@ -127,19 +134,27 @@ function renderOutcomes(outcomes: KbRule["outcomes"]): string[] {
   const flag = (name: string, value?: string) => {
     if (value) lines.push(`${name}: ${value.replace(/_/g, " ")}.`);
   };
-  flag("APS certificate", outcomes.aps);
+  if (outcomes.aps) lines.push("Legacy APS scope is unresolved; this scalar does not establish a global exemption.");
+  for (const [scope, outcome] of Object.entries(outcomes.aps_scopes ?? {})) {
+    flag(`APS for ${scope}`, outcome.value);
+    if (outcome.value === "not_listed") lines.push("Checklist omission is not an exemption; additional documents may be requested.");
+    if (outcome.value === "required") {
+      if (outcome.documents) lines.push(`APS ${scope} documents: ${outcome.documents.join("; ")}.`);
+      if (outcome.steps) lines.push(`APS ${scope} steps: ${outcome.steps.map(s => s.text).join("; ")}.`);
+    }
+  }
   flag("TestAS", outcomes.testas);
   flag("dMAT", outcomes.dmat);
   if (outcomes.documents?.length)
-    lines.push(`Documents: ${outcomes.documents.join("; ")}.`);
+    lines.push(`Documents: ${outcomes.documents.filter(d => !/\bAPS\b/i.test(d)).join("; ")}.`);
   if (outcomes.steps?.length)
     lines.push(
-      `Steps: ${[...outcomes.steps]
+      `Steps: ${outcomes.steps.filter(s => !/\bAPS\b/i.test(s.text))
         .sort((a, b) => a.order - b.order)
         .map((s) => s.text)
         .join(" → ")}`,
     );
-  if (outcomes.note) lines.push(`Note: ${outcomes.note}`);
+  if (outcomes.note && !outcomes.aps) lines.push(`Note: ${outcomes.note}`);
   return lines;
 }
 
@@ -152,7 +167,7 @@ export function ruleToChunk(rule: KbRule): KbChunk {
       ? `Applies when: ${conditionLines.join("; ")}.`
       : "Applies to all profiles.",
     ...renderOutcomes(rule.outcomes),
-    `Official source says: "${rule.source_quote}"`,
+    `${rule.outcomes.aps ? "Stored legacy quote (scoped applicability unverified)" : "Official source says"}: "${rule.source_quote}"`,
   ].join("\n");
 
   return {
