@@ -23,6 +23,9 @@ import type { ApplicationWithCourse } from "@/lib/db/queries";
 import { profileFromAnswers } from "@/lib/tasks/profile";
 import { todayIsoBerlin } from "@/lib/tasks/dates";
 import { unwrap } from "@/lib/db/unwrap";
+import { hasResearch, readResearch, prepareResearchReview, ResearchDraftSchema } from "@/lib/courses/research";
+import { getProgrammeByLegacyCourse, listCourseOfferings } from "@/lib/db/queries";
+import { z } from "zod";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
 
@@ -154,10 +157,11 @@ export async function listConflictCourses(db: Db): Promise<ConflictCourse[]> {
 }
 
 export async function resolveCourseConflict(
-  db: Pick<SupabaseClient<Database>, "rpc">,
+  db: Pick<SupabaseClient<Database>, "rpc" | "from">,
   newCourseId: string,
   keepNew: boolean,
 ): Promise<void> {
+  if (keepNew && hasResearch((await getAdminCourse(db, newCourseId)).field_extraction)) throw new Error("Research requires explicit review/publication");
   unwrap(
     await db.rpc("resolve_course_conflict", {
       p_new_course_id: newCourseId,
@@ -171,6 +175,7 @@ export async function updateCourseReviewStatus(
   id: string,
   reviewStatus: Extract<Enums<"course_review_status">, "approved" | "rejected">,
 ): Promise<Tables<"courses">> {
+  if (reviewStatus === "approved" && hasResearch((await getAdminCourse(db, id)).field_extraction)) throw new Error("Research requires explicit review/publication");
   return unwrap(
     await db
       .from("courses")
@@ -201,6 +206,13 @@ export async function updateAdminCourse(
     | "university_name"
   >,
 ): Promise<Tables<"courses">> {
+  const existing = await getAdminCourse(db, id);
+  if (hasResearch(existing.field_extraction)) {
+    if (existing.review_status === "approved") throw new Error("Published research requires a new reviewed offering version; legacy edits cannot republish it");
+    const metadata = existing.field_extraction as Record<string, Json>;
+    const next = course.field_extraction && typeof course.field_extraction === "object" && !Array.isArray(course.field_extraction) ? course.field_extraction : {};
+    course = { ...course, field_extraction: { ...next, research: metadata.research } };
+  }
   return unwrap(
     await db.from("courses").update(course).eq("id", id).select().single(),
   );
@@ -419,4 +431,72 @@ export async function attachAdminProgrammeLegacyCourse(db: Db, id: string, cours
   const row = unwrap(await db.from("programmes").update({ legacy_course_id: legacyCourseId })
     .eq("id", programmeId).is("legacy_course_id", null).select().single());
   return parseProgrammeRow(row);
+}
+
+/** Explicit human publication; caller is requireAdmin(), RLS binds the reviewer.
+ * Trade-off: append/attachment is multi-request, not transactional. The course
+ * identity may publish before a failed version write; it carries no research
+ * assertions. Retry reuses the canonical link/scopes and appends history.
+ */
+export async function publishAdminCourseResearch(
+  db: Pick<SupabaseClient<Database>, "from" | "rpc">, courseId: string, accepted: string[], reviewerId: string,
+) {
+  const id = CourseCatalogueIdSchema.parse(courseId);
+  const reviewer = CourseCatalogueIdSchema.parse(reviewerId);
+  accepted = z.array(z.string().min(1).max(250)).max(400).parse(accepted);
+  const submitted = await getAdminCourse(db, id);
+  const draft = readResearch(submitted.field_extraction);
+  if (!draft) throw new Error("No research draft to review");
+  const known = new Set(draft.offerings.flatMap((o, i) => o.facts.map(f => `${i}:${f.key}`)));
+  if (new Set(accepted).size !== accepted.length || accepted.some(key => !known.has(key))) throw new Error("Unknown or duplicate research review selection");
+  const now = new Date().toISOString();
+  // Validate EVERY selection/snapshot before the first mutation.
+  const snapshots = draft.offerings.map((o, i) => ({ scope: o, facts: prepareResearchReview(draft, i, accepted.filter(k => k.startsWith(`${i}:`)).map(k => k.slice(k.indexOf(":") + 1)), reviewer, now) }));
+  const canonicalId = submitted.conflicts_with ?? submitted.id;
+  const canonical = submitted.conflicts_with ? await getAdminCourse(db, canonicalId) : submitted;
+  if (canonical.name !== draft.identity.name || canonical.university_name !== draft.identity.university) throw new Error("Research identity does not match the canonical course; reconcile labels before review");
+  if (canonical.review_status === "rejected") throw new Error("Rejected course cannot publish research");
+  if (!submitted.conflicts_with) {
+    // Rich assertions stay in explicitly scoped reviewed versions. Do not feed
+    // broad pasted/AI wording into legacy task/date parsing on approval.
+    unwrap(await db.from("courses").update({ review_status: "approved", degree: null, location: null, language: null, description: null, deadlines: [], requirements: [], tuition: null }).eq("id", canonicalId).select().single());
+  } else if (canonical.review_status !== "approved") throw new Error("Research updates require an approved canonical course");
+  let programme = await getProgrammeByLegacyCourse(db, canonicalId);
+  if (!programme && snapshots.length) programme = await insertAdminProgramme(db, {
+    legacy_course_id: canonicalId, name: canonical.name ?? draft.identity.name, university_name: canonical.university_name ?? draft.identity.university,
+    degree: submitted.conflicts_with ? canonical.degree : null, source_url: draft.identity.source_url,
+  });
+  if (programme) {
+    const scopes = await listCourseOfferings(db, programme.id);
+    for (const snapshot of snapshots) {
+      const { scope, ...offering } = snapshot.scope;
+      void scope;
+      const { facts: pendingFacts, ...payload } = offering;
+      let stored = scopes.find(o => o.intake_term === payload.intake_term && o.intake_year === payload.intake_year && o.applicant_group === payload.applicant_group && JSON.stringify(o.applicability) === JSON.stringify(payload.applicability));
+      if (!stored) stored = await insertAdminCourseOffering(db, { ...payload, programme_id: programme.id });
+      const versions = await listAdminOfferingVersions(db, stored.id);
+      const next = (versions[0]?.version ?? 0) + 1;
+      await insertAdminOfferingVersion(db, { offering_id: stored.id, version: next, review_status: "pending", reviewed_at: null, reviewed_by: null, facts: pendingFacts });
+      await insertAdminOfferingVersion(db, { offering_id: stored.id, version: next + 1, review_status: "verified", reviewed_at: now, reviewed_by: reviewer, facts: snapshot.facts });
+    }
+  }
+  // Retain the original identity, existing facts, definitions and task progress.
+  // The existing reject-update RPC merges the submitter's tracking link safely.
+  if (submitted.conflicts_with) await resolveCourseConflict(db, id, false);
+}
+
+/** Admin-only pending recovery. Human source observations are labelled manual,
+ * never represented as provider retrieval or reviewer verification. */
+export async function saveAdminCourseResearchDraft(db: Db, courseId: string, input: unknown) {
+  const id = CourseCatalogueIdSchema.parse(courseId);
+  const draft = ResearchDraftSchema.parse(input);
+  const existing = await getAdminCourse(db, id);
+  if (existing.review_status !== "pending" || !hasResearch(existing.field_extraction)) throw new Error("Only pending research can be repaired; published history requires a new submission");
+  if (draft.identity.name !== existing.name || draft.identity.university !== existing.university_name) throw new Error("Research identity must match the course being reviewed");
+  const previous = readResearch(existing.field_extraction);
+  // Existing web observations can carry forward verbatim. Newly entered content
+  // is a human capture, so cannot masquerade as a server/provider observation.
+  draft.observations = draft.observations.map(o => o.origin === "web" && !previous?.observations.some(p => JSON.stringify(p) === JSON.stringify(o)) ? { ...o, origin: "manual" as const } : o);
+  const metadata = existing.field_extraction as Record<string, Json>;
+  return unwrap(await db.from("courses").update({ field_extraction: { ...metadata, research: ResearchDraftSchema.parse(draft) } }).eq("id", id).select().single());
 }

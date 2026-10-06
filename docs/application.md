@@ -39,8 +39,8 @@ app/ routes ──────────── server components render, serve
 lib/ modules
   ├─ engine/      pure rule evaluation        (zero I/O, unit-tested)
   ├─ tasks/       generate (pure) → materialize (write) → view (read)
-  ├─ courses/     URL normalization + deterministic DAAD parser
-  ├─ ai/          assistant, KB rendering, extraction fallback, markers
+  ├─ courses/     URL normalization, DAAD manual fallback, research/evidence contracts
+  ├─ ai/          assistant, KB rendering, bounded course research, markers
   ├─ checks/      anonymous-result ownership tokens
   ├─ auth/        requireUser/requireAdmin guards, safe redirects
   └─ db/          typed Supabase clients + ALL queries
@@ -260,9 +260,8 @@ valid partial drafts, but complete submissions still require subjects.
 
 ### 2. Course import & review
 
-1. A user pastes a course URL (plus the page's Ctrl+A text — the server
-   never fetches external pages) into the add-course sheet → `POST
-   /api/courses/import`.
+1. A user pastes a course URL, programme/university identity and the page's
+   Ctrl+A text into the add-course sheet → `POST /api/courses/import`.
    DAAD's hidden tabs are not included by Ctrl+A: the sheet instructs users
    to append the overview, requirements and fees tabs. The deterministic
    parser supports both legacy and current labels, preserves complete
@@ -271,13 +270,59 @@ valid partial drafts, but complete submissions still require subjects.
    dedupe. An existing course is linked to the user's dashboard instead of
    re-imported; a colliding pending import from another user surfaces as
    409 via the unique index.
-3. Extraction: the deterministic DAAD label parser
-   (`lib/courses/parse-daad.ts`) runs first; the AI fallback
-   (`lib/ai/extract-course.ts`) fills only the fields the parser missed,
-   with verbatim-quote prompting, zod validation and literal substring checks
-   against the pasted source. Unsupported AI values are discarded. Facts are stored
-   verbatim — deadlines and tuition are never reformatted.
-4. New imports land as `pending` and are visible only to their importer
+3. Research runs even for a completely parsed paste. The DAAD parser provides
+   manual fallback, never a completeness decision. `lib/ai/research-course.ts`
+   uses the existing Tavily HTTP API and configured OpenRouter extraction model
+   in a fixed workflow (three searches, at most three extraction batches, one
+   structured generation, no retries, 90-second total abort). Search begins on
+   DAAD/uni-assist; a retrieved DAAD page matching both identity labels may
+   endorse university/application website links on German domains. Pasted links,
+   arbitrary search hits and model URLs cannot expand that allowlist. Restricted
+   extraction follows official programme/regulations/PDF links, keeping at most
+   12 observations of 20,000 characters each; provider JSON is byte-bounded.
+   Full pasted text (up to 200,000 characters) is retained for manual recovery.
+4. Pure `lib/courses/research.ts` validates every model URL and literal quote
+   against retrieved observations, programme identity, source scope and applicant
+   wording. An effective intake needs explicit source term/year; source retrieval
+   is never an intake boundary. Unknown scope retains non-publishable sourced
+   captures. Complete scopes contain pending assertions or explicit topic gaps
+   (deadline, route, prerequisites, language/exemptions, tuition/semester fee,
+   documents/application link). Competing assertions remain unresolved with all
+   alternatives. Shape/literal checks establish fidelity, not semantic correctness.
+   Model reviewer/status/date metadata is rejected. Web/AI failure retains manual
+   values and a visible incomplete status; no error bodies or credentials are logged.
+5. The draft lives under `courses.field_extraction.research` with format
+   `up-course-01/v1`, alongside legacy provenance. Import uses only the caller's
+   course insert permission; catalogue writes remain admin-only. Saving legacy
+   manual edits preserves research. Both old approve and keep-update paths reject
+   research drafts (including malformed captures); approved research courses cannot
+   acquire new assertions through the legacy edit helper.
+6. Minimal review in the admin queue shows wording, applicability, retrieval time,
+   official URL, conflicts and gaps. The reviewer explicitly checks current primary
+   sources and selects accepted supported facts. Unselected/conflicting facts remain
+   unresolved, and normalized dates stay null. `publishAdminCourseResearch` validates
+   all selections before writes, reuses canonical programme/offering identities and
+   appends pending and reviewed snapshots with the authenticated reviewer's metadata.
+   A new legacy course publishes only its identity; broad unreviewed requirements,
+   fees and deadlines are cleared rather than entering legacy task planning. Existing
+   tasks and definitions are untouched. Research updates publish scoped versions
+   against the original course, then the existing reject-update RPC merges the
+   submitter's tracking link without replacing original facts or student progress.
+   Public course pages read the latest reviewed snapshot per offering and cite its
+   evidence; unresolved assertions never receive a reviewed label.
+   Trade-off: publication spans multiple caller-scoped requests. Partial failure
+   can expose only the course identity before a reviewed version finishes; retry
+   reuses linked scopes and preserves append-only history. No service escalation,
+   migration, backfill or automatic task integration is introduced. COURSE03 will
+   extend this same draft format/review boundary with field editing and conflict
+   resolution; it should not invent a second review contract.
+   A small JSON recovery editor allows admins to repair pending captures and
+   source-supported scope after web/AI failure. New human-entered observations
+   are labelled `manual`, and newly supplied `web` captures are relabelled server-side.
+   Source/identity/intake/literal checks apply to manual recovery too. Saving neither
+   supplies reviewer metadata nor publishes; the explicit acceptance step remains
+   mandatory. Conflict acceptance requires an explicit pending repair/resolution.
+7. New imports land as `pending` and are visible only to their importer
    until an admin approves them in `/admin`. "The page changed" submissions
    carry `conflicts_with` and get a side-by-side resolution UI backed by
    the atomic `resolve_course_conflict` DB function.
@@ -435,7 +480,7 @@ keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.
 | Add a DB query | `lib/db/queries.ts` (user) or `admin-queries.ts` (admin) |
 | Change the schema | new file in `supabase/migrations/` → `supabase db push` → `pnpm db:types` → RLS test |
 | Change assistant behavior | prompt/tools in `lib/ai/assistant.ts`; rerun `pnpm eval:assistant` |
-| Add course-page extraction support | labels in `lib/courses/parse-daad.ts`; the AI fallback needs no change |
+| Add course-page research support | `lib/ai/research-course.ts` for I/O, `lib/courses/research.ts` for evidence/scope decisions; DAAD parser is manual fallback |
 | Add an env var | `lib/env.ts` schemas + `runtimeEnv` + `.env.example` |
 
 ### Additive programme catalogue (UP-COURSE-02)
@@ -463,8 +508,9 @@ versions and scopes with verified versions. A public version can contain verifie
 or explicitly unresolved fields, never pending/rejected research. Pending research
 is admin-only; fact corrections and review decisions append a new version rather than
 mutating history. Query helpers return all reviewed history newest first, leaving
-version selection explicit. There is no automatic import/task/UI integration,
-backfill, publication or change to legacy course/application/task identities.
+version selection explicit. UP-COURSE-01 integrates research import, explicit
+review/publication and public reading; automatic task integration and backfill
+remain absent, and existing course/application/task identities stay intact.
 
 Programme labels (name, institution, degree, source URL) can be corrected by an
 admin on the same canonical ID. The database freezes the ID, established legacy
@@ -490,7 +536,7 @@ Research programmes may start with a null legacy link. After a legacy course is
 approved and is not a conflict submission, `attachAdminProgrammeLegacyCourse`
 attaches it once on the same programme ID; replacement/detachment is forbidden.
 Publication integration can approve the legacy course, attach once, then append a
-reviewed version. This change implements no publication/AI/UI workflow. Linked
+reviewed version. UP-COURSE-01 uses that lifecycle through caller-scoped helpers. Linked
 courses must remain approved/non-conflict, while unmapped pending/conflict rows
 remain removable through existing operations. Existing applications and task values
 are never rewritten by either catalogue migration.

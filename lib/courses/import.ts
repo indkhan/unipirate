@@ -40,17 +40,6 @@ export const FIELD_GROUPS = [
 export type FieldGroup = (typeof FIELD_GROUPS)[number];
 export type FieldExtraction = Partial<Record<FieldGroup, "library" | "ai">>;
 
-// Required set that decides whether the AI fallback runs.
-export function missingRequired(facts: CourseFacts): boolean {
-  return (
-    !facts.name ||
-    !facts.university ||
-    !facts.degree ||
-    !facts.language ||
-    facts.deadlines.length === 0
-  );
-}
-
 // Prefer a dated line, but keep undated source wording when no date is given.
 export function firstDeadline(deadlines: unknown): string | null {
   if (!Array.isArray(deadlines)) return null;

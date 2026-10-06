@@ -40,11 +40,15 @@ export function AddCourseSheet({
   const [lookup, setLookup] = useState<LookupState>({ step: "url" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [name, setName] = useState("");
+  const [university, setUniversity] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
 
   function close() {
     setOpen(false);
     setUrl("");
     setText("");
+    setName(""); setUniversity("");
     setLookup({ step: "url" });
     setError(null);
   }
@@ -60,6 +64,7 @@ export function AddCourseSheet({
       deduped?: boolean;
       course?: FoundCourse | null;
       onDashboard?: boolean;
+      researchStatus?: "draft" | "incomplete";
     };
     if (!response.ok) {
       const error = new Error(payload.error ?? "Something went wrong — try again.");
@@ -115,6 +120,7 @@ export function AddCourseSheet({
       const payload = await post({
         url,
         text,
+        identity: { name, university },
         ...(lookup.conflictsWith ? { conflictsWith: lookup.conflictsWith } : {}),
       });
       if (lookup.conflictsWith) {
@@ -127,6 +133,7 @@ export function AddCourseSheet({
         });
       }
       close();
+      setNotice(payload.researchStatus === "incomplete" ? "Course saved for review. Research is incomplete; missing facts remain unknown and the pasted source is retained." : "Research draft saved for admin review.");
       router.refresh();
     } catch (e) {
       posthog.capture("course_import_failed", {
@@ -148,7 +155,7 @@ export function AddCourseSheet({
     </button>
   );
 
-  if (!open) return trigger;
+  if (!open) return <>{trigger}{notice ? <p role="status">{notice}</p> : null}</>;
 
   const foundCourseOnDashboard = lookup.step === "found" && lookup.onDashboard;
 
@@ -248,10 +255,12 @@ export function AddCourseSheet({
               onSubmit={submitText}
               style={{ display: "flex", flexDirection: "column", gap: 16 }}
             >
+              <label>Programme name<input className={dashStyles.urlInput} required maxLength={240} value={name} onChange={e => setName(e.target.value)} /></label>
+              <label>University name<input className={dashStyles.urlInput} required maxLength={240} value={university} onChange={e => setUniversity(e.target.value)} /></label>
               <p className={dashStyles.sheetHint}>
                 {lookup.conflictsWith
                   ? "Copy the course overview, requirements and fees into this box. On DAAD, open each relevant tab, select all (Ctrl+A), copy, and append its text here. Hidden tabs are not copied. An admin compares the update with the saved version."
-                  : "Copy the course overview, requirements and fees into this box. On DAAD, open each relevant tab, select all (Ctrl+A), copy, and append its text here. Hidden tabs are not copied; missing facts stay unknown until reviewed."}
+                  : "Paste the course page as a research seed. We check related official pages and PDFs for intake requirements, deadlines and fees. Missing or conflicting facts stay unresolved until an admin reviews them. On DAAD, append hidden requirements and fees tabs for manual fallback."}
               </p>
               <textarea
                 className={dashStyles.textInput}
@@ -263,7 +272,7 @@ export function AddCourseSheet({
               {error ? <p className={dashStyles.error}>{error}</p> : null}
               <button className={dashStyles.submit} type="submit" disabled={busy}>
                 {busy
-                  ? "Reading the page…"
+                  ? "Researching official sources…"
                   : lookup.conflictsWith
                     ? "Submit the update"
                     : "Read this page"}

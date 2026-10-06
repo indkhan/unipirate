@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { extractCourse } from "@/lib/ai/extract-course";
-import { EMPTY_FACTS, missingRequired } from "../import";
+import { EMPTY_FACTS } from "../import";
 import { parseDaadText } from "../parse-daad";
 import { DAAD_PAGE_TEXT, GARBAGE_TEXT, NON_DAAD_PAGE_TEXT } from "./fixtures";
 
@@ -88,7 +88,6 @@ Imprint`);
       "IELTS 6.5 or TOEFL iBT 90 for the English track",
       "DSH-2 or TestDaF 4 for the German track",
     ]);
-    expect(missingRequired(facts)).toBe(false);
   });
 
   it("handles the city bulleted on its own line", () => {
@@ -102,14 +101,14 @@ Imprint`);
   });
 
   it("finds nothing on non-DAAD or garbage text", () => {
-    expect(missingRequired(parseDaadText(NON_DAAD_PAGE_TEXT))).toBe(true);
+    expect(parseDaadText(NON_DAAD_PAGE_TEXT)).toEqual(EMPTY_FACTS);
     expect(parseDaadText(GARBAGE_TEXT)).toEqual(EMPTY_FACTS);
   });
 });
 
-describe("extractCourse", () => {
-  it("skips AI when the parser fills required fields", async () => {
-    const ai = () => Promise.reject(new Error("AI must not be called"));
+describe("extractCourse manual recovery", () => {
+  it("retains parsed facts when research is unavailable even for a complete paste", async () => {
+    const ai = () => Promise.reject(new Error("Synthetic research unavailable"));
     const result = await extractCourse("https://x.de/c", DAAD_PAGE_TEXT, ai);
     expect(result.extractionMethod).toBe("library");
     expect(result.fieldExtraction).toEqual({
@@ -121,41 +120,16 @@ describe("extractCourse", () => {
     });
   });
 
-  it("uses AI only for missing fields and records it per group", async () => {
-    const ai = async () => ({
-      ...EMPTY_FACTS,
-      name: "M.Sc. Data Wizardry",
-      university: "TU Example University",
-      degree: "Master of Science",
-      language: "English",
-      location: "Example City",
-      description: "Our two-year graduate programme teaches applied data things.",
-      deadlines: ["Apply by the end of May each year via our portal."],
-      tuition: "Fees: none for EU students.",
-    });
-    const result = await extractCourse("https://x.de/c", NON_DAAD_PAGE_TEXT, ai);
-    expect(result.extractionMethod).toBe("ai");
+  it("retains manual identity and pasted source when university-page research fails", async () => {
+    const research = async () => { throw new Error("Synthetic provider failure"); };
+    const result = await extractCourse("https://x.de/c", NON_DAAD_PAGE_TEXT, research, { name: "M.Sc. Data Wizardry", university: "TU Example University" });
+    expect(result.extractionMethod).toBe("library");
     expect(result.facts.name).toBe("M.Sc. Data Wizardry");
-    expect(result.facts.deadlines).toEqual([
-      "Apply by the end of May each year via our portal.",
-    ]);
-    expect(result.facts.location).toBe("Example City");
-    expect(result.facts.description).toBe(
-      "Our two-year graduate programme teaches applied data things.",
-    );
-    expect(result.fieldExtraction).toEqual({
-      core: "ai",
-      description: "ai",
-      deadlines: "ai",
-      tuition: "ai",
-    });
+    expect(result.research.status).toBe("incomplete");
+    expect(result.research.observations[0].content).toBe(NON_DAAD_PAGE_TEXT);
   });
 
-  it("degrades to honest gaps when AI finds nothing", async () => {
-    const ai = async () => EMPTY_FACTS;
-    const result = await extractCourse("https://x.de/c", GARBAGE_TEXT, ai);
-    expect(result.facts).toEqual(EMPTY_FACTS);
-    expect(result.extractionMethod).toBe("library");
-    expect(result.fieldExtraction).toEqual({});
+  it("rejects missing identity rather than inventing catalogue labels", async () => {
+    await expect(extractCourse("https://x.de/c", GARBAGE_TEXT, async () => { throw new Error("must not call"); })).rejects.toThrow();
   });
 });
