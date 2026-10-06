@@ -634,6 +634,19 @@ No existing applicability map is rewritten or given an inferred vocabulary.
 ### COURSE01 / PROC01 interface
 
 The shared payload remains `OfferingFactSchema`; no catalogue schema change.
+Manual recovery and publication validate the same captured applicability boundary:
+`source_scope` must equal the actual offering scope quote, every field's applicant
+label must equal the offering label, and its evidence must carry that captured
+identity/intake/group context or be explicitly linked from the captured scope page.
+Legacy keep-update resolution checks both incoming and canonical research markers;
+it cannot replace a research canonical record through the old task-sync workflow.
+Known source-named language instruments (IELTS, TOEFL, TestDaF, DSH, Cambridge,
+CEFR) identify independent semantic requirements regardless of model field labels.
+Competing wording for the same instrument is unresolved; distinct instruments remain
+separate alternatives. Recovery cannot insert opposing pending semantic assertions.
+Route, stage/deadline, explicit language exemptions, tuition and semester-fee wording
+also receive semantic conflict identities; unrelated document/prerequisite labels
+remain separate captures rather than conflating all requirements into one field.
 Reviewed routes use kind `route` and its typed route value. Portal facts use kind
 `description`, literal HTTPS portal URL as `verbatim`, and exact keys
 `application_link:university`, `application_link:vpd`, `application_link:uniassist`.

@@ -46,6 +46,24 @@ export const ResearchDraftSchema = z.object({
     const source = draft.observations.find(s => s.origin !== "paste" && s.url === o.scope.source_url && s.content.includes(o.scope.source_quote));
     if (!source || !identifies(source, draft.identity) || !(o.intake_term === "winter" ? /winter/i : /summer|sommer/i).test(o.scope.source_quote)
       || !new RegExp(`\\b${o.intake_year}\\b`).test(o.scope.source_quote) || !literalGroup(o.scope.source_quote, o.applicant_group)) ctx.addIssue({ code: "custom", message: "Draft offering needs captured identity/intake/applicant scope" });
+    if (o.applicability.source_scope !== o.scope.source_quote) ctx.addIssue({ code: "custom", message: "Offering applicability must retain its captured scope quote" });
+    const assertions = new Map<string, string>();
+    for (const f of o.facts) {
+      if (f.applicability !== o.applicant_group) ctx.addIssue({ code: "custom", message: "Field applicability must match its captured offering applicant group" });
+      for (const e of f.evidence) {
+        const observed = draft.observations.find(s => s.origin !== "paste" && s.url === e.source_url && s.content.includes(e.source_quote));
+        if (!observed || !((identifies(observed, draft.identity)
+          && (o.intake_term === "winter" ? /winter/i : /summer|sommer/i).test(observed.content)
+          && new RegExp(`\\b${o.intake_year}\\b`).test(observed.content) && literalGroup(observed.content, o.applicant_group))
+          || (source && links(source.content).includes(observed.url)))) ctx.addIssue({ code: "custom", message: "Field evidence needs captured offering applicability or its explicit source link" });
+      }
+      if (f.status === "pending" && f.verbatim) {
+        const field = semanticField({ ...f, verbatim: f.verbatim });
+        const previous = assertions.get(field);
+        if (previous !== undefined && previous !== f.verbatim) ctx.addIssue({ code: "custom", message: "Competing semantic assertions require unresolved conflict review" });
+        assertions.set(field, f.verbatim);
+      }
+    }
   }
   for (const offering of [...draft.offerings, { facts: draft.unscoped ?? [] }]) {
     if (new Set(offering.facts.map(f => f.key)).size !== offering.facts.length) ctx.addIssue({ code: "custom", message: "Duplicate draft field key" });
@@ -92,6 +110,22 @@ export function officialDomains(seed: Pick<ResearchSeed, "name" | "university">,
 function literalGroup(content: string, group: string): boolean {
   const escaped = group.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`(^|[^\\p{L}\\p{N}_-])${escaped}($|[^\\p{L}\\p{N}_-])`, "u").test(content);
+}
+// Known source-named language instruments have independent requirement identities.
+// IELTS and TOEFL may be valid alternatives; model field labels cannot split IELTS.
+function semanticField(f: Pick<z.infer<typeof fact>, "key" | "kind" | "verbatim" | "deadline_kind">): string {
+  if (f.kind === "route") return "route";
+  if (f.kind === "deadline") return `deadline:${stageOf(f.key) ?? "unknown"}:${f.deadline_kind}`;
+  if (f.kind === "language") {
+    const instruments = [...f.verbatim.matchAll(/\b(IELTS|TOEFL|TestDaF|DSH|Cambridge|CEFR)\b/gi)].map(m => m[1].toLowerCase());
+    if (instruments.length) return `language:${[...new Set(instruments)].sort().join("+")}`;
+    if (/exempt|exemption|waiv|befreit|befreiung/i.test(f.verbatim)) return "language:exemption";
+  }
+  if (f.kind === "fee") {
+    if (/tuition|studiengebühr/i.test(f.verbatim)) return "fee:tuition";
+    if (/semester (?:fee|contribution)|semesterbeitrag/i.test(f.verbatim)) return "fee:semester";
+  }
+  return `${f.kind}:${f.key}`;
 }
 // Conservative literal stage support, never inferred from a host or route.
 // Trade-off: other source wording needs manual literal capture before review.
@@ -173,7 +207,7 @@ export function buildResearchDraft(seed: ResearchSeed, observations: Observation
         draft.issues.push("A candidate lacked source, wording or applicability support and was left unresolved.");
         continue;
       }
-      const field = candidate.kind === "route" ? "route" : candidate.kind === "deadline" ? `deadline:${stageOf(candidate.key) ?? "unknown"}:${candidate.deadline_kind}` : candidate.key;
+      const field = semanticField(candidate);
       grouped.set(field, [...(grouped.get(field) ?? []), candidate]);
     }
     for (const alternatives of grouped.values()) {

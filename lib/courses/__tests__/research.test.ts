@@ -15,6 +15,32 @@ export const output = { offerings: [{ intake_term: "winter", intake_year: 2027, 
 ] }] };
 
 describe("research evidence boundary", () => {
+  it("preserves opposing IELTS requirements despite arbitrary model keys, while TOEFL remains a separate alternative", () => {
+    const sources = observations.map((s, i) => i === 2 ? { ...s, content: `${s.content} IELTS 7.0. TOEFL 90.` } : s);
+    const language = output.offerings[0].facts[2];
+    const facts = [language, { ...language, key: "language_requirement", verbatim: "IELTS 7.0.", evidence: [reference(sources[2].url, "IELTS 7.0.")] },
+      { ...language, key: "other", verbatim: "TOEFL 90.", evidence: [reference(sources[2].url, "TOEFL 90.")] }];
+    const draft = buildResearchDraft(seed, sources, { offerings: [{ ...output.offerings[0], facts }] }, []);
+    expect(draft.conflicts).toHaveLength(1);
+    expect(draft.conflicts[0].alternatives).toHaveLength(2);
+    expect(draft.offerings[0].facts.find(f => f.key === "other")?.status).toBe("pending");
+    expect(() => prepareResearchReview(draft, 0, ["english"], "11111111-1111-4111-8111-111111111111", "2026-10-07T13:00:00Z")).toThrow();
+    expect(prepareResearchReview(draft, 0, ["other"], "11111111-1111-4111-8111-111111111111", "2026-10-07T13:00:00Z").find(f => f.key === "other")?.status).toBe("verified");
+    const edited = buildResearchDraft(seed, sources, { offerings: [{ ...output.offerings[0], facts: [language] }] }, []);
+    edited.offerings[0].facts.push({ ...edited.offerings[0].facts[0], key: "bypass", verbatim: "IELTS 7.0.", evidence: [{ ...edited.offerings[0].facts[0].evidence[0], source_quote: "IELTS 7.0." }] });
+    expect(ResearchDraftSchema.safeParse(edited).success).toBe(false);
+  });
+  it("accepts identical source-named requirements without false conflicts and rejects field evidence unrelated to offering scope", () => {
+    const language = output.offerings[0].facts[2];
+    const draft = buildResearchDraft(seed, observations, { offerings: [{ ...output.offerings[0], facts: [language, { ...language, key: "language_requirement" }] }] }, []);
+    expect(draft.conflicts).toEqual([]);
+    expect(draft.offerings[0].facts.filter(f => f.status === "pending")).toHaveLength(1);
+    expect(ResearchDraftSchema.safeParse(draft).success).toBe(true);
+    const edited = structuredClone(draft);
+    edited.observations.push({ url: "https://uni-example.de/unrelated", origin: "manual", content: "Unrelated programme Summer 2030 EU applicants IELTS 6.5.", retrieved_at: observations[0].retrieved_at });
+    edited.offerings[0].facts[0].evidence[0].source_url = "https://uni-example.de/unrelated";
+    expect(ResearchDraftSchema.safeParse(edited).success).toBe(false);
+  });
   it("requires literal stage and portal evidence before reviewing application links", () => {
     const portal = "https://uni-example.de/portal";
     const candidate = { ...output.offerings[0].facts[2], key: "application_link:university", kind: "description", verbatim: portal,

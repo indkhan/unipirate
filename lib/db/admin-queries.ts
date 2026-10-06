@@ -161,7 +161,11 @@ export async function resolveCourseConflict(
   newCourseId: string,
   keepNew: boolean,
 ): Promise<void> {
-  if (keepNew && hasResearch((await getAdminCourse(db, newCourseId)).field_extraction)) throw new Error("Research requires explicit review/publication");
+  if (keepNew) {
+    const incoming = await getAdminCourse(db, newCourseId);
+    if (hasResearch(incoming.field_extraction)
+      || (incoming.conflicts_with && hasResearch((await getAdminCourse(db, incoming.conflicts_with)).field_extraction))) throw new Error("Research requires explicit review/publication");
+  }
   unwrap(
     await db.rpc("resolve_course_conflict", {
       p_new_course_id: newCourseId,
