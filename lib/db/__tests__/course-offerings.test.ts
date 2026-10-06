@@ -9,7 +9,8 @@ it.each([
   ["supabase/migrations/20261006000100_course_offerings.sql", 10],
   ["supabase/migrations/20261006000101_course_offering_integrity.sql", 14],
   ["supabase/migrations/20261006000102_course_capture_validation.sql", 8],
-  ["supabase/tests/course_offerings.sql", 30],
+  ["supabase/migrations/20261006000103_course_capture_reviewer_uuid.sql", 2],
+  ["supabase/tests/course_offerings.sql", 32],
 ] as const)("preserves every literal SQL dollar delimiter in %s", (file, expected) => {
   // Ignore SQL string literals (including regex end anchors) and line comments.
   const sql = readFileSync(file, "utf8").replace(/'(?:''|[^'])*'|--[^\r\n]*/g, "");
@@ -26,6 +27,20 @@ function client(body: unknown, status = 200) {
   return { db, requests };
 }
 describe("offering queries", () => {
+  it.each(['2026-10-05T12:00:00+0530', '2026-10-05T12:00:00+1600'])('rejects compact capture offset before I/O: %s', async (retrieved_at) => {
+    const { db, requests } = client(null);
+    await expect(insertAdminOfferingVersion(db, { offering_id: id, version: 1, review_status: 'pending', reviewed_at: null, reviewed_by: null,
+      facts: [{ key: 'description', kind: 'description', status: 'pending', verbatim: 'Synthetic', applicability: 'Synthetic', route: null, deadline_kind: null, date: null, time: null, timezone: null,
+        evidence: [{ source_url: 'https://example.invalid/', source_quote: 'Synthetic', retrieved_at, last_verified_at: null, verified_by: null, source_hash: null }] }] })).rejects.toThrow();
+    expect(requests).toEqual([]);
+  });
+  it.each([id.replaceAll('-', ''), `{${id}}`])('rejects malformed stored reviewer spelling %s', async (verified_by) => {
+    const { db } = client([{ id, created_at: '2026-10-06T14:00:00Z', offering_id: id, version: 1,
+      review_status: 'verified', reviewed_at: '2026-10-06T13:00:00Z', reviewed_by: id,
+      facts: [{ key: 'description', kind: 'description', status: 'verified', verbatim: 'Synthetic', applicability: 'Synthetic', route: null, deadline_kind: null, date: null, time: null, timezone: null,
+        evidence: [{ source_url: 'https://example.invalid/', source_quote: 'Synthetic', retrieved_at: '2026-10-06T12:00:00Z', last_verified_at: '2026-10-06T13:00:00Z', verified_by, source_hash: null }] }] }]);
+    await expect(listReviewedOfferingVersions(db, id)).rejects.toThrow();
+  });
   it.each(['2026-10-05T24:00:00Z', '2026-10-05T12:00:00+16:00', '2026-10-05T12:00:00+01:60'])('rejects unreadable stored capture timestamp %s', async (retrieved_at) => {
     const wording = 'Synthetic evidence';
     const { db } = client([{ id, created_at: '2026-10-06T14:00:00Z', offering_id: id, version: 1,

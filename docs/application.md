@@ -512,3 +512,10 @@ strict read contract: real calendar dates, hours 00–23, minutes/seconds 00–5
 years 0001–9999 and numeric offsets up to 15:59. Optional seconds and fractional
 precision remain verbatim. New checks are NOT VALID to preserve existing captures
 for explicit review; they reject new unreadable records without rewriting history.
+
+Additive migration `20261006000103_course_capture_reviewer_uuid.sql` replaces
+the existing capture validator body to require hyphenated reviewer UUID strings,
+accepting either hex case verbatim. PostgreSQL's compact/braced UUID spellings
+are rejected in captured JSON. Timestamp offsets require an explicit colon in
+both SQL and TypeScript; compact offsets cannot bypass the 15:59 limit.
+Reviewer binding, exact historical carry-forward and existing captures are unchanged.

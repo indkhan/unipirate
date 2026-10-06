@@ -260,7 +260,7 @@ do $$ declare blank text; field text; capture jsonb; invalid text; n integer := 
       perform pg_temp.expect_state(format('insert into public.course_offering_versions(offering_id,version,review_status,reviewed_at,reviewed_by,facts) values (%L,99,''verified'',now(),%L,%L)','00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000095',capture),'23514');
     end loop;
   end loop;
-  foreach invalid in array array['2026-10-05T24:00:00Z','2026-02-29T12:00:00Z','2026-10-05T12:00:60Z','2026-10-05T12:00:00+16:00','2026-10-05T12:00:00+01:60','0000-01-01T12:00:00Z',E'2026-10-05T12:00:00Z\n'] loop
+  foreach invalid in array array['2026-10-05T24:00:00Z','2026-02-29T12:00:00Z','2026-10-05T12:00:60Z','2026-10-05T12:00:00+16:00','2026-10-05T12:00:00+01:60','2026-10-05T12:00:00+0530','2026-10-05T12:00:00+1600','0000-01-01T12:00:00Z',E'2026-10-05T12:00:00Z\n'] loop
     foreach field in array array['retrieved_at','last_verified_at'] loop
       capture := jsonb_set(pg_temp.synthetic_deadline('2027-07-15','non-EU','00000000-0000-4000-8000-000000000095'),array['0','evidence','0',field],to_jsonb(invalid));
       perform pg_temp.expect_state(format('insert into public.course_offering_versions(offering_id,version,review_status,reviewed_at,reviewed_by,facts) values (%L,99,''verified'',now(),%L,%L)','00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000095',capture),'23514');
@@ -277,6 +277,28 @@ do $$ declare blank text; field text; capture jsonb; invalid text; n integer := 
     insert into public.course_offering_versions(offering_id,version,review_status,reviewed_at,reviewed_by,facts)
       values ('00000000-0000-4000-8000-000000000002',n,'verified',now(),'00000000-0000-4000-8000-000000000095',capture);
     perform pg_temp.assert_true((select facts->0->'evidence'->0->>'retrieved_at' = valid from public.course_offering_versions where offering_id = '00000000-0000-4000-8000-000000000002' and version = n),'timestamp preserved verbatim');
+    n := n + 1;
+  end loop;
+end $$;
+-- 00103: matching authenticated actor cannot smuggle alternative UUID spelling.
+-- A fixture with alphabetic hex demonstrates that accepted case is retained.
+reset role;
+insert into auth.users(id,email) values ('00000000-0000-4000-8000-0000000000ab','course-reviewer-syntax@example.invalid');
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-0000000000ab","app_metadata":{"role":"admin"}}',true);
+do $$ declare reviewer text; n integer := 30; capture jsonb; begin
+  foreach reviewer in array array['000000000000400080000000000000ab','{00000000-0000-4000-8000-0000000000ab}'] loop
+    perform pg_temp.expect_state(format('insert into public.course_offering_versions(offering_id,version,review_status,reviewed_at,reviewed_by,facts) values (%L,99,''verified'',now(),%L,%L)',
+      '00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-0000000000ab',
+      pg_temp.synthetic_deadline('2027-07-15','non-EU',reviewer)), '23514');
+  end loop;
+  foreach reviewer in array array['00000000-0000-4000-8000-0000000000ab','00000000-0000-4000-8000-0000000000AB'] loop
+    capture := jsonb_set(pg_temp.synthetic_deadline('2027-07-15','non-EU',reviewer),'{0,evidence,0,retrieved_at}','"2026-10-06T12:00:00.123456+05:30"');
+    insert into public.course_offering_versions(offering_id,version,review_status,reviewed_at,reviewed_by,facts)
+      values ('00000000-0000-4000-8000-000000000002',n,'verified',now(),'00000000-0000-4000-8000-0000000000ab',capture);
+    perform pg_temp.assert_true((select facts->0->'evidence'->0->>'verified_by' = reviewer
+      and facts->0->'evidence'->0->>'retrieved_at' = '2026-10-06T12:00:00.123456+05:30'
+      from public.course_offering_versions where offering_id = '00000000-0000-4000-8000-000000000002' and version = n),'canonical reviewer case and colon offset retained verbatim');
     n := n + 1;
   end loop;
 end $$;

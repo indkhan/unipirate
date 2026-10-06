@@ -5,8 +5,15 @@ const evidence = { source_url: "https://example.edu/official?intake=2027#deadlin
 const fact = { key: "closing", kind: "deadline", status: "verified", verbatim: evidence.source_quote, applicability: "Synthetic non-EU applicants", evidence: [evidence], deadline_kind: "application_closing", date: "2027-07-15", time: null, timezone: null, route: null };
 const version = { offering_id: id, version: 1, review_status: "verified", reviewed_at: evidence.last_verified_at, reviewed_by: id, facts: [fact] };
 
-it.each(['2026-10-05T24:00:00Z', '2026-02-29T12:00:00Z', '2026-10-05T12:00:60Z', '2026-10-05T12:00:00+16:00', '2026-10-05T12:00:00+01:60', '0000-01-01T12:00:00Z', '2026-10-05T12:00:00Z\n'])('rejects nonrepresentable capture timestamp %j', (retrieved_at) => {
+it.each(['2026-10-05T24:00:00Z', '2026-02-29T12:00:00Z', '2026-10-05T12:00:60Z', '2026-10-05T12:00:00+16:00', '2026-10-05T12:00:00+01:60', '2026-10-05T12:00:00+0530', '2026-10-05T12:00:00+1600', '0000-01-01T12:00:00Z', '2026-10-05T12:00:00Z\n'])('rejects nonrepresentable capture timestamp %j', (retrieved_at) => {
   expect(CourseEvidenceSchema.safeParse({ ...evidence, retrieved_at }).success).toBe(false);
+});
+it.each([id.replaceAll('-', ''), `{${id}}`])('rejects noncanonical captured reviewer %s', (verified_by) => {
+  expect(CourseEvidenceSchema.safeParse({ ...evidence, verified_by }).success).toBe(false);
+});
+it('preserves uppercase canonical reviewer spelling', () => {
+  const capture = { ...evidence, verified_by: 'abcdefab-cdef-4abc-8abc-abcdefabcdef'.toUpperCase() };
+  expect(CourseEvidenceSchema.parse(capture)).toEqual(capture);
 });
 it.each(['2024-02-29T12:00Z', '2026-10-05T12:00:00.123456Z', '2026-10-05T12:00:00+05:30', '2026-10-05T12:00:00-15:59'])('preserves accepted capture timestamp %s', (retrieved_at) => {
   const capture = { ...evidence, retrieved_at, last_verified_at: null, verified_by: null };

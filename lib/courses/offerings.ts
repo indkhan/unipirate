@@ -6,7 +6,7 @@ const text = z.string().refine((value) => value.trim().length > 0, "Must not be 
 const timestamp = z.string().datetime({ offset: true }).refine((value) => {
   const offset = /[+-](\d{2}):(\d{2})$/.exec(value);
   return !value.startsWith('0000-') && Number.isFinite(Date.parse(value))
-    && (!offset || (Number(offset[1]) <= 15 && Number(offset[2]) <= 59));
+    && (value.endsWith('Z') || (offset !== null && Number(offset[1]) <= 15 && Number(offset[2]) <= 59));
 }, 'Representable capture timestamp required');
 const uuid = z.string().uuid();
 // Same deliberately narrow grammar as public.valid_course_source_url: ASCII DNS,
