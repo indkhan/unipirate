@@ -157,7 +157,7 @@ describe("buildProfile reproduces engine-test personas", () => {
   it("persona #1 answers evaluate to the persona-#1 outcome", () => {
     const r = evaluate(buildProfile(p1Answers), fixtureRules);
     expect(r.path).toBe("studienkolleg");
-    expect(r.aps).toBe("required");
+    expect(r.aps).toBe("unknown");
     expect(r.testAS).toBe("unknown");
     expect(r.dMAT).toBe("not_required");
   });
@@ -165,7 +165,7 @@ describe("buildProfile reproduces engine-test personas", () => {
   it("persona #11 answers evaluate to the persona-#11 outcome", () => {
     const r = evaluate(buildProfile(p11Answers), fixtureRules);
     expect(r.path).toBe("subject_restricted");
-    expect(r.aps).toBe("not_required");
+    expect(r.aps).toBe("unknown");
   });
 });
 
@@ -256,11 +256,11 @@ describe("visibleSteps", () => {
     expect(next.hasExistingApsCertificate).toBe(false);
   });
 
-  it("skips the existing-APS question when the visa is filed from Saudi Arabia", () => {
+  it("preserves existing APS when the visa is filed from Saudi Arabia", () => {
     const next = withAnswer(p1Answers, "visaApplicationCountry", "sa");
-    expect(visibleSteps(next)).not.toContain("hasExistingApsCertificate");
+    expect(visibleSteps(next)).toContain("hasExistingApsCertificate");
     // the stale APS answer is pruned along with its step
-    expect(next.hasExistingApsCertificate).toBeUndefined();
+    expect(next.hasExistingApsCertificate).toBe(false);
   });
 
   it("incomplete answers fail schema validation", () => {

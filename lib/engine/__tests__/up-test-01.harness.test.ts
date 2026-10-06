@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { evaluate, type Result } from "../evaluate";
+import { officialApsRules, officialIndianProfile } from "./aps-scopes.fixture";
 import { fixtureRules } from "./rules.fixture";
 import {
   CURRENT,
@@ -51,6 +52,13 @@ describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
       assertExpected(c, evaluate(c.profile, fixtureRules));
     });
   }
+
+  it("UP-ELIG-05 activates official scoped APS expectations on draft copies only", () => {
+    const r = evaluate(officialIndianProfile, officialApsRules());
+    expect(r.apsScopes).toEqual({qualification: "required", application: "required", visa: "not_listed"});
+    expect(evaluate({...officialIndianProfile, schoolQualification: undefined}, officialApsRules()).apsScopes?.application).toBe("unknown");
+    expect(evaluate({...officialIndianProfile, visaMissionContext: undefined}, officialApsRules()).apsScopes?.visa).toBe("unknown");
+  });
 
   it("version, cited sources, and future-spec index", () => {
     expect(HARNESS_VERSION).toBe("up-test-01/v1-current-behavior.1");

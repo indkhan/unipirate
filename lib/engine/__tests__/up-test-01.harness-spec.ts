@@ -7,6 +7,8 @@
 import type { Profile, Result } from "../evaluate";
 import * as personas from "./personas";
 
+// UP-ELIG-05 only: APS baseline scalars remain unknown pending explicit
+// issuer/scope review. Admission, dMAT and other expectations are unchanged.
 export const HARNESS_VERSION = "up-test-01/v1-current-behavior.1" as const;
 export const HARNESS_BASELINE_SHA =
   "951ab821920497443cd66dfc7917d044a1f00159" as const;
@@ -98,14 +100,14 @@ export const CURRENT: CurrentExpectation[] = [
   {
     id: "IN-positive-studienkolleg", family: "India", kind: "positive",
     routesTo: ["UP-ELIG-03", "UP-ELIG-04"], profile: personas.p1CbseNoJee,
-    path: "studienkolleg", aps: "required", testAS: "unknown", dMAT: "not_required",
-    citedUrls: ["https://aps-india.de/news/"], documentSubstrings: ["APS"],
+    path: "studienkolleg", aps: "unknown", testAS: "unknown", dMAT: "not_required",
+    citedUrls: ["https://aps-india.de/news/"],
     assertedIn: "evaluate.test.ts: Part E persona 1",
   },
   {
     id: "IN-positive-jee-direct", family: "India", kind: "positive",
     routesTo: ["UP-ELIG-04"], profile: personas.p2CbseJeeAdvanced,
-    path: "subject_restricted", aps: "required", testAS: "unknown",
+    path: "subject_restricted", aps: "unknown", testAS: "unknown",
     assertedIn: "evaluate.test.ts: Part E persona 2",
   },
   {
@@ -136,7 +138,7 @@ export const CURRENT: CurrentExpectation[] = [
   {
     id: "IN-cross-country-riyadh-cbse", family: "India", kind: "positive",
     routesTo: ["UP-ELIG-01", "UP-ELIG-05"], profile: personas.p9CbseInRiyadh,
-    path: "studienkolleg", aps: "not_required", testAS: "unknown",
+    path: "studienkolleg", aps: "unknown", testAS: "unknown",
     citedUrls: ["https://www.vfsglobal.com/Germany/SaudiArabia/pdf/Checklist_Student_Visa.pdf"],
     assertedIn: "evaluate.test.ts: Part E persona 9",
   },
@@ -162,20 +164,20 @@ export const CURRENT: CurrentExpectation[] = [
   {
     id: "SA-positive-tawjihiyah-studienkolleg", family: "Saudi", kind: "positive",
     routesTo: ["UP-ELIG-09"], profile: personas.p8SaudiTawjihiyah,
-    path: "studienkolleg", aps: "not_required",
+    path: "studienkolleg", aps: "unknown",
     citedUrls: ["https://saudiarabien.diplo.de/ksa-en/topics/weitere-themen/-/1686436"],
     assertedIn: "evaluate.test.ts: Part E persona 8",
   },
   {
     id: "SA-exception-bachelor-unknown-path", family: "Saudi", kind: "exception",
     routesTo: ["UP-ELIG-09"], profile: personas.p10SaudiBachelor,
-    path: "unknown", aps: "not_required", dMAT: "unknown", minUnknowns: 1,
+    path: "unknown", aps: "unknown", dMAT: "unknown", minUnknowns: 1,
     assertedIn: "evaluate.test.ts: Part E persona 10",
   },
   {
     id: "GCE-positive-sa-three-al-direct", family: "GCE", kind: "positive",
     routesTo: ["UP-ELIG-01"], profile: gceP11,
-    path: "subject_restricted", aps: "not_required",
+    path: "subject_restricted", aps: "unknown",
     citedUrls: ["https://www.daad.de/en/studying-in-germany/requirements/gce/"],
     assertedIn: "evaluate.test.ts: Part E persona 11",
   },
@@ -213,16 +215,16 @@ export const CURRENT: CurrentExpectation[] = [
     assertedIn: "evaluate.test.ts: IB missing HL structure",
   },
   {
-    id: "APS-positive-india-required", family: "APS", kind: "positive",
+    id: "APS-legacy-india-unresolved", family: "APS", kind: "positive",
     routesTo: ["UP-ELIG-05", "UP-ELIG-06"], profile: personas.p1CbseNoJee,
-    aps: "required", documentSubstrings: ["APS"],
+    aps: "unknown",
     citedUrls: ["https://aps-india.de/news/"],
     assertedIn: "evaluate.test.ts: Part E persona 1",
   },
   {
-    id: "APS-positive-sa-visa-exempt", family: "APS", kind: "positive",
+    id: "APS-legacy-sa-visa-unresolved", family: "APS", kind: "positive",
     routesTo: ["UP-ELIG-05"], profile: personas.p8SaudiTawjihiyah,
-    aps: "not_required",
+    aps: "unknown",
     citedUrls: ["https://saudiarabien.diplo.de/ksa-en/topics/weitere-themen/-/1686436"],
     assertedIn: "evaluate.test.ts: Part E persona 8",
   },
@@ -247,14 +249,14 @@ export const CURRENT: CurrentExpectation[] = [
   {
     id: "DMAT-missing-india-3yr-unknown", family: "dMAT", kind: "missing",
     routesTo: ["UP-ELIG-07", "UP-ELIG-11"], profile: personas.p3Indian3yrBsc,
-    path: "unknown", aps: "required", testAS: "unknown", dMAT: "unknown",
+    path: "unknown", aps: "unknown", testAS: "unknown", dMAT: "unknown",
     unknownsMatch: [/aps-india\.de\/dmat/],
     assertedIn: "evaluate.test.ts: Part E persona 3",
   },
   {
     id: "DMAT-boundary-ws2026-not-required", family: "dMAT", kind: "boundary",
     routesTo: ["UP-ELIG-07"], profile: personas.p4Indian4yrBtech,
-    path: "unknown", aps: "required", dMAT: "not_required",
+    path: "unknown", aps: "unknown", dMAT: "not_required",
     assertedIn: "evaluate.test.ts: Part E persona 4",
   },
   {
@@ -290,7 +292,6 @@ export const FUTURE: FutureSpec[] = [
   { id: "FUTURE-IB-grade3-compensation", family: "IB", issue: "UP-ELIG-02", needsFutureSchema: true, verified: false, note: "One compensated grade 3 passes where KMK rules allow; Math-SL school exceptions with effective sessions." },
   { id: "FUTURE-India-one-year-route", family: "India", issue: "UP-ELIG-03", needsFutureSchema: true, verified: false, note: "Class XII >=70% + one successful recognized related bachelor year gives direct subject-restricted access." },
   { id: "FUTURE-India-jee-main-plus-advanced", family: "India", issue: "UP-ELIG-04", needsFutureSchema: true, verified: false, note: "Separate JEE Main + Advanced facts restrict the route to technology/natural-science targets." },
-  { id: "FUTURE-APS-scoped-requirements", family: "APS", issue: "UP-ELIG-05", needsFutureSchema: true, verified: false, note: "Scoped APS (qualification/application/visa); Indian qualification + Saudi visa filing keeps application APS." },
   { id: "FUTURE-APS-transition-date", family: "APS", issue: "UP-ELIG-06", needsFutureSchema: true, verified: false, note: "APS procedure/status + timing facts select the pre/post March-2026-transition rule." },
   { id: "FUTURE-dMAT-affected-field", family: "dMAT", issue: "UP-ELIG-07", needsFutureSchema: true, verified: false, note: "Prior-degree field, partnership status, and APS timing drive required/not-required/targeted-review." },
   { id: "FUTURE-Pakistan-hssc-streams", family: "Pakistan", issue: "UP-ELIG-08", needsFutureSchema: true, verified: false, note: "HSSC/FSc stream-specific Studienkolleg routes, 49.99/50 boundary, one-year direct routes." },

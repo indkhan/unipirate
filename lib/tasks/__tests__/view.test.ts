@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/db/queries", () => mocks);
 
+import { legacyPublishedAps } from "@/lib/engine/__tests__/aps-legacy-published.fixture";
+
 import { buildDashboardView } from "../view";
 
 const task = {
@@ -21,6 +23,25 @@ beforeEach(() => {
 });
 
 describe("application task visibility", () => {
+  it("hides obsolete pending APS work without rewriting saved edits or completion", async () => {
+    mocks.getProfile.mockResolvedValue({ answers: { targetDegree: "bachelor", certificateCountry: "in", nationality: "in", curriculumType: "national", board: "cbse", schoolGradePercent: 82, jeeAdvanced: false, visaApplicationCountry: "sa", targetField: "cs", intake: null } });
+    mocks.getPublishedRules.mockResolvedValue(legacyPublishedAps);
+    mocks.listApplicationsWithCourses.mockResolvedValue([]);
+    const pending = { ...task, id: "old", task_key: "rule:f5361a7c-bddf-45fd-9c8d-a23e736f16cc:step:10", course_task_definition_id: null, application_id: null, title: "My certificate reminder", has_personal_edits: true };
+    const completed = { ...pending, id: "completed", done: true };
+    const manual = { ...pending, id: "manual", task_key: null };
+    const course = {...task, id: "course", title: "My APS course reminder", has_personal_edits: true};
+    mocks.listApplicationsWithCourses.mockResolvedValue([{id: "application", status: "planning", courses: null}]);
+    const rows = [pending, completed, manual, course];
+    const snapshot = structuredClone(rows);
+    mocks.listTasks.mockResolvedValue(rows);
+    const view = await buildDashboardView({ from: vi.fn() }, "student");
+    expect([...view.buckets.now, ...view.buckets.next, ...view.buckets.later].map(t => t.id)).toEqual(["manual", "course"]);
+    expect(view.doneTasks.map(t => t.id)).toEqual(["completed"]);
+    expect(rows[0].title).toBe("My certificate reminder");
+    expect(rows).toEqual(snapshot);
+    expect(rows[0].done).toBe(false);
+  });
   it.each(["applied", "admitted", "rejected"])("hides pending preparation tasks for %s applications", async (status) => {
     mocks.listApplicationsWithCourses.mockResolvedValue([{ id: "application", status, courses: null }]);
     const view = await buildDashboardView({ from: vi.fn() }, "student");

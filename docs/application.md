@@ -130,7 +130,7 @@ from the DB.
    never passes (missing data never satisfies anything, not even `neq`).
    Draft and malformed rows are skipped so bad data cannot take the checker
    down.
-3. **Merge outcomes**: per key (path, aps, testas, dmat) the most-specific
+3. **Merge outcomes**: per key (path, scoped APS, testas, dmat) the most-specific
    matching rule wins (highest condition count). An equal-specificity
    disagreement is a data conflict → the key resolves to `unknown` and both
    rules are cited. No matching rule → explicit `unknown` plus a
@@ -164,7 +164,8 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
    `SubjectRowsEditor`, one static catalog each carrying the DAAD
    classification); an IB Certificate short of the full diploma skips the
    detail questions, since no rule can give it a path; the existing-APS
-   question is skipped when the visa is filed from Saudi Arabia. Steps
+   answer stays independent of visa filing in new/edited APS-versioned flows;
+   pre-scope Saudi checks remain readable without inventing an answer. Steps
    rendered as a number input are listed in `NUMBER_STEPS` with their bounds.
 2. Submit (`submitCheck` server action) zod-validates the answers, evaluates
    against published rules, and inserts a `checks` row through the dedicated
@@ -221,9 +222,7 @@ The narrow engine correction restates the explicitly chosen tertiary context int
 the already-supported `curriculum` fact, and tertiary country into
 `certificate_country`. It does not guess school curriculum, determine
 recognition or change rule acceptance. Unknown/missing context yields a missing
-fact. This preserves the existing `aps-india-national` rule semantics for an
-explicitly national Indian university qualification. The rule already cites
-issuer-based academic verification. [APS India's FAQ](https://aps-india.de/faqs/)
+fact. APS now uses separate scoped issuer facts rather than that legacy scalar. [APS India's FAQ](https://aps-india.de/faqs/)
 (checked 2026-10-06) corroborates that scope; no rule source, verification date,
 threshold, applicability or intake was rewritten. Admission/equivalence remains
 subject to the existing verified rules and honest unknowns.
@@ -532,3 +531,43 @@ record key boundary reject `__proto__`, which record parsing would silently drop
 Other map keys, including `constructor` and `toString`, remain ordinary properties;
 empty maps, booleans, arrays and verbatim strings retain the existing contract.
 No existing applicability map is rewritten or given an inferred vocabulary.
+
+### Scoped APS contract (UP-ELIG-05)
+
+APS qualification recognition, application documentation and visa checklist status
+resolve independently through validated `outcomes.aps_scopes`. Each scope has
+required/not_required/unknown; only visa also permits not_listed. Equal-specificity
+disagreement resolves to unknown with both citations before documents and steps
+are projected. A single certificate document is deduplicated across scopes.
+The legacy APS scalar is only a conservative required/unknown summary; old
+unscoped rows cannot establish requirements or any global exemption. Old
+free-text APS documents/steps are suppressed until admin scope review.
+
+New checker flows use `apsScopeVersion: 1` and explicitly ask bachelor issuing
+qualification country/context, confirmed uni-assist application context and, for
+Saudi filing, whether the responsible mission's study checklist applies. Neither
+citizenship, school attendance country, board nor visa country infers an issuer.
+Master's facts use only the merged `tertiaryQualification` issuer/country/context.
+Missing, international or unknown context stays unknown under these candidates.
+No Riyadh/Jeddah or residence-to-mission inference is introduced.
+
+Certificate-held state remains separate from requirement existence. Changing
+visa preserves the answer. Acquisition steps require an explicit missing
+certificate; held/unknown answers do not create acquisition work. Generated task
+keys retain `rule:<ruleId>:step:<order>`. Read projection hides obsolete pending
+generated APS tasks while preserving completed history and manual/course tasks.
+The real rule UUID is extracted from the stable task key, independent of editable
+titles; no removed source-rule column is assumed. No saved task,
+personal edit, application or completion row is rewritten or deleted.
+
+Four source-backed candidates remain drafts in bootstrap data. Human admin
+review/publication is required; no seed, KB rebuild or live publication runs in
+this change. Source verification dates 2026-10-06/07 are not intake boundaries.
+KMK's 2006 resolution as amended 2015 supports first-study recognition only;
+uni-assist India supports both application requirement and certificate preparation
+candidates. The Saudi candidate preserves an academic checklist excerpt and an
+explicit full-list omission observation separately from the additional-request
+warning; no source statement of exemption is invented. APS FAQ exceptions
+require applicable facts and source confirmation, not inferred exemptions.
+The Saudi checklist omission means not_listed and permits additional requests.
+JSON additions need no migration or generated database type change.

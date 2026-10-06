@@ -68,6 +68,40 @@ const RECOGNIZED_GCE_BODIES = [
 ];
 
 export const ruleData: RuleRecord[] = [
+  // UP-ELIG-05: evidence retrieved 2026-10-06, not an effective-intake date.
+  // These candidates require human admin publication; no seed runs here.
+  {
+    id: "aps-scoped-qualification", country: "in",
+    conditions: { aps_issuer_country: "in", aps_qualification_context: "national", target_degree: "bachelor" },
+    outcomes: { aps_scopes: { qualification: { value: "required", documents: ["APS India certificate"] } } },
+    status: "draft", source_url: "https://www.kmk.org/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/APS_2015_12_10.pdf",
+    source_quote: "Studienbewerber zugelassen, die das Zertifikat bzw. die Bescheinigung der Akademischen Prüfstelle als Nachweis der Erfüllung der in den Bewertungsvorschlägen der Kultusministerkonferenz festgelegten Voraussetzungen für die Aufnahme eines Erststudiums vorlegen können.",
+    last_verified_at: "2026-10-06T00:00:00Z",
+  },
+  {
+    id: "aps-scoped-application", country: "in",
+    conditions: { aps_issuer_country: "in", aps_qualification_context: "national", aps_application_context: "uni_assist" },
+    outcomes: { aps_scopes: { application: { value: "required", documents: ["APS India certificate"] } } },
+    status: "draft", source_url: "https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/",
+    source_quote: "your APS certificate (from the Academic Evaluation Centre, https://aps-india.de/)",
+    last_verified_at: "2026-10-06T00:00:00Z",
+  },
+  {
+    id: "aps-scoped-visa-sa", country: "sa",
+    conditions: { visa_application_country: "sa", visa_mission_context: "saudi_study" },
+    outcomes: { aps_scopes: { visa: { value: "not_listed" } }, note: "Reviewed the complete Prepare your application checklist and following insurance/translation notes on 2026-10-07: APS is not listed. This omission is our checklist observation, not an official exemption statement. The mission may request additional documents." },
+    status: "draft", source_url: "https://saudiarabien.diplo.de/ksa-en/visa-service/study-preparatory-courses-2195208",
+    source_quote: "high school graduation certificate and, if applicable, Bachelor/Master certificates with detailed transcript of grades [...] request additional documents",
+    last_verified_at: "2026-10-07T00:00:00Z",
+  },
+  {
+    id: "aps-scoped-acquisition", country: "in",
+    conditions: { aps_issuer_country: "in", aps_qualification_context: "national", aps_application_context: "uni_assist" },
+    outcomes: { aps_scopes: { application: { value: "required", steps: [{ order: 10, text: "Obtain your APS certificate for your uni-assist application; preserve the digitally sealed certificate as an unchanged, original file.", acquisition: true }] } } },
+    status: "draft", source_url: "https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/",
+    source_quote: "your APS certificate [...] Upload the digitally sealed APS certificate as an unchanged, original file to your MyAssist account.",
+    last_verified_at: "2026-10-07T00:00:00Z",
+  },
   // ---------------------------------------------------------------- India
   {
     id: "in-school-studienkolleg",

@@ -13,12 +13,16 @@ export type Profile = {
   targetDegree: "bachelor" | "master";
   intake?: { term: Term; year: number };
   nationality?: string; // 'in' | 'pk' | 'sa' | ...
-  certificateCountry?: string; // where the qualification was earned (APS routing)
+  certificateCountry?: string; // legacy qualification/attendance country; not an APS issuer
   curriculumType: "national" | "ib" | "gce" | "other";
   board?: string; // 'cbse' | 'fsc' | 'tawjihiyah' | ...
   schoolGradePercent?: number; // Class XII overall %
   jeeAdvanced?: boolean;
   visaApplicationCountry?: string;
+  // Explicit issuer context; legacy school attendance is never an APS issuer.
+  schoolQualification?: { country?: string; context?: "national" | "international" | "unknown" };
+  visaMissionContext?: "saudi_study" | "other" | "unknown";
+  apsApplicationContext?: "uni_assist" | "unknown";
   hasExistingApsCertificate?: boolean;
   // Present only for the new master's flow; separate from school curriculum.
   tertiaryQualification?: {
@@ -130,6 +134,10 @@ const ConditionSchema = z.union([
 type Condition = z.infer<typeof ConditionSchema>;
 
 const FactKeySchema = z.enum([
+  "aps_issuer_country",
+  "aps_qualification_context",
+  "visa_mission_context",
+  "aps_application_context",
   "board",
   "certificate_country",
   "class12_percent",
@@ -178,11 +186,27 @@ const PathValue = z.enum([
   "unknown",
 ]);
 const FlagValue = z.enum(["required", "not_required", "unknown"]);
+export const APS_SCOPES = ["qualification", "application", "visa"] as const;
+export type ApsScope = (typeof APS_SCOPES)[number];
+const ApsScopeOutcome = z.object({
+  value: FlagValue,
+  documents: z.array(z.string().min(1)).min(1).optional(),
+  steps: z.array(z.object({
+    order: z.number().int().nonnegative(), text: z.string().min(1),
+    acquisition: z.boolean().optional(),
+  }).strict()).min(1).optional(),
+}).strict();
+const ApsScopesSchema = z.object({
+  qualification: ApsScopeOutcome.optional(),
+  application: ApsScopeOutcome.optional(),
+  visa: ApsScopeOutcome.extend({ value: z.enum(["required", "not_required", "unknown", "not_listed"]) }).optional(),
+}).strict().refine(value => Object.keys(value).length > 0);
 
 const RuleOutcomesSchema = z
   .object({
     path: PathValue.optional(),
     aps: FlagValue.optional(),
+    aps_scopes: ApsScopesSchema.optional(),
     testas: FlagValue.optional(),
     dmat: FlagValue.optional(),
     documents: z.array(z.string().min(1)).min(1).optional(),
@@ -244,6 +268,7 @@ export type Citation = {
 };
 
 export type ResultSupport =
+  | `aps:${ApsScope}`
   | "path"
   | "aps"
   | "testAS"
@@ -255,10 +280,14 @@ export type ResultSupport =
 export type Result = {
   path: z.infer<typeof PathValue>;
   aps: z.infer<typeof FlagValue>;
+  /** Optional only for legacy serialized results; evaluate always supplies it. */
+  apsScopes?: { qualification: z.infer<typeof FlagValue>; application: z.infer<typeof FlagValue>; visa: z.infer<typeof FlagValue> | "not_listed" };
+  apsCertificate?: "held" | "missing" | "unknown";
+  apsRuleIds?: string[];
   testAS: z.infer<typeof FlagValue>;
   dMAT: z.infer<typeof FlagValue>;
   documents: string[];
-  stepsDetailed: { order: number; text: string; ruleId: string }[]; // ordered
+  stepsDetailed: { order: number; text: string; ruleId: string; apsScope?: ApsScope; acquisition?: boolean }[]; // ordered
   citations: Citation[];
   unknowns: string[]; // honest gaps: "no rule covers X — confirm with [source]"
 };
@@ -282,7 +311,14 @@ type HistoryFactKey =
  * (70%, ≥3 A-Levels, ≥24 IB points, semester cutoffs…) lives in rule data.
  */
 export function deriveFacts(p: Profile): Record<string, Fact> {
+  const apsQualification = p.targetDegree === "master"
+    ? p.tertiaryQualification?.issuer?.trim() ? p.tertiaryQualification : undefined
+    : p.schoolQualification;
   const raw: Partial<Record<FactKey | HistoryFactKey, Fact>> = {
+    aps_issuer_country: apsQualification?.country,
+    aps_qualification_context: apsQualification?.context,
+    visa_mission_context: p.visaMissionContext,
+    aps_application_context: p.apsApplicationContext,
     target_degree: p.targetDegree,
     intake_index: p.intake && intakeIndex(p.intake.term, p.intake.year),
     certificate_country: p.tertiaryQualification ? p.tertiaryQualification.country : p.certificateCountry,
@@ -498,19 +534,21 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
 
   // The most-specific rule decides each key. Equal-specificity disagreement is
   // a data conflict and therefore resolves to unknown with both sources cited.
-  function resolve<V>(key: "path" | "aps" | "testas" | "dmat"): V | undefined {
-    const support: ResultSupport = {
+  function resolve<V>(key: "path" | "aps" | "testas" | "dmat" | `aps:${ApsScope}`): V | undefined {
+    const scope = key.startsWith("aps:") ? key.slice(4) as ApsScope : undefined;
+    const outcome = (r: ParsedRule) => scope ? r.outcomes.aps_scopes?.[scope]?.value : r.outcomes[key as "path" | "aps" | "testas" | "dmat"];
+    const support = (scope ? key : {
       path: "path",
       aps: "aps",
       testas: "testAS",
       dmat: "dMAT",
-    }[key] as ResultSupport;
-    const contenders = matched.filter((r) => r.outcomes[key] !== undefined);
+    }[key as "path" | "aps" | "testas" | "dmat"]) as ResultSupport;
+    const contenders = matched.filter((r) => outcome(r) !== undefined);
     if (contenders.length === 0) return undefined;
     const specificity = (r: ParsedRule) => Object.keys(r.conditions).length;
     const max = Math.max(...contenders.map(specificity));
     const top = contenders.filter((r) => specificity(r) === max);
-    const values = new Set(top.map((r) => r.outcomes[key]));
+    const values = new Set(top.map(outcome));
     if (values.size > 1) {
       top.forEach((rule) => cite(rule, support));
       unknowns.push(
@@ -519,11 +557,11 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       return "unknown" as V;
     }
     top.forEach((rule) => cite(rule, support));
-    const value = top[0].outcomes[key] as V;
+    const value = outcome(top[0]) as V;
     if (value === "unknown") {
       // a rule that explicitly answers "we don't know yet" carries its own
       // confirm-with message
-      unknowns.push(top[0].outcomes.note ?? NO_RULE_MESSAGES[key]);
+      unknowns.push(top[0].outcomes.note ?? (scope ? `Confirm APS for ${scope} with the official source.` : NO_RULE_MESSAGES[key as keyof typeof NO_RULE_MESSAGES]));
     }
     return value;
   }
@@ -536,18 +574,33 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     if (v === undefined) unknowns.push(NO_RULE_MESSAGES[key]);
     return v ?? "unknown";
   };
-  const aps = flag("aps");
+  const apsScopes = Object.fromEntries(APS_SCOPES.map(scope => {
+    const value = resolve<NonNullable<Result["apsScopes"]>[typeof scope]>(`aps:${scope}`);
+    if (value === undefined) unknowns.push(`No published scoped rule determines APS for ${scope} — confirm ${scope === "visa" ? "the responsible mission and its checklist" : "the relevant issuer and application requirements with APS India or uni-assist"}.`);
+    return [scope, value ?? "unknown"];
+  })) as NonNullable<Result["apsScopes"]>;
+  // Compatibility is conservative: a checklist omission never means a global
+  // exemption. Unscoped legacy rows cannot determine any scoped requirement.
+  const aps: Result["aps"] = APS_SCOPES.some(scope => apsScopes[scope] === "required") ? "required" : "unknown";
+  for (const rule of matched.filter(r => r.outcomes.aps !== undefined)) {
+    cite(rule, "unknowns");
+    unknowns.push("A legacy APS rule has no qualification/application/visa scope — confirm with its official source; it does not establish an exemption.");
+  }
   const testAS = flag("testas");
   const dMAT = flag("dmat");
 
   const documents: string[] = [];
-  const steps: { order: number; text: string; ruleId: string }[] = [];
+  const steps: Result["stepsDetailed"] = [];
   for (const rule of matched) {
     for (const doc of rule.outcomes.documents ?? []) {
+      // Trade-off: old free-text APS entries lack machine-readable scope.
+      // Suppress them pending admin review; never infer scope from their prose.
+      if (/\bAPS\b/i.test(doc)) continue;
       if (!documents.includes(doc)) documents.push(doc);
       cite(rule, "documents");
     }
     for (const step of rule.outcomes.steps ?? []) {
+      if (/\bAPS\b/i.test(step.text)) continue;
       if (!steps.some((s) => s.text === step.text)) {
         steps.push({ ...step, ruleId: rule.id });
       }
@@ -555,8 +608,22 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     }
     // note-only rules are open caveats ("verify which anabin proposal
     // applies…") — surface them as honest unknowns
-    const { path, aps, testas, dmat, documents: d, steps: s, note } = rule.outcomes;
-    if (note && [path, aps, testas, dmat, d, s].every((v) => v === undefined)) {
+    for (const scope of APS_SCOPES) {
+      const scoped = rule.outcomes.aps_scopes?.[scope];
+      const winning = citations.some(c => c.ruleId === rule.id && c.supports.includes(`aps:${scope}`));
+      if (!scoped || !winning || apsScopes[scope] !== "required") continue;
+      for (const doc of scoped.documents ?? []) {
+        if (!documents.includes(doc)) documents.push(doc);
+        cite(rule, "documents");
+      }
+      for (const step of scoped.steps ?? []) {
+        if (step.acquisition && profile.hasExistingApsCertificate !== false) continue;
+        if (!steps.some(s => s.ruleId === rule.id && s.order === step.order)) steps.push({ ...step, ruleId: rule.id, apsScope: scope });
+        cite(rule, "steps");
+      }
+    }
+    const { path, aps, aps_scopes, testas, dmat, documents: d, steps: s, note } = rule.outcomes;
+    if (note && [path, aps, aps_scopes, testas, dmat, d, s].every((v) => v === undefined)) {
       unknowns.push(note);
       cite(rule, "unknowns");
     }
@@ -567,6 +634,9 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   return {
     path,
     aps,
+    apsScopes,
+    apsCertificate: profile.hasExistingApsCertificate === true ? "held" : profile.hasExistingApsCertificate === false ? "missing" : "unknown",
+    apsRuleIds: live.filter(r => r.outcomes.aps !== undefined || r.outcomes.aps_scopes !== undefined || r.outcomes.steps?.some(s => /\bAPS\b/i.test(s.text))).map(r => r.id),
     testAS,
     dMAT,
     documents,

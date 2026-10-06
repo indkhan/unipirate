@@ -1,5 +1,6 @@
 import {
   NO_RULE_MESSAGES,
+  APS_SCOPES,
   type Citation,
   type Profile,
   type Result,
@@ -83,7 +84,6 @@ function flagRelevant(
 
 export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
   const flags = [
-    ["aps", "APS", result.aps],
     ["testAS", "TestAS", result.testAS],
     ["dMAT", "dMAT", result.dMAT],
   ] as const;
@@ -95,6 +95,14 @@ export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
       citations: citationsFor(result, "path"),
       unknown: result.path === "unknown",
     },
+    ...(result.apsScopes ? APS_SCOPES.map(scope => {
+      const value = result.apsScopes![scope];
+      const name = `APS for ${scope === "qualification" ? "qualification recognition" : scope}`;
+      const verdict = value === "not_listed"
+        ? { label: "APS is not listed on the applicable visa checklist; this is not an exemption", unknown: false }
+        : flagLabel(name, value);
+      return { key: `aps:${scope}` as ResultSupport, ...verdict, label: verdict.label + (value === "required" && result.apsCertificate === "held" ? "; certificate already held" : ""), citations: citationsFor(result, `aps:${scope}`) };
+    }) : [{ key: "aps" as const, label: "Confirm APS qualification, application and visa requirements separately", unknown: true, citations: citationsFor(result, "aps") }]),
     ...flags
       .filter(([key]) => flagRelevant(key, result, profile))
       .map(([key, name, value]) => {
@@ -140,7 +148,7 @@ export function buildRoute(result: Result): RouteStation[] {
 
   const pending: string[] = [];
   if (result.path === "studienkolleg") pending.push("Studienkolleg");
-  if (result.aps === "required") pending.push("APS");
+  if (result.aps === "required" && result.apsCertificate !== "held") pending.push("APS");
   if (result.testAS === "required") pending.push("TestAS");
   if (result.dMAT === "required") pending.push("dMAT");
   pending.push("Applications", "Visa", "Germany");

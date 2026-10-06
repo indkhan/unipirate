@@ -188,7 +188,7 @@ describe("selectSubmissionDeadline", () => {
 
 describe("generateCourseTasks", () => {
   it("merges global rule steps with three per-university plans", () => {
-    const result = evaluate(p1CbseNoJee, promotedRules);
+    const result = evaluate({ ...p1CbseNoJee, schoolQualification: { country: "in", context: "national" }, apsApplicationContext: "uni_assist" }, promotedRules.map(r => r.id.startsWith("aps-scoped-") ? { ...r, status: "beta" } : r));
     const tasks = [
       ...generateGlobalTasks(result),
       ...generateCourseTasks([
@@ -199,7 +199,7 @@ describe("generateCourseTasks", () => {
     ];
 
     expect(
-      tasks.some((task) => /Register online at aps-india\.de/.test(task.title)),
+      tasks.some((task) => /Obtain your APS certificate for your uni-assist application/.test(task.title)),
     ).toBe(true);
     expect(tasks.some((task) => /My assist account/.test(task.title))).toBe(true);
     expect(tasks.filter((task) => task.title.startsWith("Submit application")))
