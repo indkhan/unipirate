@@ -50,14 +50,14 @@ describe("ruleToChunk", () => {
     expect(chunk.content).not.toContain("4053");
   });
 
-  it("renders YYYYMMDD date facts as readable dates", () => {
-    const dated = ruleData.find((r) =>
-      Object.keys(r.conditions).some((k) => k.endsWith("_day")),
-    );
-    if (!dated) return; // no dated rules in fixture — nothing to assert
-    const chunk = ruleToChunk(bySlug(dated.id));
-    expect(chunk.content).toMatch(/\d{1,2} [A-Z][a-z]{2} \d{4}/);
-    expect(chunk.content).not.toMatch(/20\d{6}/);
+  it("preserves literal source dates separately from labelled YYYYMMDD rule comparisons", () => {
+    const dated = ruleData.find(r => r.id === "aps-transition-before");
+    expect(dated).toBeDefined();
+    const chunk = ruleToChunk(bySlug(dated!.id));
+    expect(chunk.content).toContain("YYYYMMDD; relevant procedure only");
+    expect(chunk.content).toContain("20260315");
+    expect(chunk.content).toContain(`Official source says: "${dated!.source_quote}"`);
+    expect(chunk.content).toContain("15 March 2026");
   });
 
   it("every published fixture rule produces a non-empty cited chunk", () => {
