@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/app/theme-toggle";
 
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
-import { buildOptions, type Option } from "./check-questions";
+import { buildOptions, QUESTIONS as QUESTION_COPY, type Option } from "./check-questions";
 import { QualificationTextInput } from "./qualification-text-input";
 import { GceSubjectsEditor } from "./gce-subjects-editor";
 import { IbSubjectsEditor } from "./ib-subjects-editor";
@@ -32,6 +32,9 @@ type ProfileReviewProps = {
 };
 
 const QUESTIONS: Record<StepId, string> = {
+  apsProcedureStatus: "Relevant APS procedure",
+  apsSubmissionConfirmation: "APS confirmation of complete submission",
+  apsSubmissionDate: "Reported complete submission date confirmed by APS",
   schoolQualificationCountry: "School qualification issuer country",
   schoolQualificationContext: "School qualification context",
   apsApplicationContext: "uni-assist application context",
@@ -70,7 +73,7 @@ const QUESTIONS: Record<StepId, string> = {
 export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), apsScopeVersion: 1 }));
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), apsScopeVersion: 1, apsTransitionVersion: 1 }));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const steps = visibleSteps(answers);
@@ -220,6 +223,9 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
           {steps.map((step) => (
             <section className={styles.reviewCard} key={step}>
               <h2 id={`${step}-label`}>{QUESTIONS[step]}</h2>
+              {QUESTION_COPY[step].sourceUrl && <p className={styles.subtitle}>
+                {QUESTION_COPY[step].subtitle} <a href={QUESTION_COPY[step].sourceUrl} target="_blank" rel="noreferrer">Official APS guidance</a>
+              </p>}
               {field(step)}
               {!isAnswered(answers, step) ? (
                 <span className={styles.reviewMissing}>Required</span>

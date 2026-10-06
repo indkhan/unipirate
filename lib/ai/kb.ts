@@ -53,6 +53,8 @@ export type KbChunk = {
 // (see FactKeySchema in lib/engine/evaluate.ts). Unlisted keys fall back to
 // the key with underscores replaced by spaces.
 const FACT_LABELS: Record<string, string> = {
+  aps_confirmed_submission_day: "reported APS-confirmed complete submission date (YYYYMMDD; relevant procedure only)",
+  aps_submission_confirmation: "complete submission date confirmation for the relevant APS procedure",
   aps_issuer_country: "country of the relevant qualification issuer",
   aps_qualification_context: "explicit qualification context",
   aps_application_context: "confirmed application authority",

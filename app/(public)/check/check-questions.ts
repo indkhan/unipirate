@@ -11,7 +11,10 @@ import {
 export type Option = { value: unknown; label: string; key: string };
 
 /** Prompt (and optional subtitle) shown for each step of the checker. */
-export const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
+export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; sourceUrl?: string }> = {
+  apsProcedureStatus: { question: "Which APS procedure covers the qualifications relevant to this application?", subtitle: "Choose a new evaluation if later qualifications need reassessment. An old certificate alone does not confirm the basis for a new application.", sourceUrl: "https://aps-india.de/faqs/" },
+  apsSubmissionConfirmation: { question: "Does APS confirm the complete submission date for your Class XII or Class XII plus one-successful-Bachelor-year assessment?", subtitle: "Use an APS record or communication for this procedure and academic basis. Registration, payment, courier dispatch and delivery dates alone do not establish this milestone. For another basis or an uncertain procedure/date, choose Cannot confirm.", sourceUrl: "https://aps-india.de/news/" },
+  apsSubmissionDate: { question: "What complete submission date does APS confirm for this procedure?", subtitle: "Enter YYYY-MM-DD from the APS record or communication. For a new evaluation, use its submission date, not an earlier procedure's date. Certificate validity and university admission are assessed separately.", sourceUrl: "https://aps-india.de/news/" },
   schoolQualificationCountry: { question: "Which country's institution or awarding body issued your school qualification?", subtitle: "Use the issuer on your certificate, not your passport or the country where you attended school. Choose unsure if you cannot confirm." },
   schoolQualificationContext: { question: "What type of qualification did that issuer award?", subtitle: "National qualifications and international qualifications such as IB or GCE have different verification contexts." },
   apsApplicationContext: { question: "Will uni-assist assess your application or issue a VPD?", subtitle: "Confirm this from your programme's application instructions. Choose unsure for other or unconfirmed routes." },
@@ -97,6 +100,16 @@ const countryOptions = COUNTRIES.map((c) => ({
  * their own bespoke inputs and return []. */
 export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
   switch (stepId) {
+    case "apsProcedureStatus":
+      return [
+        { value: "not_started", key: "not_started", label: "No application submitted for these qualifications" },
+        { value: "pending", key: "pending", label: "Relevant application pending" },
+        { value: "completed", key: "completed", label: "Relevant procedure completed" },
+        { value: "new_evaluation", key: "new_evaluation", label: "New evaluation submitted for updated qualifications" },
+        { value: "unknown", key: "unknown", label: "Cannot confirm which procedure applies" },
+      ];
+    case "apsSubmissionConfirmation":
+      return [{ value: "confirmed", key: "confirmed", label: "Yes, APS confirms the complete submission date" }, { value: "unknown", key: "unknown", label: "Cannot confirm" }];
     case "schoolQualificationCountry":
       return [...countryOptions, { value: "other", label: "Another country", key: "other" }, { value: "unknown", label: "Unsure", key: "unknown" }];
     case "schoolQualificationContext":
