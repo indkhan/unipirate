@@ -20,6 +20,24 @@ export type Profile = {
   jeeAdvanced?: boolean;
   visaApplicationCountry?: string;
   hasExistingApsCertificate?: boolean;
+  // Present only for the new master's flow; separate from school curriculum.
+  tertiaryQualification?: {
+    issuer?: string;
+    country?: string;
+    countryName?: string;
+    context?: "national" | "other" | "unknown";
+  };
+  qualificationHistory?: {
+    hasPriorUniversityStudy: boolean;
+    qualificationType?: "bachelor" | "master" | "diploma" | "other";
+    institution?: string;
+    country?: string;
+    countryName?: string;
+    field?: string;
+    degreeYears?: number;
+    completedYears?: number;
+    completion?: "completed" | "in_progress" | "discontinued";
+  };
   // Everything below `fullDiploma` is optional: an IB Certificate is never
   // accepted as a Diploma, so the checker stops asking once the answer is "no"
   // and the remaining facts stay undefined rather than being invented.
@@ -248,18 +266,32 @@ export type Result = {
 // ------------------------------------------------------------------- facts
 
 type Fact = Primitive;
+type HistoryFactKey =
+  | "has_prior_university_study"
+  | "prior_qualification_type"
+  | "prior_study_institution"
+  | "prior_study_country"
+  | "prior_degree_field"
+  | "prior_degree_years"
+  | "years_of_university_study"
+  | "prior_study_completion";
 
 /**
  * Flattens the profile into the flat fact map rule conditions match against.
  * Arithmetic restatement of the profile only — every eligibility threshold
  * (70%, ≥3 A-Levels, ≥24 IB points, semester cutoffs…) lives in rule data.
  */
-function deriveFacts(p: Profile): Record<string, Fact> {
-  const raw: Partial<Record<FactKey, Fact>> = {
+export function deriveFacts(p: Profile): Record<string, Fact> {
+  const raw: Partial<Record<FactKey | HistoryFactKey, Fact>> = {
     target_degree: p.targetDegree,
     intake_index: p.intake && intakeIndex(p.intake.term, p.intake.year),
-    certificate_country: p.certificateCountry,
-    curriculum: p.curriculumType,
+    certificate_country: p.tertiaryQualification ? p.tertiaryQualification.country : p.certificateCountry,
+    // Existing rules use "curriculum" for qualification context. Explicit
+    // national higher-education context restates that fact, not school study.
+    // APS India: https://aps-india.de/faqs/ (issuer-based scope, checked 2026-10-06).
+    curriculum: p.tertiaryQualification
+      ? p.tertiaryQualification.context === "unknown" ? undefined : p.tertiaryQualification.context
+      : p.curriculumType,
     board: p.board,
     class12_percent: p.schoolGradePercent,
     jee_advanced: p.jeeAdvanced,
@@ -267,6 +299,23 @@ function deriveFacts(p: Profile): Record<string, Fact> {
     target_field: p.targetField,
     has_existing_aps: p.hasExistingApsCertificate,
   };
+  if (p.qualificationHistory) {
+    const history = p.qualificationHistory;
+    raw.has_prior_university_study = history.hasPriorUniversityStudy;
+    if (history.hasPriorUniversityStudy) {
+      raw.prior_qualification_type = history.qualificationType;
+      raw.prior_study_institution = history.institution;
+      raw.prior_study_country = history.country;
+      raw.prior_degree_field = history.field;
+      raw.prior_degree_years = history.degreeYears;
+      raw.years_of_university_study = history.completedYears;
+      raw.prior_study_completion = history.completion;
+    }
+  }
+  // Trade-off: history facts are captured but deliberately NOT admitted to
+  // FactKeySchema yet. Supporting old published conditions would activate
+  // unreviewed routes. Recognition, field equivalence and certificate criteria
+  // remain missing until the dependent source-review issues define them.
   if (p.ib) {
     raw.ib_full_diploma = p.ib.fullDiploma;
     raw.ib_total_points = p.ib.totalPoints;

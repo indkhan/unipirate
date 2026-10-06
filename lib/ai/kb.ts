@@ -50,12 +50,20 @@ export type KbChunk = {
 // (see FactKeySchema in lib/engine/evaluate.ts). Unlisted keys fall back to
 // the key with underscores replaced by spaces.
 const FACT_LABELS: Record<string, string> = {
+  has_prior_university_study: "has previous higher education study",
+  prior_qualification_type: "previous qualification type",
+  prior_study_institution: "previous institution",
+  prior_study_country: "country of previous institution",
+  prior_degree_field: "previous field of study (as reported)",
+  prior_degree_years: "previous qualification duration in years",
+  years_of_university_study: "successfully completed university study in years",
+  prior_study_completion: "previous study completion status",
   target_degree: "target degree",
   curriculum: "curriculum type",
   board: "school board",
   class12_percent: "Class 12 percentage",
   jee_advanced: "valid JEE Advanced result",
-  certificate_country: "country of the school certificate",
+  certificate_country: "country of the assessed qualification",
   visa_application_country: "country of visa application",
   target_field: "target field of study",
   has_existing_aps: "already holds an APS certificate",
