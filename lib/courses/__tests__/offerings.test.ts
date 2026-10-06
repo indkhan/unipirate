@@ -5,6 +5,22 @@ const evidence = { source_url: "https://example.edu/official?intake=2027#deadlin
 const fact = { key: "closing", kind: "deadline", status: "verified", verbatim: evidence.source_quote, applicability: "Synthetic non-EU applicants", evidence: [evidence], deadline_kind: "application_closing", date: "2027-07-15", time: null, timezone: null, route: null };
 const version = { offering_id: id, version: 1, review_status: "verified", reviewed_at: evidence.last_verified_at, reviewed_by: id, facts: [fact] };
 
+it.each([
+  ['2026-10-06T12:00:00.0010000Z', '2026-10-06T12:00:00.0009999Z', false],
+  ['2026-10-06T12:00:00.0009999Z', '2026-10-06T12:00:00.0000001Z', true],
+  ['2026-10-06T23:59:59.9999999Z', '2026-10-06T23:59:59.9990000Z', true],
+  ['2026-10-06T23:59:59.9999999Z', '2026-10-07T00:00:00Z', true],
+  ['2026-10-07T00:00:00.001+01:00', '2026-10-06T23:00:00.0009999Z', false],
+  ['2026-10-07T00:00:00.001+01:00', '2026-10-06T23:00:00.0019999Z', true],
+  ['2026-10-06T12:00:00.1Z', '2026-10-06T12:00:00.10Z', true],
+  ['2026-10-06T12:00:00Z', '2026-10-06T12:00:00.000Z', true],
+] as const)('compares paired capture instants at milliseconds: %s / %s', (retrieved_at, last_verified_at, accepted) => {
+  const capture = { ...evidence, retrieved_at, last_verified_at };
+  const result = CourseEvidenceSchema.safeParse(capture);
+  expect(result.success).toBe(accepted);
+  if (result.success) expect(result.data).toEqual(capture);
+});
+
 it.each(['2026-10-05T24:00:00Z', '2026-02-29T12:00:00Z', '2026-10-05T12:00:60Z', '2026-10-05T12:00:00+16:00', '2026-10-05T12:00:00+01:60', '2026-10-05T12:00:00+0530', '2026-10-05T12:00:00+1600', '0000-01-01T12:00:00Z', '2026-10-05T12:00:00Z\n'])('rejects nonrepresentable capture timestamp %j', (retrieved_at) => {
   expect(CourseEvidenceSchema.safeParse({ ...evidence, retrieved_at }).success).toBe(false);
 });

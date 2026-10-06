@@ -519,3 +519,10 @@ accepting either hex case verbatim. PostgreSQL's compact/braced UUID spellings
 are rejected in captured JSON. Timestamp offsets require an explicit colon in
 both SQL and TypeScript; compact offsets cannot bypass the 15:59 limit.
 Reviewer binding, exact historical carry-forward and existing captures are unchanged.
+
+Additive migration `20261006000104_course_evidence_chronology.sql` aligns evidence
+chronology with JavaScript's millisecond comparison. SQL truncates fractional
+digits beyond three in comparison operands before timestamp casting, preventing
+PostgreSQL rounding from changing equality or carrying into the next second/day.
+Captured strings retain all source precision verbatim; timezone offsets still
+compare instants, and verification before retrieval remains forbidden.

@@ -302,4 +302,33 @@ do $$ declare reviewer text; n integer := 30; capture jsonb; begin
     n := n + 1;
   end loop;
 end $$;
+-- 00104: chronology follows source instants at JS millisecond precision.
+-- These are actual inserts: the .0010000/.0009999 pair was admitted before
+-- repair, while submillisecond equality was incorrectly rejected by SQL.
+do $$ declare pair record; capture jsonb; n integer := 40; begin
+  for pair in select * from (values
+    ('2026-10-06T12:00:00.0010000Z','2026-10-06T12:00:00.0009999Z',false),
+    ('2026-10-06T12:00:00.0009999Z','2026-10-06T12:00:00.0000001Z',true),
+    ('2026-10-06T23:59:59.9999999Z','2026-10-06T23:59:59.9990000Z',true),
+    ('2026-10-06T23:59:59.9999999Z','2026-10-07T00:00:00Z',true),
+    ('2026-10-07T00:00:00.001+01:00','2026-10-06T23:00:00.0009999Z',false),
+    ('2026-10-07T00:00:00.001+01:00','2026-10-06T23:00:00.0019999Z',true),
+    ('2026-10-06T12:00:00.1Z','2026-10-06T12:00:00.10Z',true),
+    ('2026-10-06T12:00:00Z','2026-10-06T12:00:00.000Z',true)
+  ) as cases(retrieved,verified,accepted) loop
+    capture := jsonb_set(jsonb_set(pg_temp.synthetic_deadline('2027-07-15','non-EU','00000000-0000-4000-8000-0000000000ab'),
+      '{0,evidence,0,retrieved_at}',to_jsonb(pair.retrieved)), '{0,evidence,0,last_verified_at}',to_jsonb(pair.verified));
+    if pair.accepted then
+      insert into public.course_offering_versions(offering_id,version,review_status,reviewed_at,reviewed_by,facts)
+        values ('00000000-0000-4000-8000-000000000002',n,'verified',now(),'00000000-0000-4000-8000-0000000000ab',capture);
+      perform pg_temp.assert_true((select facts = capture from public.course_offering_versions
+        where offering_id = '00000000-0000-4000-8000-000000000002' and version = n),'complete capture retained verbatim under millisecond chronology');
+    else
+      perform pg_temp.expect_state(format('insert into public.course_offering_versions(offering_id,version,review_status,reviewed_at,reviewed_by,facts) values (%L,%s,''verified'',now(),%L,%L)',
+        '00000000-0000-4000-8000-000000000002',n,'00000000-0000-4000-8000-0000000000ab',capture),'23514');
+    end if;
+    n := n + 1;
+  end loop;
+end $$;
+select pg_temp.assert_true(not exists(select * from course_versions_before except select * from public.course_offering_versions where offering_id in ('00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000003','00000000-0000-4000-8000-000000000004')), 'chronology repair leaves old reviewed history unchanged');
 rollback;

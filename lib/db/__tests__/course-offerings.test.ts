@@ -10,7 +10,8 @@ it.each([
   ["supabase/migrations/20261006000101_course_offering_integrity.sql", 14],
   ["supabase/migrations/20261006000102_course_capture_validation.sql", 8],
   ["supabase/migrations/20261006000103_course_capture_reviewer_uuid.sql", 2],
-  ["supabase/tests/course_offerings.sql", 32],
+  ["supabase/migrations/20261006000104_course_evidence_chronology.sql", 2],
+  ["supabase/tests/course_offerings.sql", 34],
 ] as const)("preserves every literal SQL dollar delimiter in %s", (file, expected) => {
   // Ignore SQL string literals (including regex end anchors) and line comments.
   const sql = readFileSync(file, "utf8").replace(/'(?:''|[^'])*'|--[^\r\n]*/g, "");
@@ -27,6 +28,19 @@ function client(body: unknown, status = 200) {
   return { db, requests };
 }
 describe("offering queries", () => {
+  it.each([
+    ['2026-10-06T12:00:00.0010000Z', '2026-10-06T12:00:00.0009999Z', false],
+    ['2026-10-06T12:00:00.0009999Z', '2026-10-06T12:00:00.0000001Z', true],
+    ['2026-10-06T23:59:59.9999999Z', '2026-10-06T23:59:59.9990000Z', true],
+  ] as const)('deserializes paired source timestamps without PostgreSQL rounding: %s / %s', async (retrieved_at, last_verified_at, accepted) => {
+    const row = { id, created_at: '2026-10-06T14:00:00Z', offering_id: id, version: 1,
+      review_status: 'verified', reviewed_at: '2026-10-06T13:00:00Z', reviewed_by: id,
+      facts: [{ key: 'description', kind: 'description', status: 'verified', verbatim: 'Synthetic', applicability: 'Synthetic', route: null, deadline_kind: null, date: null, time: null, timezone: null,
+        evidence: [{ source_url: 'https://example.invalid/', source_quote: 'Synthetic', retrieved_at, last_verified_at, verified_by: id, source_hash: null }] }] };
+    const { db } = client([row]);
+    if (accepted) expect(await listReviewedOfferingVersions(db, id)).toEqual([row]);
+    else await expect(listReviewedOfferingVersions(db, id)).rejects.toThrow('Verification precedes retrieval');
+  });
   it.each(['2026-10-05T12:00:00+0530', '2026-10-05T12:00:00+1600'])('rejects compact capture offset before I/O: %s', async (retrieved_at) => {
     const { db, requests } = client(null);
     await expect(insertAdminOfferingVersion(db, { offering_id: id, version: 1, review_status: 'pending', reviewed_at: null, reviewed_by: null,
