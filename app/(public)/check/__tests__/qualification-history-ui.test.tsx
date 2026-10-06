@@ -45,3 +45,15 @@ describe("history UI", () => {
     expect(review).toContain('aria-pressed="true"');
   });
 });
+
+it("upgrades historical Saudi profile edits and requires the missing APS answer", () => {
+  const saved = {targetDegree: "bachelor", nationality: "in", certificateCountry: "in", visaApplicationCountry: "sa", curriculumType: "national", board: "cbse", schoolGradePercent: 82, jeeAdvanced: false, targetField: "cs", intake: null, qualificationHistoryVersion: 1, hasPriorUniversityStudy: false,
+    schoolQualificationCountry: "in", schoolQualificationContext: "national", apsApplicationContext: "uni_assist", visaMissionContext: "saudi_study"} as const;
+  const missing = renderToStaticMarkup(React.createElement(ProfileReview, {initialAnswers: saved}));
+  expect(missing).toContain("APS certificate");
+  expect(missing).toContain('disabled=""');
+  const completed = renderToStaticMarkup(React.createElement(ProfileReview, {initialAnswers: {...saved, hasExistingApsCertificate: false}}));
+  expect(completed).not.toContain('disabled=""');
+  expect(saved).not.toHaveProperty("apsScopeVersion");
+  expect(saved).not.toHaveProperty("hasExistingApsCertificate");
+});

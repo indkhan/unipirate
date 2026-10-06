@@ -354,9 +354,10 @@ export function generateGlobalTasks(result: Result | null): GeneratedTask[] {
 }
 
 /** Read projection only. Saved titles, dates, completion and rows stay intact. */
-export function isCurrentApsTask(task: { task_key: string | null; title: string; done: boolean; generated_from_rule_id?: string | null }, result: Result | null): boolean {
+export function isCurrentApsTask(task: { task_key: string | null; done: boolean }, result: Result | null): boolean {
   if (!result || task.done || !task.task_key?.startsWith("rule:")) return true;
-  const aps = result.apsRuleIds?.includes(task.generated_from_rule_id ?? "") || /\bAPS\b/i.test(task.title);
+  const ruleId = /^rule:([^:]+):step:\d+$/.exec(task.task_key)?.[1];
+  const aps = ruleId !== undefined && result.apsRuleIds?.includes(ruleId);
   if (!aps) return true;
   return result.stepsDetailed.some(s => task.task_key === `rule:${s.ruleId}:step:${s.order}`);
 }

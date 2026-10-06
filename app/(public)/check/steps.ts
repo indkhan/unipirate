@@ -279,6 +279,10 @@ export const AnswersSchema = AnswerFieldsSchema
         message: 'Missing answer for step "curriculumType"' });
     }
     for (const step of visibleSteps(answers)) {
+      // Historical Saudi checks skipped this answer. Read them without
+      // inventing fulfilment; new/edited APS-versioned flows require it.
+      if (step === "hasExistingApsCertificate" && answers.apsScopeVersion !== 1 &&
+          answers.visaApplicationCountry === "sa") continue;
       // Legacy stored checks stay readable. New/edited flows require history.
       if (answers.qualificationHistoryVersion === undefined &&
           !HISTORY_STEPS.some((key) => answers[key] !== undefined) &&

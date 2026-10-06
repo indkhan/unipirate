@@ -199,7 +199,7 @@ describe("generateCourseTasks", () => {
     ];
 
     expect(
-      tasks.some((task) => /Use the APS requirements quiz/.test(task.title)),
+      tasks.some((task) => /Obtain your APS certificate for your uni-assist application/.test(task.title)),
     ).toBe(true);
     expect(tasks.some((task) => /My assist account/.test(task.title))).toBe(true);
     expect(tasks.filter((task) => task.title.startsWith("Submit application")))

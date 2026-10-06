@@ -5,6 +5,7 @@ import { generateGlobalTasks } from "@/lib/tasks/generate";
 import { ruleData } from "@/scripts/rules.bootstrap";
 import { buildProfile, visibleSteps, withAnswer, type PartialAnswers } from "@/app/(public)/check/steps";
 
+import { legacyPublishedAps } from "./aps-legacy-published.fixture";
 import { officialApsRules, officialIndianProfile } from "./aps-scopes.fixture";
 
 describe("UP-ELIG-05 official scoped APS acceptance", () => {
@@ -90,6 +91,30 @@ describe("UP-ELIG-05 official scoped APS acceptance", () => {
     const profile = buildProfile(answers as Parameters<typeof buildProfile>[0]);
     expect(profile.schoolQualification).toEqual({country: "in", context: "national"});
     expect(profile.visaMissionContext).toBeUndefined();
+  });
+  it("backs an independently published acquisition requirement with uni-assist evidence", () => {
+    const rule = officialApsRules().find(r => r.id === "aps-scoped-acquisition")!;
+    const result = evaluate(officialIndianProfile, [rule]);
+    expect(result.apsScopes?.application).toBe("required");
+    expect(result.citations.find(c => c.supports.includes("aps:application"))?.sourceUrl).toContain("uni-assist.de");
+    expect(rule.source_quote).toContain("APS certificate");
+  });
+  it("preserves checklist evidence alongside additional-document uncertainty", () => {
+    const rule = officialApsRules().find(r => r.id === "aps-scoped-visa-sa")!;
+    expect(rule.source_quote).toContain("high school graduation certificate");
+    expect(rule.source_quote).toContain("request additional documents");
+  });
+  it("keeps supplied published UUIDs separate from slugs and does not infer scope", () => {
+    const result = evaluate(officialIndianProfile, legacyPublishedAps);
+    expect(result.apsScopes).toEqual({qualification: "unknown", application: "unknown", visa: "unknown"});
+    expect(result.apsRuleIds).toContain("f5361a7c-bddf-45fd-9c8d-a23e736f16cc");
+    expect(result.apsRuleIds).not.toContain("aps-india-national");
+    expect(result.citations.some(c => c.ruleId === "2bf1bdf4-a0a3-4116-b905-fb2c164a6504")).toBe(true);
+    const candidate = officialApsRules().find(r => r.id === "aps-scoped-acquisition")!;
+    const reviewedCopy = {...candidate, id: "f5361a7c-bddf-45fd-9c8d-a23e736f16cc", slug: "separate-readable-slug"};
+    const task = generateGlobalTasks(evaluate(officialIndianProfile, [reviewedCopy]))[0];
+    expect(task.key).toBe("rule:f5361a7c-bddf-45fd-9c8d-a23e736f16cc:step:10");
+    expect(task.ruleId).toBe(reviewedCopy.id);
   });
   it("does not expand a legacy Saudi scalar into any exemption", () => {
     const legacy = ruleData.find(r => r.id === "aps-not-required-visa-from-sa")!;

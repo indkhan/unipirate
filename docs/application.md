@@ -164,7 +164,8 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
    `SubjectRowsEditor`, one static catalog each carrying the DAAD
    classification); an IB Certificate short of the full diploma skips the
    detail questions, since no rule can give it a path; the existing-APS
-   question is skipped when the visa is filed from Saudi Arabia. Steps
+   answer stays independent of visa filing in new/edited APS-versioned flows;
+   pre-scope Saudi checks remain readable without inventing an answer. Steps
    rendered as a number input are listed in `NUMBER_STEPS` with their bounds.
 2. Submit (`submitCheck` server action) zod-validates the answers, evaluates
    against published rules, and inserts a `checks` row through the dedicated
@@ -460,14 +461,18 @@ visa preserves the answer. Acquisition steps require an explicit missing
 certificate; held/unknown answers do not create acquisition work. Generated task
 keys retain `rule:<ruleId>:step:<order>`. Read projection hides obsolete pending
 generated APS tasks while preserving completed history and manual/course tasks.
-Source-rule metadata identifies edited titles where available. No saved task,
+The real rule UUID is extracted from the stable task key, independent of editable
+titles; no removed source-rule column is assumed. No saved task,
 personal edit, application or completion row is rewritten or deleted.
 
 Four source-backed candidates remain drafts in bootstrap data. Human admin
 review/publication is required; no seed, KB rebuild or live publication runs in
-this change. The source verification date 2026-10-06 is not an intake boundary.
+this change. Source verification dates 2026-10-06/07 are not intake boundaries.
 KMK's 2006 resolution as amended 2015 supports first-study recognition only;
-uni-assist India supports the confirmed application route. APS FAQ exceptions
+uni-assist India supports both application requirement and certificate preparation
+candidates. The Saudi candidate preserves an academic checklist excerpt and an
+explicit full-list omission observation separately from the additional-request
+warning; no source statement of exemption is invented. APS FAQ exceptions
 require applicable facts and source confirmation, not inferred exemptions.
 The Saudi checklist omission means not_listed and permits additional requests.
 JSON additions need no migration or generated database type change.
