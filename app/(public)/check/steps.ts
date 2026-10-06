@@ -459,6 +459,10 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
         if (answers.dmatRegistrationStatus === "completed") steps.push("dmatRegistrationDate");
         steps.push("dmatDispatchStatus");
         if (answers.dmatDispatchStatus === "complete") steps.push("dmatDispatchDate");
+      }
+      // These exemptions do not depend on distinguishing an initial/new procedure.
+      // Timing remains conditional on that distinction; completed procedures shortcut.
+      if (["current_initial", "current_new", "unknown"].includes(answers.dmatProcedure ?? "")) {
         steps.push("dmatPartnershipStatus");
         if (answers.dmatPartnershipStatus === "confirmed") steps.push("dmatPartnershipKind", "dmatPartnershipIssuerRole", "dmatPartnershipIssuer", "dmatPartnershipGroup", "dmatPartnershipReference");
         steps.push("dmatFieldBasis");
@@ -496,10 +500,14 @@ export function withAnswer<K extends StepId>(
     if (field === "dmatDegreeTitle" && answers.dmatDegreeTitle !== undefined) {
       for (const key of DMAT_STEPS) if (key !== "dmatDegreeTitle" && key !== "dmatQualificationScope") delete next[key];
     }
-    if (field === "dmatQualificationScope" || field === "dmatProcedure") {
-      for (const key of DMAT_STEPS) if (key !== "dmatQualificationScope" && key !== "dmatProcedure" &&
-        !(field === "dmatProcedure" && key === "dmatDegreeTitle")) delete next[key];
-      if (field === "dmatQualificationScope") delete next.dmatProcedure;
+    if (field === "dmatQualificationScope") {
+      for (const key of DMAT_STEPS) if (key !== "dmatQualificationScope") delete next[key];
+    }
+    if (field === "dmatProcedure") {
+      // Dates/statuses belong to the relevant procedure; field, partnership and
+      // actual semesters belong to the qualification/programme and remain valid.
+      delete next.dmatRegistrationStatus; delete next.dmatRegistrationDate;
+      delete next.dmatDispatchStatus; delete next.dmatDispatchDate;
     }
     if (field === "dmatFieldBasis") {
       delete next.dmatFieldEntry; delete next.dmatApsClassification; delete next.dmatClassificationReference;

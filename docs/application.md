@@ -648,6 +648,12 @@ not-completed/not-sent reports need no invented date. Partnership confirmation
 records issuer role/name, programme kind, group number and reference; pending or
 unknown reports cannot establish it. Enrolled bachelor exceptions use reported
 actual completed semesters, never completed years multiplied by two.
+An unknown initial/new procedure still collects independent confirmed partnership,
+APS-confirmed unaffected classification and applicable actual-semester evidence.
+Procedure edits reset registration/dispatch reports while preserving those
+qualification/programme facts; a relevant completed procedure retains its shortcut.
+The multiple/unknown-qualification review candidate applies from SS2027 onward,
+so qualification uncertainty cannot defeat the earlier-intake exemption.
 
 Changing issuer/history, degree, procedure or classification prunes dependent
 answers; passport/visa changes preserve these reports. Legacy answers/results
@@ -661,8 +667,11 @@ Thirty-four source-backed bootstrap candidates remain DRAFT, including the
 pre-Summer-2027 boundary and explicit positive/exception conditions. Intake,
 semester and date policy stays in reviewed data. No seed, publication or embedding
 runs here; production classification depends on separate admin review/publication.
-The KB also suppresses an obsolete certificate-possession exemption and preserves
-its stored quote as historical evidence rather than current applicability. dMAT
+Newly rendered KB chunks suppress the obsolete certificate-possession exemption
+and label its quote as historical evidence rather than current applicability.
+Existing stored chunks are returned unchanged by retrieval: root must verify their
+replacement before release so an old quote cannot assert a new-procedure exemption.
+No live embedding/publication or retrieval-platform change is performed here. dMAT
 neither replaces APS nor guarantees recognition/admission; a low score alone is
 not an APS refusal. The current APS clarification permits other complete documents
 before the dMAT certificate. Source checks dated 2026-10-07 are verification dates,

@@ -5,6 +5,26 @@ import { p3Indian3yrBsc } from "./personas";
 import { dmatProfile, reviewedDmatRules } from "./dmat.fixture";
 
 describe("UP-ELIG-07 procedure-specific dMAT", () => {
+  it.each(["single", "multiple", "unknown"] as const)("preserves pre-SS2027 applicability with %s qualification scope", qualificationScope => {
+    const profile = { ...dmatProfile, dmat: { ...dmatProfile.dmat!, qualificationScope } };
+    expect(evaluate({ ...profile, intake: { term: "winter", year: 2026 } }, reviewedDmatRules()).dMAT).toBe("not_required");
+    expect(evaluate(profile, reviewedDmatRules()).dMAT).toBe(qualificationScope === "single" ? "required" : "unknown");
+    expect(evaluate({ ...profile, intake: undefined }, reviewedDmatRules()).dMAT).toBe("unknown");
+  });
+
+  it("retains independent exemptions but not timing exemptions with unknown procedure", () => {
+    const unknown = { ...dmatProfile, dmat: { ...dmatProfile.dmat!, procedure: "unknown" as const } };
+    expect(evaluate(unknown, reviewedDmatRules()).dMAT).toBe("unknown");
+    expect(evaluate({ ...unknown, dmat: { ...unknown.dmat, partnership: { status: "confirmed", kind: "exchange",
+      issuerRole: "home_institution", issuer: "University", groupNumber: "G1", reference: "Official confirmation" } } }, reviewedDmatRules()).dMAT).toBe("not_required");
+    expect(evaluate({ ...unknown, dmat: { ...unknown.dmat, field: { basis: "aps_confirmation", classification: "unaffected", reference: "APS confirmation" } } }, reviewedDmatRules()).dMAT).toBe("not_required");
+    expect(evaluate({ ...unknown, qualificationHistory: { ...unknown.qualificationHistory!, completion: "in_progress" },
+      dmat: { ...unknown.dmat, completedSemesters: 6 } }, reviewedDmatRules()).dMAT).toBe("not_required");
+    for (const event of ["registration", "dispatch"] as const) {
+      expect(evaluate({ ...unknown, dmat: { ...unknown.dmat,
+        [event]: { status: event === "registration" ? "completed" : "complete", date: "2026-06-28" } } }, reviewedDmatRules()).dMAT).toBe("unknown");
+    }
+  });
   it("preserves the intake boundary for the new profile contract", () => {
     expect(evaluate({ ...dmatProfile, intake: { term: "winter", year: 2026 } }, reviewedDmatRules()).dMAT).toBe("not_required");
     expect(evaluate(dmatProfile, reviewedDmatRules()).dMAT).toBe("required");

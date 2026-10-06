@@ -6,6 +6,85 @@ import { reviewedDmatRules } from "@/lib/engine/__tests__/dmat.fixture";
 import { dmatAnswers } from "./dmat.fixture";
 
 describe("UP-ELIG-07 progressive reported inputs", () => {
+  it.each(["single", "multiple", "unknown"] as const)("round-trips the earlier intake with %s qualification scope", dmatQualificationScope => {
+    const answers = AnswersSchema.parse({ ...dmatAnswers, dmatQualificationScope, intake: { term: "winter", year: 2026 } });
+    expect(evaluate(buildProfile(answers), reviewedDmatRules()).dMAT).toBe("not_required");
+    expect(evaluate(buildProfile(AnswersSchema.parse({ ...answers, intake: { term: "summer", year: 2027 } })), reviewedDmatRules()).dMAT)
+      .toBe(dmatQualificationScope === "single" ? "required" : "unknown");
+    expect(evaluate(buildProfile(AnswersSchema.parse({ ...answers, intake: null })), reviewedDmatRules()).dMAT).toBe("unknown");
+  });
+
+  const unknownProcedure = { ...dmatAnswers, dmatProcedure: "unknown" } as const;
+  const confirmedPartnership = { ...unknownProcedure, dmatPartnershipStatus: "confirmed", dmatPartnershipKind: "exchange",
+    dmatPartnershipIssuerRole: "home_institution", dmatPartnershipIssuer: "Home University", dmatPartnershipGroup: "G1",
+    dmatPartnershipReference: "Official exchange confirmation" } as const;
+  const unaffected = { ...unknownProcedure, dmatFieldBasis: "aps_confirmation", dmatApsClassification: "unaffected",
+    dmatClassificationReference: "APS confirmation for this qualification" } as const;
+
+  it("collects independent partnership and APS classification with uncertain procedure", () => {
+    for (const input of [confirmedPartnership, unaffected]) {
+      const parsed = AnswersSchema.parse(input);
+      const profile = buildProfile(parsed);
+      expect(evaluate(profile, reviewedDmatRules()).dMAT).toBe("not_required");
+      expect(profile.dmat?.procedure).toBe("unknown");
+    }
+    expect(AnswersSchema.parse(confirmedPartnership).dmatPartnershipGroup).toBe("G1");
+    expect(AnswersSchema.parse(unaffected).dmatClassificationReference).toBe(unaffected.dmatClassificationReference);
+  });
+
+  it.each([[3, 4, "not_required"], [3, 5, "unknown"], [4, 6, "not_required"], [4, 7, "unknown"]] as const)(
+    "uses actual semester boundary with uncertain procedure: %i years, %i semesters", (priorDegreeYears, dmatCompletedSemesters, expected) => {
+      const input = { ...unknownProcedure, priorStudyCompletion: "in_progress", priorDegreeYears,
+        yearsOfUniversityStudy: 2, dmatSemesterStatus: "known", dmatCompletedSemesters } as const;
+      expect(evaluate(buildProfile(AnswersSchema.parse(input)), reviewedDmatRules()).dMAT).toBe(expected);
+      expect(AnswersSchema.safeParse({ ...input, dmatCompletedSemesters: undefined }).success).toBe(false);
+      expect(evaluate(buildProfile(AnswersSchema.parse({ ...input, dmatSemesterStatus: "unknown" })), reviewedDmatRules()).dMAT).toBe("unknown");
+    });
+
+  it("keeps unknown/negative evidence unresolved and incomplete confirmations invalid", () => {
+    expect(PartialAnswersSchema.safeParse({ ...confirmedPartnership, dmatPartnershipReference: "" }).success).toBe(true);
+    expect(AnswersSchema.safeParse({ ...confirmedPartnership, dmatPartnershipReference: "" }).success).toBe(false);
+    expect(AnswersSchema.safeParse({ ...confirmedPartnership, dmatPartnershipGroup: undefined }).success).toBe(false);
+    expect(AnswersSchema.safeParse({ ...unaffected, dmatClassificationReference: undefined }).success).toBe(false);
+    expect(AnswersSchema.safeParse({ ...unknownProcedure, dmatPartnershipStatus: undefined }).success).toBe(false);
+    for (const dmatPartnershipStatus of ["none", "pending", "unknown"] as const) {
+      expect(evaluate(buildProfile(AnswersSchema.parse({ ...confirmedPartnership, dmatPartnershipStatus })), reviewedDmatRules()).dMAT).toBe("unknown");
+    }
+    for (const dmatApsClassification of ["affected", "unknown"] as const) {
+      expect(evaluate(buildProfile(AnswersSchema.parse({ ...unaffected, dmatApsClassification })), reviewedDmatRules()).dMAT).toBe("unknown");
+    }
+  });
+
+  it("prunes procedure-specific timing while preserving independent evidence across procedure edits", () => {
+    const current = { ...confirmedPartnership, dmatProcedure: "current_initial", dmatRegistrationStatus: "completed",
+      dmatRegistrationDate: "2026-06-28", dmatDispatchStatus: "complete", dmatDispatchDate: "2026-06-29" } as const;
+    const changed = withAnswer(current, "dmatProcedure", "unknown");
+    expect(changed.dmatPartnershipGroup).toBe("G1");
+    expect(changed.dmatFieldEntry).toBe("Engineering");
+    expect(changed).not.toHaveProperty("dmatRegistrationStatus");
+    expect(changed).not.toHaveProperty("dmatDispatchDate");
+    expect(evaluate(buildProfile(AnswersSchema.parse(changed)), reviewedDmatRules()).dMAT).toBe("not_required");
+    const newProcedure = withAnswer(changed, "dmatProcedure", "current_new");
+    expect(newProcedure.dmatPartnershipReference).toBe(current.dmatPartnershipReference);
+    expect(newProcedure).not.toHaveProperty("dmatRegistrationDate");
+    expect(AnswersSchema.safeParse(newProcedure).success).toBe(false);
+    expect(withAnswer(unaffected, "dmatProcedure", "current_initial").dmatClassificationReference).toBe(unaffected.dmatClassificationReference);
+    const enrolled = { ...unknownProcedure, priorStudyCompletion: "in_progress", dmatSemesterStatus: "known", dmatCompletedSemesters: 6 } as const;
+    expect(withAnswer(enrolled, "dmatProcedure", "current_new").dmatCompletedSemesters).toBe(6);
+    expect(withAnswer(enrolled, "priorStudyCompletion", "completed")).not.toHaveProperty("dmatCompletedSemesters");
+    expect(withAnswer(confirmedPartnership, "dmatPartnershipStatus", "pending")).not.toHaveProperty("dmatPartnershipReference");
+  });
+
+  it("does not reuse timing or certificate possession when procedure is unknown", () => {
+    const input = { ...unknownProcedure, hasExistingApsCertificate: true, dmatRegistrationStatus: "completed",
+      dmatRegistrationDate: "2026-06-28", dmatDispatchStatus: "complete", dmatDispatchDate: "2026-06-28" } as const;
+    const profile = buildProfile(AnswersSchema.parse(input));
+    expect(profile.dmat?.registration).toBeUndefined();
+    expect(profile.dmat?.dispatch).toBeUndefined();
+    expect(evaluate(profile, reviewedDmatRules()).dMAT).toBe("unknown");
+    expect(evaluate(buildProfile(AnswersSchema.parse({ ...input, dmatProcedure: "relevant_completed" })), reviewedDmatRules()).dMAT).toBe("not_required");
+    expect(evaluate(buildProfile(AnswersSchema.parse({ ...input, dmatProcedure: "relevant_completed", hasExistingApsCertificate: false })), reviewedDmatRules()).dMAT).toBe("unknown");
+  });
   it("validates, round-trips JSON and maps reports with a versioned source basis", () => {
     const answers = AnswersSchema.parse(JSON.parse(JSON.stringify(dmatAnswers)));
     const profile = buildProfile(answers);
