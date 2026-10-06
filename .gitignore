@@ -35,3 +35,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Local worker handoff (not a published artifact)
+/WORKER_REPORT.md

@@ -32,6 +32,10 @@ type ProfileReviewProps = {
 };
 
 const QUESTIONS: Record<StepId, string> = {
+  schoolQualificationCountry: "School qualification issuer country",
+  schoolQualificationContext: "School qualification context",
+  apsApplicationContext: "uni-assist application context",
+  visaMissionContext: "Confirmed visa checklist context",
   hasPriorUniversityStudy: "Previous higher education",
   priorQualificationType: "Previous qualification type",
   priorStudyInstitution: "Previous institution",
@@ -66,7 +70,7 @@ const QUESTIONS: Record<StepId, string> = {
 export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers(PartialAnswersSchema.parse(initialAnswers)));
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), apsScopeVersion: 1 }));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const steps = visibleSteps(answers);

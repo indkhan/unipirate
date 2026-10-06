@@ -11,7 +11,7 @@ vi.mock("@/components/app/theme-toggle", () => ({ ThemeToggle: () => null }));
 const answers = { targetDegree: "master", nationality: "pk", certificateCountry: "pk", visaApplicationCountry: "sa", targetField: "cs", intake: null, qualificationHistoryVersion: 1, hasPriorUniversityStudy: true, priorQualificationType: "bachelor", priorStudyInstitution: "Example University", priorStudyCountry: "in", priorQualificationContext: "national", priorStudyField: "Computing", priorDegreeYears: 4, yearsOfUniversityStudy: 2, priorStudyCompletion: "in_progress" } as const;
 describe("history UI", () => {
   it("renders editable text history in checker and review", () => {
-    const html = renderToStaticMarkup(React.createElement(CheckFlow, { initialAnswers: answers, initialStepIndex: visibleSteps(answers).indexOf("priorStudyInstitution") }));
+    const html = renderToStaticMarkup(React.createElement(CheckFlow, { initialAnswers: answers, initialStepIndex: visibleSteps({ ...answers, apsScopeVersion: 1 }).indexOf("priorStudyInstitution") }));
     expect(html).toContain('value="Example University"');
     expect(html).toContain('type="text"');
     const review = renderToStaticMarkup(React.createElement(ProfileReview, { initialAnswers: answers }));
@@ -29,7 +29,7 @@ describe("history UI", () => {
     expect(review).not.toContain("Curriculum");
   });
   it("shows awarding-country choices without a school-country or code prompt for masters", () => {
-    const html = renderToStaticMarkup(React.createElement(CheckFlow, { initialAnswers: answers, initialStepIndex: visibleSteps(answers).indexOf("priorStudyCountry") }));
+    const html = renderToStaticMarkup(React.createElement(CheckFlow, { initialAnswers: answers, initialStepIndex: visibleSteps({ ...answers, apsScopeVersion: 1 }).indexOf("priorStudyCountry") }));
     expect(html).toContain("India");
     expect(html).toContain("Another country");
     expect(html).not.toContain("two-letter");

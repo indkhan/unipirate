@@ -353,6 +353,14 @@ export function generateGlobalTasks(result: Result | null): GeneratedTask[] {
   return generated.sort((a, b) => a.key.localeCompare(b.key));
 }
 
+/** Read projection only. Saved titles, dates, completion and rows stay intact. */
+export function isCurrentApsTask(task: { task_key: string | null; title: string; done: boolean; generated_from_rule_id?: string | null }, result: Result | null): boolean {
+  if (!result || task.done || !task.task_key?.startsWith("rule:")) return true;
+  const aps = result.apsRuleIds?.includes(task.generated_from_rule_id ?? "") || /\bAPS\b/i.test(task.title);
+  if (!aps) return true;
+  return result.stepsDetailed.some(s => task.task_key === `rule:${s.ruleId}:step:${s.order}`);
+}
+
 export function generateCourseTasks(
   applications: ApplicationForTaskGeneration[],
   todayIso?: string,

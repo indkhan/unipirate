@@ -16,10 +16,10 @@ const master = {
 
 // Unparsed input deliberately exercises the current mapping before the new boundary field exists.
 describe("master qualification context", () => {
-  it("matches supported legacy Indian qualification APS semantics without school curriculum", () => {
+  it("keeps unscoped legacy APS unresolved without inventing scope", () => {
     const legacy = buildProfile(AnswersSchema.parse({ targetDegree: "master", nationality: "pk", certificateCountry: "in", visaApplicationCountry: "in", curriculumType: "national", targetField: "cs", intake: null, hasExistingApsCertificate: false }));
     const current = buildProfile(master);
-    expect(evaluate(legacy, fixtureRules).aps).toBe("required");
+    expect(evaluate(legacy, fixtureRules).aps).toBe("unknown");
     expect(evaluate(current, fixtureRules)).toEqual(evaluate(legacy, fixtureRules));
     expect(current.curriculumType).toBe("other");
     expect(current.tertiaryQualification).toEqual({ issuer: "Example University", country: "in", context: "national" });

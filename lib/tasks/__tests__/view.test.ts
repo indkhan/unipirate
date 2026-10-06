@@ -21,6 +21,21 @@ beforeEach(() => {
 });
 
 describe("application task visibility", () => {
+  it("hides obsolete pending APS work without rewriting saved edits or completion", async () => {
+    mocks.getProfile.mockResolvedValue({ answers: { targetDegree: "bachelor", certificateCountry: "in", nationality: "in", curriculumType: "national", board: "cbse", schoolGradePercent: 82, jeeAdvanced: false, hasExistingApsCertificate: false, visaApplicationCountry: "sa", targetField: "cs", intake: null } });
+    mocks.getPublishedRules.mockResolvedValue([{ id: "legacy-aps", conditions: {}, outcomes: { aps: "required" }, status: "verified", source_url: "https://aps-india.de/faqs/", source_quote: "Legacy test evidence", last_verified_at: "2026-10-06T00:00:00Z" }]);
+    mocks.listApplicationsWithCourses.mockResolvedValue([]);
+    const pending = { ...task, id: "old", task_key: "rule:legacy-aps:step:10", generated_from_rule_id: "legacy-aps", course_task_definition_id: null, application_id: null, title: "My edited title" };
+    const completed = { ...pending, id: "completed", done: true };
+    const manual = { ...pending, id: "manual", task_key: null };
+    const rows = [pending, completed, manual];
+    mocks.listTasks.mockResolvedValue(rows);
+    const view = await buildDashboardView({ from: vi.fn() }, "student");
+    expect([...view.buckets.now, ...view.buckets.next, ...view.buckets.later].map(t => t.id)).toEqual(["manual"]);
+    expect(view.doneTasks.map(t => t.id)).toEqual(["completed"]);
+    expect(rows[0].title).toBe("My edited title");
+    expect(rows[0].done).toBe(false);
+  });
   it.each(["applied", "admitted", "rejected"])("hides pending preparation tasks for %s applications", async (status) => {
     mocks.listApplicationsWithCourses.mockResolvedValue([{ id: "application", status, courses: null }]);
     const view = await buildDashboardView({ from: vi.fn() }, "student");

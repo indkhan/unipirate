@@ -68,6 +68,40 @@ const RECOGNIZED_GCE_BODIES = [
 ];
 
 export const ruleData: RuleRecord[] = [
+  // UP-ELIG-05: evidence retrieved 2026-10-06, not an effective-intake date.
+  // These candidates require human admin publication; no seed runs here.
+  {
+    id: "aps-scoped-qualification", country: "in",
+    conditions: { aps_issuer_country: "in", aps_qualification_context: "national", target_degree: "bachelor" },
+    outcomes: { aps_scopes: { qualification: { value: "required", documents: ["APS India certificate"] } } },
+    status: "draft", source_url: "https://www.kmk.org/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/APS_2015_12_10.pdf",
+    source_quote: "Studienbewerber zugelassen, die das Zertifikat bzw. die Bescheinigung der Akademischen Prüfstelle als Nachweis der Erfüllung der in den Bewertungsvorschlägen der Kultusministerkonferenz festgelegten Voraussetzungen für die Aufnahme eines Erststudiums vorlegen können.",
+    last_verified_at: "2026-10-06T00:00:00Z",
+  },
+  {
+    id: "aps-scoped-application", country: "in",
+    conditions: { aps_issuer_country: "in", aps_qualification_context: "national", aps_application_context: "uni_assist" },
+    outcomes: { aps_scopes: { application: { value: "required", documents: ["APS India certificate"] } } },
+    status: "draft", source_url: "https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/",
+    source_quote: "your APS certificate (from the Academic Evaluation Centre, https://aps-india.de/)",
+    last_verified_at: "2026-10-06T00:00:00Z",
+  },
+  {
+    id: "aps-scoped-visa-sa", country: "sa",
+    conditions: { visa_application_country: "sa", visa_mission_context: "saudi_study" },
+    outcomes: { aps_scopes: { visa: { value: "not_listed" } }, note: "APS is not listed on the Saudi Missions study checklist. This is not an exemption; the mission may request additional documents." },
+    status: "draft", source_url: "https://saudiarabien.diplo.de/ksa-en/visa-service/study-preparatory-courses-2195208",
+    source_quote: "The German Missions reserve the right to request additional documents.",
+    last_verified_at: "2026-10-06T00:00:00Z",
+  },
+  {
+    id: "aps-scoped-acquisition", country: "in",
+    conditions: { aps_issuer_country: "in", aps_qualification_context: "national", aps_application_context: "uni_assist" },
+    outcomes: { aps_scopes: { application: { value: "required", steps: [{ order: 10, text: "Use the APS requirements quiz and the checklist for your relevant academic documents before applying for APS verification.", acquisition: true }] } } },
+    status: "draft", source_url: "https://aps-india.de/faqs/",
+    source_quote: "Please use the APS requirements quiz for initial orientation and then consult the checklist for the relevant procedure.",
+    last_verified_at: "2026-10-06T00:00:00Z",
+  },
   // ---------------------------------------------------------------- India
   {
     id: "in-school-studienkolleg",

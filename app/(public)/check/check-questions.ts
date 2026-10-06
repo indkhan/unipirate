@@ -12,6 +12,10 @@ export type Option = { value: unknown; label: string; key: string };
 
 /** Prompt (and optional subtitle) shown for each step of the checker. */
 export const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
+  schoolQualificationCountry: { question: "Which country's institution or awarding body issued your school qualification?", subtitle: "Use the issuer on your certificate, not your passport or the country where you attended school. Choose unsure if you cannot confirm." },
+  schoolQualificationContext: { question: "What type of qualification did that issuer award?", subtitle: "National qualifications and international qualifications such as IB or GCE have different verification contexts." },
+  apsApplicationContext: { question: "Will uni-assist assess your application or issue a VPD?", subtitle: "Confirm this from your programme's application instructions. Choose unsure for other or unconfirmed routes." },
+  visaMissionContext: { question: "Does your responsible mission's Saudi study checklist apply to you?", subtitle: "Confirm responsibility from your residence and the mission's instructions. Selecting Saudi Arabia alone does not establish jurisdiction." },
   hasPriorUniversityStudy: { question: "Have you studied at a university or other higher education institution?", subtitle: "Include completed, ongoing or discontinued study. This records your history; it does not determine admission." },
   priorQualificationType: { question: "What qualification was that study leading to?", subtitle: "Use the previous qualification relevant to this application." },
   priorStudyInstitution: { question: "Which institution awarded or will award that qualification?" },
@@ -31,7 +35,7 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> 
   visaApplicationCountry: {
     question: "Where will you apply for your German visa?",
     subtitle:
-      "The country you'll file your student-visa application from — usually where you live. It decides which embassy's rules (like APS) apply.",
+      "The country you'll file your student-visa application from — usually where you live. Academic and application requirements are assessed separately.",
   },
   curriculumType: {
     question: "Which curriculum did you study?",
@@ -93,6 +97,14 @@ const countryOptions = COUNTRIES.map((c) => ({
  * their own bespoke inputs and return []. */
 export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
   switch (stepId) {
+    case "schoolQualificationCountry":
+      return [...countryOptions, { value: "other", label: "Another country", key: "other" }, { value: "unknown", label: "Unsure", key: "unknown" }];
+    case "schoolQualificationContext":
+      return [{ value: "national", label: "National qualification", key: "national" }, { value: "international", label: "International qualification (IB / GCE)", key: "international" }, { value: "unknown", label: "Unsure", key: "unknown" }];
+    case "apsApplicationContext":
+      return [{ value: "uni_assist", label: "Yes, confirmed by my programme", key: "uni_assist" }, { value: "unknown", label: "Other route or unsure", key: "unknown" }];
+    case "visaMissionContext":
+      return [{ value: "saudi_study", label: "Yes, I confirmed this checklist applies", key: "saudi_study" }, { value: "other", label: "Another checklist applies", key: "other" }, { value: "unknown", label: "Unsure", key: "unknown" }];
     case "priorStudyCountry": {
       const options = [...countryOptions, { value: "other", label: "Another country", key: "other" }];
       const saved = answers.priorStudyCountry;

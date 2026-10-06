@@ -86,11 +86,10 @@ export const kbSnippets: KbChunk[] = [
   },
   {
     slug: "snippet-expat-curriculum-routing",
-    title: "APS follows the country of education, not the passport",
-    content:
-      "APS follows where the qualification was obtained, not the passport. An Indian-curriculum student in Riyadh with Indian-board certificates likely needs APS India, while a Saudi-curriculum classmate does not. Needs final official confirmation with APS India for CBSE-abroad certificates specifically. Three separate facts matter: nationality, certificate country, and curriculum/board.",
-    source_url: "https://aps-india.de/",
-    last_verified_at: CHECKED_AT,
+    title: "APS scope follows the issuing qualification",
+    content: "APS India evaluates qualifications issued by Indian institutions; nationality alone does not decide applicability. School attendance country and board alone do not establish issuing qualification context. Confirm qualifications issued abroad or under international arrangements with APS India. Qualification, application and visa requirements must be checked separately.",
+    source_url: "https://aps-india.de/faqs/",
+    last_verified_at: "2026-10-06T00:00:00Z",
     country_code: null,
   },
   // --------------------------------------------------------------- India
@@ -105,11 +104,10 @@ export const kbSnippets: KbChunk[] = [
   },
   {
     slug: "snippet-aps-india-basics",
-    title: "APS India basics (fee, processing, format)",
-    content:
-      "APS is mandatory for Indian applicants for degree study in Germany since November 2022. Fee ₹18,000, non-refundable. Processing usually 3–4 weeks (6–12 weeks at peak). Digital certificate (DigiZert) since April 2023. Applications are couriered only. Enrolled-bachelor applicants may face an interview. Exemptions include DAAD scholarship holders. These details come from consistent secondary sources and the official portal — confirm each on aps-india.de before relying on them.",
-    source_url: "https://aps-india.de/",
-    last_verified_at: CHECKED_AT,
+    title: "APS India scope and procedure confirmation",
+    content: "APS India checks academic qualifications; it does not decide university admission or visa issuance. Use its requirements quiz for initial orientation and the checklist for the relevant procedure. Confirm any exception using its applicable facts and official source. Do not infer an exemption from a visa checklist omission or promise a fixed processing time.",
+    source_url: "https://aps-india.de/faqs/",
+    last_verified_at: "2026-10-06T00:00:00Z",
     country_code: "in",
   },
   {
