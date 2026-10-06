@@ -4,6 +4,7 @@
 // and merges outcomes. Missing rules produce explicit `unknown` outcomes with
 // confirm-with-the-official-source messages; the engine never guesses.
 import { z } from "zod";
+import { calendarDay } from "./calendar-day";
 
 // ---------------------------------------------------------------- profile
 
@@ -24,6 +25,13 @@ export type Profile = {
   visaMissionContext?: "saudi_study" | "other" | "unknown";
   apsApplicationContext?: "uni_assist" | "unknown";
   hasExistingApsCertificate?: boolean;
+  // Reported APS confirmation for this Class XII(/one-bachelor-year) procedure;
+  // another/uncertain academic basis cannot confirm it. Never a courier alias.
+  apsProcedure?: {
+    status: "not_started" | "pending" | "completed" | "new_evaluation" | "unknown";
+    submissionConfirmation?: "confirmed" | "unknown";
+    submissionDate?: string;
+  };
   // Present only for the new master's flow; separate from school curriculum.
   tertiaryQualification?: {
     issuer?: string;
@@ -134,6 +142,9 @@ const ConditionSchema = z.union([
 type Condition = z.infer<typeof ConditionSchema>;
 
 const FactKeySchema = z.enum([
+  // New names deliberately leave legacy aps_application_day rows inactive.
+  "aps_confirmed_submission_day",
+  "aps_submission_confirmation",
   "aps_issuer_country",
   "aps_qualification_context",
   "visa_mission_context",
@@ -335,6 +346,15 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
     target_field: p.targetField,
     has_existing_aps: p.hasExistingApsCertificate,
   };
+  if (p.targetDegree === "bachelor" && p.curriculumType === "national" &&
+      p.schoolQualification?.country === "in" && p.schoolQualification.context === "national") {
+    const procedure = p.apsProcedure;
+    const date = procedure?.submissionConfirmation === "confirmed" &&
+      ["pending", "completed", "new_evaluation"].includes(procedure.status)
+      ? calendarDay(procedure.submissionDate) : undefined;
+    raw.aps_submission_confirmation = date === undefined ? "unknown" : "confirmed";
+    raw.aps_confirmed_submission_day = date;
+  }
   if (p.qualificationHistory) {
     const history = p.qualificationHistory;
     raw.has_prior_university_study = history.hasPriorUniversityStudy;

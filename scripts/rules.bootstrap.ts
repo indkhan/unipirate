@@ -17,8 +17,19 @@ const PROCESS_SOURCE_CHECKED_AT = "2026-08-22T00:00:00Z";
 const VISA_SOURCE_CHECKED_AT = "2026-07-07T00:00:00Z";
 const SS_2026 = intakeIndex("summer", 2026);
 const WS_2026_27 = intakeIndex("winter", 2026);
-
+// UP-ELIG-06: reviewed 2026-10-07. APS assessment timing is not an admission guarantee.
+// Only a reported APS-confirmed complete submission for the relevant procedure
+// supplies the new key; legacy aps_application_day conditions remain inactive.
 const INDIAN_BOARDS = ["cbse", "cisce", "state_board"];
+const APS_TRANSITION_CONDITIONS = {
+  target_degree: "bachelor", curriculum: "national",
+  aps_issuer_country: "in", aps_qualification_context: "national",
+  board: { op: "in", value: INDIAN_BOARDS },
+  jee_advanced: false,
+  class12_percent: { op: "lt", value: 70 },
+  intake_index: { op: "gte", value: WS_2026_27 },
+} as const;
+
 const STEM_FIELDS = [
   "cs",
   "it",
@@ -68,6 +79,30 @@ const RECOGNIZED_GCE_BODIES = [
 ];
 
 export const ruleData: RuleRecord[] = [
+  {
+    id: "aps-transition-before", country: "in", status: "draft",
+    conditions: { ...APS_TRANSITION_CONDITIONS, aps_confirmed_submission_day: { op: "lt", value: 20260315 } },
+    outcomes: { path: "unknown", note: "Your reported APS-confirmed complete submission predates 15 March 2026 for this procedure. APS assesses it under the earlier criteria; this does not establish admission for Winter Semester 2026/27 or later. Already-issued certificates retain validity. Confirm your complete qualification pathway with the university." },
+    source_url: "https://aps-india.de/news/",
+    source_quote: "Applications submitted before the implementation date (15 March 2026)",
+    last_verified_at: "2026-10-07T00:00:00Z",
+  },
+  {
+    id: "aps-transition-current", country: "in", status: "draft",
+    conditions: { ...APS_TRANSITION_CONDITIONS, aps_confirmed_submission_day: { op: "gte", value: 20260315 } },
+    outcomes: { path: "insufficient", note: "For admissions from Winter Semester 2026/27, the reported Class XII score does not meet the 70% criterion for the Studienkolleg or one-successful-bachelor-year pathways. This procedure has no pre-15 March 2026 APS submission basis. Certificate possession does not waive admission prerequisites; confirm any other qualification pathway with the university." },
+    source_url: "https://aps-india.de/news/",
+    source_quote: "a minimum overall score of 70%",
+    last_verified_at: "2026-10-07T00:00:00Z",
+  },
+  {
+    id: "aps-transition-unconfirmed", country: "in", status: "draft",
+    conditions: { ...APS_TRANSITION_CONDITIONS, aps_submission_confirmation: "unknown" },
+    outcomes: { path: "unknown", note: "Does APS confirm the complete application submission date for the procedure covering your relevant qualifications? Ask APS India if the procedure or date is uncertain. Registration, payment, dispatch and receipt alone do not establish the March transition milestone. Confirm admission separately with the university." },
+    source_url: "https://aps-india.de/news/",
+    source_quote: "Applications submitted before the implementation date (15 March 2026)",
+    last_verified_at: "2026-10-07T00:00:00Z",
+  },
   // UP-ELIG-05: evidence retrieved 2026-10-06, not an effective-intake date.
   // These candidates require human admin publication; no seed runs here.
   {

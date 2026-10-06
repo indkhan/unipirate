@@ -258,6 +258,59 @@ step index with zod before assignment; malformed storage is discarded and the
 checker restores its validated initial answers. Unfinished text and empty subject selections remain
 valid partial drafts, but complete submissions still require subjects.
 
+#### APS confirmed-submission contract (UP-ELIG-06)
+
+New/restored checker and profile edits carry `apsTransitionVersion: 1`; stored
+unversioned results remain readable without new timing answers. Only national
+Bachelor applicants with an explicitly Indian national school issuer see the
+progressive `apsProcedureStatus` → `apsSubmissionConfirmation` →
+`apsSubmissionDate` questions. Status records no relevant submission, pending,
+completed, a new evaluation for updated qualifications, or uncertainty. The date
+is asked only when the applicant reports an APS record/communication confirming
+the **complete submission for this procedure's Class XII or Class XII plus one
+successful Bachelor year assessment**. Another or uncertain academic basis
+requires the uncertainty answer. This confirmation is reported, not verified by
+the app. A
+new evaluation requires its own confirmation/date. No certificate validity,
+authenticity, recognition or admission guarantee is inferred from that report.
+
+`Profile.apsProcedure` stores `{status, submissionConfirmation?, submissionDate?}`.
+`lib/engine/calendar-day.ts` exports zero-I/O `calendarDay(unknown)` → validated
+Gregorian `YYYYMMDD | undefined` and `CalendarDateSchema` for exact `YYYY-MM-DD`.
+It uses arithmetic, not timestamps, local dates, Date parsing or rollover. The
+reported ISO input stays labelled as reported; source wording is preserved.
+Qualification/procedure/confirmation edits clear dependent timing. Visa edits
+retain qualification evidence; mission context remains independently pruned.
+
+Only `aps_confirmed_submission_day` and `aps_submission_confirmation` are new
+rule keys. The latter is `confirmed` only for a valid relevant date, otherwise
+`unknown`. Legacy `aps_application_day` stays unsupported: the authorized public
+record uses YYYYMMDD `< 20260315`, but enabling it would silently activate an old
+published interpretation. Registration, payment, shipment and receipt are never
+aliases. UP-ELIG-07 may reuse the calendar helper for **separate** completed
+registration and complete-document dispatch facts; no dMAT behavior is added.
+
+Evidence checked 2026-10-07: [APS News](https://aps-india.de/news/) (23 February
+and 16 March notices), [APS FAQ](https://aps-india.de/faqs/), and
+[DAAD India](https://www.daad.in/en/study-research-in-germany/studying-in-germany/bachelor-studies/).
+APS protects assessments submitted before 15 March 2026, applies updated
+admission criteria from Winter Semester 2026/27, and preserves issued certificates.
+Its wording does not equate submission with registration or courier dispatch.
+DAAD's general route guidance does not replace this dated transition notice.
+The root backlog's registration/application/submission wording is narrowed to
+APS-confirmed complete submission; the earlier analysis's proposed additional
+milestones are deliberately not collected.
+
+Three `aps-transition-*` candidates remain **drafts**, carrying literal quotes,
+review date, explicit issuer/curriculum/board/route/intake applicability and
+cutoffs in rule data. Disposable published copies test before/on/after and
+uncertain timing. Pre-cutoff yields `unknown`, not a 65% exemption. On/after
+tests the current Class XII criterion for the two stated routes; missing timing
+asks whether APS confirms the relevant complete submission. No admission route
+is invented for missing intake/prerequisites or another qualification. Existing
+APS scope resolution, fulfilment, stable task keys and persistence are unchanged.
+There is no migration, DB publication, seed or KB rebuild in this change.
+
 ### 2. Course import & review
 
 1. A user pastes a course URL (plus the page's Ctrl+A text — the server

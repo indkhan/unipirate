@@ -2,6 +2,7 @@
 // answers looks like, and how answers map onto the engine Profile.
 // No I/O, no React — unit-tested in __tests__/steps.test.ts.
 import { z } from "zod";
+import { CalendarDateSchema, calendarDay } from "@/lib/engine/calendar-day";
 
 import type { Profile } from "@/lib/engine/evaluate";
 
@@ -185,6 +186,7 @@ export const NUMBER_STEPS = {
 export type NumberStepId = keyof typeof NUMBER_STEPS;
 
 export const TEXT_STEPS = {
+  apsSubmissionDate: { label: "Complete APS submission date confirmed by APS · YYYY-MM-DD", maxLength: 10 },
   priorStudyInstitution: { label: "Previous institution", maxLength: 200 },
   priorStudyCountryOther: { label: "Awarding institution country", maxLength: 100 },
   priorStudyField: { label: "Previous field of study", maxLength: 200 },
@@ -206,6 +208,10 @@ export function isNumberStep(step: StepId): step is NumberStepId {
 
 const AnswerFieldsSchema = z
   .object({
+    apsTransitionVersion: z.literal(1).optional(),
+    apsProcedureStatus: z.enum(["not_started", "pending", "completed", "new_evaluation", "unknown"]).optional(),
+    apsSubmissionConfirmation: z.enum(["confirmed", "unknown"]).optional(),
+    apsSubmissionDate: CalendarDateSchema.optional(),
     apsScopeVersion: z.literal(1).optional(),
     schoolQualificationCountry: z.enum(["in", "pk", "sa", "other", "unknown"]).optional(),
     schoolQualificationContext: z.enum(["national", "international", "unknown"]).optional(),
@@ -257,6 +263,7 @@ export type Answers = z.infer<typeof AnswerFieldsSchema>;
 export type PartialAnswers = Partial<Answers>;
 // Draft text can be unfinished; complete submissions retain required-text checks.
 export const PartialAnswersSchema = AnswerFieldsSchema.partial().extend({
+  apsSubmissionDate: z.string().max(10).optional(),
   priorStudyInstitution: z.string().trim().max(200).optional(),
   priorStudyField: z.string().trim().max(200).optional(),
   priorStudyCountryOther: z.string().trim().max(100).optional(),
@@ -300,6 +307,9 @@ export const AnswersSchema = AnswerFieldsSchema
 // --------------------------------------------------------------------- steps
 
 export type StepId =
+  | "apsProcedureStatus"
+  | "apsSubmissionConfirmation"
+  | "apsSubmissionDate"
   | "schoolQualificationCountry"
   | "schoolQualificationContext"
   | "visaMissionContext"
@@ -388,6 +398,14 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
     steps.push("apsApplicationContext");
     if (answers.visaApplicationCountry === "sa") steps.push("visaMissionContext");
   }
+  if (answers.apsTransitionVersion === 1 && bachelor && answers.curriculumType === "national" &&
+      answers.schoolQualificationCountry === "in" && answers.schoolQualificationContext === "national") {
+    steps.push("apsProcedureStatus");
+    if (["pending", "completed", "new_evaluation"].includes(answers.apsProcedureStatus ?? "")) {
+      steps.push("apsSubmissionConfirmation");
+      if (answers.apsSubmissionConfirmation === "confirmed") steps.push("apsSubmissionDate");
+    }
+  }
   steps.push("targetField", "intake");
   return steps;
 }
@@ -403,6 +421,7 @@ export function withAnswer<K extends StepId>(
 ): PartialAnswers {
   const next: PartialAnswers = { ...answers, qualificationHistoryVersion: 1, [field]: value };
   if (answers[field] !== value) {
+    const timing = ["apsProcedureStatus", "apsSubmissionConfirmation", "apsSubmissionDate"] as const;
     const dependents: Partial<Record<StepId, readonly StepId[]>> = {
       targetDegree: HISTORY_STEPS,
       curriculumType: HISTORY_STEPS,
@@ -415,6 +434,15 @@ export function withAnswer<K extends StepId>(
       schoolQualificationContext: ["hasExistingApsCertificate"],
     };
     for (const key of dependents[field] ?? []) delete next[key];
+    if (HISTORY_STEPS.some(key => key === field) ||
+        ["targetDegree", "curriculumType", "certificateCountry", "board", "schoolGradePercent", "jeeAdvanced", "schoolQualificationCountry", "schoolQualificationContext", "hasExistingApsCertificate"].includes(field)) {
+      for (const key of timing) delete next[key];
+    }
+    if (field === "apsProcedureStatus") {
+      delete next.apsSubmissionConfirmation;
+      delete next.apsSubmissionDate;
+    }
+    if (field === "apsSubmissionConfirmation") delete next.apsSubmissionDate;
   }
   return normalizeAnswers(next);
 }
@@ -429,7 +457,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
     changed = false;
     const visible = new Set<string>(visibleSteps(next));
     for (const key of Object.keys(next)) {
-      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && !visible.has(key)) {
+      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && !visible.has(key)) {
         delete next[key as StepId];
         changed = true;
       }
@@ -439,6 +467,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
 }
 
 export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
+  if (step === "apsSubmissionDate") return calendarDay(answers.apsSubmissionDate) !== undefined;
   if (isTextStep(step)) {
     const value = answers[step];
     return typeof value === "string" && value.trim().length > 0 &&
@@ -494,6 +523,13 @@ export function buildProfile(answers: Answers): Profile {
     curriculumType: tertiary ? "other" : answers.curriculumType ?? "other",
     targetField: answers.targetField,
   };
+  if (visibleSteps(answers).includes("apsProcedureStatus") && answers.apsProcedureStatus !== undefined) {
+    profile.apsProcedure = {
+      status: answers.apsProcedureStatus,
+      submissionConfirmation: answers.apsSubmissionConfirmation,
+      submissionDate: answers.apsSubmissionDate,
+    };
+  }
   if (answers.schoolQualificationCountry !== undefined || answers.schoolQualificationContext !== undefined) {
     profile.schoolQualification = { country: answers.schoolQualificationCountry, context: answers.schoolQualificationContext };
   }

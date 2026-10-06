@@ -8,6 +8,7 @@ import { officialApsRules, officialIndianProfile } from "./aps-scopes.fixture";
 import { fixtureRules } from "./rules.fixture";
 import {
   CURRENT,
+  APS_TRANSITION_ACCEPTANCE,
   FUTURE,
   HARNESS_BASELINE_SHA,
   HARNESS_VERSION,
@@ -47,6 +48,18 @@ export function assertExpected(c: CurrentExpectation, r: Result): void {
 }
 
 describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
+  for (const c of APS_TRANSITION_ACCEPTANCE) {
+    it(`UP-ELIG-06 official confirmed submission ${c.date}`, () => {
+      const profile = {...officialIndianProfile, curriculumType: "national" as const,
+        board: "cbse", schoolGradePercent: 65, jeeAdvanced: false,
+        intake: {term: "winter" as const, year: 2026},
+        apsProcedure: {status: "pending" as const, submissionConfirmation: "confirmed" as const, submissionDate: c.date}};
+      const rules = fixtureRules.map(r => r.id.startsWith("aps-transition-") ? {...r, status: "verified"} : r);
+      const result = evaluate(profile, rules);
+      expect(result.path).toBe(c.path);
+      expect(result.citations.find(x => x.ruleId === c.ruleId)?.sourceUrl).toBe("https://aps-india.de/news/");
+    });
+  }
   for (const c of CURRENT) {
     it(`${c.id} [${c.family}/${c.kind}]`, () => {
       assertExpected(c, evaluate(c.profile, fixtureRules));
@@ -74,7 +87,7 @@ describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
       }
     }
     expect(new Set(FUTURE.map((s) => s.family))).toEqual(
-      new Set(["GCE", "IB", "India", "Pakistan", "Saudi", "APS", "dMAT"]),
+      new Set(["GCE", "IB", "India", "Pakistan", "Saudi", "dMAT"]),
     );
     const currentIds = new Set(CURRENT.map((c) => c.id));
     for (const s of FUTURE) {

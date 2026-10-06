@@ -287,12 +287,19 @@ export const CURRENT: CurrentExpectation[] = [
   },
 ];
 
+// UP-ELIG-06 source interpretation verified 2026-10-07; publication is simulated
+// on disposable draft copies. Pre-cutoff assessment never guarantees admission.
+export const APS_TRANSITION_ACCEPTANCE = [
+  {date: "2026-03-14", path: "unknown", ruleId: "aps-transition-before"},
+  {date: "2026-03-15", path: "insufficient", ruleId: "aps-transition-current"},
+  {date: "2026-03-16", path: "insufficient", ruleId: "aps-transition-current"},
+] as const;
+
 export const FUTURE: FutureSpec[] = [
   { id: "FUTURE-GCE-fourth-al-trio", family: "GCE", issue: "UP-ELIG-01", needsFutureSchema: false, verified: false, note: "Valid 3-AL trio passes despite a fourth AL below C; two qualifying ALs state the exact unmet condition." },
   { id: "FUTURE-IB-grade3-compensation", family: "IB", issue: "UP-ELIG-02", needsFutureSchema: true, verified: false, note: "One compensated grade 3 passes where KMK rules allow; Math-SL school exceptions with effective sessions." },
   { id: "FUTURE-India-one-year-route", family: "India", issue: "UP-ELIG-03", needsFutureSchema: true, verified: false, note: "Class XII >=70% + one successful recognized related bachelor year gives direct subject-restricted access." },
   { id: "FUTURE-India-jee-main-plus-advanced", family: "India", issue: "UP-ELIG-04", needsFutureSchema: true, verified: false, note: "Separate JEE Main + Advanced facts restrict the route to technology/natural-science targets." },
-  { id: "FUTURE-APS-transition-date", family: "APS", issue: "UP-ELIG-06", needsFutureSchema: true, verified: false, note: "APS procedure/status + timing facts select the pre/post March-2026-transition rule." },
   { id: "FUTURE-dMAT-affected-field", family: "dMAT", issue: "UP-ELIG-07", needsFutureSchema: true, verified: false, note: "Prior-degree field, partnership status, and APS timing drive required/not-required/targeted-review." },
   { id: "FUTURE-Pakistan-hssc-streams", family: "Pakistan", issue: "UP-ELIG-08", needsFutureSchema: true, verified: false, note: "HSSC/FSc stream-specific Studienkolleg routes, 49.99/50 boundary, one-year direct routes." },
   { id: "FUTURE-Saudi-certificate-subtypes", family: "Saudi", issue: "UP-ELIG-09", needsFutureSchema: true, verified: false, note: "Exact certificate type/stream drives national, private-school, industrial, and graduate routes." },
