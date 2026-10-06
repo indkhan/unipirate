@@ -402,9 +402,10 @@ admin on the same canonical ID. The database freezes the ID, established legacy
 course link and creation time, and records meaningful corrections with the actor and before/after
 values in the existing admin audit stream. No-op updates create no audit noise.
 Corrections neither change offering scope nor elevate evidence/review status.
-Offering scopes and version snapshots remain immutable. `lib/db/course-catalogue.types.ts` is a hand-authored
-additive client contract, **not generated output**. Replace it using disposable
-schema generation once the orchestrator completes the local migration/RLS gate.
+Offering scopes and version snapshots remain immutable. Catalogue query helpers
+use the same generated `Database` client contract as other queries. The types in
+`lib/db/database.types.ts` were generated against the disposable local schema
+after both catalogue migrations were applied; no hand-authored extension remains.
 `supabase/tests/course_offerings.sql` is a transactional disposable-only gate.
 
 Additive migration `20261006000101_course_offering_integrity.sql` binds every new
@@ -433,4 +434,4 @@ explicit ports, query and fragment. Other URL forms require an explicit contract
 extension, not silent normalization. New SQL URL CHECKs are NOT VALID so any
 pre-existing malformed historical captures survive for explicit review; new writes
 must satisfy the contract and reads validate it. No old evidence is fabricated or
-silently changed, and generated DB types remain pending the orchestrator's local gate.
+silently changed.

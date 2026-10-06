@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
-import type { CourseCatalogueDatabase } from "../course-catalogue.types";
+import type { Database } from "../database.types";
 import { getProgrammeByLegacyCourse, listReviewedOfferingVersions } from "../queries";
 import { attachAdminProgrammeLegacyCourse, insertAdminOfferingVersion, updateAdminProgramme } from "../admin-queries";
 const id = "00000000-0000-4000-8000-000000000001";
@@ -18,7 +18,7 @@ it.each([
 });
 function client(body: unknown, status = 200) {
   const requests: string[] = [];
-  const db = createClient<CourseCatalogueDatabase>("http://127.0.0.1:54321", "synthetic-key", {
+  const db = createClient<Database>("http://127.0.0.1:54321", "synthetic-key", {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { fetch: async (url) => { requests.push(String(url)); return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }); } },
   });

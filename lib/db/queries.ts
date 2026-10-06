@@ -1,4 +1,3 @@
-import type { CourseCatalogueDb } from "./course-catalogue.types";
 import { CourseCatalogueIdSchema, parseOfferingRow, parseOfferingVersionRow, parseProgrammeRow } from "@/lib/courses/offerings";
 // All user-facing database access lives here — pages, actions, and API routes
 // never build queries inline. Every helper takes a caller-scoped Supabase
@@ -592,15 +591,15 @@ export async function insertAssistantMessage(
 }
 
 // Additive catalogue reads. Legacy course/task callers keep their old contracts.
-export async function getProgrammeByLegacyCourse(db: CourseCatalogueDb, courseId: string) {
+export async function getProgrammeByLegacyCourse(db: Db, courseId: string) {
   const row = unwrap(await db.from("programmes").select().eq("legacy_course_id", CourseCatalogueIdSchema.parse(courseId)).maybeSingle());
   return row === null ? null : parseProgrammeRow(row);
 }
-export async function listCourseOfferings(db: CourseCatalogueDb, programmeId: string) {
+export async function listCourseOfferings(db: Db, programmeId: string) {
   const rows = unwrap(await db.from("course_offerings").select().eq("programme_id", CourseCatalogueIdSchema.parse(programmeId)).order("intake_year").order("intake_term"));
   return rows.map(parseOfferingRow);
 }
-export async function listReviewedOfferingVersions(db: CourseCatalogueDb, offeringId: string) {
+export async function listReviewedOfferingVersions(db: Db, offeringId: string) {
   const rows = unwrap(await db.from("course_offering_versions").select().eq("offering_id", CourseCatalogueIdSchema.parse(offeringId)).eq("review_status", "verified").order("version", { ascending: false }));
   return rows.map(parseOfferingVersionRow);
 }
