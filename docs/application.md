@@ -368,3 +368,41 @@ keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.
 | Change assistant behavior | prompt/tools in `lib/ai/assistant.ts`; rerun `pnpm eval:assistant` |
 | Add course-page extraction support | labels in `lib/courses/parse-daad.ts`; the AI fallback needs no change |
 | Add an env var | `lib/env.ts` schemas + `runtimeEnv` + `.env.example` |
+
+### Additive programme catalogue (UP-COURSE-02)
+
+`lib/courses/offerings.ts` contains pure zod contracts. `programmes` holds a
+canonical identity, optionally linked to an existing `courses.id`.
+`course_offerings` scopes facts by explicit term/year, applicant group and
+applicability. `course_offering_versions` holds immutable snapshots with stable
+field keys for routes, deadlines, languages, prerequisites, fees and documents.
+Each field carries its own review state, verbatim wording, applicability and
+multiple evidence captures (exact URL/quote, retrieval, optional source hash,
+verification timestamp/reviewer). Intake scope is immutable; no profile preference
+or legacy import timestamp supplies a missing intake or verification date.
+
+The route contract is `direct | uni_assist | vpd_then_university | unresolved`.
+Normalized deadline dates/times are allowed only on verified fields; timezone
+remains null if the source does not specify it. Preparation targets are separately
+labelled and are not application closing dates. Evidence substring checks establish
+capture fidelity, not official authenticity; provenance and interpretation require
+human review. Identity labels on programmes are catalogue labels, not eligibility
+claims. Reviewed facts belong to the version snapshot.
+
+Catalogue writes require an admin-scoped client. Public RLS exposes only verified
+versions and scopes with verified versions. A public version can contain verified
+or explicitly unresolved fields, never pending/rejected research. Pending research
+is admin-only; fact corrections and review decisions append a new version rather than
+mutating history. Query helpers return all reviewed history newest first, leaving
+version selection explicit. There is no automatic import/task/UI integration,
+backfill, publication or change to legacy course/application/task identities.
+
+Programme labels (name, institution, degree, source URL) can be corrected by an
+admin on the same canonical ID. The database freezes the ID, legacy course link and
+creation time, and records meaningful corrections with the actor and before/after
+values in the existing admin audit stream. No-op updates create no audit noise.
+Corrections neither change offering scope nor elevate evidence/review status.
+Offering scopes and version snapshots remain immutable. `lib/db/course-catalogue.types.ts` is a hand-authored
+additive client contract, **not generated output**. Replace it using disposable
+schema generation once the orchestrator completes the local migration/RLS gate.
+`supabase/tests/course_offerings.sql` is a transactional disposable-only gate.

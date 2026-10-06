@@ -1,3 +1,5 @@
+import type { CourseCatalogueDb } from "./course-catalogue.types";
+import { ProgrammeCorrectionSchema, ProgrammeSchema, OfferingSchema, OfferingVersionSchema, CourseCatalogueIdSchema, parseProgrammeRow, parseOfferingRow, parseOfferingVersionRow } from "@/lib/courses/offerings";
 // Queries for the /admin review workspace: rule editing/verification, the
 // course review queues, and the audit trail. Callers must hold an admin
 // session (requireAdmin) — RLS rejects these writes for everyone else.
@@ -383,4 +385,30 @@ export async function listRecentAdminAuditEvents(
       .order("created_at", { ascending: false })
       .limit(limit),
   );
+}
+
+// Catalogue writes; RLS requires the caller's admin session, never service escalation.
+export async function insertAdminProgramme(db: CourseCatalogueDb, input: unknown) {
+  const row = unwrap(await db.from("programmes").insert(ProgrammeSchema.parse(input)).select().single());
+  return parseProgrammeRow(row);
+}
+export async function insertAdminCourseOffering(db: CourseCatalogueDb, input: unknown) {
+  const row = unwrap(await db.from("course_offerings").insert(OfferingSchema.parse(input)).select().single());
+  return parseOfferingRow(row);
+}
+export async function insertAdminOfferingVersion(db: CourseCatalogueDb, input: unknown) {
+  const row = unwrap(await db.from("course_offering_versions").insert(OfferingVersionSchema.parse(input)).select().single());
+  return parseOfferingVersionRow(row);
+}
+export async function listAdminOfferingVersions(db: CourseCatalogueDb, offeringId: string) {
+  const rows = unwrap(await db.from("course_offering_versions").select().eq("offering_id", CourseCatalogueIdSchema.parse(offeringId)).order("version", { ascending: false }));
+  return rows.map(parseOfferingVersionRow);
+}
+
+/** Correct catalogue labels without changing canonical/legacy identity or review state. */
+export async function updateAdminProgramme(db: CourseCatalogueDb, id: string, input: unknown) {
+  const programmeId = CourseCatalogueIdSchema.parse(id);
+  const correction = ProgrammeCorrectionSchema.parse(input);
+  const row = unwrap(await db.from("programmes").update(correction).eq("id", programmeId).select().single());
+  return parseProgrammeRow(row);
 }
