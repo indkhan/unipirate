@@ -686,6 +686,16 @@ export type Database = {
         Args: { p_check_id: string; p_token_hash?: string }
         Returns: string
       }
+      valid_course_capture_applicability: {
+        Args: { value: Json }
+        Returns: boolean
+      }
+      valid_course_capture_facts: { Args: { facts: Json }; Returns: boolean }
+      valid_course_capture_text: { Args: { value: string }; Returns: boolean }
+      valid_course_capture_timestamp: {
+        Args: { value: string }
+        Returns: boolean
+      }
       valid_course_source_url: { Args: { value: string }; Returns: boolean }
       valid_offering_applicability: { Args: { value: Json }; Returns: boolean }
       valid_offering_facts: {
