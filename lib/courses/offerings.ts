@@ -1,7 +1,13 @@
 // Pure contracts. Captured wording is never normalized or trimmed.
 import { z } from "zod";
 const text = z.string().refine((value) => value.trim().length > 0, "Must not be blank");
-const timestamp = z.string().datetime({ offset: true });
+// PostgreSQL-representable ISO captures: real calendar/time, year 1..9999,
+// offsets at most 15:59. Preserve the original precision and offset verbatim.
+const timestamp = z.string().datetime({ offset: true }).refine((value) => {
+  const offset = /[+-](\d{2}):(\d{2})$/.exec(value);
+  return !value.startsWith('0000-') && Number.isFinite(Date.parse(value))
+    && (!offset || (Number(offset[1]) <= 15 && Number(offset[2]) <= 59));
+}, 'Representable capture timestamp required');
 const uuid = z.string().uuid();
 // Same deliberately narrow grammar as public.valid_course_source_url: ASCII DNS,
 // no credentials/IP literals/backslashes; optional numeric port 1..65535.

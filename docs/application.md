@@ -505,3 +505,10 @@ extension, not silent normalization. New SQL URL CHECKs are NOT VALID so any
 pre-existing malformed historical captures survive for explicit review; new writes
 must satisfy the contract and reads validate it. No old evidence is fabricated or
 silently changed.
+
+Additive migration `20261006000102_course_capture_validation.sql` aligns SQL
+nonblank text with JavaScript trim whitespace and capture timestamps with the
+strict read contract: real calendar dates, hours 00–23, minutes/seconds 00–59,
+years 0001–9999 and numeric offsets up to 15:59. Optional seconds and fractional
+precision remain verbatim. New checks are NOT VALID to preserve existing captures
+for explicit review; they reject new unreadable records without rewriting history.

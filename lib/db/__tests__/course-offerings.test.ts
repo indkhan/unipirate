@@ -8,7 +8,8 @@ const id = "00000000-0000-4000-8000-000000000001";
 it.each([
   ["supabase/migrations/20261006000100_course_offerings.sql", 10],
   ["supabase/migrations/20261006000101_course_offering_integrity.sql", 14],
-  ["supabase/tests/course_offerings.sql", 28],
+  ["supabase/migrations/20261006000102_course_capture_validation.sql", 8],
+  ["supabase/tests/course_offerings.sql", 30],
 ] as const)("preserves every literal SQL dollar delimiter in %s", (file, expected) => {
   // Ignore SQL string literals (including regex end anchors) and line comments.
   const sql = readFileSync(file, "utf8").replace(/'(?:''|[^'])*'|--[^\r\n]*/g, "");
@@ -25,6 +26,16 @@ function client(body: unknown, status = 200) {
   return { db, requests };
 }
 describe("offering queries", () => {
+  it.each(['2026-10-05T24:00:00Z', '2026-10-05T12:00:00+16:00', '2026-10-05T12:00:00+01:60'])('rejects unreadable stored capture timestamp %s', async (retrieved_at) => {
+    const wording = 'Synthetic evidence';
+    const { db } = client([{ id, created_at: '2026-10-06T14:00:00Z', offering_id: id, version: 1,
+      review_status: 'verified', reviewed_at: '2026-10-06T13:00:00Z', reviewed_by: id,
+      facts: [{ key: 'description', kind: 'description', status: 'verified', verbatim: wording,
+        applicability: 'Synthetic group', route: null, deadline_kind: null, date: null, time: null, timezone: null,
+        evidence: [{ source_url: 'https://example.invalid/', source_quote: wording, retrieved_at,
+          last_verified_at: '2026-10-06T13:00:00Z', verified_by: id, source_hash: null }] }] }]);
+    await expect(listReviewedOfferingVersions(db, id)).rejects.toThrow();
+  });
   it("reads only reviewed history for the selected offering, newest first", async () => {
     const { db, requests } = client([]);
     expect(await listReviewedOfferingVersions(db, id)).toEqual([]);
@@ -64,6 +75,10 @@ describe("offering queries", () => {
 
 describe('programme corrections', () => {
   const row = { id, created_at: '2026-10-06T12:00:00Z', legacy_course_id: id, name: 'Corrected programme', university_name: 'Synthetic institution', degree: null, source_url: 'https://example.edu/programme' };
+  it.each(['\t', '\n', '\u00a0', '\ufeff'])('rejects stored blank canonical name %j', async (name) => {
+    const { db } = client({ ...row, name });
+    await expect(getProgrammeByLegacyCourse(db, id)).rejects.toThrow();
+  });
   it('corrects a name on the existing canonical ID and preserves its legacy link', async () => {
     const { db, requests } = client(row);
     expect(await updateAdminProgramme(db, id, { name: row.name })).toEqual(row);

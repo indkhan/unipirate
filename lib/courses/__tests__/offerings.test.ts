@@ -1,9 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { CourseEvidenceSchema, OfferingVersionSchema, OfferingSchema } from "../offerings";
+import { CourseEvidenceSchema, OfferingVersionSchema, OfferingSchema, ProgrammeCorrectionSchema } from "../offerings";
 const id = "00000000-0000-4000-8000-000000000001";
 const evidence = { source_url: "https://example.edu/official?intake=2027#deadline", source_quote: "Synthetic fixture: closing date 15 July 2027.", retrieved_at: "2026-10-06T12:00:00Z", last_verified_at: "2026-10-06T13:00:00Z", verified_by: id, source_hash: null };
 const fact = { key: "closing", kind: "deadline", status: "verified", verbatim: evidence.source_quote, applicability: "Synthetic non-EU applicants", evidence: [evidence], deadline_kind: "application_closing", date: "2027-07-15", time: null, timezone: null, route: null };
 const version = { offering_id: id, version: 1, review_status: "verified", reviewed_at: evidence.last_verified_at, reviewed_by: id, facts: [fact] };
+
+it.each(['2026-10-05T24:00:00Z', '2026-02-29T12:00:00Z', '2026-10-05T12:00:60Z', '2026-10-05T12:00:00+16:00', '2026-10-05T12:00:00+01:60', '0000-01-01T12:00:00Z', '2026-10-05T12:00:00Z\n'])('rejects nonrepresentable capture timestamp %j', (retrieved_at) => {
+  expect(CourseEvidenceSchema.safeParse({ ...evidence, retrieved_at }).success).toBe(false);
+});
+it.each(['2024-02-29T12:00Z', '2026-10-05T12:00:00.123456Z', '2026-10-05T12:00:00+05:30', '2026-10-05T12:00:00-15:59'])('preserves accepted capture timestamp %s', (retrieved_at) => {
+  const capture = { ...evidence, retrieved_at, last_verified_at: null, verified_by: null };
+  expect(CourseEvidenceSchema.parse(capture)).toEqual(capture);
+});
+it.each(['\t', '\n', '\u00a0', '\u2000\u2028\u2029\ufeff'])('rejects JS blank capture wording/hash %j', (blank) => {
+  expect(CourseEvidenceSchema.safeParse({ ...evidence, source_quote: blank }).success).toBe(false);
+  expect(CourseEvidenceSchema.safeParse({ ...evidence, source_hash: blank }).success).toBe(false);
+  for (const field of ['name', 'university_name', 'degree']) expect(ProgrammeCorrectionSchema.safeParse({ [field]: blank }).success).toBe(false);
+  const scope = { programme_id: id, intake_term: 'winter', intake_year: 2027, applicant_group: 'Synthetic', applicability: {} };
+  for (const change of [{ applicant_group: blank }, { applicability: { country: blank } }, { applicability: { country: [blank] } }]) expect(OfferingSchema.safeParse({ ...scope, ...change }).success).toBe(false);
+  for (const field of ['key', 'applicability', 'verbatim', 'timezone']) expect(OfferingVersionSchema.safeParse({ ...version, facts: [{ ...fact, time: '12:00:00', [field]: blank }] }).success).toBe(false);
+});
+it('preserves nonblank whitespace around captured text', () => {
+  const capture = { ...evidence, source_quote: '\tSynthetic wording\n', source_hash: '\u00a0hash\ufeff' };
+  expect(CourseEvidenceSchema.parse(capture)).toEqual(capture);
+});
 describe("offering contracts", () => {
   it("preserves verbatim evidence, URL, dates and scoped deadline", () => { expect(OfferingVersionSchema.parse(version)).toEqual(version); });
   it("keeps pending research pending and allows missing facts", () => {
