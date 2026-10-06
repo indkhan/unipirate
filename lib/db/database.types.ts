@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -47,6 +42,7 @@ export type Database = {
           id: string
           new_status: string | null
           old_status: string | null
+          programme_correction: Json | null
           row_id: string
           table_name: string
         }
@@ -57,6 +53,7 @@ export type Database = {
           id?: string
           new_status?: string | null
           old_status?: string | null
+          programme_correction?: Json | null
           row_id: string
           table_name: string
         }
@@ -67,6 +64,7 @@ export type Database = {
           id?: string
           new_status?: string | null
           old_status?: string | null
+          programme_correction?: Json | null
           row_id?: string
           table_name?: string
         }
@@ -187,6 +185,85 @@ export type Database = {
           result?: Json
         }
         Relationships: []
+      }
+      course_offering_versions: {
+        Row: {
+          created_at: string
+          facts: Json
+          id: string
+          offering_id: string
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          facts?: Json
+          id?: string
+          offering_id: string
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          version: number
+        }
+        Update: {
+          created_at?: string
+          facts?: Json
+          id?: string
+          offering_id?: string
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_offering_versions_offering_id_fkey"
+            columns: ["offering_id"]
+            isOneToOne: false
+            referencedRelation: "course_offerings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_offerings: {
+        Row: {
+          applicability: Json
+          applicant_group: string
+          created_at: string
+          id: string
+          intake_term: string
+          intake_year: number
+          programme_id: string
+        }
+        Insert: {
+          applicability: Json
+          applicant_group: string
+          created_at?: string
+          id?: string
+          intake_term: string
+          intake_year: number
+          programme_id: string
+        }
+        Update: {
+          applicability?: Json
+          applicant_group?: string
+          created_at?: string
+          id?: string
+          intake_term?: string
+          intake_year?: number
+          programme_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_offerings_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       course_task_definitions: {
         Row: {
@@ -401,6 +478,44 @@ export type Database = {
         }
         Relationships: []
       }
+      programmes: {
+        Row: {
+          created_at: string
+          degree: string | null
+          id: string
+          legacy_course_id: string | null
+          name: string
+          source_url: string
+          university_name: string
+        }
+        Insert: {
+          created_at?: string
+          degree?: string | null
+          id?: string
+          legacy_course_id?: string | null
+          name: string
+          source_url: string
+          university_name: string
+        }
+        Update: {
+          created_at?: string
+          degree?: string | null
+          id?: string
+          legacy_course_id?: string | null
+          name?: string
+          source_url?: string
+          university_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programmes_legacy_course_id_fkey"
+            columns: ["legacy_course_id"]
+            isOneToOne: true
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rules: {
         Row: {
           conditions: Json
@@ -571,8 +686,30 @@ export type Database = {
         Args: { p_check_id: string; p_token_hash?: string }
         Returns: string
       }
+      valid_course_capture_applicability: {
+        Args: { value: Json }
+        Returns: boolean
+      }
+      valid_course_capture_facts: { Args: { facts: Json }; Returns: boolean }
+      valid_course_capture_text: { Args: { value: string }; Returns: boolean }
+      valid_course_capture_timestamp: {
+        Args: { value: string }
+        Returns: boolean
+      }
+      valid_course_source_url: { Args: { value: string }; Returns: boolean }
+      valid_offering_applicability: { Args: { value: Json }; Returns: boolean }
+      valid_offering_facts: {
+        Args: { facts: Json; reviewed: boolean }
+        Returns: boolean
+      }
+      valid_offering_source_urls: { Args: { facts: Json }; Returns: boolean }
     }
     Enums: {
+      course_application_route:
+        | "direct"
+        | "uni_assist"
+        | "vpd_then_university"
+        | "unresolved"
       course_review_status: "pending" | "approved" | "rejected"
       course_task_change_state: "current" | "update_pending" | "removal_pending"
       course_task_due_mode: "source_deadline" | "fixed_date" | "none"
@@ -594,12 +731,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -623,11 +760,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -648,11 +785,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -673,11 +810,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -690,11 +827,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -709,6 +846,12 @@ export const Constants = {
   },
   public: {
     Enums: {
+      course_application_route: [
+        "direct",
+        "uni_assist",
+        "vpd_then_university",
+        "unresolved",
+      ],
       course_review_status: ["pending", "approved", "rejected"],
       course_task_change_state: [
         "current",
@@ -722,3 +865,4 @@ export const Constants = {
     },
   },
 } as const
+

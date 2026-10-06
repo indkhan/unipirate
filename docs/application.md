@@ -490,6 +490,101 @@ keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.
 | Change assistant behavior | prompt/tools in `lib/ai/assistant.ts`; rerun `pnpm eval:assistant` |
 | Add course-page extraction support | labels in `lib/courses/parse-daad.ts`; the AI fallback needs no change |
 | Add an env var | `lib/env.ts` schemas + `runtimeEnv` + `.env.example` |
+
+### Additive programme catalogue (UP-COURSE-02)
+
+`lib/courses/offerings.ts` contains pure zod contracts. `programmes` holds a
+canonical identity, optionally linked to an existing `courses.id`.
+`course_offerings` scopes facts by explicit term/year, applicant group and
+applicability. `course_offering_versions` holds immutable snapshots with stable
+field keys for routes, deadlines, languages, prerequisites, fees and documents.
+Each field carries its own review state, verbatim wording, applicability and
+multiple evidence captures (exact URL/quote, retrieval, optional source hash,
+verification timestamp/reviewer). Intake scope is immutable; no profile preference
+or legacy import timestamp supplies a missing intake or verification date.
+
+The route contract is `direct | uni_assist | vpd_then_university | unresolved`.
+Normalized deadline dates/times are allowed only on verified fields; timezone
+remains null if the source does not specify it. Preparation targets are separately
+labelled and are not application closing dates. Evidence substring checks establish
+capture fidelity, not official authenticity; provenance and interpretation require
+human review. Identity labels on programmes are catalogue labels, not eligibility
+claims. Reviewed facts belong to the version snapshot.
+
+Catalogue writes require an admin-scoped client. Public RLS exposes only verified
+versions and scopes with verified versions. A public version can contain verified
+or explicitly unresolved fields, never pending/rejected research. Pending research
+is admin-only; fact corrections and review decisions append a new version rather than
+mutating history. Query helpers return all reviewed history newest first, leaving
+version selection explicit. There is no automatic import/task/UI integration,
+backfill, publication or change to legacy course/application/task identities.
+
+Programme labels (name, institution, degree, source URL) can be corrected by an
+admin on the same canonical ID. The database freezes the ID, established legacy
+course link and creation time, and records meaningful corrections with the actor and before/after
+values in the existing admin audit stream. No-op updates create no audit noise.
+Corrections neither change offering scope nor elevate evidence/review status.
+Offering scopes and version snapshots remain immutable. Catalogue query helpers
+use the same generated `Database` client contract as other queries. The types in
+`lib/db/database.types.ts` were generated against the disposable local schema
+after both catalogue migrations were applied; no hand-authored extension remains.
+`supabase/tests/course_offerings.sql` is a transactional disposable-only gate.
+
+Additive migration `20261006000101_course_offering_integrity.sql` binds every new
+verified evidence capture to the authenticated admin reviewer. Carry-forward keeps
+the original reviewer only when an earlier immutable reviewed version of the same
+offering contains exactly that capture and unchanged field interpretation/scope,
+and that earlier version was attested by the capture's reviewer. Changed captures
+or interpretations require the current reviewer to attest a new capture. Neither
+pending AI captures nor a source URL establishes verification. Normalized dates
+still require semantic human review; shape/literal checks cannot prove their meaning.
+
+Research programmes may start with a null legacy link. After a legacy course is
+approved and is not a conflict submission, `attachAdminProgrammeLegacyCourse`
+attaches it once on the same programme ID; replacement/detachment is forbidden.
+Publication integration can approve the legacy course, attach once, then append a
+reviewed version. This change implements no publication/AI/UI workflow. Linked
+courses must remain approved/non-conflict, while unmapped pending/conflict rows
+remain removable through existing operations. Existing applications and task values
+are never rewritten by either catalogue migration.
+
+SQL and TypeScript share a deliberately narrow source URL grammar: lowercase
+HTTP(S) scheme, ASCII DNS labels (host length at most 253), optional decimal port
+1–65535, printable ASCII path/query/fragment, no credentials, IP literals or
+backslashes. Accepted URLs are stored and returned verbatim, including case,
+explicit ports, query and fragment. Other URL forms require an explicit contract
+extension, not silent normalization. New SQL URL CHECKs are NOT VALID so any
+pre-existing malformed historical captures survive for explicit review; new writes
+must satisfy the contract and reads validate it. No old evidence is fabricated or
+silently changed.
+
+Additive migration `20261006000102_course_capture_validation.sql` aligns SQL
+nonblank text with JavaScript trim whitespace and capture timestamps with the
+strict read contract: real calendar dates, hours 00–23, minutes/seconds 00–59,
+years 0001–9999 and numeric offsets up to 15:59. Optional seconds and fractional
+precision remain verbatim. New checks are NOT VALID to preserve existing captures
+for explicit review; they reject new unreadable records without rewriting history.
+
+Additive migration `20261006000103_course_capture_reviewer_uuid.sql` replaces
+the existing capture validator body to require hyphenated reviewer UUID strings,
+accepting either hex case verbatim. PostgreSQL's compact/braced UUID spellings
+are rejected in captured JSON. Timestamp offsets require an explicit colon in
+both SQL and TypeScript; compact offsets cannot bypass the 15:59 limit.
+Reviewer binding, exact historical carry-forward and existing captures are unchanged.
+
+Additive migration `20261006000104_course_evidence_chronology.sql` aligns evidence
+chronology with JavaScript's millisecond comparison. SQL truncates fractional
+digits beyond three in comparison operands before timestamp casting, preventing
+PostgreSQL rounding from changing equality or carrying into the next second/day.
+Captured strings retain all source precision verbatim; timezone offsets still
+compare instants, and verification before retrieval remains forbidden.
+
+Additive migration `20261006000105_course_applicability_keys.sql` and the Zod
+record key boundary reject `__proto__`, which record parsing would silently drop.
+Other map keys, including `constructor` and `toString`, remain ordinary properties;
+empty maps, booleans, arrays and verbatim strings retain the existing contract.
+No existing applicability map is rewritten or given an inferred vocabulary.
+
 ### Scoped APS contract (UP-ELIG-05)
 
 APS qualification recognition, application documentation and visa checklist status
