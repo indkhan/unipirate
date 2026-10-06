@@ -22,10 +22,8 @@ German public university. Full architecture and flow documentation:
 2. **Honest unknowns.** When no verified rule covers a case, say so and point
    to the official source. An "unknown" outcome is a valid, designed result —
    not an error to paper over.
-3. **Deterministic first, AI second.** Eligibility comes from the rule engine
-   only. AI fills extraction gaps (verbatim quotes, zod-validated) and powers
-   the strict-RAG assistant — it never decides eligibility.
-4. **Every claim cites its source.** Rules carry `source_url`,
+
+3. **Every claim cites its source.** Rules carry `source_url`,
    `source_quote`, and `last_verified_at`; assistant answers carry
    `[[rule:slug]]` / `[[web:url]]` / `[[unknown]]` markers.
 
