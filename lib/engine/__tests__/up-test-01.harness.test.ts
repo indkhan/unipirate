@@ -1,0 +1,94 @@
+// UP-TEST-01 harness runner: CURRENT rows are green acceptance on the
+// baseline (no skips/todo); FUTURE rows are data only, never executed.
+// Pure: evaluate() + fixture data. Zero I/O.
+import { describe, expect, it } from "vitest";
+
+import { evaluate, type Result } from "../evaluate";
+import { fixtureRules } from "./rules.fixture";
+import {
+  CURRENT,
+  FUTURE,
+  HARNESS_BASELINE_SHA,
+  HARNESS_VERSION,
+  type CurrentExpectation,
+} from "./up-test-01.harness-spec";
+
+export function assertExpected(c: CurrentExpectation, r: Result): void {
+  if (c.path !== undefined) expect(r.path, `${c.id}: path`).toBe(c.path);
+  if (c.aps !== undefined) expect(r.aps, `${c.id}: aps`).toBe(c.aps);
+  if (c.testAS !== undefined)
+    expect(r.testAS, `${c.id}: testAS`).toBe(c.testAS);
+  if (c.dMAT !== undefined) expect(r.dMAT, `${c.id}: dMAT`).toBe(c.dMAT);
+  for (const url of c.citedUrls ?? [])
+    expect(
+      r.citations.map((citation) => citation.sourceUrl),
+      `${c.id}: citation`,
+    ).toContain(url);
+  for (const pattern of c.unknownsMatch ?? [])
+    expect(
+      r.unknowns.some((u) => pattern.test(u)),
+      `${c.id}: unknowns match ${pattern}`,
+    ).toBe(true);
+  for (const doc of c.documentSubstrings ?? [])
+    expect(
+      r.documents.some((d) => d.includes(doc)),
+      `${c.id}: document`,
+    ).toBe(true);
+  for (const step of c.stepSubstrings ?? [])
+    expect(
+      r.stepsDetailed.some((s) => s.text.includes(step)),
+      `${c.id}: step`,
+    ).toBe(true);
+  if (c.minUnknowns !== undefined)
+    expect(r.unknowns.length, `${c.id}: unknowns`).toBeGreaterThanOrEqual(
+      c.minUnknowns,
+    );
+}
+
+describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
+  for (const c of CURRENT) {
+    it(`${c.id} [${c.family}/${c.kind}]`, () => {
+      assertExpected(c, evaluate(c.profile, fixtureRules));
+    });
+  }
+
+  it("version, cited sources, and future-spec index", () => {
+    expect(HARNESS_VERSION).toBe("up-test-01/v1-current-behavior.1");
+    expect(HARNESS_BASELINE_SHA).toBe(
+      "951ab821920497443cd66dfc7917d044a1f00159",
+    );
+    for (const c of CURRENT) {
+      expect(c.assertedIn.length).toBeGreaterThan(0);
+      for (const url of c.citedUrls ?? []) {
+        const rule = fixtureRules.find((r) => r.source_url === url);
+        expect(rule, `${c.id}: fixture rule`).toBeDefined();
+        expect(rule?.last_verified_at, `${c.id}: verified date`).not.toBeNull();
+      }
+    }
+    expect(new Set(FUTURE.map((s) => s.family))).toEqual(
+      new Set(["GCE", "IB", "India", "Pakistan", "Saudi", "APS", "dMAT"]),
+    );
+    const currentIds = new Set(CURRENT.map((c) => c.id));
+    for (const s of FUTURE) {
+      expect(s.verified, s.id).toBe(false);
+      expect(s.issue, s.id).toMatch(/^UP-ELIG-\d+$/);
+      expect(currentIds.has(s.id), s.id).toBe(false);
+    }
+  });
+
+  it("mutation sensitivity: a modified rule fails on a disposable copy", () => {
+    const mutated = structuredClone(fixtureRules);
+    const target = mutated.find(
+      (r) => r.id === "in-school-studienkolleg-ws2026",
+    );
+    if (!target) throw new Error("fixture rule missing");
+    target.outcomes = { ...target.outcomes, path: "direct" as const };
+    const c = CURRENT.find((x) => x.id === "IN-positive-studienkolleg");
+    if (!c) throw new Error("harness case missing");
+    expect(() =>
+      assertExpected(c, evaluate(c.profile, mutated)),
+    ).toThrow();
+    // approved facts untouched: the shared fixture still passes
+    assertExpected(c, evaluate(c.profile, fixtureRules));
+  });
+});
