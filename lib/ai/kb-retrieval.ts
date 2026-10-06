@@ -17,7 +17,8 @@ const PublishedKbRuleSchema = EngineRuleSchema.innerType().extend({
 
 /** RULES01 reuse boundary: raw RPC matches + caller-visible current rule rows
  * (null means unavailable) -> model-visible chunks. No writes, clock or I/O.
- * Only dMAT rule metadata/source identity and one stable curated slug are scoped.
+ * Unmatched/invalid rule metadata fails closed; only validated unrelated rules
+ * and unrelated curated snippets may retain persisted text.
  * This does not certify freshness of unrelated chunks or synthesize verification.
  */
 export function projectDmatKbMatches(matches: readonly unknown[], publishedRules: readonly unknown[] | null): KbChunk[] {
@@ -28,15 +29,17 @@ export function projectDmatKbMatches(matches: readonly unknown[], publishedRules
     const dmat = match.slug === "snippet-dmat-details" || match.slug === "dmat-india-existing-aps-exempt" ||
       match.source_url === DMAT_SOURCE || match.source_url === DMAT_FIELD_SOURCE ||
       rows.some(r => r.identity.success && r.identity.data.outcomes.dmat !== undefined);
-    if (!dmat) return match;
-    const unresolved = (): KbChunk => ({ ...match, title: "dMAT applicability unresolved",
-      content: "dMAT: unknown. [[unknown]] Stored content cannot establish current procedure applicability; confirm with APS India (https://aps-india.de/dmat/).",
+    const unresolved = (): KbChunk => ({ ...match, title: "Rule applicability unresolved",
+      content: "Rule applicability: unknown. [[unknown]] Current structured metadata cannot establish applicability; check the cited official source.",
       last_verified_at: null });
     // No trusted structured snippet metadata exists in this interface. Even a
     // rebuilt snippet must not silently acquire authority from its stored text.
-    if (match.slug === "snippet-dmat-details" || source_type !== "rule" || rows.length !== 1) return unresolved();
+    if (source_type !== "rule") return dmat ? unresolved() : match;
+    // Without valid current metadata a renamed rule cannot prove unrelatedness.
+    if (match.slug === "snippet-dmat-details" || rows.length !== 1) return unresolved();
     const rule = PublishedKbRuleSchema.safeParse(rows[0].row);
     if (!rule.success) return unresolved();
+    if (!dmat) return match;
     return ruleToChunk(rule.data, { includeLegacyDmatQuote: false });
   });
 }

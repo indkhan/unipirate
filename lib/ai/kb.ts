@@ -176,7 +176,7 @@ function renderOutcomes(outcomes: KbRule["outcomes"]): string[] {
 }
 
 export function ruleToChunk(rule: KbRule, options: { includeLegacyDmatQuote?: boolean } = {}): KbChunk {
-  const legacyDmat = rule.outcomes.dmat === "not_required" && rule.conditions.has_existing_aps !== undefined &&
+  const legacyDmat = rule.outcomes.dmat !== undefined && rule.conditions.has_existing_aps !== undefined &&
     rule.conditions.dmat_procedure === undefined;
   const conditionLines = Object.entries(rule.conditions).map(([key, cond]) =>
     renderCondition(key, cond),

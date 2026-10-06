@@ -115,3 +115,38 @@ it("uses current structured unknown applicability rather than the stored exempti
   expect(result.content).toContain(review.outcomes.note);
   expect(result.content).not.toContain("already-issued APS certificates");
 });
+
+it.each([
+  { name: "null after read failure", rows: null },
+  { name: "empty published rows", rows: [] },
+  { name: "unmatched current rows", rows: [{ ...row, slug: "different-rule" }] },
+  { name: "invalid current metadata", rows: [{ ...row, slug: "another-rule", conditions: { unsupported: true } }] },
+  { name: "draft current metadata", rows: [{ ...row, slug: "another-rule", status: "draft" }] },
+  { name: "ambiguous current metadata", rows: [{ ...row, slug: "another-rule" }, { ...row, slug: "another-rule" }] },
+])("fails closed for renamed FAQ-source rule with $name", async ({ rows }) => {
+  if (rows === null) mocks.getPublishedRules.mockRejectedValue(new Error("synthetic read failure"));
+  else mocks.getPublishedRules.mockResolvedValue(rows);
+  const renamed = { ...stored, slug: "another-rule", source_url: "https://aps-india.de/faqs/" };
+  mocks.matchKbChunks.mockResolvedValue([renamed, unrelated]);
+  const results = await search();
+  expect(results[0].content).toContain("unknown");
+  expect(results[0].content).not.toContain(stored.content);
+  expect(results[0].content).not.toContain(legacy.source_quote);
+  expect(results[0].last_verified_at).toBeNull();
+  expect(results[0].source_url).toBe(renamed.source_url);
+  expect(results[1].content).toBe(unrelated.content);
+});
+
+it.each(["unknown", "required", "not_required"] as const)("withholds certificate-only quote across structured dMAT outcome %s", async dmat => {
+  const renamed = { ...row, slug: "another-rule", source_url: "https://aps-india.de/faqs/",
+    outcomes: { ...row.outcomes, dmat, testas: "required" } };
+  mocks.getPublishedRules.mockResolvedValue([renamed]);
+  mocks.matchKbChunks.mockResolvedValue([{ ...stored, slug: renamed.slug, source_url: renamed.source_url }]);
+  const result = (await search())[0];
+  expect(result.content).toContain("dMAT: unknown");
+  expect(result.content).toContain("TestAS: required");
+  expect(result.content).not.toContain(legacy.source_quote);
+  expect(result.content).not.toContain("Official source says");
+  expect(result.source_url).toBe(renamed.source_url);
+  expect(result.last_verified_at).toBe(renamed.last_verified_at);
+});

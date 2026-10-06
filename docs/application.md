@@ -675,13 +675,17 @@ Matches are raw RPC rows; rule rows are caller-visible current published metadat
 from the existing `getPublishedRules` helper, or null if unavailable. Zod validates
 both boundaries. Scoped dMAT matches use structured outcomes, exact source identity
 and stable slugs, never arbitrary-text matching. Valid beta/verified rule metadata
-is rendered with `ruleToChunk`; obsolete possession-only outcomes become unknown
-and their historical quote/note is withheld from model evidence. Other outcomes
+is rendered with `ruleToChunk`; certificate-only applicability is quarantined
+across dMAT outcomes, including unknown, and its historical quote/note is withheld
+from model evidence. Other outcomes
 and source URLs/current supplied verification dates are retained. Missing, invalid,
 unpublished or ambiguous metadata yields unknown with no invented verification date.
 The stable `snippet-dmat-details` is always quarantined as unknown because this
 interface has no trusted structured snippet metadata, even after a rebuild.
-Unrelated chunks are unchanged. RULES01 can reuse this projection boundary;
+Rule matches cannot prove unrelatedness without valid matching current metadata;
+unmatched or invalid rules fail closed even under renamed slugs/other source URLs.
+Valid current unrelated rules and unrelated curated snippets are unchanged.
+RULES01 can reuse this projection boundary;
 broader freshness and snippet-authority policy are explicitly outside its scope.
 No persisted chunks are rewritten/deleted, and no embedding/publication runs. dMAT
 neither replaces APS nor guarantees recognition/admission; a low score alone is
