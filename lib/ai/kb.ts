@@ -175,7 +175,7 @@ function renderOutcomes(outcomes: KbRule["outcomes"]): string[] {
   return lines;
 }
 
-export function ruleToChunk(rule: KbRule): KbChunk {
+export function ruleToChunk(rule: KbRule, options: { includeLegacyDmatQuote?: boolean } = {}): KbChunk {
   const legacyDmat = rule.outcomes.dmat === "not_required" && rule.conditions.has_existing_aps !== undefined &&
     rule.conditions.dmat_procedure === undefined;
   const conditionLines = Object.entries(rule.conditions).map(([key, cond]) =>
@@ -185,9 +185,11 @@ export function ruleToChunk(rule: KbRule): KbChunk {
     conditionLines.length > 0
       ? `Applies when: ${conditionLines.join("; ")}.`
       : "Applies to all profiles.",
-    ...renderOutcomes(legacyDmat ? { ...rule.outcomes, dmat: undefined, note: undefined } : rule.outcomes),
+    ...renderOutcomes(legacyDmat ? { ...rule.outcomes,
+      dmat: options.includeLegacyDmatQuote === false ? "unknown" : undefined, note: undefined } : rule.outcomes),
     ...(legacyDmat ? ["Legacy dMAT procedure applicability unverified: certificate possession alone does not establish an exemption for a new or unknown procedure."] : []),
-    `${rule.outcomes.aps ? "Stored legacy quote (scoped applicability unverified)" : legacyDmat ? "Stored legacy quote (procedure applicability unverified)" : "Official source says"}: "${rule.source_quote}"`,
+    ...((legacyDmat && options.includeLegacyDmatQuote === false) ? [] : [
+      `${rule.outcomes.aps ? "Stored legacy quote (scoped applicability unverified)" : legacyDmat ? "Stored legacy quote (procedure applicability unverified)" : "Official source says"}: "${rule.source_quote}"`]),
   ].join("\n");
 
   return {

@@ -669,9 +669,21 @@ semester and date policy stays in reviewed data. No seed, publication or embeddi
 runs here; production classification depends on separate admin review/publication.
 Newly rendered KB chunks suppress the obsolete certificate-possession exemption
 and label its quote as historical evidence rather than current applicability.
-Existing stored chunks are returned unchanged by retrieval: root must verify their
-replacement before release so an old quote cannot assert a new-procedure exemption.
-No live embedding/publication or retrieval-platform change is performed here. dMAT
+Runtime `search_rules` now projects persisted dMAT matches through the pure
+`projectDmatKbMatches(matches, publishedRules)` interface in `lib/ai/kb-retrieval.ts`.
+Matches are raw RPC rows; rule rows are caller-visible current published metadata
+from the existing `getPublishedRules` helper, or null if unavailable. Zod validates
+both boundaries. Scoped dMAT matches use structured outcomes, exact source identity
+and stable slugs, never arbitrary-text matching. Valid beta/verified rule metadata
+is rendered with `ruleToChunk`; obsolete possession-only outcomes become unknown
+and their historical quote/note is withheld from model evidence. Other outcomes
+and source URLs/current supplied verification dates are retained. Missing, invalid,
+unpublished or ambiguous metadata yields unknown with no invented verification date.
+The stable `snippet-dmat-details` is always quarantined as unknown because this
+interface has no trusted structured snippet metadata, even after a rebuild.
+Unrelated chunks are unchanged. RULES01 can reuse this projection boundary;
+broader freshness and snippet-authority policy are explicitly outside its scope.
+No persisted chunks are rewritten/deleted, and no embedding/publication runs. dMAT
 neither replaces APS nor guarantees recognition/admission; a low score alone is
 not an APS refusal. The current APS clarification permits other complete documents
 before the dMAT certificate. Source checks dated 2026-10-07 are verification dates,
