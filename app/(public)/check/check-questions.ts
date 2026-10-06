@@ -12,6 +12,16 @@ export type Option = { value: unknown; label: string; key: string };
 
 /** Prompt (and optional subtitle) shown for each step of the checker. */
 export const QUESTIONS: Record<StepId, { question: string; subtitle?: string }> = {
+  hasPriorUniversityStudy: { question: "Have you studied at a university or other higher education institution?", subtitle: "Include completed, ongoing or discontinued study. This records your history; it does not determine admission." },
+  priorQualificationType: { question: "What qualification was that study leading to?", subtitle: "Use the previous qualification relevant to this application." },
+  priorStudyInstitution: { question: "Which institution awarded or will award that qualification?" },
+  priorStudyCountry: { question: "Where is the institution that awarded your qualification based?", subtitle: "Use the awarding institution's country, even if your school or study campus was elsewhere." },
+  priorStudyCountryOther: { question: "Which other country is the awarding institution based in?", subtitle: "Enter the country name shown in your institution's details." },
+  priorQualificationContext: { question: "Which education system issued your previous qualification?", subtitle: "Choose the awarding institution's higher education system, not your school curriculum. If unsure, choose Not sure." },
+  priorStudyField: { question: "What was your field of study?", subtitle: "Use the field stated on your academic documents." },
+  priorDegreeYears: { question: "What is the full duration of that qualification?", subtitle: "Enter the programme's duration in years, including any study you have not yet completed." },
+  yearsOfUniversityStudy: { question: "How many years of university study have you successfully completed?", subtitle: "Enter completed study only, in years. Fractions are allowed; enter 0 if none is completed." },
+  priorStudyCompletion: { question: "What is the status of that study?" },
   targetDegree: { question: "Which degree level are you applying for?" },
   nationality: { question: "What is your nationality?" },
   certificateCountry: {
@@ -83,6 +93,34 @@ const countryOptions = COUNTRIES.map((c) => ({
  * their own bespoke inputs and return []. */
 export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
   switch (stepId) {
+    case "priorStudyCountry": {
+      const options = [...countryOptions, { value: "other", label: "Another country", key: "other" }];
+      const saved = answers.priorStudyCountry;
+      // Preserve stored country codes beyond the small supported-country catalog.
+      if (saved && /^[a-z]{2}$/i.test(saved) && !options.some((o) => o.value === saved)) {
+        options.push({ value: saved, key: saved, label: new Intl.DisplayNames(["en"], { type: "region" }).of(saved.toUpperCase()) ?? saved });
+      }
+      return options;
+    }
+    case "priorQualificationContext":
+      return [
+        { value: "national", label: "The awarding country's higher education system", key: "national" },
+        { value: "other", label: "An international or other education system", key: "other" },
+        { value: "unknown", label: "Not sure", key: "unknown" },
+      ];
+    case "priorQualificationType":
+      return [
+        { value: "bachelor", label: "Bachelor's degree", key: "bachelor" },
+        { value: "master", label: "Master's degree", key: "master" },
+        { value: "diploma", label: "Diploma", key: "diploma" },
+        { value: "other", label: "Another qualification", key: "other" },
+      ];
+    case "priorStudyCompletion":
+      return [
+        { value: "completed", label: "Completed", key: "completed" },
+        { value: "in_progress", label: "In progress", key: "in_progress" },
+        { value: "discontinued", label: "Discontinued", key: "discontinued" },
+      ];
     case "targetDegree":
       return [
         { value: "bachelor", label: "A Bachelor's degree", key: "bachelor" },
@@ -111,6 +149,7 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
       return BOARDS
         .filter((b) => b.country === answers.certificateCountry)
         .map((b) => ({ value: b.id, label: b.label, key: b.id }));
+    case "hasPriorUniversityStudy":
     case "jeeAdvanced":
     case "hasExistingApsCertificate":
     case "ibFullDiploma":

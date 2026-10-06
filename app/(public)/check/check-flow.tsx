@@ -1,5 +1,7 @@
 "use client";
 
+import { z } from "zod";
+
 import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -9,12 +11,16 @@ import { ThemeToggle } from "@/components/app/theme-toggle";
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
 import { QUESTIONS, buildOptions, type Option } from "./check-questions";
+import { QualificationTextInput } from "./qualification-text-input";
 import { GceSubjectsEditor } from "./gce-subjects-editor";
 import { IbSubjectsEditor } from "./ib-subjects-editor";
 import {
   NUMBER_STEPS,
+  PartialAnswersSchema,
+  normalizeAnswers,
   isAnswered,
   isNumberStep,
+  isTextStep,
   visibleSteps,
   withAnswer,
   type Answers,
@@ -28,19 +34,14 @@ type CheckFlowProps = {
   userMenu?: ReactNode;
 };
 
-type SavedCheckState = {
-  answers: PartialAnswers;
-  stepIndex: number;
-};
+const SavedCheckStateSchema = z.object({
+  answers: PartialAnswersSchema,
+  stepIndex: z.number().int().nonnegative().optional(),
+}).strict();
+type SavedCheckState = z.infer<typeof SavedCheckStateSchema>;
 
 const CHECK_HISTORY_STEP_KEY = "__unipirateCheckStep";
 const CHECK_STORAGE_PREFIX = "unipirate.check.v1";
-
-const MASTER_CURRICULUM_QUESTION = {
-  question: "Which school curriculum did you finish?",
-  subtitle:
-    "Master's guidance is limited for now. We'll confirm what our verified rules can support.",
-};
 
 export function CheckFlow({
   initialAnswers = {},
@@ -49,7 +50,7 @@ export function CheckFlow({
 }: CheckFlowProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(initialAnswers);
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), qualificationHistoryVersion: 1 }));
   const [stepIndex, setStepIndex] = useState(initialStepIndex);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -64,26 +65,37 @@ export function CheckFlow({
   }, [posthog]);
 
   useEffect(() => {
-    let nextAnswers = initialAnswers;
+    const safeInitial = normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), qualificationHistoryVersion: 1 as const });
+    let nextAnswers: PartialAnswers = safeInitial;
     let nextStepIndex = initialStepIndex;
     try {
       const raw = sessionStorage.getItem(storageKey);
       if (raw) {
-        const saved = JSON.parse(raw) as SavedCheckState;
+        const saved = SavedCheckStateSchema.parse(JSON.parse(raw));
         const savedCountry = saved.answers?.certificateCountry;
         if (
+          // The storage key already separates landing countries. A new master's
+          // answers intentionally contain no school certificate country.
+          (saved.answers?.targetDegree === "master" && saved.answers.qualificationHistoryVersion === 1) ||
           !initialAnswers.certificateCountry ||
           savedCountry === initialAnswers.certificateCountry
         ) {
-          nextAnswers = saved.answers ?? initialAnswers;
-          const savedSteps = visibleSteps(nextAnswers);
-          nextStepIndex = Math.min(
+          const recovered = normalizeAnswers(saved.answers);
+          const savedSteps = visibleSteps(recovered);
+          const firstMissing = savedSteps.findIndex((step) => !isAnswered(recovered, step));
+          const recoveredStepIndex = Math.min(
             Math.max(saved.stepIndex ?? initialStepIndex, 0),
             Math.max(savedSteps.length - 1, 0),
+            // Newly added questions must not be skipped by a stored numeric index.
+            firstMissing === -1 ? savedSteps.length - 1 : firstMissing,
           );
+          nextAnswers = recovered;
+          nextStepIndex = recoveredStepIndex;
         }
       }
     } catch {
+      nextAnswers = safeInitial;
+      nextStepIndex = initialStepIndex;
       sessionStorage.removeItem(storageKey);
     } finally {
       window.history.replaceState(
@@ -106,10 +118,7 @@ export function CheckFlow({
   const step = steps[Math.min(stepIndex, steps.length - 1)];
   const isLast = stepIndex >= steps.length - 1;
   const canContinue = isAnswered(answers, step);
-  const questionCopy =
-    step === "curriculumType" && answers.targetDegree === "master"
-      ? MASTER_CURRICULUM_QUESTION
-      : QUESTIONS[step];
+  const questionCopy = QUESTIONS[step];
   const numberStep = isNumberStep(step) ? NUMBER_STEPS[step] : null;
   const numberError =
     isNumberStep(step) && answers[step] !== undefined && !canContinue
@@ -282,6 +291,7 @@ export function CheckFlow({
                 className={styles.input}
                 type="number"
                 inputMode="decimal"
+                step={step === "priorDegreeYears" || step === "yearsOfUniversityStudy" ? "any" : undefined}
                 min={numberStep.min}
                 max={numberStep.max}
                 aria-invalid={numberError ? "true" : undefined}
@@ -305,6 +315,8 @@ export function CheckFlow({
               </p>
             )}
           </div>
+        ) : isTextStep(step) ? (
+          <QualificationTextInput step={step} value={answers[step]} onChange={(value) => select(step, value)} />
         ) : step === "gceSubjects" ? (
           <GceSubjectsEditor
             subjects={answers.gceSubjects ?? []}

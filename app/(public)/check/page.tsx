@@ -30,7 +30,8 @@ export default async function CheckPage({
   const initialAnswers: PartialAnswers = {
     ...(certificateCountry ? { certificateCountry } : {}),
   };
-  const initialStepIndex = certificateCountry ? 1 : 0;
+  // Degree comes first: a landing-page country must not become a master's school-based route.
+  const initialStepIndex = 0;
 
   const userMenu = user ? (
     <UserMenu

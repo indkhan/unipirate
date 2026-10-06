@@ -63,3 +63,14 @@ describe("submitCheck", () => {
     expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 });
+
+it("normalizes hidden versioned history before saving a check and account profile", async () => {
+  mocks.getUser.mockResolvedValue({ data: { user: { id: "student" } } });
+  const input = { qualificationHistoryVersion: 1, targetDegree: "master", nationality: "pk", visaApplicationCountry: "in", targetField: "cs", intake: null, hasPriorUniversityStudy: false, certificateCountry: "in", curriculumType: "national", priorQualificationType: "bachelor", priorStudyInstitution: "Old University", priorStudyCountry: "in", priorQualificationContext: "national", priorStudyField: "cs", priorDegreeYears: 4, yearsOfUniversityStudy: 4, priorStudyCompletion: "completed", hasExistingApsCertificate: true };
+  const expected = { qualificationHistoryVersion: 1, targetDegree: "master", nationality: "pk", visaApplicationCountry: "in", targetField: "cs", intake: null, hasPriorUniversityStudy: false };
+  const parsed = AnswersSchema.parse(input);
+  expect(parsed).toEqual(expected);
+  expect(await submitCheck(input)).toEqual({ id: "check-id" });
+  expect(mocks.insertCheck).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ answers: expected }));
+  expect(mocks.upsertProfile).toHaveBeenCalledWith(expect.anything(), { user_id: "student", answers: expected });
+});

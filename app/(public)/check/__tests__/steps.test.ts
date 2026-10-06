@@ -180,14 +180,15 @@ describe("visibleSteps", () => {
 
   it("persona #1 path shows Indian national-board steps", () => {
     expect(visibleSteps(p1Answers)).toEqual([
-      "certificateCountry",
       "targetDegree",
+      "certificateCountry",
       "nationality",
       "visaApplicationCountry",
       "curriculumType",
       "board",
       "schoolGradePercent",
       "jeeAdvanced",
+      "hasPriorUniversityStudy",
       "hasExistingApsCertificate",
       "targetField",
       "intake",
@@ -196,8 +197,8 @@ describe("visibleSteps", () => {
 
   it("persona #11 path shows GCE steps, never board/JEE/APS-cert", () => {
     expect(visibleSteps(p11Answers)).toEqual([
-      "certificateCountry",
       "targetDegree",
+      "certificateCountry",
       "nationality",
       "visaApplicationCountry",
       "curriculumType",

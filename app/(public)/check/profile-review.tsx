@@ -9,12 +9,16 @@ import { ThemeToggle } from "@/components/app/theme-toggle";
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
 import { buildOptions, type Option } from "./check-questions";
+import { QualificationTextInput } from "./qualification-text-input";
 import { GceSubjectsEditor } from "./gce-subjects-editor";
 import { IbSubjectsEditor } from "./ib-subjects-editor";
 import {
   NUMBER_STEPS,
+  PartialAnswersSchema,
+  normalizeAnswers,
   isAnswered,
   isNumberStep,
+  isTextStep,
   visibleSteps,
   withAnswer,
   type Answers,
@@ -28,6 +32,16 @@ type ProfileReviewProps = {
 };
 
 const QUESTIONS: Record<StepId, string> = {
+  hasPriorUniversityStudy: "Previous higher education",
+  priorQualificationType: "Previous qualification type",
+  priorStudyInstitution: "Previous institution",
+  priorStudyCountry: "Awarding institution country",
+  priorStudyCountryOther: "Other awarding country",
+  priorQualificationContext: "Qualification education system",
+  priorStudyField: "Previous study field",
+  priorDegreeYears: "Qualification duration",
+  yearsOfUniversityStudy: "Successfully completed study",
+  priorStudyCompletion: "Study completion status",
   targetDegree: "Study level",
   nationality: "Nationality",
   certificateCountry: "Certificate country",
@@ -52,7 +66,7 @@ const QUESTIONS: Record<StepId, string> = {
 export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(initialAnswers);
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers(PartialAnswersSchema.parse(initialAnswers)));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const steps = visibleSteps(answers);
@@ -99,14 +113,19 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
   }
 
   function field(step: StepId) {
+    if (isTextStep(step)) {
+      return <QualificationTextInput step={step} value={answers[step]} onChange={(value) => select(step, value)} />;
+    }
     if (isNumberStep(step)) {
       const config = NUMBER_STEPS[step];
       return (
         <div className={styles.percentInputWrap}>
           <input
             className={styles.input}
+            aria-labelledby={`${step}-label`}
             type="number"
             inputMode="decimal"
+            step={step === "priorDegreeYears" || step === "yearsOfUniversityStudy" ? "any" : undefined}
             min={config.min}
             max={config.max}
             placeholder={config.placeholder}
@@ -196,7 +215,7 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
         <div className={styles.reviewGrid}>
           {steps.map((step) => (
             <section className={styles.reviewCard} key={step}>
-              <h2>{QUESTIONS[step]}</h2>
+              <h2 id={`${step}-label`}>{QUESTIONS[step]}</h2>
               {field(step)}
               {!isAnswered(answers, step) ? (
                 <span className={styles.reviewMissing}>Required</span>
