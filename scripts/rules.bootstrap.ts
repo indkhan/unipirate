@@ -4,6 +4,7 @@
 // candidates as drafts. Runtime eligibility comes only from DB rows reviewed in
 // /admin; the application and evaluator never import this snapshot.
 import { intakeIndex, type EngineRule } from "../lib/engine/evaluate";
+import { dmatCandidates } from "./dmat.rules";
 
 type RuleRecord = EngineRule & { country: string | null };
 
@@ -260,6 +261,7 @@ export const ruleData: RuleRecord[] = [
     last_verified_at: VISA_SOURCE_CHECKED_AT,
   },
   // ------------------------------------------------------------------ dMAT
+  ...dmatCandidates,
   {
     id: "dmat-india-existing-aps-exempt",
     country: "in",

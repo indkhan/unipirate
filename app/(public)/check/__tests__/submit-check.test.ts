@@ -15,6 +15,8 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ set: mocks.setCookie })
 import { submitCheck } from "../actions";
 import { AnswersSchema } from "../steps";
 import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
+import { dmatAnswers } from "./dmat.fixture";
+import { reviewedDmatRules } from "@/lib/engine/__tests__/dmat.fixture";
 
 const validAnswers = {
   targetDegree: "bachelor", nationality: "in", certificateCountry: "in", visaApplicationCountry: "in",
@@ -30,6 +32,21 @@ beforeEach(() => {
 });
 
 describe("submitCheck", () => {
+  it.each([null, { id: "student" }])("preserves dMAT reports and normalization for anonymous/authenticated submission: %j", async user => {
+    mocks.getUser.mockResolvedValue({ data: { user } });
+    mocks.getPublishedRules.mockResolvedValue(reviewedDmatRules());
+    expect(await submitCheck(JSON.parse(JSON.stringify(dmatAnswers)))).toEqual({ id: "check-id" });
+    const expected = AnswersSchema.parse(dmatAnswers);
+    expect(mocks.insertCheck).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ answers: expected,
+      result: expect.objectContaining({ dMAT: "required", path: "unknown" }) }));
+    if (user) expect(mocks.upsertProfile).toHaveBeenCalledWith(expect.anything(), { user_id: "student", answers: expected });
+    else expect(mocks.upsertProfile).not.toHaveBeenCalled();
+  });
+  it("rejects an impossible dMAT date before auth or persistence I/O", async () => {
+    expect(await submitCheck({ ...dmatAnswers, dmatRegistrationStatus: "completed", dmatRegistrationDate: "2026-02-29" })).toEqual({ error: expect.any(String) });
+    expect(mocks.getUser).not.toHaveBeenCalled();
+    expect(mocks.insertCheck).not.toHaveBeenCalled();
+  });
   it("returns a retryable error when saving fails instead of leaving the form submitting", async () => {
     mocks.insertCheck.mockRejectedValueOnce(new Error("Database unavailable"));
     const log = vi.spyOn(console, "error").mockImplementation(() => {});

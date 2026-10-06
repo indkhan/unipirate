@@ -3,6 +3,7 @@
 // No I/O, no React — unit-tested in __tests__/steps.test.ts.
 import { z } from "zod";
 import { CalendarDateSchema, calendarDay } from "@/lib/engine/calendar-day";
+import { DmatProfileSchema, DMAT_FIELD_ENTRIES, DMAT_FIELD_SOURCE, DMAT_FIELD_VERSION } from "@/lib/engine/dmat";
 
 import type { Profile } from "@/lib/engine/evaluate";
 
@@ -157,6 +158,7 @@ export type IbSubjectAnswer = z.infer<typeof IbSubjectAnswerSchema>;
  * shown when a value is present but fails `isAnswered`.
  */
 export const NUMBER_STEPS = {
+  dmatCompletedSemesters: { label: "Actually completed semesters", min: 0, max: 100, placeholder: "6", error: "Enter a whole number of completed semesters from 0 to 100." },
   priorDegreeYears: { label: "Qualification duration in years · required", min: 0, max: 50, placeholder: "4", error: "Enter a duration from 0 to 50 years." },
   yearsOfUniversityStudy: { label: "Successfully completed study in years · required", min: 0, max: 50, placeholder: "1", error: "Enter completed study from 0 to 50 years." },
   schoolGradePercent: {
@@ -186,11 +188,23 @@ export const NUMBER_STEPS = {
 export type NumberStepId = keyof typeof NUMBER_STEPS;
 
 export const TEXT_STEPS = {
+  dmatDegreeTitle: { label: "Official previous-degree title", maxLength: 200 },
+  dmatClassificationReference: { label: "Reported APS classification confirmation", maxLength: 200 },
+  dmatRegistrationDate: { label: "Completed APS online registration date · YYYY-MM-DD", maxLength: 10 },
+  dmatDispatchDate: { label: "Complete APS document dispatch date · YYYY-MM-DD", maxLength: 10 },
+  dmatPartnershipIssuer: { label: "Confirmation issuing institution or coordinator", maxLength: 200 },
+  dmatPartnershipGroup: { label: "Official programme group number", maxLength: 200 },
+  dmatPartnershipReference: { label: "Reported official programme confirmation", maxLength: 200 },
   apsSubmissionDate: { label: "Complete APS submission date confirmed by APS · YYYY-MM-DD", maxLength: 10 },
   priorStudyInstitution: { label: "Previous institution", maxLength: 200 },
   priorStudyCountryOther: { label: "Awarding institution country", maxLength: 100 },
   priorStudyField: { label: "Previous field of study", maxLength: 200 },
 } as const;
+export const DATE_STEPS = ["apsSubmissionDate", "dmatRegistrationDate", "dmatDispatchDate"] as const;
+export const DMAT_STEPS = ["dmatQualificationScope", "dmatProcedure", "dmatDegreeTitle", "dmatFieldBasis", "dmatFieldEntry",
+  "dmatApsClassification", "dmatClassificationReference", "dmatRegistrationStatus", "dmatRegistrationDate",
+  "dmatDispatchStatus", "dmatDispatchDate", "dmatPartnershipStatus", "dmatPartnershipKind", "dmatPartnershipIssuerRole",
+  "dmatPartnershipIssuer", "dmatPartnershipGroup", "dmatPartnershipReference", "dmatSemesterStatus", "dmatCompletedSemesters"] as const;
 
 export function isTextStep(step: StepId): step is keyof typeof TEXT_STEPS {
   return step in TEXT_STEPS;
@@ -208,6 +222,26 @@ export function isNumberStep(step: StepId): step is NumberStepId {
 
 const AnswerFieldsSchema = z
   .object({
+    dmatVersion: z.literal(1).optional(),
+    dmatQualificationScope: z.enum(["single", "multiple", "unknown"]).optional(),
+    dmatProcedure: z.enum(["relevant_completed", "current_initial", "current_new", "unknown"]).optional(),
+    dmatDegreeTitle: z.string().trim().min(1).max(200).optional(),
+    dmatFieldBasis: z.enum(["list_v1", "aps_confirmation", "unknown"]).optional(),
+    dmatFieldEntry: z.enum(DMAT_FIELD_ENTRIES).optional(),
+    dmatApsClassification: z.enum(["affected", "unaffected", "unknown"]).optional(),
+    dmatClassificationReference: z.string().trim().min(1).max(200).optional(),
+    dmatRegistrationStatus: z.enum(["completed", "not_completed", "unknown"]).optional(),
+    dmatRegistrationDate: CalendarDateSchema.optional(),
+    dmatDispatchStatus: z.enum(["complete", "incomplete", "not_sent", "unknown"]).optional(),
+    dmatDispatchDate: CalendarDateSchema.optional(),
+    dmatPartnershipStatus: z.enum(["confirmed", "none", "pending", "unknown"]).optional(),
+    dmatPartnershipKind: z.enum(["exchange", "double_degree", "partnership"]).optional(),
+    dmatPartnershipIssuerRole: z.enum(["home_institution", "german_partner", "coordinator"]).optional(),
+    dmatPartnershipIssuer: z.string().trim().min(1).max(200).optional(),
+    dmatPartnershipGroup: z.string().trim().min(1).max(200).optional(),
+    dmatPartnershipReference: z.string().trim().min(1).max(200).optional(),
+    dmatSemesterStatus: z.enum(["known", "unknown"]).optional(),
+    dmatCompletedSemesters: z.number().int().min(0).max(100).optional(),
     apsTransitionVersion: z.literal(1).optional(),
     apsProcedureStatus: z.enum(["not_started", "pending", "completed", "new_evaluation", "unknown"]).optional(),
     apsSubmissionConfirmation: z.enum(["confirmed", "unknown"]).optional(),
@@ -263,6 +297,13 @@ export type Answers = z.infer<typeof AnswerFieldsSchema>;
 export type PartialAnswers = Partial<Answers>;
 // Draft text can be unfinished; complete submissions retain required-text checks.
 export const PartialAnswersSchema = AnswerFieldsSchema.partial().extend({
+  dmatDegreeTitle: z.string().trim().max(200).optional(),
+  dmatClassificationReference: z.string().trim().max(200).optional(),
+  dmatRegistrationDate: z.string().max(10).optional(),
+  dmatDispatchDate: z.string().max(10).optional(),
+  dmatPartnershipIssuer: z.string().trim().max(200).optional(),
+  dmatPartnershipGroup: z.string().trim().max(200).optional(),
+  dmatPartnershipReference: z.string().trim().max(200).optional(),
   apsSubmissionDate: z.string().max(10).optional(),
   priorStudyInstitution: z.string().trim().max(200).optional(),
   priorStudyField: z.string().trim().max(200).optional(),
@@ -307,6 +348,7 @@ export const AnswersSchema = AnswerFieldsSchema
 // --------------------------------------------------------------------- steps
 
 export type StepId =
+  | (typeof DMAT_STEPS)[number]
   | "apsProcedureStatus"
   | "apsSubmissionConfirmation"
   | "apsSubmissionDate"
@@ -407,6 +449,32 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
     }
   }
   steps.push("targetField", "intake");
+  if (answers.dmatVersion === 1 && answers.targetDegree === "master" && answers.hasPriorUniversityStudy === true &&
+      answers.priorStudyInstitution?.trim() && answers.priorStudyCountry === "in" && answers.priorQualificationContext === "national") {
+    steps.push("dmatQualificationScope");
+    if (answers.dmatQualificationScope === "single") {
+      steps.push("dmatDegreeTitle", "dmatProcedure");
+      if (answers.dmatProcedure === "current_initial" || answers.dmatProcedure === "current_new") {
+        steps.push("dmatRegistrationStatus");
+        if (answers.dmatRegistrationStatus === "completed") steps.push("dmatRegistrationDate");
+        steps.push("dmatDispatchStatus");
+        if (answers.dmatDispatchStatus === "complete") steps.push("dmatDispatchDate");
+        steps.push("dmatPartnershipStatus");
+        if (answers.dmatPartnershipStatus === "confirmed") steps.push("dmatPartnershipKind", "dmatPartnershipIssuerRole", "dmatPartnershipIssuer", "dmatPartnershipGroup", "dmatPartnershipReference");
+        steps.push("dmatFieldBasis");
+        if (answers.dmatFieldBasis === "list_v1") steps.push("dmatFieldEntry");
+        if (answers.dmatFieldBasis === "aps_confirmation") {
+          steps.push("dmatApsClassification");
+          if (answers.dmatApsClassification !== undefined && answers.dmatApsClassification !== "unknown") steps.push("dmatClassificationReference");
+        }
+        if (answers.priorQualificationType === "bachelor" && answers.priorStudyCompletion === "in_progress" &&
+            [3, 4].includes(answers.priorDegreeYears ?? 0)) {
+          steps.push("dmatSemesterStatus");
+          if (answers.dmatSemesterStatus === "known") steps.push("dmatCompletedSemesters");
+        }
+      }
+    }
+  }
   return steps;
 }
 
@@ -421,6 +489,27 @@ export function withAnswer<K extends StepId>(
 ): PartialAnswers {
   const next: PartialAnswers = { ...answers, qualificationHistoryVersion: 1, [field]: value };
   if (answers[field] !== value) {
+    if (HISTORY_STEPS.some(key => key === field) ||
+        ["targetDegree", "curriculumType", "hasExistingApsCertificate"].includes(field)) {
+      for (const key of DMAT_STEPS) delete next[key];
+    }
+    if (field === "dmatDegreeTitle" && answers.dmatDegreeTitle !== undefined) {
+      for (const key of DMAT_STEPS) if (key !== "dmatDegreeTitle" && key !== "dmatQualificationScope") delete next[key];
+    }
+    if (field === "dmatQualificationScope" || field === "dmatProcedure") {
+      for (const key of DMAT_STEPS) if (key !== "dmatQualificationScope" && key !== "dmatProcedure" &&
+        !(field === "dmatProcedure" && key === "dmatDegreeTitle")) delete next[key];
+      if (field === "dmatQualificationScope") delete next.dmatProcedure;
+    }
+    if (field === "dmatFieldBasis") {
+      delete next.dmatFieldEntry; delete next.dmatApsClassification; delete next.dmatClassificationReference;
+    }
+    if (field === "dmatFieldEntry" || field === "dmatApsClassification") delete next.dmatClassificationReference;
+    if (field === "dmatRegistrationStatus") delete next.dmatRegistrationDate;
+    if (field === "dmatDispatchStatus") delete next.dmatDispatchDate;
+    if (field === "dmatPartnershipKind" || field === "dmatPartnershipIssuerRole" || field === "dmatPartnershipIssuer") {
+      delete next.dmatPartnershipGroup; delete next.dmatPartnershipReference;
+    }
     const timing = ["apsProcedureStatus", "apsSubmissionConfirmation", "apsSubmissionDate"] as const;
     const dependents: Partial<Record<StepId, readonly StepId[]>> = {
       targetDegree: HISTORY_STEPS,
@@ -457,7 +546,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
     changed = false;
     const visible = new Set<string>(visibleSteps(next));
     for (const key of Object.keys(next)) {
-      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && !visible.has(key)) {
+      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && !visible.has(key)) {
         delete next[key as StepId];
         changed = true;
       }
@@ -467,7 +556,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
 }
 
 export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
-  if (step === "apsSubmissionDate") return calendarDay(answers.apsSubmissionDate) !== undefined;
+  if (DATE_STEPS.some(key => key === step)) return calendarDay(answers[step]) !== undefined;
   if (isTextStep(step)) {
     const value = answers[step];
     return typeof value === "string" && value.trim().length > 0 &&
@@ -485,6 +574,7 @@ export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
     return (
       typeof value === "number" &&
       Number.isFinite(value) &&
+      (step !== "dmatCompletedSemesters" || Number.isInteger(value)) &&
       value >= min &&
       value <= max
     );
@@ -564,6 +654,25 @@ export function buildProfile(answers: Answers): Profile {
       context: answers.priorQualificationContext,
       ...(answers.priorStudyCountryOther ? { countryName: answers.priorStudyCountryOther } : {}),
     } : {};
+    if (visibleSteps(answers).includes("dmatQualificationScope")) {
+      const field = answers.dmatFieldBasis === "list_v1"
+        ? { basis: "list_v1", entry: answers.dmatFieldEntry, version: DMAT_FIELD_VERSION, sourceUrl: DMAT_FIELD_SOURCE }
+        : answers.dmatFieldBasis === "aps_confirmation" && answers.dmatApsClassification !== "unknown"
+          ? { basis: "aps_confirmation", classification: answers.dmatApsClassification, reference: answers.dmatClassificationReference }
+          : answers.dmatFieldBasis ? { basis: "unknown" } : undefined;
+      const report = DmatProfileSchema.safeParse({
+        qualificationScope: answers.dmatQualificationScope, procedure: answers.dmatProcedure, degreeTitle: answers.dmatDegreeTitle, field,
+        registration: answers.dmatRegistrationStatus ? { status: answers.dmatRegistrationStatus,
+          ...(answers.dmatRegistrationStatus === "completed" ? { date: answers.dmatRegistrationDate } : {}) } : undefined,
+        dispatch: answers.dmatDispatchStatus ? { status: answers.dmatDispatchStatus,
+          ...(answers.dmatDispatchStatus === "complete" ? { date: answers.dmatDispatchDate } : {}) } : undefined,
+        partnership: answers.dmatPartnershipStatus ? { status: answers.dmatPartnershipStatus,
+          ...(answers.dmatPartnershipStatus === "confirmed" ? { kind: answers.dmatPartnershipKind, issuerRole: answers.dmatPartnershipIssuerRole,
+            issuer: answers.dmatPartnershipIssuer, groupNumber: answers.dmatPartnershipGroup, reference: answers.dmatPartnershipReference } : {}) } : undefined,
+        completedSemesters: answers.dmatCompletedSemesters,
+      });
+      if (report.success) profile.dmat = report.data;
+    }
     return profile;
   }
   if (answers.board !== undefined) profile.board = answers.board;
