@@ -331,4 +331,16 @@ do $$ declare pair record; capture jsonb; n integer := 40; begin
   end loop;
 end $$;
 select pg_temp.assert_true(not exists(select * from course_versions_before except select * from public.course_offering_versions where offering_id in ('00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000003','00000000-0000-4000-8000-000000000004')), 'chronology repair leaves old reviewed history unchanged');
+-- 00105: reject reserved map keys before Zod can silently discard applicability.
+do $$ declare reserved jsonb; begin
+  foreach reserved in array array['{"__proto__":"Synthetic scope"}'::jsonb,'{"__proto__":false}'::jsonb,'{"__proto__":["Synthetic scope"]}'::jsonb] loop
+    perform pg_temp.expect_state(format('insert into public.course_offerings(programme_id,intake_term,intake_year,applicant_group,applicability) values (%L,''winter'',2030,''Synthetic reserved key'',%L)',
+      '00000000-0000-4000-8000-000000000001',reserved),'23514');
+  end loop;
+end $$;
+insert into public.course_offerings(id,programme_id,intake_term,intake_year,applicant_group,applicability) values
+('00000000-0000-4000-8000-000000000008','00000000-0000-4000-8000-000000000001','winter',2030,'Synthetic ordinary keys','{"constructor":" Synthetic scope ","toString":false,"countries":[" XX ","YY"],"empty":[]}'),
+('00000000-0000-4000-8000-000000000009','00000000-0000-4000-8000-000000000001','winter',2030,'Synthetic empty map','{}');
+select pg_temp.assert_true((select applicability = '{"constructor":" Synthetic scope ","toString":false,"countries":[" XX ","YY"],"empty":[]}'::jsonb from public.course_offerings where id = '00000000-0000-4000-8000-000000000008'),'ordinary map property names/strings/boolean/arrays retained');
+select pg_temp.assert_true((select applicability = '{}'::jsonb from public.course_offerings where id = '00000000-0000-4000-8000-000000000009'),'empty applicability map retained');
 rollback;

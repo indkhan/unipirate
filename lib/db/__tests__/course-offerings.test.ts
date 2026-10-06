@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import type { Database } from "../database.types";
-import { getProgrammeByLegacyCourse, listReviewedOfferingVersions } from "../queries";
-import { attachAdminProgrammeLegacyCourse, insertAdminOfferingVersion, updateAdminProgramme } from "../admin-queries";
+import { getProgrammeByLegacyCourse, listReviewedOfferingVersions, listCourseOfferings } from "../queries";
+import { attachAdminProgrammeLegacyCourse, insertAdminOfferingVersion, insertAdminCourseOffering, updateAdminProgramme } from "../admin-queries";
 const id = "00000000-0000-4000-8000-000000000001";
 it.each([
   ["supabase/migrations/20261006000100_course_offerings.sql", 10],
@@ -11,7 +11,8 @@ it.each([
   ["supabase/migrations/20261006000102_course_capture_validation.sql", 8],
   ["supabase/migrations/20261006000103_course_capture_reviewer_uuid.sql", 2],
   ["supabase/migrations/20261006000104_course_evidence_chronology.sql", 2],
-  ["supabase/tests/course_offerings.sql", 34],
+  ["supabase/migrations/20261006000105_course_applicability_keys.sql", 2],
+  ["supabase/tests/course_offerings.sql", 36],
 ] as const)("preserves every literal SQL dollar delimiter in %s", (file, expected) => {
   // Ignore SQL string literals (including regex end anchors) and line comments.
   const sql = readFileSync(file, "utf8").replace(/'(?:''|[^'])*'|--[^\r\n]*/g, "");
@@ -28,6 +29,22 @@ function client(body: unknown, status = 200) {
   return { db, requests };
 }
 describe("offering queries", () => {
+  it('rejects reserved applicability before admin insert I/O and on stored reads', async () => {
+    const scope = { programme_id: id, intake_term: 'winter', intake_year: 2027, applicant_group: 'Synthetic', applicability: JSON.parse('{"__proto__":"Synthetic scope"}') };
+    const row = { ...scope, id, created_at: '2026-10-06T12:00:00Z' };
+    const writer = client(row);
+    await expect(insertAdminCourseOffering(writer.db, scope)).rejects.toThrow();
+    expect(writer.requests).toEqual([]);
+    const reader = client([row]);
+    await expect(listCourseOfferings(reader.db, id)).rejects.toThrow();
+  });
+  it('round-trips constructor/toString and ordinary scope through query boundaries', async () => {
+    const applicability = JSON.parse('{"constructor":" Synthetic scope ","toString":false,"countries":[" XX ","YY"]}');
+    const scope = { programme_id: id, intake_term: 'winter', intake_year: 2027, applicant_group: 'Synthetic', applicability };
+    const row = { ...scope, id, created_at: '2026-10-06T12:00:00Z' };
+    expect(await insertAdminCourseOffering(client(row).db, scope)).toEqual(row);
+    expect(await listCourseOfferings(client([row]).db, id)).toEqual([row]);
+  });
   it.each([
     ['2026-10-06T12:00:00.0010000Z', '2026-10-06T12:00:00.0009999Z', false],
     ['2026-10-06T12:00:00.0009999Z', '2026-10-06T12:00:00.0000001Z', true],

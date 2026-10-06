@@ -27,7 +27,7 @@ export const OfferingSchema = z.object({
   programme_id: uuid, intake_term: z.enum(["summer", "winter"]),
   intake_year: z.number().int().min(1).max(9999), applicant_group: text,
   // Explicit reviewed applicability vocabulary belongs to the future resolver.
-  applicability: z.record(z.string(), z.union([text, z.boolean(), z.array(text)]) ),
+  applicability: z.record(z.string().refine((key) => key !== '__proto__', 'Reserved applicability key'), z.union([text, z.boolean(), z.array(text)]) ),
 }).strict();
 export const CourseEvidenceSchema = z.object({
   source_url: httpUrl, source_quote: text, retrieved_at: timestamp,

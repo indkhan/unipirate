@@ -1,9 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { CourseEvidenceSchema, OfferingVersionSchema, OfferingSchema, ProgrammeCorrectionSchema } from "../offerings";
+import { CourseEvidenceSchema, OfferingVersionSchema, OfferingSchema, ProgrammeCorrectionSchema, parseOfferingRow } from "../offerings";
 const id = "00000000-0000-4000-8000-000000000001";
 const evidence = { source_url: "https://example.edu/official?intake=2027#deadline", source_quote: "Synthetic fixture: closing date 15 July 2027.", retrieved_at: "2026-10-06T12:00:00Z", last_verified_at: "2026-10-06T13:00:00Z", verified_by: id, source_hash: null };
 const fact = { key: "closing", kind: "deadline", status: "verified", verbatim: evidence.source_quote, applicability: "Synthetic non-EU applicants", evidence: [evidence], deadline_kind: "application_closing", date: "2027-07-15", time: null, timezone: null, route: null };
 const version = { offering_id: id, version: 1, review_status: "verified", reviewed_at: evidence.last_verified_at, reviewed_by: id, facts: [fact] };
+
+it('rejects the reserved applicability key rather than silently dropping scope', () => {
+  const scope = { programme_id: id, intake_term: 'winter', intake_year: 2027, applicant_group: 'Synthetic', applicability: JSON.parse('{"__proto__":"Synthetic scope"}') };
+  expect(OfferingSchema.safeParse(scope).success).toBe(false);
+  expect(() => parseOfferingRow({ ...scope, id, created_at: '2026-10-06T12:00:00Z' })).toThrow();
+});
+it.each([{}, JSON.parse('{"constructor":" Synthetic scope ","toString":false,"countries":[" XX ","YY"],"empty":[]}')])('round-trips ordinary applicability properties: %j', (applicability) => {
+  const row = { programme_id: id, intake_term: 'winter', intake_year: 2027, applicant_group: 'Synthetic', applicability, id, created_at: '2026-10-06T12:00:00Z' };
+  expect(parseOfferingRow(row)).toEqual(row);
+  expect(JSON.stringify(parseOfferingRow(row).applicability)).toBe(JSON.stringify(applicability));
+});
 
 it.each([
   ['2026-10-06T12:00:00.0010000Z', '2026-10-06T12:00:00.0009999Z', false],

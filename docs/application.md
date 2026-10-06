@@ -526,3 +526,9 @@ digits beyond three in comparison operands before timestamp casting, preventing
 PostgreSQL rounding from changing equality or carrying into the next second/day.
 Captured strings retain all source precision verbatim; timezone offsets still
 compare instants, and verification before retrieval remains forbidden.
+
+Additive migration `20261006000105_course_applicability_keys.sql` and the Zod
+record key boundary reject `__proto__`, which record parsing would silently drop.
+Other map keys, including `constructor` and `toString`, remain ordinary properties;
+empty maps, booleans, arrays and verbatim strings retain the existing contract.
+No existing applicability map is rewritten or given an inferred vocabulary.
