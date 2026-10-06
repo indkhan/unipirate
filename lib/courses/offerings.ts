@@ -3,7 +3,13 @@ import { z } from "zod";
 const text = z.string().refine((value) => value.trim().length > 0, "Must not be blank");
 const timestamp = z.string().datetime({ offset: true });
 const uuid = z.string().uuid();
-const httpUrl = z.string().url().refine((value) => /^https?:\/\//.test(value), "HTTP(S) source required");
+// Same deliberately narrow grammar as public.valid_course_source_url: ASCII DNS,
+// no credentials/IP literals/backslashes; optional numeric port 1..65535.
+const httpUrl = z.string().refine((value) => {
+  const match = /^https?:\/\/((?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63})(?::([0-9]{1,5}))?([/?#].*)?$/.exec(value);
+  return !!match && match[1].length <= 253 && !/[^\x21-\x7e]|\\/.test(value)
+    && (match[2] === undefined || (Number(match[2]) >= 1 && Number(match[2]) <= 65535));
+}, "Supported HTTP(S) DNS URL required");
 export const CourseRouteSchema = z.enum(["direct", "uni_assist", "vpd_then_university", "unresolved"]);
 export const ProgrammeSchema = z.object({
   legacy_course_id: uuid.nullable(), name: text, university_name: text,

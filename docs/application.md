@@ -398,11 +398,39 @@ version selection explicit. There is no automatic import/task/UI integration,
 backfill, publication or change to legacy course/application/task identities.
 
 Programme labels (name, institution, degree, source URL) can be corrected by an
-admin on the same canonical ID. The database freezes the ID, legacy course link and
-creation time, and records meaningful corrections with the actor and before/after
+admin on the same canonical ID. The database freezes the ID, established legacy
+course link and creation time, and records meaningful corrections with the actor and before/after
 values in the existing admin audit stream. No-op updates create no audit noise.
 Corrections neither change offering scope nor elevate evidence/review status.
 Offering scopes and version snapshots remain immutable. `lib/db/course-catalogue.types.ts` is a hand-authored
 additive client contract, **not generated output**. Replace it using disposable
 schema generation once the orchestrator completes the local migration/RLS gate.
 `supabase/tests/course_offerings.sql` is a transactional disposable-only gate.
+
+Additive migration `20261006000101_course_offering_integrity.sql` binds every new
+verified evidence capture to the authenticated admin reviewer. Carry-forward keeps
+the original reviewer only when an earlier immutable reviewed version of the same
+offering contains exactly that capture and unchanged field interpretation/scope,
+and that earlier version was attested by the capture's reviewer. Changed captures
+or interpretations require the current reviewer to attest a new capture. Neither
+pending AI captures nor a source URL establishes verification. Normalized dates
+still require semantic human review; shape/literal checks cannot prove their meaning.
+
+Research programmes may start with a null legacy link. After a legacy course is
+approved and is not a conflict submission, `attachAdminProgrammeLegacyCourse`
+attaches it once on the same programme ID; replacement/detachment is forbidden.
+Publication integration can approve the legacy course, attach once, then append a
+reviewed version. This change implements no publication/AI/UI workflow. Linked
+courses must remain approved/non-conflict, while unmapped pending/conflict rows
+remain removable through existing operations. Existing applications and task values
+are never rewritten by either catalogue migration.
+
+SQL and TypeScript share a deliberately narrow source URL grammar: lowercase
+HTTP(S) scheme, ASCII DNS labels (host length at most 253), optional decimal port
+1–65535, printable ASCII path/query/fragment, no credentials, IP literals or
+backslashes. Accepted URLs are stored and returned verbatim, including case,
+explicit ports, query and fragment. Other URL forms require an explicit contract
+extension, not silent normalization. New SQL URL CHECKs are NOT VALID so any
+pre-existing malformed historical captures survive for explicit review; new writes
+must satisfy the contract and reads validate it. No old evidence is fabricated or
+silently changed, and generated DB types remain pending the orchestrator's local gate.

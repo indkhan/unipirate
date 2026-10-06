@@ -412,3 +412,12 @@ export async function updateAdminProgramme(db: CourseCatalogueDb, id: string, in
   const row = unwrap(await db.from("programmes").update(correction).eq("id", programmeId).select().single());
   return parseProgrammeRow(row);
 }
+
+/** Attach once after approval; the DB checks course lifecycle and freezes the link. */
+export async function attachAdminProgrammeLegacyCourse(db: CourseCatalogueDb, id: string, courseId: string) {
+  const programmeId = CourseCatalogueIdSchema.parse(id);
+  const legacyCourseId = CourseCatalogueIdSchema.parse(courseId);
+  const row = unwrap(await db.from("programmes").update({ legacy_course_id: legacyCourseId })
+    .eq("id", programmeId).is("legacy_course_id", null).select().single());
+  return parseProgrammeRow(row);
+}

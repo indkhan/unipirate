@@ -8,7 +8,7 @@ type RecordTable<T> = { Row: T & { id: string; created_at: string }; Insert: T; 
 export type CourseCatalogueDatabase = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Tables"> & {
     Tables: Database["public"]["Tables"] & {
-      programmes: Omit<RecordTable<Programme>, "Update"> & { Update: Partial<Omit<Programme, "legacy_course_id">> };
+      programmes: Omit<RecordTable<Programme>, "Update"> & { Update: Partial<Programme> };
       course_offerings: RecordTable<Omit<CourseOffering, "applicability"> & { applicability: Json }>;
       course_offering_versions: RecordTable<Omit<OfferingVersion, "facts"> & { facts: Json }>;
     };
