@@ -631,6 +631,35 @@ Other map keys, including `constructor` and `toString`, remain ordinary properti
 empty maps, booleans, arrays and verbatim strings retain the existing contract.
 No existing applicability map is rewritten or given an inferred vocabulary.
 
+### COURSE01 / PROC01 interface
+
+The shared payload remains `OfferingFactSchema`; no catalogue schema change.
+Reviewed routes use kind `route` and its typed route value. Portal facts use kind
+`description`, literal HTTPS portal URL as `verbatim`, and exact keys
+`application_link:university`, `application_link:vpd`, `application_link:uniassist`.
+Source URLs identify evidence pages and must never be substituted for portal URLs.
+Deadline keys are `deadline:<stage>:<deadline_kind>` with those same three stages
+and the existing typed deadline semantics. A VPD preparation target is not an
+official application closing date. Different stages do not create false conflicts.
+Generic or unsupported stage captures cannot be accepted through publication;
+they remain unresolved unless manual correction supplies captured literal stage
+evidence. Current conservative wording checks admit explicit university application,
+VPD/Vorprüfungsdokumentation, or uni-assist application wording; unfamiliar wording
+requires manual source capture and remains unknown if still unsupported.
+
+Consumers must select a specific offering (programme, effective term/year and
+literal applicant group), then consume only verified fields from a reviewed
+version. `applicability.source_scope` retains the actual scope quote; applicant
+groups are literal labels, not an implemented resolver vocabulary. Neither fuzzy
+descriptions nor global profile intake establish application context. Dates remain
+unnormalized in COURSE01. PROC01 planning must preserve unknown dates and stages.
+
+Current `applications` persist only `course_id`, not an offering selection. Durable
+per-application offering context therefore needs a separately reserved, reviewed
+persistence change in PROC01 (for example an optional offering reference, with
+version selection policy decided there). This is a proposal only: no migration,
+application/task changes or PROC01 implementation belongs to COURSE01.
+
 ### Scoped APS contract (UP-ELIG-05)
 
 APS qualification recognition, application documentation and visa checklist status

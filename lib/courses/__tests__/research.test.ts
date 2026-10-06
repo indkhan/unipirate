@@ -15,6 +15,28 @@ export const output = { offerings: [{ intake_term: "winter", intake_year: 2027, 
 ] }] };
 
 describe("research evidence boundary", () => {
+  it("requires literal stage and portal evidence before reviewing application links", () => {
+    const portal = "https://uni-example.de/portal";
+    const candidate = { ...output.offerings[0].facts[2], key: "application_link:university", kind: "description", verbatim: portal,
+      evidence: [reference(observations[1].url, `University application: ${portal}`)] };
+    const sources = observations.map((s, i) => i === 1 ? { ...s, content: `${s.content} University application: ${portal}` } : s);
+    const draft = buildResearchDraft(seed, sources, { offerings: [{ ...output.offerings[0], facts: [candidate] }] }, []);
+    const reviewer = "11111111-1111-4111-8111-111111111111";
+    expect(prepareResearchReview(draft, 0, [candidate.key], reviewer, "2026-10-07T13:00:00Z")[0].status).toBe("verified");
+    const vague = structuredClone(draft);
+    vague.offerings[0].facts[0].evidence[0].source_quote = portal;
+    expect(() => prepareResearchReview(vague, 0, [candidate.key], reviewer, "2026-10-07T13:00:00Z")).toThrow();
+    const generic = structuredClone(draft); generic.offerings[0].facts[0].key = "application_link";
+    expect(() => prepareResearchReview(generic, 0, ["application_link"], reviewer, "2026-10-07T13:00:00Z")).toThrow();
+  });
+  it("keeps university and VPD closing dates separate instead of creating a false conflict", () => {
+    const offering = structuredClone(output.offerings[0]);
+    offering.facts = offering.facts.slice(0, 2).map((f, i) => ({ ...f, key: `deadline:${i ? "vpd" : "university"}:application_closing` }));
+    const draft = buildResearchDraft(seed, observations, { offerings: [offering] }, []);
+    expect(draft.conflicts).toEqual([]);
+    expect(draft.offerings[0].facts.filter(f => f.kind === "deadline")).toHaveLength(2);
+    expect(() => prepareResearchReview(draft, 0, [offering.facts[0].key], "11111111-1111-4111-8111-111111111111", "2026-10-07T13:00:00Z")).toThrow();
+  });
   it("does not admit domains from paste, unrelated DAAD identities, or unlabelled third-party links", () => {
     expect(officialDomains(seed, [{ ...observations[0], origin: "paste" }])).toEqual(["daad.de", "uni-assist.de"]);
     expect(officialDomains(seed, [{ ...observations[0], content: observations[0].content.replace("Synthetic Computing", "Unrelated") }])).toEqual(["daad.de", "uni-assist.de"]);

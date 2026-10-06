@@ -93,6 +93,18 @@ function literalGroup(content: string, group: string): boolean {
   const escaped = group.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`(^|[^\\p{L}\\p{N}_-])${escaped}($|[^\\p{L}\\p{N}_-])`, "u").test(content);
 }
+// Conservative literal stage support, never inferred from a host or route.
+// Trade-off: other source wording needs manual literal capture before review.
+function stageOf(key: string): string | undefined {
+  return /^(?:application_link|deadline):(university|vpd|uniassist)(?::|$)/.exec(key)?.[1];
+}
+function supportedStage(f: z.infer<typeof OfferingFactSchema>): boolean {
+  const stage = stageOf(f.key);
+  if (!stage) return false;
+  const wording = stage === "university" ? /university application|application to the university|bewerbung an der hochschule/i
+    : stage === "vpd" ? /VPD|Vorprüfungsdokumentation/i : /uni-assist application|application via uni-assist|bewerbung über uni-assist/i;
+  return f.evidence.some(e => e.source_quote.includes(f.verbatim ?? "") && wording.test(e.source_quote));
+}
 export function buildResearchDraft(seed: ResearchSeed, observations: Observation[], output: unknown, issues: string[]): ResearchDraft {
   seed = ResearchSeedSchema.parse(seed);
   observations = z.array(ObservationSchema).max(12).parse(observations);
@@ -161,7 +173,7 @@ export function buildResearchDraft(seed: ResearchSeed, observations: Observation
         draft.issues.push("A candidate lacked source, wording or applicability support and was left unresolved.");
         continue;
       }
-      const field = candidate.kind === "route" ? "route" : candidate.kind === "deadline" ? `deadline:${candidate.deadline_kind}` : candidate.key;
+      const field = candidate.kind === "route" ? "route" : candidate.kind === "deadline" ? `deadline:${stageOf(candidate.key) ?? "unknown"}:${candidate.deadline_kind}` : candidate.key;
       grouped.set(field, [...(grouped.get(field) ?? []), candidate]);
     }
     for (const alternatives of grouped.values()) {
@@ -198,6 +210,9 @@ export function prepareResearchReview(draft: ResearchDraft, index: number, selec
   for (const key of selected) {
     const fact = offering.facts.find(f => f.key === key);
     if (!fact || fact.status !== "pending" || !fact.verbatim || !fact.evidence.length || draft.conflicts.some(c => c.offering === index && c.key === key)) throw new Error("Only supported pending facts can be accepted; conflicts require resolution");
+    if (fact.kind === "deadline" && (!supportedStage(fact) || fact.key !== `deadline:${stageOf(fact.key)}:${fact.deadline_kind}`)) throw new Error("Deadline stage needs explicit literal support");
+    if (fact.key.startsWith("application_link") && (fact.kind !== "description" || !ResearchUrlSchema.safeParse(fact.verbatim).success
+      || fact.key !== `application_link:${stageOf(fact.key)}` || !supportedStage(fact))) throw new Error("Application portal and stage need explicit literal support");
   }
   const facts = offering.facts.map(f => selected.includes(f.key)
     ? { ...f, status: "verified" as const, evidence: f.evidence.map(e => ({ ...e, verified_by: reviewer, last_verified_at: now })) }
