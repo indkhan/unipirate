@@ -156,6 +156,8 @@ export type IbSubjectAnswer = z.infer<typeof IbSubjectAnswerSchema>;
  * shown when a value is present but fails `isAnswered`.
  */
 export const NUMBER_STEPS = {
+  priorDegreeYears: { label: "Qualification duration in years · required", min: 0, max: 50, placeholder: "4", error: "Enter a duration from 0 to 50 years." },
+  yearsOfUniversityStudy: { label: "Successfully completed study in years · required", min: 0, max: 50, placeholder: "1", error: "Enter completed study from 0 to 50 years." },
   schoolGradePercent: {
     label: "Overall marks · required",
     suffix: "%",
@@ -182,18 +184,45 @@ export const NUMBER_STEPS = {
 
 export type NumberStepId = keyof typeof NUMBER_STEPS;
 
+export const TEXT_STEPS = {
+  priorStudyInstitution: { label: "Previous institution", maxLength: 200 },
+  priorStudyCountryOther: { label: "Awarding institution country", maxLength: 100 },
+  priorStudyField: { label: "Previous field of study", maxLength: 200 },
+} as const;
+
+export function isTextStep(step: StepId): step is keyof typeof TEXT_STEPS {
+  return step in TEXT_STEPS;
+}
+
+export const HISTORY_STEPS = [
+  "hasPriorUniversityStudy", "priorQualificationType", "priorStudyInstitution",
+  "priorStudyCountry", "priorStudyField", "priorDegreeYears",
+  "yearsOfUniversityStudy", "priorStudyCompletion", "priorQualificationContext", "priorStudyCountryOther",
+] as const;
+
 export function isNumberStep(step: StepId): step is NumberStepId {
   return step in NUMBER_STEPS;
 }
 
-export const AnswersSchema = z
+const AnswerFieldsSchema = z
   .object({
+    qualificationHistoryVersion: z.literal(1).optional(),
+    hasPriorUniversityStudy: z.boolean().optional(),
+    priorQualificationType: z.enum(["bachelor", "master", "diploma", "other"]).optional(),
+    priorStudyInstitution: z.string().trim().min(1).max(200).optional(),
+    priorStudyCountry: z.union([z.literal("other"), z.string().trim().toLowerCase().regex(/^[a-z]{2}$/)]).optional(),
+    priorStudyCountryOther: z.string().trim().min(1).max(100).optional(),
+    priorQualificationContext: z.enum(["national", "other", "unknown"]).optional(),
+    priorStudyField: z.string().trim().min(1).max(200).optional(),
+    priorDegreeYears: z.number().finite().min(0).max(50).optional(),
+    yearsOfUniversityStudy: z.number().finite().min(0).max(50).optional(),
+    priorStudyCompletion: z.enum(["completed", "in_progress", "discontinued"]).optional(),
     targetDegree: z.enum(["bachelor", "master"]),
     nationality: z.string().min(2),
-    certificateCountry: z.string().min(2),
+    certificateCountry: z.string().min(2).optional(),
     // country of the German mission the visa is filed with; "other" = elsewhere
     visaApplicationCountry: z.string().min(2).optional(),
-    curriculumType: z.enum(["national", "ib", "gce", "other"]),
+    curriculumType: z.enum(["national", "ib", "gce", "other"]).optional(),
     board: z.string().min(1).optional(),
     schoolGradePercent: z.number().min(0).max(100).optional(),
     jeeAdvanced: z.boolean().optional(),
@@ -217,9 +246,38 @@ export const AnswersSchema = z
       })
       .nullable(),
   })
-  .strict()
+  .strict();
+
+export type Answers = z.infer<typeof AnswerFieldsSchema>;
+export type PartialAnswers = Partial<Answers>;
+// Draft text can be unfinished; complete submissions retain required-text checks.
+export const PartialAnswersSchema = AnswerFieldsSchema.partial().extend({
+  priorStudyInstitution: z.string().trim().max(200).optional(),
+  priorStudyField: z.string().trim().max(200).optional(),
+  priorStudyCountryOther: z.string().trim().max(100).optional(),
+  gceSubjects: z.array(GceSubjectAnswerSchema).optional(),
+  ibSubjects: z.array(IbSubjectAnswerSchema).optional(),
+});
+export const AnswersSchema = AnswerFieldsSchema
+  .transform((answers) => normalizeAnswers(answers))
   .superRefine((answers, ctx) => {
+    // Legacy records retain their original required school-country boundary.
+    if (answers.qualificationHistoryVersion === undefined && answers.certificateCountry === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["certificateCountry"],
+        message: 'Missing answer for step "certificateCountry"' });
+    }
+    // Only the versioned master's flow can omit the former school question.
+    if (answers.targetDegree === "master" &&
+        answers.qualificationHistoryVersion === undefined &&
+        answers.curriculumType === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["curriculumType"],
+        message: 'Missing answer for step "curriculumType"' });
+    }
     for (const step of visibleSteps(answers)) {
+      // Legacy stored checks stay readable. New/edited flows require history.
+      if (answers.qualificationHistoryVersion === undefined &&
+          !HISTORY_STEPS.some((key) => answers[key] !== undefined) &&
+          HISTORY_STEPS.includes(step as (typeof HISTORY_STEPS)[number])) continue;
       if (!isAnswered(answers, step)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -230,12 +288,10 @@ export const AnswersSchema = z
     }
   });
 
-export type Answers = z.infer<typeof AnswersSchema>;
-export type PartialAnswers = Partial<Answers>;
-
 // --------------------------------------------------------------------- steps
 
 export type StepId =
+  | (typeof HISTORY_STEPS)[number]
   | "targetDegree"
   | "nationality"
   | "certificateCountry"
@@ -265,14 +321,11 @@ export type StepId =
  * returns honest unknowns instead of guessing.
  */
 export function visibleSteps(answers: PartialAnswers): StepId[] {
-  const steps: StepId[] = [
-    "certificateCountry",
-    "targetDegree",
-    "nationality",
-    "visaApplicationCountry",
-    "curriculumType",
-  ];
+  const steps: StepId[] = ["targetDegree"];
+  if (answers.targetDegree !== "master") steps.push("certificateCountry");
+  steps.push("nationality", "visaApplicationCountry");
   const bachelor = answers.targetDegree === "bachelor";
+  if (answers.targetDegree !== "master") steps.push("curriculumType");
   if (bachelor && answers.curriculumType === "national") {
     steps.push("board", "schoolGradePercent");
     if (answers.certificateCountry === "in") steps.push("jeeAdvanced");
@@ -294,10 +347,24 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
       );
     }
   }
+  // National bachelor routes can depend on previous university study. GCE/IB
+  // history is reserved for their route issues; no eligibility is inferred here.
+  if (answers.targetDegree === "master" || (bachelor && answers.curriculumType === "national")) {
+    steps.push("hasPriorUniversityStudy");
+    if (answers.hasPriorUniversityStudy === true) {
+      steps.push("priorQualificationType");
+      if (answers.priorQualificationType !== undefined) {
+        steps.push("priorStudyInstitution", "priorStudyCountry");
+        if (answers.priorStudyCountry === "other") steps.push("priorStudyCountryOther");
+        if (answers.targetDegree === "master") steps.push("priorQualificationContext");
+        steps.push("priorStudyField", "priorDegreeYears", "yearsOfUniversityStudy", "priorStudyCompletion");
+      }
+    }
+  }
   // no APS on the Riyadh checklist, so an existing certificate is irrelevant
   // when the visa is filed from Saudi Arabia
   if (
-    answers.certificateCountry === "in" &&
+    qualificationCountry(answers) === "in" &&
     answers.visaApplicationCountry !== "sa"
   ) {
     steps.push("hasExistingApsCertificate");
@@ -315,15 +382,48 @@ export function withAnswer<K extends StepId>(
   field: K,
   value: Answers[K],
 ): PartialAnswers {
-  const next: PartialAnswers = { ...answers, [field]: value };
-  const visible = new Set<string>(visibleSteps(next));
-  for (const key of Object.keys(next)) {
-    if (!visible.has(key)) delete next[key as StepId];
+  const next: PartialAnswers = { ...answers, qualificationHistoryVersion: 1, [field]: value };
+  if (answers[field] !== value) {
+    const dependents: Partial<Record<StepId, readonly StepId[]>> = {
+      targetDegree: HISTORY_STEPS,
+      curriculumType: HISTORY_STEPS,
+      certificateCountry: ["board", "schoolGradePercent", "jeeAdvanced"],
+      priorQualificationType: [...HISTORY_STEPS.filter((key) => key !== "hasPriorUniversityStudy" && key !== "priorQualificationType"), "hasExistingApsCertificate"],
+      priorStudyCountry: ["priorStudyCountryOther", "priorQualificationContext", "hasExistingApsCertificate"],
+      priorQualificationContext: ["hasExistingApsCertificate"],
+      priorStudyInstitution: ["priorStudyCountry", "priorStudyCountryOther", "priorQualificationContext", "hasExistingApsCertificate"],
+    };
+    for (const key of dependents[field] ?? []) delete next[key];
   }
+  return normalizeAnswers(next);
+}
+
+/** Preserve legacy records; versioned answers contain only reachable questions. */
+export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
+  const next = { ...answers };
+  if (next.qualificationHistoryVersion !== 1) return next;
+  // Removing a hidden country can also hide APS, so prune to a stable result.
+  let changed: boolean;
+  do {
+    changed = false;
+    const visible = new Set<string>(visibleSteps(next));
+    for (const key of Object.keys(next)) {
+      if (key !== "qualificationHistoryVersion" && !visible.has(key)) {
+        delete next[key as StepId];
+        changed = true;
+      }
+    }
+  } while (changed);
   return next;
 }
 
 export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
+  if (isTextStep(step)) {
+    const value = answers[step];
+    return typeof value === "string" && value.trim().length > 0 &&
+      value.trim().length <= TEXT_STEPS[step].maxLength;
+  }
+  if (step === "priorStudyCountry") return answers.priorStudyCountry === "other" || /^[a-z]{2}$/i.test(typeof answers.priorStudyCountry === "string" ? answers.priorStudyCountry.trim() : "");
   if (step === "intake") return answers.intake !== undefined;
   if (step === "gceSubjects" || step === "ibSubjects") {
     const subjects = answers[step] ?? [];
@@ -355,18 +455,54 @@ export function hasDuplicateSubjects(
 
 // ------------------------------------------------------------------- profile
 
+/** The actual qualification being assessed, never a master's school location. */
+export function qualificationCountry(answers: PartialAnswers): string | undefined {
+  return answers.targetDegree === "master" && answers.qualificationHistoryVersion === 1
+    ? answers.hasPriorUniversityStudy ? answers.priorStudyCountry : undefined
+    : answers.certificateCountry;
+}
+
 /** Maps completed answers onto the engine Profile shape. */
 export function buildProfile(answers: Answers): Profile {
+  answers = normalizeAnswers(answers);
+  const tertiary = answers.targetDegree === "master" && answers.qualificationHistoryVersion === 1;
   const profile: Profile = {
     targetDegree: answers.targetDegree,
     nationality: answers.nationality,
-    certificateCountry: answers.certificateCountry,
-    curriculumType: answers.curriculumType,
+    certificateCountry: qualificationCountry(answers),
+    curriculumType: tertiary ? "other" : answers.curriculumType ?? "other",
     targetField: answers.targetField,
   };
+  if (answers.hasPriorUniversityStudy !== undefined) {
+    profile.qualificationHistory = answers.hasPriorUniversityStudy ? {
+      hasPriorUniversityStudy: true,
+      qualificationType: answers.priorQualificationType,
+      institution: answers.priorStudyInstitution,
+      country: answers.priorStudyCountry,
+      ...(answers.priorStudyCountryOther ? { countryName: answers.priorStudyCountryOther } : {}),
+      field: answers.priorStudyField,
+      degreeYears: answers.priorDegreeYears,
+      completedYears: answers.yearsOfUniversityStudy,
+      completion: answers.priorStudyCompletion,
+    } : { hasPriorUniversityStudy: false };
+  }
   if (answers.intake) profile.intake = answers.intake;
   if (answers.visaApplicationCountry !== undefined) {
     profile.visaApplicationCountry = answers.visaApplicationCountry;
+  }
+  if (answers.hasExistingApsCertificate !== undefined) {
+    profile.hasExistingApsCertificate = answers.hasExistingApsCertificate;
+  }
+  if (tertiary) {
+    // Explicit awarding context supplies the existing qualification facts;
+    // school curriculum and location are not inferred or used for master's rules.
+    profile.tertiaryQualification = answers.hasPriorUniversityStudy ? {
+      issuer: answers.priorStudyInstitution,
+      country: answers.priorStudyCountry,
+      context: answers.priorQualificationContext,
+      ...(answers.priorStudyCountryOther ? { countryName: answers.priorStudyCountryOther } : {}),
+    } : {};
+    return profile;
   }
   if (answers.board !== undefined) profile.board = answers.board;
   if (answers.schoolGradePercent !== undefined) {
@@ -374,9 +510,6 @@ export function buildProfile(answers: Answers): Profile {
   }
   if (answers.jeeAdvanced !== undefined) {
     profile.jeeAdvanced = answers.jeeAdvanced;
-  }
-  if (answers.hasExistingApsCertificate !== undefined) {
-    profile.hasExistingApsCertificate = answers.hasExistingApsCertificate;
   }
   if (
     answers.curriculumType === "gce" &&

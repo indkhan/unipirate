@@ -189,6 +189,76 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
    DB function verifies the token hash and atomically copies the answers
    into the user's profile, then tasks are materialized.
 
+#### Qualification-history contract
+
+New and edited checker answers carry `qualificationHistoryVersion: 1`.
+Unversioned stored answers retain their original required country/curriculum
+validation and `buildProfile` mapping. New visible history answers are required
+for a new evaluation; historical checks remain readable. History uses the existing
+answers JSON; no database migration is needed.
+
+The degree-level question comes first, including country landing links. Bachelor
+applicants then select school certificate country/curriculum. National-curriculum
+bachelor routes ask whether previous university study exists; GCE/IB do not add
+that branch. Master's applicants do not answer school country or curriculum.
+Both history branches record one relevant prior qualification, including ongoing
+or discontinued study: qualification type, awarding institution, awarding
+institution country, reported field, full duration, successfully completed study
+and completion status. Country choices reuse `COUNTRIES`; Another country
+collects a country name without guessing a supported code. Existing stored
+country codes outside the catalog remain selectable. Fractions/zero are accepted;
+0–50 years is an input sanity bound, never an admission threshold.
+
+Master's applicants also explicitly choose the awarding country's higher education
+system, an international/other system, or Not sure. `Profile.tertiaryQualification`
+stores issuer, country, optional countryName and context separately from school
+curriculum. `certificateCountry` is the assessed qualification country: for a
+versioned master's profile it is derived only from that tertiary issuer, never
+from a stale school or landing-page country. No prior study leaves this fact
+missing. Nationality and visa jurisdiction remain independent.
+
+The narrow engine correction restates the explicitly chosen tertiary context into
+the already-supported `curriculum` fact, and tertiary country into
+`certificate_country`. It does not guess school curriculum, determine
+recognition or change rule acceptance. Unknown/missing context yields a missing
+fact. This preserves the existing `aps-india-national` rule semantics for an
+explicitly national Indian university qualification. The rule already cites
+issuer-based academic verification. [APS India's FAQ](https://aps-india.de/faqs/)
+(checked 2026-10-06) corroborates that scope; no rule source, verification date,
+threshold, applicability or intake was rewritten. Admission/equivalence remains
+subject to the existing verified rules and honest unknowns.
+
+`Profile.qualificationHistory` separately records reported duration/completion
+and derives `prior_degree_years`, `prior_degree_field`,
+`years_of_university_study`, `has_prior_university_study`,
+`prior_qualification_type`, `prior_study_institution`,
+`prior_study_country`, and `prior_study_completion`. These keys deliberately
+remain outside `FactKeySchema` until dependent issues review and explicitly
+enable their rule conditions. Related-field, institution-recognition and
+school-certificate-sufficiency booleans are not inferred or collected as blanket
+true answers. [uni-assist master's guidance](https://www.uni-assist.de/en/how-to-apply/get-information/master/)
+was also checked on 2026-10-06; no course-specific criteria become code thresholds.
+
+Changing study level/curriculum clears dependent history; changing previous
+qualification type clears detail answers. Country/issuer changes invalidate
+tertiary context and existing APS answers; changing issuer also clears its country. Hidden school-country/curriculum
+answers are pruned when editing a master's profile, so contradictory country
+aliases cannot survive an edit. Legacy read data remains intact. Saved master's
+drafts restore under their original country landing key despite not storing a
+school-country alias; stored numeric progress stops at newly missing questions.
+No application, task completion, student edit or database row is deleted. APS
+dates/partnerships, JEE/certificate specifics, field equivalence and recognition
+evidence remain reserved for dependent issues.
+
+Versioned answers share pure `normalizeAnswers` pruning across edits, draft
+restoration, account initialization, complete-answer validation and profile mapping.
+Pruning repeats until no hidden answer remains (a removed country can hide APS).
+Unversioned saved records retain their original fields until an explicit edit
+upgrades the flow. Draft recovery validates the partial answer object and stored
+step index with zod before assignment; malformed storage is discarded and the
+checker restores its validated initial answers. Unfinished text and empty subject selections remain
+valid partial drafts, but complete submissions still require subjects.
+
 ### 2. Course import & review
 
 1. A user pastes a course URL (plus the page's Ctrl+A text — the server
