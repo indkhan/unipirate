@@ -222,7 +222,7 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
         <div className={styles.reviewGrid}>
           {steps.map((step) => (
             <section className={styles.reviewCard} key={step}>
-              <h2 id={`${step}-label`}>{QUESTIONS[step]}</h2>
+              <h2 id={`${step}-label`}>{QUESTION_COPY[step].sourceUrl ? QUESTION_COPY[step].question : QUESTIONS[step]}</h2>
               {QUESTION_COPY[step].sourceUrl && <p className={styles.subtitle}>
                 {QUESTION_COPY[step].subtitle} <a href={QUESTION_COPY[step].sourceUrl} target="_blank" rel="noreferrer">Official APS guidance</a>
               </p>}
