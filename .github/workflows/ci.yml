@@ -1,0 +1,107 @@
+# Current-harness milestone only; parent UP-TEST-01 official-route coverage remains OPEN.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CIRCLE_NODE_TOTAL: "2"
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.10.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start disposable local Supabase
+        run: |
+          set -euo pipefail
+          umask 077
+          STATUS_JSON="$RUNNER_TEMP/supabase-status.json"
+          if ! pnpm exec supabase start \
+            --exclude analytics,edge-runtime,functions,imgproxy,inbucket,realtime,storage,studio,vector \
+            > "$RUNNER_TEMP/supabase-start.log" 2>&1; then
+            echo "Local Supabase startup failed; private log: $RUNNER_TEMP/supabase-start.log" >&2
+            exit 1
+          fi
+          if ! pnpm exec supabase status -o json > "$STATUS_JSON" 2> "$RUNNER_TEMP/supabase-status.log"; then
+            echo "Local Supabase status failed; private log: $RUNNER_TEMP/supabase-status.log" >&2
+            exit 1
+          fi
+          STATUS_JSON="$STATUS_JSON" node -e '
+            const fs = require("node:fs");
+            const s = JSON.parse(fs.readFileSync(process.env.STATUS_JSON, "utf8"));
+            const apiUrl = s.API_URL;
+            const publishableKey = s.PUBLISHABLE_KEY ?? s.ANON_KEY;
+            const secretKey = s.SECRET_KEY ?? s.SERVICE_ROLE_KEY;
+            const dbUrl = s.DB_URL;
+            if (apiUrl !== "http://127.0.0.1:54321") throw new Error("Unexpected local API_URL");
+            for (const [label, value] of [["publishable key", publishableKey], ["secret key", secretKey]]) {
+              if (typeof value !== "string" || value.length === 0) throw new Error(`${label} is empty`);
+            }
+            let db;
+            try { db = new URL(dbUrl); } catch { throw new Error("Invalid local DB_URL"); }
+            if (db.protocol !== "postgresql:" && db.protocol !== "postgres:") throw new Error("Invalid DB protocol");
+            if (db.hostname !== "127.0.0.1" || db.port !== "54322") {
+              throw new Error("DB_URL must target the local loopback DB on port 54322");
+            }
+            for (const secret of [publishableKey, secretKey, dbUrl]) process.stdout.write(`::add-mask::${secret}\n`);
+            fs.appendFileSync(
+              process.env.GITHUB_ENV,
+              `NEXT_PUBLIC_SUPABASE_URL=${apiUrl}\nNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${publishableKey}\nSUPABASE_SECRET_KEY=${secretKey}\nSUPABASE_DB_URL=${dbUrl}\n`,
+            );
+            console.log("local Supabase validated: API http://127.0.0.1:54321, DB 127.0.0.1:54322");
+          '
+
+      - name: Test (ordinary suite + JSON report)
+        run: pnpm exec vitest run --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
+
+      - name: Prove RLS suite actually executed
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const report = JSON.parse(fs.readFileSync(path.join(process.env.RUNNER_TEMP, "vitest.json"), "utf8"));
+            const files = report.testResults.filter((t) => path.basename(t.name) === "rls.integration.test.ts");
+            if (files.length === 0) throw new Error("rls.integration.test.ts absent from report: suite did not execute (honest failure, not a skip)");
+            const cases = files.flatMap((f) => f.assertionResults);
+            if (cases.length === 0) throw new Error("rls.integration.test.ts produced zero cases: suite skipped, not green");
+            const bad = cases.filter((c) => c.status !== "passed");
+            if (bad.length > 0) throw new Error(`${bad.length}/${cases.length} RLS cases not passed: ${bad.map((c) => `${c.title}:${c.status}`).join("; ")}`);
+            console.log(`RLS proof: ${cases.length} cases passed, 0 skipped/failed.`);
+          '
+
+      - name: Course-offerings SQL gate (disposable local DB)
+        run: psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/course_offerings.sql
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Stop disposable local Supabase
+        if: always()
+        run: pnpm exec supabase stop
