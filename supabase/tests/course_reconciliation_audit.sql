@@ -66,9 +66,9 @@ insert into public.course_offering_versions(offering_id,version,facts)
 select '00000000-0000-4000-8000-000000000931',1,draft->'offerings'->0->'facts' from reconciliation_fixture;
 update public.programmes set degree='Synthetic audit fixture' where id='00000000-0000-4000-8000-000000000921';
 reset role;
-create function pg_temp.publish_fixture(version integer) returns jsonb language sql as $
-  select to_jsonb(public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,version,keys,decisions)) from reconciliation_fixture
-$;
+create function pg_temp.publish_fixture(version integer) returns jsonb language sql as $publish$
+  select to_jsonb(public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,version,keys,decisions,(select field_extraction->'research' from public.courses where id='00000000-0000-4000-8000-000000000913'))) from reconciliation_fixture
+$publish$;
 create function pg_temp.reject_draft(path text[], value jsonb) returns void language plpgsql as $$
 begin
   update public.courses set field_extraction=jsonb_set(field_extraction,'{research}',jsonb_set((select draft from reconciliation_fixture),path,value)) where id='00000000-0000-4000-8000-000000000913';
@@ -88,21 +88,23 @@ select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-00000000
 select pg_temp.expect_state($q$insert into public.admin_audit_events(actor_user_id,table_name,row_id,action,course_reconciliation) values ('00000000-0000-4000-8000-000000000901','courses','00000000-0000-4000-8000-000000000911','update','{"fake":true}')$q$,'42501');
 select pg_temp.expect_state($q$update public.admin_audit_events set course_reconciliation='{"fake":true}'$q$,'42501');
 select pg_temp.expect_state('delete from public.admin_audit_events','42501');
-select pg_temp.assert_true(not has_function_privilege('anon','public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb)','execute'),'anon/public execution revoked');
-select pg_temp.assert_true(not has_function_privilege('service_role','public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb)','execute'),'no service-role execution grant');
-select pg_temp.assert_true((select proconfig @> array['search_path=public, pg_temp'] from pg_proc where oid='public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb)'::regprocedure),'fixed search path');
+select pg_temp.assert_true(not has_function_privilege('anon','public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb,jsonb)','execute'),'anon/public execution revoked');
+select pg_temp.assert_true(not has_function_privilege('service_role','public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb,jsonb)','execute'),'no service-role execution grant');
+select pg_temp.assert_true((select proconfig @> array['search_path=public, pg_temp'] from pg_proc where oid='public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb,jsonb)'::regprocedure),'fixed search path');
+select pg_temp.assert_true(to_regprocedure('public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb)') is null,'no old revision-free overload');
 -- No caller-provided observations/actor/time parameter exists.
-select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,array['english'],'[]'::jsonb,'{"reviewed_by":"forged","observations":[]}'::jsonb)$q$,'42883');
-select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000932',0,2,keys,decisions) from reconciliation_fixture$q$,'23514');
-select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000912','00000000-0000-4000-8000-000000000931',0,2,keys,decisions) from reconciliation_fixture$q$,'23514');
-select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000915','00000000-0000-4000-8000-000000000931',0,2,keys,decisions) from reconciliation_fixture$q$,'23514');
-select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',1,2,keys,decisions) from reconciliation_fixture$q$,'23514');
-select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,0,keys,decisions) from reconciliation_fixture$q$,'23514');
-select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,array['unknown'],jsonb_build_array(jsonb_build_object('key','unknown','reason','Synthetic unsupported key must not publish.')))$q$,'23514');
-select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,array['english','english'],decisions) from reconciliation_fixture$q$,'23514');
-select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,keys,'[]') from reconciliation_fixture$q$,'23514');
-select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,keys,jsonb_set(decisions,'{0,reason}','"short"')) from reconciliation_fixture$q$,'23514');
-select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,keys,jsonb_set(decisions,'{0,reviewed_by}','"00000000-0000-4000-8000-000000000902"')) from reconciliation_fixture$q$,'23514');
+select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,array['english'],'[]'::jsonb,(select draft from reconciliation_fixture),'{"reviewed_by":"forged","observations":[]}'::jsonb)$q$,'42883');
+select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000932',0,2,keys,decisions,draft) from reconciliation_fixture$q$,'23514');
+select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000912','00000000-0000-4000-8000-000000000931',0,2,keys,decisions,draft) from reconciliation_fixture$q$,'23514');
+update public.courses set field_extraction=jsonb_build_object('research',(select draft from reconciliation_fixture)) where id='00000000-0000-4000-8000-000000000915';
+select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000915','00000000-0000-4000-8000-000000000931',0,2,keys,decisions,draft) from reconciliation_fixture$q$,'23514');
+select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',1,2,keys,decisions,draft) from reconciliation_fixture$q$,'23514');
+select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,0,keys,decisions,draft) from reconciliation_fixture$q$,'23514');
+select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,array['unknown'],jsonb_build_array(jsonb_build_object('key','unknown','reason','Synthetic unsupported key must not publish.')),(select draft from reconciliation_fixture))$q$,'23514');
+select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,array['english','english'],decisions,draft) from reconciliation_fixture$q$,'23514');
+select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,keys,'[]',draft) from reconciliation_fixture$q$,'23514');
+select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,keys,jsonb_set(decisions,'{0,reason}','"short"'),draft) from reconciliation_fixture$q$,'23514');
+select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,keys,jsonb_set(decisions,'{0,reviewed_by}','"00000000-0000-4000-8000-000000000902"'),draft) from reconciliation_fixture$q$,'23514');
 select pg_temp.reject_draft('{identity,name}','"Wrong synthetic identity"');
 select pg_temp.reject_draft('{offerings,0,intake_year}','2030');
 select pg_temp.reject_draft('{offerings,0,applicant_group}','"EU applicants"');
@@ -112,8 +114,52 @@ select pg_temp.reject_draft('{offerings,0,facts,0,evidence,0,source_quote}','"Fa
 select pg_temp.reject_draft('{offerings,0,facts,0,evidence,0,verified_by}','"00000000-0000-4000-8000-000000000902"');
 select pg_temp.reject_draft('{offerings,0,facts,0,date}','"2027-05-01"');
 select pg_temp.reject_draft('{offerings,0,facts,0,evidence,0,retrieved_at}','"2027-02-30T00:00:00Z"');
+
+-- Required raw revision token and boundary shapes: each failed call is a subtransaction.
+do $boundary$
+declare supplied text; command text; caught text; detail text; path text[]; edited jsonb;
+begin
+  foreach supplied in array array['null::jsonb', '''null''::jsonb', '''[]''::jsonb', '''"caller facts"''::jsonb', 'jsonb_set(draft,''{status}'',''"caller supplied"'')'] loop
+    command := 'select public.publish_course_research_version(''00000000-0000-4000-8000-000000000913'',''00000000-0000-4000-8000-000000000931'',0,2,keys,decisions,' || supplied || ') from reconciliation_fixture';
+    caught:=null; detail:=null;
+    begin execute command; exception when others then get stacked diagnostics caught=returned_sqlstate, detail=message_text; end;
+    perform pg_temp.assert_true(caught='23514' and detail='research changed; reload and review again','invalid/caller-supplied token rejected');
+  end loop;
+  foreach supplied in array array['null::text[]','array[null]::text[]','array['''']::text[]','array[[''english'']]::text[]'] loop
+    perform pg_temp.expect_state('select public.publish_course_research_version(''00000000-0000-4000-8000-000000000913'',''00000000-0000-4000-8000-000000000931'',0,2,' || supplied || ',decisions,draft) from reconciliation_fixture','23514');
+  end loop;
+  foreach supplied in array array['null::jsonb','''null''::jsonb','''{}''::jsonb','''[null]''::jsonb','decisions->0 - ''reason''','jsonb_build_array(decisions->0 - ''reason'')','jsonb_build_array(decisions->0 - ''key'')','jsonb_set(decisions,''{0,key}'',''null'')','jsonb_set(decisions,''{0,reason}'',''null'')'] loop
+    perform pg_temp.expect_state('select public.publish_course_research_version(''00000000-0000-4000-8000-000000000913'',''00000000-0000-4000-8000-000000000931'',0,2,keys,' || supplied || ',draft) from reconciliation_fixture','23514');
+  end loop;
+  perform pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,keys,decisions) from reconciliation_fixture$q$,'42883');
+  perform pg_temp.expect_state($q$select public.publish_course_research_version(p_submitted_course_id=>'00000000-0000-4000-8000-000000000913',p_offering_id=>'00000000-0000-4000-8000-000000000931',p_offering_index=>0,p_version=>2,p_decisions=>decisions,p_expected_research=>draft) from reconciliation_fixture$q$,'42883');
+  perform pg_temp.expect_state($q$select public.publish_course_research_version(p_submitted_course_id=>'00000000-0000-4000-8000-000000000913',p_offering_id=>'00000000-0000-4000-8000-000000000931',p_offering_index=>0,p_version=>2,p_accepted_keys=>keys,p_expected_research=>draft) from reconciliation_fixture$q$,'42883');
+  perform pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,'malformed'::text[],decisions,draft) from reconciliation_fixture$q$,'22P02');
+
+  perform pg_temp.expect_state($q$select public.publish_course_research_version(null,'00000000-0000-4000-8000-000000000931',0,2,keys,decisions,draft) from reconciliation_fixture$q$,'23514');
+  perform pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913',null,0,2,keys,decisions,draft) from reconciliation_fixture$q$,'23514');
+  perform pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',null,2,keys,decisions,draft) from reconciliation_fixture$q$,'23514');
+  perform pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,null,keys,decisions,draft) from reconciliation_fixture$q$,'23514');
+  foreach path slice 1 in array array[
+    array['offerings','0','facts','0','verbatim'], array['offerings','0','facts','0','evidence'],
+    array['observations','0','content',null,null], array['offerings','0','scope',null,null], array['conflicts',null,null,null,null]
+  ] loop
+    path:=array_remove(path,null);
+    edited:=jsonb_set((select draft from reconciliation_fixture),path,'"changed after initial read"');
+    update public.courses set field_extraction=jsonb_set(field_extraction,'{research}',edited) where id='00000000-0000-4000-8000-000000000913';
+    caught:=null; detail:=null;
+    begin
+      perform public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,keys,decisions,draft) from reconciliation_fixture;
+    exception when others then get stacked diagnostics caught=returned_sqlstate, detail=message_text; end;
+    perform pg_temp.assert_true(caught='23514' and detail='research changed; reload and review again','stale fact/evidence/observation/scope/conflict token rejected before interpretation');
+    perform pg_temp.assert_true((select count(*)=1 from public.course_offering_versions where offering_id='00000000-0000-4000-8000-000000000931'),'stale token creates no version');
+    perform pg_temp.assert_true((select count(*)=0 from public.admin_audit_events where course_reconciliation is not null),'stale token creates no journal');
+    update public.courses set field_extraction=jsonb_set(field_extraction,'{research}',(select draft from reconciliation_fixture)) where id='00000000-0000-4000-8000-000000000913';
+  end loop;
+end $boundary$;
+
 -- A stored known capture conflict cannot be selected under a new alias, even with a decision.
-do $ declare edited jsonb; pending jsonb; alternatives jsonb; begin
+do $conflict$ declare edited jsonb; pending jsonb; alternatives jsonb; begin
   edited:=(select draft from reconciliation_fixture);
   pending:=edited->'offerings'->0->'facts'->0;
   alternatives:=jsonb_build_array(jsonb_build_object('key','english','kind','language','verbatim','IELTS 6.5.','applicability','Non-EU applicants','route',null,'deadline_kind',null,'evidence',jsonb_build_array(jsonb_build_object('source_url','https://www.daad.de/synthetic-audit-submission','source_quote','IELTS 6.5.'))),
@@ -122,9 +168,9 @@ do $ declare edited jsonb; pending jsonb; alternatives jsonb; begin
   edited:=jsonb_set(edited,'{conflicts}',jsonb_build_array(jsonb_build_object('offering',0,'key','english','alternatives',alternatives)));
   edited:=jsonb_set(edited,'{offerings,0,facts}',jsonb_build_array(jsonb_set(jsonb_set(jsonb_set(pending,'{status}','"unresolved"'),'{verbatim}','null'),'{evidence}',(pending->'evidence') || jsonb_build_array(jsonb_set(pending->'evidence'->0,'{source_quote}','"IELTS 7.0."'))),jsonb_set(pending,'{key}','"alias"')));
   update public.courses set field_extraction=jsonb_set(field_extraction,'{research}',edited) where id='00000000-0000-4000-8000-000000000913';
-  perform pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,array['alias'],'[{"key":"alias","reason":"Explicit reconciliation cannot settle the retained source conflict."}]')$q$,'23514');
+  perform pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,array['alias'],'[{"key":"alias","reason":"Explicit reconciliation cannot settle the retained source conflict."}]',(select field_extraction->'research' from public.courses where id='00000000-0000-4000-8000-000000000913'))$q$,'23514');
   update public.courses set field_extraction=jsonb_set(field_extraction,'{research}',(select draft from reconciliation_fixture)) where id='00000000-0000-4000-8000-000000000913';
-end $;
+end $conflict$;
 -- Existing chronology still rejects a genuinely future retrieval; server review time isn't inflated.
 do $$ declare future text; edited jsonb; begin
   future:=to_char((clock_timestamp()+interval '1 day') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
@@ -188,4 +234,46 @@ reset role;
 select pg_temp.assert_true((select count(*)=4 from public.course_offering_versions where offering_id='00000000-0000-4000-8000-000000000931'),'version failure/duplicate leaves snapshots unchanged');
 select pg_temp.assert_true((select count(*)=2 from public.admin_audit_events where course_reconciliation is not null and row_id='00000000-0000-4000-8000-000000000911'),'version failure leaves no orphan journal');
 select pg_temp.assert_true((select review_status='pending' and conflicts_with='00000000-0000-4000-8000-000000000911' from public.courses where id='00000000-0000-4000-8000-000000000913'),'RPC does not modify submission/canonical lifecycle');
+
+-- Initial publication uses the approved canonical row itself. The exact RAW snapshot
+-- survives identity approval and unrelated metadata/updated_at changes.
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000901","app_metadata":{"role":"admin"}}',true);
+insert into public.courses(id,source_url,normalized_url,name,university_name,review_status,imported_by,field_extraction,updated_at) select '00000000-0000-4000-8000-000000000916','https://www.daad.de/synthetic-audit-initial','https://www.daad.de/synthetic-audit-initial','Synthetic Computing','Synthetic University','pending','00000000-0000-4000-8000-000000000902',jsonb_build_object('research',draft,'unrelated','before approval'),'2000-01-01T00:00:00Z'::timestamptz from reconciliation_fixture;
+reset role;
+create temp table initial_research_snapshot as select field_extraction->'research' expected, updated_at previous_updated_at from public.courses where id='00000000-0000-4000-8000-000000000916';
+grant select on initial_research_snapshot to authenticated;
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000901","app_metadata":{"role":"admin"}}',true);
+update public.courses set review_status='approved',field_extraction=jsonb_set(field_extraction,'{unrelated}','"after approval"') where id='00000000-0000-4000-8000-000000000916';
+insert into public.programmes(id,legacy_course_id,name,university_name,source_url) values
+('00000000-0000-4000-8000-000000000923','00000000-0000-4000-8000-000000000916','Synthetic Computing','Synthetic University','https://www.daad.de/synthetic-audit-submission');
+insert into public.course_offerings(id,programme_id,intake_term,intake_year,applicant_group,applicability) values
+('00000000-0000-4000-8000-000000000933','00000000-0000-4000-8000-000000000923','winter',2027,'Non-EU applicants','{"source_scope":"Winter 2027 Non-EU applicants"}');
+-- Same raw token, wrong programme relationship: not merely a token failure.
+select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000916','00000000-0000-4000-8000-000000000931',0,1,keys,decisions,expected) from reconciliation_fixture cross join initial_research_snapshot$q$,'23514');
+select public.publish_course_research_version('00000000-0000-4000-8000-000000000916','00000000-0000-4000-8000-000000000933',0,1,keys,decisions,expected) from reconciliation_fixture cross join initial_research_snapshot;
+select pg_temp.assert_true((select c.review_status='approved' and c.field_extraction->>'unrelated'='after approval' and c.field_extraction->'research'=s.expected and c.updated_at is distinct from s.previous_updated_at from public.courses c cross join initial_research_snapshot s where c.id='00000000-0000-4000-8000-000000000916'),'identity approval and unrelated metadata preserve exact research token');
+select pg_temp.assert_true((select count(*)=1 from public.admin_audit_events where row_id='00000000-0000-4000-8000-000000000916' and course_reconciliation->>'submitted_course_id'='00000000-0000-4000-8000-000000000916'),'same-row canonical publication journals initial version');
+reset role;
+create temp table durable_journal_before as select id,created_at,course_reconciliation from public.admin_audit_events where course_reconciliation is not null;
+create temp table durable_versions_before as select * from public.course_offering_versions where review_status='verified' and offering_id in ('00000000-0000-4000-8000-000000000931','00000000-0000-4000-8000-000000000933');
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000901","app_metadata":{"role":"admin"}}',true);
+select public.resolve_course_conflict('00000000-0000-4000-8000-000000000913',false);
+reset role;
+select pg_temp.assert_true(not exists(select 1 from public.courses where id='00000000-0000-4000-8000-000000000913'),'keep-original deletes submitted row');
+select pg_temp.assert_true(not exists(select id,created_at,course_reconciliation from durable_journal_before except select id,created_at,course_reconciliation from public.admin_audit_events),'deleted submission cannot erase full immutable journal');
+select pg_temp.assert_true((select count(*)=2 from public.admin_audit_events a cross join reconciliation_fixture f where a.row_id='00000000-0000-4000-8000-000000000911'
+  and a.course_reconciliation->>'submitted_course_id'='00000000-0000-4000-8000-000000000913'
+  and a.course_reconciliation->'observations'=f.draft->'observations' and a.course_reconciliation->'identity'=f.draft->'identity'
+  and a.course_reconciliation->'decisions'=f.decisions
+  and exists(select 1 from public.course_offering_versions v where v.id=(a.course_reconciliation->'version'->>'id')::uuid and v.offering_id=(a.course_reconciliation->'version'->>'offering_id')::uuid and v.version=(a.course_reconciliation->'version'->>'version')::integer)),'keep-original retains captures/submitted ID/identity/decisions/version links');
+-- Account deletion nulls the audit actor FK, but never the immutable payload or
+-- version reviewer UUID. Run last, with root role, so no deleted actor is reused.
+delete from auth.users where id='00000000-0000-4000-8000-000000000901';
+select pg_temp.assert_true(not exists(select id,created_at,course_reconciliation from durable_journal_before except select id,created_at,course_reconciliation from public.admin_audit_events),'reviewer deletion preserves exact payload and review time');
+select pg_temp.assert_true(not exists(select * from durable_versions_before except select * from public.course_offering_versions),'reviewer deletion preserves immutable version reviewer UUID/time/facts');
+select pg_temp.assert_true((select count(*)=3 from public.admin_audit_events where course_reconciliation is not null and actor_user_id is null and course_reconciliation->>'reviewed_by'='00000000-0000-4000-8000-000000000901' and (course_reconciliation->>'reviewed_at')::timestamptz=created_at),'deleted reviewer remains attributable in durable payload');
+
 rollback;

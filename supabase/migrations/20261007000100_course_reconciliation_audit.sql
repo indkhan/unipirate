@@ -11,7 +11,8 @@ create function public.publish_course_research_version(
   p_offering_index integer,
   p_version integer,
   p_accepted_keys text[],
-  p_decisions jsonb
+  p_decisions jsonb,
+  p_expected_research jsonb
 ) returns public.course_offering_versions
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -29,10 +30,14 @@ begin
   if actor is null or not coalesce(public.is_admin(), false) then
     raise insufficient_privilege using message = 'research publication requires an authenticated admin';
   end if;
+  -- Reject array shape separately: array_position cannot inspect multidimensional arrays.
+  if p_accepted_keys is null or array_ndims(p_accepted_keys) > 1 then
+    raise check_violation using message = 'invalid research publication selection';
+  end if;
   if p_submitted_course_id is null or p_offering_id is null or p_offering_index is null
     or p_offering_index not between 0 and 7 or p_version is null or p_version < 1
-    or p_accepted_keys is null or cardinality(p_accepted_keys) > 50
-    or array_ndims(p_accepted_keys) > 1 or array_position(p_accepted_keys, null) is not null
+    or cardinality(p_accepted_keys) > 50
+    or array_position(p_accepted_keys, null) is not null
     or (select count(distinct k) from unnest(p_accepted_keys) k) <> cardinality(p_accepted_keys)
     or exists (select 1 from unnest(p_accepted_keys) k where not public.valid_course_capture_text(k) or length(k) > 240)
     or jsonb_typeof(p_decisions) is distinct from 'array' then
@@ -43,6 +48,12 @@ begin
   end if;
 
   select * into submitted from public.courses where id = p_submitted_course_id for update;
+  -- Equality token only; never a source of facts/captures. Compare RAW preflight JSON.
+  -- Unrelated course metadata/status/updated_at changes do not invalidate research.
+  if jsonb_typeof(p_expected_research) is distinct from 'object'
+    or submitted.field_extraction->'research' is distinct from p_expected_research then
+    raise check_violation using message = 'research changed; reload and review again';
+  end if;
   if not found or submitted.review_status = 'rejected'
     or (submitted.conflicts_with is not null and submitted.review_status <> 'pending') then
     raise check_violation using message = 'publication requires an active research submission';
@@ -225,5 +236,5 @@ begin
   return published;
 end;
 $$;
-revoke all on function public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb) from public, anon, service_role;
-grant execute on function public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb) to authenticated;
+revoke all on function public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb,jsonb) from public, anon, service_role;
+grant execute on function public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb,jsonb) to authenticated;
