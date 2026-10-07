@@ -20,6 +20,7 @@ import {
 import { statusBadge } from "./admin-shared";
 import { ActionButton } from "./action-button";
 import { ResearchHistory, UntrustedLegacyReconciliation } from "./research-history";
+import { ResearchFactReview } from "./research-review-field";
 
 function compactJson(value: Json | null): string {
   if (value === null) return "Not extracted";
@@ -371,11 +372,7 @@ function ResearchReview({ course, history }: { course: Tables<"courses">; histor
       <legend>{offering.intake_term} {offering.intake_year} · {offering.applicant_group}</legend>
       <p className="text-sm">Effective scope: <q>{offering.scope.source_quote}</q> · <a href={offering.scope.source_url} target="_blank" rel="noreferrer" className="underline">Official scope source</a></p>
       {offering.facts.map(fact => <div key={fact.key} className="border-b pb-2 text-sm">
-        <label className="flex gap-2"><input type="checkbox" name="accepted" value={`${index}:${fact.key}`} disabled={fact.status !== "pending"} />Accept {fact.key}: {fact.verbatim ?? "Unresolved"} ({fact.status})</label>
-        {fact.status === "pending" && <div className="grid gap-2">
-          <label><input type="checkbox" name="reconciled" value={`${index}:${fact.key}`} />I compared the full captured sources, including omitted text, and confirmed applicability for this field. Known conflicts require separate correction before acceptance.</label>
-          <label>Source reconciliation rationale (cite the captured source URLs and explain applicability)<textarea name={`reconciliation_reason:${index}:${fact.key}`} minLength={20} maxLength={2000} className="w-full rounded border p-2" /></label>
-        </div>}
+        <ResearchFactReview offeringIndex={index} factKey={fact.key} verbatim={fact.verbatim} status={fact.status} />
         <p>Applicability: {fact.applicability}</p>
         {fact.evidence.map((e, i) => <blockquote key={i}><q>{e.source_quote}</q> · <a href={e.source_url} target="_blank" rel="noreferrer" className="underline">{e.source_url}</a> · retrieved {e.retrieved_at}</blockquote>)}
         {draft.conflicts.filter(c => c.offering === index && c.key === fact.key).map(c => <p key={c.key} className="text-amber-700">Source conflict: {c.alternatives.map(a => a.verbatim).join(" / ")}. Remains unresolved.</p>)}
