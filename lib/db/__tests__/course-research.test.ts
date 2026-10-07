@@ -37,6 +37,20 @@ function client(conflict = false, failure?: string, changes: Record<string, unkn
 beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-10-07T13:00:00Z")); });
 afterEach(() => vi.useRealTimers());
 describe("research publication helpers (synthetic HTTP, no RLS claim)", () => {
+  it.each([["language", "IELTS 6.5.", "IELTS 7.0."], ["fee", "Tuition EUR 0; semester fee EUR 100.", "Semester fee EUR 200."]] as const)("rejects recovered %s conflict aliases before any save or publication", async (kind, first, second) => {
+    const observations = [{ ...draft.observations[0], content: draft.observations[0].content + "\n\n" + first + "\n\n" + second }];
+    const candidate = (verbatim: string) => ({ key: "known", kind, verbatim, applicability: "Non-EU applicants", route: null, deadline_kind: null, evidence: [{ source_url: url, source_quote: verbatim }] });
+    const offering = { intake_term: "winter", intake_year: 2027, applicant_group: "Non-EU applicants", scope: { source_url: url, source_quote: "Winter 2027 Non-EU applicants" }, facts: [candidate(first), candidate(second)] };
+    const conflicted = buildResearchDraft(seed, observations, { offerings: [offering] }, []);
+    const single = buildResearchDraft(seed, observations, { offerings: [{ ...offering, facts: [candidate(first)] }] }, []);
+    conflicted.offerings[0].facts.push({ ...single.offerings[0].facts.find(f => f.key === "known")!, key: "arbitrary-copy" });
+    const recovery = client();
+    await expect(saveAdminCourseResearchDraft(recovery.db, id, conflicted)).rejects.toThrow(/conflict/i);
+    expect(recovery.writes).toEqual([]);
+    const publication = client(false, undefined, { field_extraction: { research: conflicted } });
+    await expect(publishAdminCourseResearch(publication.db, id, ["0:arbitrary-copy"], id, [{ key: "0:arbitrary-copy", reason: "Omission reconciliation cannot resolve this known semantic disagreement." }])).rejects.toThrow(/conflict/i);
+    expect(publication.writes).toEqual([]);
+  });
   it("requires field reconciliation, audits it server-side, and prevents JSON from removing captured omissions", async () => {
     const omitted = structuredClone(draft); omitted.observations[0].content += "\n\n" + "Application navigation ".repeat(220) + "\n\nIELTS 7.0.";
     const failed = client(false, undefined, { field_extraction: { research: omitted } });

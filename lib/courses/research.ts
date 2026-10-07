@@ -46,11 +46,21 @@ export const ResearchDraftSchema = z.object({
   for (const f of draft.unscoped ?? []) {
     if (f.applicability !== "Unresolved effective intake/applicant scope" || f.evidence.some(e => !recoverySources.has(e.source_url))) ctx.addIssue({ code: "custom", message: "Unscoped recovery needs captured identity/link provenance and unresolved applicability" });
   }
-  for (const o of draft.offerings) {
+  for (const c of draft.conflicts) if (!draft.offerings[c.offering]) ctx.addIssue({ code: "custom", message: "Conflict needs an existing offering scope" });
+  for (const [index, o] of draft.offerings.entries()) {
     const source = draft.observations.find(s => s.origin !== "paste" && s.url === o.scope.source_url && s.content.includes(o.scope.source_quote));
     if (!source || !identifies(source, draft.identity) || !(o.intake_term === "winter" ? /winter/i : /summer|sommer/i).test(o.scope.source_quote)
       || !new RegExp(`\\b${o.intake_year}\\b`).test(o.scope.source_quote) || !literalGroup(o.scope.source_quote, o.applicant_group)) ctx.addIssue({ code: "custom", message: "Draft offering needs captured identity/intake/applicant scope" });
     if (o.applicability.source_scope !== o.scope.source_quote) ctx.addIssue({ code: "custom", message: "Offering applicability must retain its captured scope quote" });
+    const conflicts = draft.conflicts.filter(c => c.offering === index);
+    for (const c of conflicts) {
+      const retained = o.facts.find(f => f.key === c.key && f.status === "unresolved");
+      if (!retained || c.alternatives.length < 2 || c.alternatives.some(a => a.kind !== retained.kind || a.applicability !== o.applicant_group
+        || a.evidence.some(e => !e.source_quote.includes(a.verbatim) || !retained.evidence.some(r => r.source_url === e.source_url && r.source_quote === e.source_quote)))) {
+        ctx.addIssue({ code: "custom", message: "Known conflict must retain unresolved field, scoped alternatives and captured evidence" });
+      }
+    }
+    const conflictedFields = new Set(conflicts.flatMap(c => c.alternatives.flatMap(semanticFields)));
     const assertions = new Map<string, string>();
     for (const f of o.facts) {
       if (f.applicability !== o.applicant_group) ctx.addIssue({ code: "custom", message: "Field applicability must match its captured offering applicant group" });
@@ -63,6 +73,7 @@ export const ResearchDraftSchema = z.object({
       }
       if (f.status === "pending" && f.verbatim) {
         for (const field of semanticFields({ ...f, verbatim: f.verbatim })) {
+          if (conflictedFields.has(field)) ctx.addIssue({ code: "custom", message: "Pending assertion overlaps an unresolved known semantic conflict; explicit correction is required" });
           const previous = assertions.get(field);
           if (previous !== undefined && previous !== f.verbatim) ctx.addIssue({ code: "custom", message: "Competing semantic assertions require unresolved conflict review" });
           assertions.set(field, f.verbatim);

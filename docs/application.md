@@ -849,19 +849,31 @@ Unselected fields remain unresolved. Separator whitespace alone is not a substan
 omission. Known model conflicts still require correction and cannot be overridden by
 this decision. No contradiction is inferred automatically from raw source wording.
 
-The caller-scoped publication helper validates all decisions before mutation, binds
-reviewer/time from the authenticated action and stores research_reconciliations audit
-records in existing course metadata: decisions, complete captured observations, and
-reviewed offering/version references before inserting the verified version. The
-canonical research marker also guards reconciled legacy courses against generic
-approval/replacement. These audit records are outside the strict
-pending/model/manual draft schema; they are not model-supplied verification flags.
+The caller-scoped publication helper validates all decisions before mutation and
+binds new reviewer/time values from the authenticated action. However, the current
+research_reconciliations array resides in caller-editable course metadata: sibling
+entries cannot be authenticated by UUID/schema validation or by appending an admin
+record. This array is untrusted provenance, and trusted-history acceptance remains
+blocked pending the root-reviewed additive audit proposal in the issue handoff.
+The existing admin_audit_events journal is protected by RLS but has no suitable
+reconciliation payload column; programme_correction cannot be repurposed. No
+migration is written/applied in this repair. Original entries/full captures must
+remain available as explicitly untrusted data; future trusted decisions belong in
+the protected journal with DB-authenticated actor/time and offering/version links.
+The canonical research marker still guards legacy courses against generic replacement.
 Manual JSON recovery retains original non-paste captures so omission provenance cannot
 be erased. The existing capture-count limit may reject a repair that exceeds capacity;
-it never silently discards historical text. No migration or generated type extension.
+it never silently discards historical text. No generated types or applied migrations
+are changed by the conflict repair.
 
 Combined fee wording participates in both tuition and semester-fee identities.
 Overlapping differing assertions stay unresolved during build, stored-draft validation
-and review, while disjoint fees and identical quoted duplicates remain valid.
+and review, while disjoint fees and identical quoted duplicates remain valid. Stored
+pending fields are also checked against every retained conflict alternative semantic
+identity in their offering, regardless of keys. An alias of even one literal
+alternative cannot become verified while that known conflict remains unresolved;
+omission reconciliation is not conflict resolution. Conflict records must retain
+their unresolved field and captured, applicant-scoped alternatives. Separate captured
+applicant offerings and unrelated semantic fields remain independent.
 No amounts, equivalences, dates or applicability are parsed/invented to settle a conflict.
 Native provider settings, timeout, retries and model context budget are unchanged.
