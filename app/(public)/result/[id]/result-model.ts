@@ -91,7 +91,9 @@ export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
   return [
     {
       key: "path",
-      label: result.path === "subject_restricted" && profile.qualificationHistory?.indiaStudyRouteVersion === 1 &&
+      label: profile.saudiCertificate?.version === 1 && ["studienkolleg", "subject_restricted"].includes(result.path)
+        ? "Your reported qualifications indicate " + (result.path === "studienkolleg" ? "Studienkolleg" : "Bachelor access") + (result.institutionRestriction === "fachhochschule" ? " at a Fachhochschule (university of applied sciences) in the enrollment subject area. " : " in the previous subject area. ") + "UniPirate has not independently verified your reports; the university decides admission."
+        : result.path === "subject_restricted" && profile.qualificationHistory?.indiaStudyRouteVersion === 1 &&
         profile.targetDegree === "bachelor" && profile.curriculumType === "national" && profile.schoolQualification?.country === "in"
         ? "Your reported qualifications indicate a subject-restricted direct route. UniPirate has not independently verified your reports; the university decides programme admission."
         : PATH_LABELS[result.path],
@@ -150,7 +152,7 @@ export function buildRoute(result: Result): RouteStation[] {
   }
 
   const pending: string[] = [];
-  if (result.path === "studienkolleg") pending.push("Studienkolleg");
+  if (result.path === "studienkolleg") pending.push(result.institutionRestriction === "fachhochschule" ? "Studienkolleg (FH)" : "Studienkolleg");
   if (result.aps === "required" && result.apsCertificate !== "held") pending.push("APS");
   if (result.testAS === "required") pending.push("TestAS");
   if (result.dMAT === "required") pending.push("dMAT");

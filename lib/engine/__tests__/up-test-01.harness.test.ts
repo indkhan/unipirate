@@ -1,6 +1,7 @@
 // UP-TEST-01 harness runner: CURRENT rows are green acceptance on the
 // baseline (no skips/todo); FUTURE rows are data only, never executed.
 // Pure: evaluate() + fixture data. Zero I/O.
+import { SAUDI_ACCEPTANCE, reviewedSaudiRules } from "./saudi.fixture";
 import { GCE_ACCEPTANCE } from "./gce.fixture";
 import { describe, expect, it } from "vitest";
 
@@ -53,6 +54,12 @@ export function assertExpected(c: CurrentExpectation, r: Result): void {
 }
 
 describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
+  it.each(SAUDI_ACCEPTANCE)("UP-ELIG-09 official bounded $id [$kind]", c => {
+    const r = evaluate(c.profile, reviewedSaudiRules());
+    expect(r.path).toBe(c.path);
+    expect(r.institutionRestriction === "fachhochschule").toBe(c.fh ?? false);
+    if (c.reason) expect(r.unknowns.join(" ")).toMatch(c.reason);
+  });
   it.each(IB_ACCEPTANCE)('UP-ELIG-02 official $id',c=>{const r=evaluate(c.profile,fixtureRules);expect(r.path).toBe(c.path);if(c.reason)expect(r.unknowns.join(' ')).toMatch(c.reason)});
   it.each(GCE_ACCEPTANCE)('UP-ELIG-01 accepted $id',c=>{const r=evaluate(c.profile,fixtureRules);expect(r.path).toBe(c.path);if(c.reason)expect(r.unknowns.some(n=>c.reason!.test(n))).toBe(true)});
   it.each(INDIA_STUDY_ACCEPTANCE)("UP-ELIG-03 accepted $id [$kind]", c => {

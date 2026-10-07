@@ -2,6 +2,7 @@
 // answers looks like, and how answers map onto the engine Profile.
 // No I/O, no React — unit-tested in __tests__/steps.test.ts.
 import { z } from "zod";
+import { SAUDI_CERTIFICATES, isIndustrialCertificate } from "@/lib/engine/saudi";
 import { IB_SUBJECTS, ibEntry, IbProfileSchema } from "@/lib/engine/ib";
 export { IB_SUBJECTS } from "@/lib/engine/ib";
 import { CalendarDateSchema, calendarDay } from "@/lib/engine/calendar-day";
@@ -152,6 +153,11 @@ export const NUMBER_STEPS = {
 export type NumberStepId = keyof typeof NUMBER_STEPS;
 
 export const TEXT_STEPS = {
+  saudiNationalStream: { label: "Certificate stream as printed, or unknown", maxLength: 200 },
+  saudiSubjectAssessmentReference: { label: "Reported ZAB-guideline subject assessment", maxLength: 500 },
+  saudiEnrollmentReference: { label: "Reported current Bachelor enrollment certificate", maxLength: 500 },
+  saudiEnrollmentField: { label: "Field on the enrollment certificate", maxLength: 200 },
+  saudiEnrollmentTargetRelationReference: { label: "Reported enrollment-field target assessment", maxLength: 500 },
   ibSchoolName: {label:"Exact school name from the official annex / school documents",maxLength:200},
   ibSchoolCountry: {label:"School country heading from the official annex",maxLength:100},
   ibSchoolCode: {label:"Six-digit IB school code, or unknown",maxLength:7},
@@ -185,6 +191,20 @@ export const HISTORY_STEPS = [
   "yearsOfUniversityStudy", "priorStudyCompletion", "priorQualificationContext", "priorStudyCountryOther",
 ] as const;
 
+export const SAUDI_STEPS = ["saudiCertificateSubtype", "saudiNationalStream", "saudiSubjectAssessment", "saudiSubjectAssessmentReference", "saudiEnrollment", "saudiEnrollmentReference", "saudiEnrollmentField", "saudiEnrollmentTargetRelation", "saudiEnrollmentTargetRelationReference"] as const;
+
+/** Upgrade new/edit forms without assigning a certificate subtype. */
+export function upgradeSaudiAnswers(a: PartialAnswers): PartialAnswers {
+  return a.targetDegree === "bachelor" && a.curriculumType === "national" && (a.certificateCountry === "sa" || a.schoolQualificationCountry === "sa") ? { ...a, saudiCertificateVersion: 1 } : a;
+}
+
+export function isSaudiCertificateBranch(a: PartialAnswers): boolean {
+  return a.saudiCertificateVersion === 1 && a.targetDegree === "bachelor" && a.curriculumType === "national" && a.schoolQualificationCountry === "sa" && a.schoolQualificationContext === "national";
+}
+export function isSaudiStudyBranch(a: PartialAnswers): boolean {
+  return isSaudiCertificateBranch(a) && (a.saudiCertificateSubtype === "private_school" || isIndustrialCertificate(a.saudiCertificateSubtype));
+}
+
 export const INDIA_STUDY_STEPS = ["priorStudyMode", "priorStudyRecognition", "priorStudyRecognitionReference", "priorStudyTargetRelation", "priorStudyTargetRelationReference"] as const;
 
 /** Explicit qualification issuer/context, never citizenship or school location. */
@@ -199,6 +219,16 @@ export function isNumberStep(step: StepId): step is NumberStepId {
 
 const AnswerFieldsSchema = z
   .object({
+    saudiCertificateVersion: z.literal(1).optional(),
+    saudiCertificateSubtype: z.enum(SAUDI_CERTIFICATES.map(c => c.id) as [typeof SAUDI_CERTIFICATES[number]["id"], ...typeof SAUDI_CERTIFICATES[number]["id"][]]).optional(),
+    saudiNationalStream: z.string().trim().min(1).max(200).optional(),
+    saudiSubjectAssessment: z.enum(["reported_official_met", "reported_official_unmet", "unknown"]).optional(),
+    saudiSubjectAssessmentReference: z.string().trim().min(1).max(500).optional(),
+    saudiEnrollment: z.enum(["reported_document", "not_enrolled", "unknown"]).optional(),
+    saudiEnrollmentReference: z.string().trim().min(1).max(500).optional(),
+    saudiEnrollmentField: z.string().trim().min(1).max(200).optional(),
+    saudiEnrollmentTargetRelation: z.enum(["reported_official_previous", "reported_official_unrelated", "unknown"]).optional(),
+    saudiEnrollmentTargetRelationReference: z.string().trim().min(1).max(500).optional(),
     indiaStudyRouteVersion: z.literal(1).optional(),
     priorStudyMode: z.enum(["regular", "distance_online", "other", "unknown"]).optional(),
     priorStudyRecognition: z.enum(["reported_official_confirmed", "reported_official_rejected", "unknown"]).optional(),
@@ -294,6 +324,11 @@ export type Answers = z.infer<typeof AnswerFieldsSchema>;
 export type PartialAnswers = Partial<Answers>;
 // Draft text/numbers can be unfinished; complete submissions retain strict checks.
 export const PartialAnswersSchema = AnswerFieldsSchema.partial().extend({
+  saudiNationalStream: z.string().trim().max(200).optional(),
+  saudiSubjectAssessmentReference: z.string().trim().max(500).optional(),
+  saudiEnrollmentReference: z.string().trim().max(500).optional(),
+  saudiEnrollmentField: z.string().trim().max(200).optional(),
+  saudiEnrollmentTargetRelationReference: z.string().trim().max(500).optional(),
   ibExamYear: z.number().finite().nullable().optional(),
   ibSchoolYears: z.number().finite().nullable().optional(),
   ibTotalPoints: z.number().finite().nullable().optional(),
@@ -322,11 +357,11 @@ export const PartialAnswersSchema = AnswerFieldsSchema.partial().extend({
 export const AnswersSchema = AnswerFieldsSchema
   .transform((answers) => normalizeAnswers(answers))
   .superRefine((answers, ctx) => {
-    if (answers.yearsOfUniversityStudy === null && !isIndiaStudyBranch(answers)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["yearsOfUniversityStudy"], message: "Successful years uncertainty is available only for the versioned India branch." });
+    if (answers.yearsOfUniversityStudy === null && !isIndiaStudyBranch(answers) && !isSaudiStudyBranch(answers)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["yearsOfUniversityStudy"], message: "Successful years uncertainty is available only for versioned India/Saudi study branches." });
     }
-    if (answers.priorStudyCountry === "unknown" && !isIndiaStudyBranch(answers)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["priorStudyCountry"], message: "Country uncertainty is available only for the versioned India branch." });
+    if (answers.priorStudyCountry === "unknown" && !isIndiaStudyBranch(answers) && !isSaudiStudyBranch(answers)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["priorStudyCountry"], message: "Country uncertainty is available only for versioned India/Saudi study branches." });
     }
     // Legacy records retain their original required school-country boundary.
     if (answers.qualificationHistoryVersion === undefined && answers.certificateCountry === undefined) {
@@ -363,6 +398,7 @@ export const AnswersSchema = AnswerFieldsSchema
 // --------------------------------------------------------------------- steps
 
 export type StepId =
+  | (typeof SAUDI_STEPS)[number]
   | (typeof IB_STEPS)[number]
   | (typeof INDIA_STUDY_STEPS)[number]
   | (typeof DMAT_STEPS)[number]
@@ -409,7 +445,21 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   steps.push("nationality", "visaApplicationCountry");
   const bachelor = answers.targetDegree === "bachelor";
   if (answers.targetDegree !== "master") steps.push("curriculumType");
-  if (bachelor && answers.curriculumType === "national") {
+  const saudiFlow = answers.saudiCertificateVersion === 1 && bachelor && answers.curriculumType === "national" && (answers.certificateCountry === "sa" || answers.schoolQualificationCountry === "sa");
+  if (saudiFlow) {
+    steps.push("schoolQualificationCountry", "schoolQualificationContext");
+    if (isSaudiCertificateBranch(answers)) {
+      steps.push("saudiCertificateSubtype");
+      if (answers.saudiCertificateSubtype === "national") steps.push("saudiNationalStream");
+      if (answers.saudiCertificateSubtype === "private_school") {
+        steps.push("saudiSubjectAssessment");
+        if (answers.saudiSubjectAssessment && answers.saudiSubjectAssessment !== "unknown") steps.push("saudiSubjectAssessmentReference");
+      }
+    } else if (answers.schoolQualificationCountry && !["sa", "unknown", "other"].includes(answers.schoolQualificationCountry) && answers.schoolQualificationContext === "national") {
+      steps.push("board", "schoolGradePercent");
+      if (answers.schoolQualificationCountry === "in") steps.push("jeeAdvanced");
+    }
+  } else if (bachelor && answers.curriculumType === "national") {
     steps.push("board", "schoolGradePercent");
     if (answers.certificateCountry === "in") steps.push("jeeAdvanced");
   }
@@ -430,12 +480,12 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   }
   // Establish the actual issuer before successful-year uncertainty is offered.
   if (answers.indiaStudyRouteVersion === 1 && answers.apsScopeVersion === 1 && bachelor && answers.curriculumType === "national" &&
-      (answers.certificateCountry === "in" || answers.schoolQualificationCountry === "in")) {
+      (answers.certificateCountry === "in" || answers.schoolQualificationCountry === "in") && !steps.includes("schoolQualificationCountry")) {
     steps.push("schoolQualificationCountry", "schoolQualificationContext");
   }
   // National bachelor routes can depend on previous university study. GCE/IB
   // history is reserved for their route issues; no eligibility is inferred here.
-  if (answers.targetDegree === "master" || (bachelor && answers.curriculumType === "national")) {
+  if (answers.targetDegree === "master" || (bachelor && answers.curriculumType === "national" && (!saudiFlow || isSaudiStudyBranch(answers)))) {
     steps.push("hasPriorUniversityStudy");
     if (answers.hasPriorUniversityStudy === true) {
       steps.push("priorQualificationType");
@@ -461,14 +511,22 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
     steps.push("apsApplicationContext");
     if (answers.visaApplicationCountry === "sa") steps.push("visaMissionContext");
   }
-  if (isIndiaStudyBranch(answers) && answers.hasPriorUniversityStudy === true && answers.priorQualificationType === "bachelor") {
+  if ((isIndiaStudyBranch(answers) || isSaudiStudyBranch(answers)) && answers.hasPriorUniversityStudy === true && answers.priorQualificationType === "bachelor") {
     steps.push("priorStudyMode", "priorStudyRecognition");
     if (answers.priorStudyRecognition !== undefined && answers.priorStudyRecognition !== "unknown") steps.push("priorStudyRecognitionReference");
   }
+  if (isSaudiStudyBranch(answers) && isIndustrialCertificate(answers.saudiCertificateSubtype) && answers.priorQualificationType === "bachelor" && answers.priorStudyCompletion === "in_progress") {
+    steps.push("saudiEnrollment");
+    if (answers.saudiEnrollment === "reported_document") steps.push("saudiEnrollmentField", "saudiEnrollmentReference");
+  }
   steps.push("targetField");
-  if (isIndiaStudyBranch(answers) && answers.hasPriorUniversityStudy === true && answers.priorQualificationType === "bachelor" && answers.targetField !== undefined) {
+  if ((isIndiaStudyBranch(answers) || isSaudiStudyBranch(answers)) && answers.hasPriorUniversityStudy === true && answers.priorQualificationType === "bachelor" && answers.targetField !== undefined) {
     steps.push("priorStudyTargetRelation");
     if (answers.priorStudyTargetRelation !== undefined && answers.priorStudyTargetRelation !== "unknown") steps.push("priorStudyTargetRelationReference");
+  }
+  if (isSaudiStudyBranch(answers) && isIndustrialCertificate(answers.saudiCertificateSubtype) && answers.saudiEnrollment === "reported_document" && answers.saudiEnrollmentField?.trim() && answers.targetField !== undefined) {
+    steps.push("saudiEnrollmentTargetRelation");
+    if (answers.saudiEnrollmentTargetRelation && answers.saudiEnrollmentTargetRelation !== "unknown") steps.push("saudiEnrollmentTargetRelationReference");
   }
   // Academic assessments invalidate APS timing; collect it after that basis is complete.
   if (answers.apsTransitionVersion === 1 && bachelor && answers.curriculumType === "national" &&
@@ -523,12 +581,30 @@ export function withAnswer<K extends StepId>(
   value: Answers[K],
 ): PartialAnswers {
   const next: PartialAnswers = { ...answers, qualificationHistoryVersion: 1, indiaStudyRouteVersion: 1, [field]: value };
+  if (next.targetDegree === "bachelor" && next.curriculumType === "national" && (next.certificateCountry === "sa" || next.schoolQualificationCountry === "sa")) next.saudiCertificateVersion = 1;
   if (next.curriculumType === 'ib' && next.targetDegree === 'bachelor') {
     next.ibVersion=1;
     if(field==='ibFullDiploma')next.ibDocumentStatus=value?'awarded':'unknown';
   }
   if (next.curriculumType === 'gce' && next.targetDegree === 'bachelor') next.gceVersion=1;
   if (answers[field] !== value) {
+    if (["targetDegree", "curriculumType", "certificateCountry", "schoolQualificationCountry", "schoolQualificationContext"].includes(field)) {
+      for (const key of SAUDI_STEPS) delete next[key];
+    }
+    if (field === "saudiCertificateSubtype") {
+      for (const key of [...SAUDI_STEPS, ...HISTORY_STEPS, ...INDIA_STUDY_STEPS]) if (key !== field) delete next[key];
+    }
+    if (field === "saudiSubjectAssessment") delete next.saudiSubjectAssessmentReference;
+    if (HISTORY_STEPS.some(k => k === field) || field === "priorStudyMode") {
+      for (const key of SAUDI_STEPS.filter(k => k.startsWith("saudiEnrollment"))) delete next[key];
+      if (isSaudiStudyBranch(next) && field === "priorStudyField") { delete next.priorStudyRecognition; delete next.priorStudyRecognitionReference; }
+    }
+    if (field === "targetField" || field === "saudiEnrollmentField" || field === "saudiEnrollment") {
+      delete next.saudiEnrollmentTargetRelation; delete next.saudiEnrollmentTargetRelationReference;
+    }
+    if (field === "saudiEnrollment") { delete next.saudiEnrollmentReference; delete next.saudiEnrollmentField; }
+    if (field === "saudiEnrollmentField") delete next.saudiEnrollmentReference;
+    if (field === "saudiEnrollmentTargetRelation") delete next.saudiEnrollmentTargetRelationReference;
     const academicBasis = (HISTORY_STEPS.some(key => key === field) && field !== "priorStudyField") ||
       ["targetDegree", "curriculumType", "certificateCountry", "schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent", "priorStudyMode"].includes(field);
     if (academicBasis) {
@@ -600,8 +676,12 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
   do {
     changed = false;
     const visible = new Set<string>(visibleSteps(next));
+    // A newly introduced subtype question must not erase a restored history before the user chooses it.
+    if (next.saudiCertificateVersion === 1 && next.saudiCertificateSubtype === undefined && next.targetDegree === "bachelor" && next.curriculumType === "national" && (next.certificateCountry === "sa" || next.schoolQualificationCountry === "sa")) {
+      for (const key of [...HISTORY_STEPS, ...INDIA_STUDY_STEPS]) visible.add(key);
+    }
     for (const key of Object.keys(next)) {
-      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && !visible.has(key)) {
+      if (key !== "saudiCertificateVersion" && key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && !visible.has(key)) {
         delete next[key as StepId];
         changed = true;
       }
@@ -613,14 +693,14 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
 export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
   if (answers.ibVersion===1 && ["ibExamYear","ibSchoolYears","ibTotalPoints"].includes(step) && answers[step]===null)return true;
   if(step==="ibSchoolCode")return /^(?:\d{6}|unknown)$/.test(answers.ibSchoolCode??"");
-  if (step === "yearsOfUniversityStudy" && answers[step] === null) return isIndiaStudyBranch(answers);
+  if (step === "yearsOfUniversityStudy" && answers[step] === null) return isIndiaStudyBranch(answers) || isSaudiStudyBranch(answers);
   if (DATE_STEPS.some(key => key === step)) return calendarDay(answers[step]) !== undefined;
   if (isTextStep(step)) {
     const value = answers[step];
     return typeof value === "string" && value.trim().length > 0 &&
       value.trim().length <= TEXT_STEPS[step].maxLength;
   }
-  if (step === "priorStudyCountry") return (answers.priorStudyCountry === "unknown" && isIndiaStudyBranch(answers)) || answers.priorStudyCountry === "other" || /^[a-z]{2}$/i.test(typeof answers.priorStudyCountry === "string" ? answers.priorStudyCountry.trim() : "");
+  if (step === "priorStudyCountry") return (answers.priorStudyCountry === "unknown" && (isIndiaStudyBranch(answers) || isSaudiStudyBranch(answers))) || answers.priorStudyCountry === "other" || /^[a-z]{2}$/i.test(typeof answers.priorStudyCountry === "string" ? answers.priorStudyCountry.trim() : "");
   if (step === "intake") return answers.intake !== undefined;
   if (step === "ibSubjects" && answers.ibVersion===1) {
     const subjects=answers.ibSubjects??[];
@@ -682,6 +762,12 @@ export function buildProfile(answers: Answers): Profile {
       submissionDate: answers.apsSubmissionDate,
     };
   }
+  if (isSaudiCertificateBranch(answers)) {
+    profile.saudiCertificate = { version: 1, subtype: answers.saudiCertificateSubtype, nationalStream: answers.saudiNationalStream,
+      subjectAssessment: answers.saudiSubjectAssessment, subjectAssessmentReference: answers.saudiSubjectAssessmentReference,
+      enrollment: answers.saudiEnrollment, enrollmentReference: answers.saudiEnrollmentReference, enrollmentField: answers.saudiEnrollmentField,
+      enrollmentTargetRelation: answers.saudiEnrollmentTargetRelation, enrollmentTargetRelationReference: answers.saudiEnrollmentTargetRelationReference };
+  }
   if (answers.schoolQualificationCountry !== undefined || answers.schoolQualificationContext !== undefined) {
     profile.schoolQualification = { country: answers.schoolQualificationCountry, context: answers.schoolQualificationContext };
   }
@@ -704,7 +790,7 @@ export function buildProfile(answers: Answers): Profile {
         answers.certificateCountry === "in" && answers.schoolQualificationCountry === "unknown" &&
         answers.schoolQualificationContext === "national" && answers.priorQualificationType === "bachelor"))
         ? { indiaStudyRouteVersion: answers.indiaStudyRouteVersion } : {}),
-      ...(isIndiaStudyBranch(answers) ? {
+      ...((isIndiaStudyBranch(answers) || isSaudiStudyBranch(answers)) ? {
         priorStudyMode: answers.priorStudyMode,
         priorStudyRecognition: answers.priorStudyRecognition,
         priorStudyRecognitionReference: answers.priorStudyRecognitionReference,

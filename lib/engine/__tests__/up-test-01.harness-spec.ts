@@ -169,10 +169,9 @@ export const CURRENT: CurrentExpectation[] = [
     assertedIn: "evaluate.test.ts: Part E persona 7",
   },
   {
-    id: "SA-positive-tawjihiyah-studienkolleg", family: "Saudi", kind: "positive",
+    id: "SA-legacy-national-source-held", family: "Saudi", kind: "missing",
     routesTo: ["UP-ELIG-09"], profile: personas.p8SaudiTawjihiyah,
-    path: "studienkolleg", aps: "unknown",
-    citedUrls: ["https://saudiarabien.diplo.de/ksa-en/topics/weitere-themen/-/1686436"],
+    path: "unknown", aps: "unknown", unknownsMatch: [/subtype/i],
     assertedIn: "evaluate.test.ts: Part E persona 8",
   },
   {
@@ -232,7 +231,6 @@ export const CURRENT: CurrentExpectation[] = [
     id: "APS-legacy-sa-visa-unresolved", family: "APS", kind: "positive",
     routesTo: ["UP-ELIG-05"], profile: personas.p8SaudiTawjihiyah,
     aps: "unknown",
-    citedUrls: ["https://saudiarabien.diplo.de/ksa-en/topics/weitere-themen/-/1686436"],
     assertedIn: "evaluate.test.ts: Part E persona 8",
   },
   {
@@ -305,5 +303,5 @@ export const APS_TRANSITION_ACCEPTANCE = [
 export const FUTURE: FutureSpec[] = [
   { id: "FUTURE-India-jee-main-plus-advanced", family: "India", issue: "UP-ELIG-04", needsFutureSchema: true, verified: false, note: "Separate JEE Main + Advanced facts restrict the route to technology/natural-science targets." },
   { id: "FUTURE-Pakistan-hssc-streams", family: "Pakistan", issue: "UP-ELIG-08", needsFutureSchema: true, verified: false, note: "HSSC/FSc stream-specific Studienkolleg routes, 49.99/50 boundary, one-year direct routes." },
-  { id: "FUTURE-Saudi-certificate-subtypes", family: "Saudi", issue: "UP-ELIG-09", needsFutureSchema: true, verified: false, note: "Exact certificate type/stream drives national, private-school, industrial, and graduate routes." },
+  { id: "FUTURE-Saudi-certificate-subtypes", family: "Saudi", issue: "UP-ELIG-09", needsFutureSchema: true, verified: false, note: "National streams/grades, US accreditation-specific exceptions and graduate equivalence remain unverified spec data. Verified private-school and industrial clauses execute separately in SAUDI_ACCEPTANCE." },
 ];

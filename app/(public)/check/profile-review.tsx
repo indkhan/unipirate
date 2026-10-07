@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/app/theme-toggle";
 
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
-import { buildOptions, QUESTIONS as QUESTION_COPY, type Option } from "./check-questions";
+import { buildOptions, questionFor, type Option } from "./check-questions";
 import { QualificationTextInput } from "./qualification-text-input";
 import { GceSubjectsEditor } from "./gce-subjects-editor";
 import { IbSubjectsEditor } from "./ib-subjects-editor";
@@ -16,6 +16,8 @@ import {
   NUMBER_STEPS,
   PartialAnswersSchema,
   normalizeAnswers,
+  upgradeSaudiAnswers,
+  isSaudiStudyBranch,
   isAnswered,
   isNumberStep,
   isIndiaStudyBranch,
@@ -33,6 +35,11 @@ type ProfileReviewProps = {
 };
 
 const QUESTIONS: Record<StepId, string> = {
+  saudiCertificateSubtype: "Saudi certificate subtype", saudiNationalStream: "Reported national stream",
+  saudiSubjectAssessment: "Reported ZAB subject assessment", saudiSubjectAssessmentReference: "Subject assessment reference",
+  saudiEnrollment: "Reported current Bachelor enrollment", saudiEnrollmentField: "Enrollment subject area",
+  saudiEnrollmentReference: "Enrollment certificate reference", saudiEnrollmentTargetRelation: "Reported enrollment target relationship",
+  saudiEnrollmentTargetRelationReference: "Enrollment target assessment reference",
   priorStudyMode: "Previous bachelor study mode", priorStudyRecognition: "Reported official recognition",
   priorStudyRecognitionReference: "Reported recognition assessment reference", priorStudyTargetRelation: "Reported official target relationship",
   priorStudyTargetRelationReference: "Reported target assessment reference",
@@ -89,7 +96,7 @@ const QUESTIONS: Record<StepId, string> = {
 export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 }));
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 })));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const steps = visibleSteps(answers);
@@ -164,7 +171,7 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
             <span className={styles.percentSuffix}>{config.suffix}</span>
           )}
           {answers.ibVersion===1 && ['ibExamYear','ibSchoolYears','ibTotalPoints'].includes(step) && <button type="button" aria-pressed={answers[step]===null} onClick={()=>select(step,null)}>Cannot confirm</button>}
-          {step === "yearsOfUniversityStudy" && isIndiaStudyBranch(answers) && <button type="button" aria-pressed={answers[step] === null} onClick={() => select(step, null)}>Cannot establish successful academic years</button>}
+          {step === "yearsOfUniversityStudy" && (isIndiaStudyBranch(answers) || isSaudiStudyBranch(answers)) && <button type="button" aria-pressed={answers[step] === null} onClick={() => select(step, null)}>Cannot establish successful academic years</button>}
         </div>
       );
     }
@@ -240,9 +247,9 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
         <div className={styles.reviewGrid}>
           {steps.map((step) => (
             <section className={styles.reviewCard} key={step}>
-              <h2 id={`${step}-label`}>{QUESTION_COPY[step].sourceUrl ? QUESTION_COPY[step].question : QUESTIONS[step]}</h2>
-              {QUESTION_COPY[step].sourceUrl && <p className={styles.subtitle}>
-                {QUESTION_COPY[step].subtitle} <a href={QUESTION_COPY[step].sourceUrl} target="_blank" rel="noreferrer">Official source guidance</a>
+              <h2 id={`${step}-label`}>{questionFor(step, answers).sourceUrl ? questionFor(step, answers).question : QUESTIONS[step]}</h2>
+              {questionFor(step, answers).sourceUrl && <p className={styles.subtitle}>
+                {questionFor(step, answers).subtitle} <a href={questionFor(step, answers).sourceUrl} target="_blank" rel="noreferrer">Official source guidance</a>
               </p>}
               {field(step)}
               {!isAnswered(answers, step) ? (

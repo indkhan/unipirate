@@ -82,13 +82,12 @@ describe("Part E personas", () => {
     expect(r.unknowns.some((u) => /confirm/i.test(u))).toBe(true);
   });
 
-  it("8. Saudi Tawjihiyah 92% → Studienkolleg; APS scope unresolved for legacy Saudi filing", () => {
+  it("8. Legacy Saudi national certificate → source-held unknown", () => {
     const r = run(p.p8SaudiTawjihiyah);
-    expect(r.path).toBe("studienkolleg");
+    expect(r.path).toBe("unknown");
     expect(r.aps).toBe("unknown");
-    expect(citedUrls(r)).toContain(
-      "https://saudiarabien.diplo.de/ksa-en/topics/weitere-themen/-/1686436",
-    );
+    expect(r.unknowns.join(" ")).toMatch(/subtype/i);
+    expect(r.citations.some(c => c.supports.includes("path"))).toBe(false);
   });
 
   it("9. Indian passport, CBSE in Riyadh → CBSE tree (Studienkolleg), APS scope unresolved from Riyadh", () => {

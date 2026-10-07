@@ -4,18 +4,28 @@ import {
   COUNTRIES,
   INTAKE_OPTIONS,
   TARGET_FIELDS,
-  isIndiaStudyBranch,
+  isIndiaStudyBranch, isSaudiStudyBranch,
   type PartialAnswers,
   type StepId,
 } from "./steps";
 import { DMAT_FIELD_ENTRIES, DMAT_FIELD_SOURCE, DMAT_SOURCE } from "@/lib/engine/dmat";
 
+import { SAUDI_CERTIFICATES, SAUDI_SOURCE } from "@/lib/engine/saudi";
 import { IB_SOURCE } from "@/lib/engine/ib";
 
 export type Option = { value: unknown; label: string; key: string };
 
 /** Prompt (and optional subtitle) shown for each step of the checker. */
 export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; sourceUrl?: string }> = {
+  saudiCertificateSubtype: { question: "Which exact Saudi school certificate do you have?", subtitle: "Use the title and school type on your certificate. Citizenship, residence, curriculum and legacy board labels do not establish subtype. National routes remain unresolved pending exact official criteria.", sourceUrl: SAUDI_SOURCE },
+  saudiNationalStream: { question: "What stream is printed on your national certificate?", subtitle: "Copy it verbatim, or enter unknown. No national stream/grade route has verified coverage yet.", sourceUrl: SAUDI_SOURCE },
+  saudiSubjectAssessment: { question: "Does an applicable official assessment confirm your private-school diploma meets the ZAB subject requirements?", subtitle: "Report uni-assist or university assessment for this exact certificate. Accreditation names or a US curriculum label alone are not proof. UniPirate does not independently verify your report.", sourceUrl: SAUDI_SOURCE },
+  saudiSubjectAssessmentReference: { question: "Which official subject assessment covers this private-school certificate?", subtitle: "Identify authority, document/communication and applicable conclusion; omit personal identifiers.", sourceUrl: SAUDI_SOURCE },
+  saudiEnrollment: { question: "Do you have a current Bachelor enrollment certificate for this institution and programme?", subtitle: "Enrollment is separate from successful academic years. Recognition and subject scope need applicable official evidence.", sourceUrl: SAUDI_SOURCE },
+  saudiEnrollmentReference: { question: "Which enrollment certificate establishes this current Bachelor enrollment?", subtitle: "Identify the document and programme; omit personal identifiers. This is reported evidence, not app verification.", sourceUrl: SAUDI_SOURCE },
+  saudiEnrollmentField: { question: "What field is stated on that enrollment certificate?", subtitle: "Copy the enrolled subject area. It can differ from previously completed study.", sourceUrl: SAUDI_SOURCE },
+  saudiEnrollmentTargetRelation: { question: "Does an official assessment place this target in the enrollment certificate subject area?", subtitle: "Matching field text alone cannot establish the applicable target scope.", sourceUrl: SAUDI_SOURCE },
+  saudiEnrollmentTargetRelationReference: { question: "Which assessment confirms this enrollment field and intended target relationship?", subtitle: "Identify authority, document/communication and conclusion for this target; omit personal identifiers.", sourceUrl: SAUDI_SOURCE },
   priorStudyMode: { question: "Was this bachelor study in a regular degree programme?", subtitle: "Distance or online and other modes need separate applicability confirmation.", sourceUrl: "https://aps-india.de/news/" },
   priorStudyRecognition: { question: "What does an official assessment say about this institution, bachelor programme and study?", subtitle: "Report an applicable APS, uni-assist or university assessment. Institution marketing, an accreditation-name guess or an APS certificate covering only Class XII cannot confirm this bachelor study. Choose Cannot confirm for another programme or uncertain basis. UniPirate does not independently verify your report.", sourceUrl: "https://aps-india.de/faqs/" },
   priorStudyRecognitionReference: { question: "Which official assessment establishes that recognition conclusion?", subtitle: "Identify the assessing authority, document or communication and its conclusion for THIS institution, bachelor programme and attained study. This is applicant-reported official assessment, not app verification.", sourceUrl: "https://aps-india.de/news/" },
@@ -141,6 +151,10 @@ const countryOptions = COUNTRIES.map((c) => ({
  * their own bespoke inputs and return []. */
 export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
   switch (stepId) {
+    case "saudiCertificateSubtype": return SAUDI_CERTIFICATES.map(c => ({ value: c.id, key: c.id, label: c.label }));
+    case "saudiSubjectAssessment": return [{ value: "reported_official_met", key: "reported_official_met", label: "Applicable official subject assessment confirms requirements met" }, { value: "reported_official_unmet", key: "reported_official_unmet", label: "Applicable official subject assessment says requirements unmet" }, { value: "unknown", key: "unknown", label: "Cannot confirm an applicable assessment" }];
+    case "saudiEnrollment": return [{ value: "reported_document", key: "reported_document", label: "Current Bachelor enrollment certificate available" }, { value: "not_enrolled", key: "not_enrolled", label: "Not currently enrolled" }, { value: "unknown", key: "unknown", label: "Cannot confirm" }];
+    case "saudiEnrollmentTargetRelation": return [{ value: "reported_official_previous", key: "reported_official_previous", label: "Official assessment confirms the enrollment subject area" }, { value: "reported_official_unrelated", key: "reported_official_unrelated", label: "Official assessment places the target outside that subject area" }, { value: "unknown", key: "unknown", label: "Cannot confirm" }];
     case 'ibDocumentStatus':return [{value:'awarded',key:'awarded',label:'Diploma awarded; final IBO document available'},{value:'official_results',key:'official_results',label:'Official IBO results confirm Diploma; physical document pending'},{value:'not_awarded',key:'not_awarded',label:'Diploma not awarded'},{value:'certificate',key:'certificate',label:'IB Certificate / course results only'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
     case 'ibExamSession':return [{value:'may',key:'may',label:'May'},{value:'november',key:'november',label:'November'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
     case 'ibSchooling':return [{value:'ascending_full_time',key:'ascending_full_time',label:'Ascending years at schools with full-time instruction'},{value:'other',key:'other',label:'Another schooling pattern'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
@@ -159,7 +173,7 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
       { value: "reported_official_previous", key: "reported_official_previous", label: "Official assessment confirms the previous subject" },
       { value: "reported_official_closely_related", key: "reported_official_closely_related", label: "Official assessment confirms a closely related subject" },
       { value: "reported_official_unrelated", key: "reported_official_unrelated", label: "Official assessment places this target outside the subject scope" },
-      { value: "unknown", key: "unknown", label: "Cannot confirm an applicable target assessment" }];
+      { value: "unknown", key: "unknown", label: "Cannot confirm an applicable target assessment" }].filter(o => !isSaudiStudyBranch(answers) || o.value !== "reported_official_closely_related");
     case "dmatQualificationScope": return [
       { value: "single", key: "single", label: "One relevant qualification" },
       { value: "multiple", key: "multiple", label: "Multiple relevant qualifications" },
@@ -223,7 +237,7 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
       return [{ value: "saudi_study", label: "Yes, I confirmed this checklist applies", key: "saudi_study" }, { value: "other", label: "Another checklist applies", key: "other" }, { value: "unknown", label: "Unsure", key: "unknown" }];
     case "priorStudyCountry": {
       const options = [...countryOptions, { value: "other", label: "Another country", key: "other" }];
-      if (isIndiaStudyBranch(answers)) options.push({ value: "unknown", label: "Cannot confirm the institution country", key: "unknown" });
+      if (isIndiaStudyBranch(answers) || isSaudiStudyBranch(answers)) options.push({ value: "unknown", label: "Cannot confirm the institution country", key: "unknown" });
       const saved = answers.priorStudyCountry;
       // Preserve stored country codes beyond the small supported-country catalog.
       if (saved && /^[a-z]{2}$/i.test(saved) && !options.some((o) => o.value === saved)) {
@@ -276,7 +290,7 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
       ];
     case "board":
       return BOARDS
-        .filter((b) => b.country === answers.certificateCountry)
+        .filter((b) => b.country === (answers.saudiCertificateVersion === 1 ? answers.schoolQualificationCountry ?? answers.certificateCountry : answers.certificateCountry))
         .map((b) => ({ value: b.id, label: b.label, key: b.id }));
     case "hasPriorUniversityStudy":
     case "jeeAdvanced":
@@ -324,4 +338,10 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
     default:
       return [];
   }
+}
+
+export function questionFor(step: StepId, answers: PartialAnswers) {
+  const copy = QUESTIONS[step];
+  if (!isSaudiStudyBranch(answers) || !["priorStudyMode", "priorStudyRecognition", "priorStudyRecognitionReference", "priorStudyTargetRelation", "priorStudyTargetRelationReference"].includes(step)) return copy;
+  return { ...copy, sourceUrl: SAUDI_SOURCE, subtitle: "Report an applicable uni-assist or university assessment for this exact Bachelor programme, attained study and target subject area. Names and matching field text are not proof. UniPirate does not independently verify reports; the university decides admission." };
 }

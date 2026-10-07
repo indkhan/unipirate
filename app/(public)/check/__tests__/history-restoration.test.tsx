@@ -6,6 +6,7 @@ import { CheckFlow } from "../check-flow";
 import { buildProfile } from "../steps";
 import { evaluate } from "@/lib/engine/evaluate";
 import { reviewedIndiaStudyRules } from "@/lib/engine/__tests__/india-study.fixture";
+import { saudiAnswers } from "./saudi.fixture";
 import { indiaAnswers } from "./india-study.fixture";
 import { dmatAnswers } from "./dmat.fixture";
 import { AnswersSchema, PartialAnswersSchema, visibleSteps, withAnswer, isAnswered, type Answers, type PartialAnswers } from "../steps";
@@ -186,4 +187,14 @@ it("restores an issuer edit and retains only its diagnostic marker across valida
   expect(profile.qualificationHistory).not.toHaveProperty("priorStudyRecognition");
   expect(profile.qualificationHistory).not.toHaveProperty("priorStudyTargetRelation");
   expect(profile.apsProcedure).toBeUndefined();
+});
+
+it("restores Saudi edits at the new explicit subtype without guessing or dropping saved history", () => {
+  const saved = { ...saudiAnswers, saudiCertificateVersion: undefined, saudiCertificateSubtype: undefined };
+  const restored = recover(JSON.stringify({ answers: saved, stepIndex: 99 }));
+  expect(restored.answers).toMatchObject({ saudiCertificateVersion: 1, priorStudyInstitution: saved.priorStudyInstitution, priorStudyRecognitionReference: saved.priorStudyRecognitionReference });
+  expect(restored.answers).not.toHaveProperty("saudiCertificateSubtype");
+  expect(restored.stepIndex).toBe(visibleSteps(restored.answers as PartialAnswers).indexOf("saudiCertificateSubtype"));
+  expect(restored.removeItem).not.toHaveBeenCalled();
+  expect(saved.saudiCertificateVersion).toBeUndefined();
 });
