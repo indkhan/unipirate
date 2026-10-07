@@ -1,0 +1,14 @@
+export const indiaAnswers = {
+  qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, indiaStudyRouteVersion: 1,
+  targetDegree: "bachelor", nationality: "in", certificateCountry: "in", visaApplicationCountry: "in",
+  curriculumType: "national", board: "cbse", schoolGradePercent: 70, jeeAdvanced: false,
+  schoolQualificationCountry: "in", schoolQualificationContext: "national", apsApplicationContext: "unknown",
+  hasExistingApsCertificate: false, apsProcedureStatus: "unknown", hasPriorUniversityStudy: true,
+  priorQualificationType: "bachelor", priorStudyInstitution: "Example University", priorStudyCountry: "in",
+  priorStudyField: "Computer Science", priorDegreeYears: 4, yearsOfUniversityStudy: 1, priorStudyCompletion: "in_progress",
+  priorStudyMode: "regular", priorStudyRecognition: "reported_official_confirmed",
+  priorStudyRecognitionReference: "APS assessment A: this institution, bachelor programme and successful study recognised",
+  targetField: "cs", priorStudyTargetRelation: "reported_official_previous",
+  priorStudyTargetRelationReference: "University assessment B: this previous field permits the intended CS bachelor",
+  intake: { term: "winter", year: 2026 },
+} as const;

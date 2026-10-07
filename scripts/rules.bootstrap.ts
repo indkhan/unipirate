@@ -5,6 +5,7 @@
 // /admin; the application and evaluator never import this snapshot.
 import { intakeIndex, type EngineRule } from "../lib/engine/evaluate";
 import { dmatCandidates } from "./dmat.rules";
+import { indiaStudyCandidates } from "./india-study.rules";
 
 type RuleRecord = EngineRule & { country: string | null };
 
@@ -80,6 +81,7 @@ const RECOGNIZED_GCE_BODIES = [
 ];
 
 export const ruleData: RuleRecord[] = [
+  ...indiaStudyCandidates,
   {
     id: "aps-transition-before", country: "in", status: "draft",
     conditions: { ...APS_TRANSITION_CONDITIONS, aps_confirmed_submission_day: { op: "lt", value: 20260315 } },
