@@ -42,7 +42,14 @@ References must use exact retrieved URLs, not search snippets or model knowledge
 have the same evidence rules. Pasted observations are only seeds and cannot establish official evidence.
 The supplied sources contain bounded literal excerpts. Quote within one excerpt; never
 join omitted text into a fabricated quote or infer missing scope from omissions.
-Return a compact partial draft; omit unsupported claims and keep unknown scope null.`,
+Submit exactly one submit_research call, without explanatory prose. Keep the JSON compact: use the
+shortest literal value and contiguous evidence excerpt sufficient to establish the assertion, its
+application stage and applicability; omit redundant identical assertions and evidence.
+Preserve every explicitly supported distinct intake/applicant scope in the supplied excerpts, within
+the schema limits. Preserve competing assertions under the same field key; never choose a winner to shorten output.
+Cover the researched topics with supported assertions; omit unsupported assertions and use null for
+unknown intake/applicant scope. Do not generate placeholder facts: missing topics become unresolved
+in the draft builder. Never shorten a quote by paraphrasing, joining separated text, or removing a consequential condition or exception.`,
     // The full paste remains in the recovery draft, but is not duplicated into
     // provider context; retrieved observations are the sole evidence input.
     prompt: JSON.stringify({ identity: { name: seed.name, university: seed.university, url: seed.url }, ...context }),
