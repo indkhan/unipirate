@@ -5,6 +5,7 @@
 // /admin; the application and evaluator never import this snapshot.
 import { intakeIndex, type EngineRule } from "../lib/engine/evaluate";
 import { dmatCandidates } from "./dmat.rules";
+import { gceCandidates } from "./gce.rules";
 import { indiaStudyCandidates } from "./india-study.rules";
 
 type RuleRecord = EngineRule & { country: string | null };
@@ -43,41 +44,6 @@ const STEM_FIELDS = [
   "physics",
   "chemistry",
   "biology",
-];
-const TECHNICAL_FIELDS = [
-  "cs",
-  "it",
-  "engineering",
-  "mechanical_engineering",
-  "electrical_engineering",
-  "civil_engineering",
-  "math",
-];
-const SOCIAL_ECONOMICS_FIELDS = [
-  "economics",
-  "business",
-  "management",
-  "commerce",
-  "accounting",
-  "finance",
-  "social_science",
-];
-const HUMANITIES_FIELDS = [
-  "humanities",
-  "law",
-  "history",
-  "geography",
-  "language",
-];
-const RECOGNIZED_GCE_BODIES = [
-  "aqa",
-  "caie",
-  "ccea",
-  "lrn",
-  "ocr",
-  "oxford_aqa",
-  "pearson",
-  "wjec",
 ];
 
 export const ruleData: RuleRecord[] = [
@@ -472,120 +438,8 @@ export const ruleData: RuleRecord[] = [
       "Regular Saudi high-school diploma (Tawjihiyah) → Studienkolleg required before university",
     last_verified_at: SOURCE_CHECKED_AT,
   },
-  // ------------------------------------------------------------ GCE A-Levels
-  {
-    id: "gce-technical-subject-restricted",
-    country: null,
-    conditions: {
-      curriculum: "gce",
-      target_degree: "bachelor",
-      certificate_country: { op: "neq", value: "pk" },
-      target_field: { op: "in", value: TECHNICAL_FIELDS },
-      gce_awarding_body: { op: "in", value: RECOGNIZED_GCE_BODIES },
-      gce_school_years: { op: "gte", value: 12 },
-      gce_distinct_al_count: { op: "gte", value: 3 },
-      gce_list_a_count: { op: "gte", value: 2 },
-      gce_general_al_count: { op: "gte", value: 3 },
-      gce_min_al_grade: { op: "gte", value: 3 },
-      gce_has_math_al: true,
-      gce_has_technical_support_al: true,
-    },
-    outcomes: {
-      path: "subject_restricted",
-      note: "A recognized GCE with three independent general-education A-Levels at grade C or better gives direct subject-restricted access to mathematics and technical fields when Mathematics plus Biology, Chemistry, Physics, or Computer Science is present.",
-    },
-    status: "verified",
-    source_url: "https://www.daad.de/en/studying-in-germany/requirements/gce/",
-    source_quote:
-      "Three independent general-education A-Levels at grade C or better are required; mathematics and technical studies require Mathematics plus Biology, Chemistry, Physics, or Computer Science.",
-    last_verified_at: SOURCE_CHECKED_AT,
-  },
-  {
-    id: "gce-social-economics-subject-restricted",
-    country: null,
-    conditions: {
-      curriculum: "gce",
-      target_degree: "bachelor",
-      certificate_country: { op: "neq", value: "pk" },
-      target_field: { op: "in", value: SOCIAL_ECONOMICS_FIELDS },
-      gce_awarding_body: { op: "in", value: RECOGNIZED_GCE_BODIES },
-      gce_school_years: { op: "gte", value: 12 },
-      gce_distinct_al_count: { op: "gte", value: 3 },
-      gce_list_a_count: { op: "gte", value: 2 },
-      gce_general_al_count: { op: "gte", value: 3 },
-      gce_min_al_grade: { op: "gte", value: 3 },
-      gce_has_social_economics_al: true,
-      gce_has_science_or_math_al: true,
-    },
-    outcomes: {
-      path: "subject_restricted",
-      note: "Social-science and economics studies require an appropriate humanities/economics A-Level plus Mathematics, Biology, Chemistry, Physics, or Computer Science.",
-    },
-    status: "verified",
-    source_url: "https://www.daad.de/en/studying-in-germany/requirements/gce/",
-    source_quote:
-      "Social science and economics studies require one A-Level from history, geography, politics or economics and one from mathematics, biology, chemistry, physics or computer science.",
-    last_verified_at: SOURCE_CHECKED_AT,
-  },
-  {
-    id: "gce-humanities-subject-restricted",
-    country: null,
-    conditions: {
-      curriculum: "gce",
-      target_degree: "bachelor",
-      certificate_country: { op: "neq", value: "pk" },
-      target_field: { op: "in", value: HUMANITIES_FIELDS },
-      gce_awarding_body: { op: "in", value: RECOGNIZED_GCE_BODIES },
-      gce_school_years: { op: "gte", value: 12 },
-      gce_distinct_al_count: { op: "gte", value: 3 },
-      gce_list_a_count: { op: "gte", value: 2 },
-      gce_general_al_count: { op: "gte", value: 3 },
-      gce_min_al_grade: { op: "gte", value: 3 },
-      gce_has_humanities_al: true,
-    },
-    outcomes: {
-      path: "subject_restricted",
-      note: "Humanities and law studies require an appropriate language, history, geography, politics, or economics A-Level.",
-    },
-    status: "verified",
-    source_url: "https://www.daad.de/en/studying-in-germany/requirements/gce/",
-    source_quote:
-      "Humanities and law studies require one A-Level from language, history, geography, social studies/politics, or economics.",
-    last_verified_at: SOURCE_CHECKED_AT,
-  },
-  {
-    id: "gce-fewer-than-three-unknown",
-    country: null,
-    conditions: {
-      curriculum: "gce",
-      target_degree: "bachelor",
-      certificate_country: { op: "neq", value: "pk" },
-      gce_al_count: { op: "lt", value: 3 },
-    },
-    outcomes: {
-      path: "unknown",
-      note: "Fewer than three A-Levels cannot satisfy the current GCE direct-admission formula. Check the DAAD admission database for any alternative route.",
-    },
-    status: "verified",
-    source_url: "https://www.daad.de/en/studying-in-germany/requirements/gce/",
-    source_quote:
-      "For recognition, three general, independent A-Level subjects with a minimum grade of C are required; AS Levels are no longer considered.",
-    last_verified_at: SOURCE_CHECKED_AT,
-  },
-  {
-    id: "gce-pk-anabin-caveat",
-    country: "pk",
-    conditions: { curriculum: "gce", certificate_country: "pk" },
-    outcomes: {
-      path: "unknown",
-      note: "For Pakistan-obtained GCE certificates, the applicable country-specific anabin evaluation proposal must be checked before returning an admission path.",
-    },
-    status: "beta",
-    source_url: "https://www.daad.de/en/studying-in-germany/requirements/gce/",
-    source_quote:
-      "for countries where GCE-type exams are part of the national system, the country's evaluation proposal may apply instead",
-    last_verified_at: SOURCE_CHECKED_AT,
-  },
+  // UP-ELIG-01: source-backed ordinary candidates remain drafts.
+  ...gceCandidates,
   // -------------------------------------------------------------- IB Diploma
   {
     id: "ib-math-hl-direct-2025",

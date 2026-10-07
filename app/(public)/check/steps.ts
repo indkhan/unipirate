@@ -5,6 +5,8 @@ import { z } from "zod";
 import { CalendarDateSchema, calendarDay } from "@/lib/engine/calendar-day";
 import { DmatProfileSchema, DMAT_FIELD_ENTRIES, DMAT_FIELD_SOURCE, DMAT_FIELD_VERSION } from "@/lib/engine/dmat";
 
+import { GCE_SUBJECTS } from '@/lib/engine/gce';
+export { GCE_SUBJECTS } from '@/lib/engine/gce';
 import type { Profile } from "@/lib/engine/evaluate";
 
 // ---------------------------------------------------------------- vocabulary
@@ -23,34 +25,7 @@ export const AWARDING_BODIES = [
 
 export const GCE_GRADES = ["A*", "A", "B", "C", "D", "E", "U"] as const;
 
-// Trade-off: static catalog of common A-Level subjects with their DAAD
-// classification; move into the DB alongside `qualifications` when subjects
-// beyond this list are needed. List/category mirror
-// https://www.daad.de/en/studying-in-germany/requirements/gce/ (List A =
-// general-education subjects).
-export const GCE_SUBJECTS = [
-  { id: "mathematics", label: "Mathematics", category: "math", list: "A" },
-  { id: "physics", label: "Physics", category: "physics", list: "A" },
-  { id: "chemistry", label: "Chemistry", category: "chemistry", list: "A" },
-  { id: "biology", label: "Biology", category: "biology", list: "A" },
-  {
-    id: "computer_science",
-    label: "Computer Science",
-    category: "computer_science",
-    list: "A",
-  },
-  {
-    id: "english_language",
-    label: "English Language",
-    category: "language",
-    list: "A",
-  },
-  { id: "economics", label: "Economics", category: "economics", list: "A" },
-  { id: "history", label: "History", category: "history", list: "A" },
-  { id: "geography", label: "Geography", category: "geography", list: "A" },
-] as const;
-
-export type GceSubjectId = (typeof GCE_SUBJECTS)[number]["id"];
+export type GceSubjectId = string;
 
 export const IB_GRADES = ["7", "6", "5", "4", "3", "2", "1"] as const;
 
@@ -100,6 +75,12 @@ export const TARGET_FIELDS = [
   { id: "engineering", label: "Other Engineering" },
   { id: "math", label: "Mathematics" },
   { id: "physics", label: "Physics" },
+  { id: "chemistry", label: "Chemistry" },
+  { id: "biology", label: "Biology" },
+  { id: "medicine", label: "Medicine" },
+  { id: "pharmacy", label: "Pharmacy" },
+  { id: "arts", label: "Arts" },
+  { id: "social_science", label: "Social Sciences" },
   { id: "business", label: "Business / Management" },
   { id: "economics", label: "Economics" },
   { id: "finance", label: "Finance / Accounting" },
@@ -158,6 +139,7 @@ export type IbSubjectAnswer = z.infer<typeof IbSubjectAnswerSchema>;
  * shown when a value is present but fails `isAnswered`.
  */
 export const NUMBER_STEPS = {
+  gceSchoolYears: {label:'Actual ascending school attendance · years',min:0,max:50,placeholder:'12',error:'Enter actual whole school years from 0 to 50. Do not include university study.'},
   dmatCompletedSemesters: { label: "Actually completed semesters", min: 0, max: 100, placeholder: "6", error: "Enter a whole number of completed semesters from 0 to 100." },
   priorDegreeYears: { label: "Qualification duration in years · required", min: 0, max: 50, placeholder: "4", error: "Enter a duration from 0 to 50 years." },
   yearsOfUniversityStudy: { label: "Successfully completed study in years · required", min: 0, max: 50, placeholder: "1", error: "Enter completed study from 0 to 50 years." },
@@ -288,6 +270,11 @@ const AnswerFieldsSchema = z
     schoolGradePercent: z.number().min(0).max(100).optional(),
     jeeAdvanced: z.boolean().optional(),
     hasExistingApsCertificate: z.boolean().optional(),
+    gceVersion: z.literal(1).optional(),
+    gceSchoolYears: z.number().int().min(0).max(50).optional(),
+    gceQualificationContext: z.enum(['uk','british_international','national','unknown']).optional(),
+    gceQualificationType: z.enum(['al','ial','pre_u','aice','other','unknown']).optional(),
+    gceEvidence: z.enum(['final','provisional','school','unknown']).optional(),
     gceAwardingBody: z
       .enum(AWARDING_BODIES.map((b) => b.id) as [string, ...string[]])
       .optional(),
@@ -313,6 +300,7 @@ export type Answers = z.infer<typeof AnswerFieldsSchema>;
 export type PartialAnswers = Partial<Answers>;
 // Draft text/numbers can be unfinished; complete submissions retain strict checks.
 export const PartialAnswersSchema = AnswerFieldsSchema.partial().extend({
+  gceSchoolYears: z.number().finite().optional(),
   yearsOfUniversityStudy: z.number().finite().nullable().optional(),
   priorStudyRecognitionReference: z.string().trim().max(500).optional(),
   priorStudyTargetRelationReference: z.string().trim().max(500).optional(),
@@ -353,6 +341,7 @@ export const AnswersSchema = AnswerFieldsSchema
         message: 'Missing answer for step "curriculumType"' });
     }
     for (const step of visibleSteps(answers)) {
+      if (answers.gceVersion !== 1 && ['gceSchoolYears','gceQualificationContext','gceQualificationType','gceEvidence'].includes(step)) continue;
       // Historical Saudi checks skipped this answer. Read them without
       // inventing fulfilment; new/edited APS-versioned flows require it.
       if (step === "hasExistingApsCertificate" && answers.apsScopeVersion !== 1 &&
@@ -393,6 +382,7 @@ export type StepId =
   | "schoolGradePercent"
   | "jeeAdvanced"
   | "hasExistingApsCertificate"
+  | "gceSchoolYears" | "gceQualificationContext" | "gceQualificationType" | "gceEvidence"
   | "gceAwardingBody"
   | "gceSubjects"
   | "ibFullDiploma"
@@ -423,7 +413,7 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
     if (answers.certificateCountry === "in") steps.push("jeeAdvanced");
   }
   if (bachelor && answers.curriculumType === "gce") {
-    steps.push("gceAwardingBody", "gceSubjects");
+    steps.push('gceQualificationContext','gceQualificationType','gceEvidence','gceAwardingBody','gceSchoolYears','gceSubjects');
   }
   if (bachelor && answers.curriculumType === "ib") {
     steps.push("ibFullDiploma");
@@ -534,6 +524,7 @@ export function withAnswer<K extends StepId>(
   value: Answers[K],
 ): PartialAnswers {
   const next: PartialAnswers = { ...answers, qualificationHistoryVersion: 1, indiaStudyRouteVersion: 1, [field]: value };
+  if (next.curriculumType === 'gce' && next.targetDegree === 'bachelor') next.gceVersion=1;
   if (answers[field] !== value) {
     const academicBasis = (HISTORY_STEPS.some(key => key === field) && field !== "priorStudyField") ||
       ["targetDegree", "curriculumType", "certificateCountry", "schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent", "priorStudyMode"].includes(field);
@@ -607,7 +598,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
     changed = false;
     const visible = new Set<string>(visibleSteps(next));
     for (const key of Object.keys(next)) {
-      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && !visible.has(key)) {
+      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && !visible.has(key)) {
         delete next[key as StepId];
         changed = true;
       }
@@ -636,7 +627,7 @@ export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
     return (
       typeof value === "number" &&
       Number.isFinite(value) &&
-      (step !== "dmatCompletedSemesters" || Number.isInteger(value)) &&
+      (!["dmatCompletedSemesters","gceSchoolYears"].includes(step) || Number.isInteger(value)) &&
       value >= min &&
       value <= max
     );
@@ -765,9 +756,10 @@ export function buildProfile(answers: Answers): Profile {
     profile.gce = {
       awardingBody:
         answers.gceAwardingBody as NonNullable<Profile["gce"]>["awardingBody"],
-      schoolYears: answers.gceSubjects.some((subject) => subject.level === "AL")
-        ? 13
-        : 12,
+      schoolYears: answers.gceSchoolYears,
+      qualificationContext: answers.gceQualificationContext,
+      qualificationType: answers.gceQualificationType,
+      evidence: answers.gceEvidence,
       subjects: answers.gceSubjects.map((s) => {
         const subject = GCE_SUBJECTS.find((c) => c.id === s.subjectId)!;
         return {

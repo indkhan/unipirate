@@ -72,6 +72,7 @@ const QUESTIONS: Record<StepId, string> = {
   schoolGradePercent: "Class 12 result",
   jeeAdvanced: "JEE Advanced",
   hasExistingApsCertificate: "APS certificate",
+  gceSchoolYears:'Actual school years',gceQualificationContext:'GCE qualification system',gceQualificationType:'GCE qualification type',gceEvidence:'Awarding-body evidence',
   gceAwardingBody: "A-Level awarding body",
   gceSubjects: "A-Level subjects",
   ibFullDiploma: "Full IB Diploma",
@@ -87,7 +88,7 @@ const QUESTIONS: Record<StepId, string> = {
 export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1 }));
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1 }));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const steps = visibleSteps(answers);

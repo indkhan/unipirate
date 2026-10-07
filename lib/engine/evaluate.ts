@@ -4,6 +4,7 @@
 // and merges outcomes. Missing rules produce explicit `unknown` outcomes with
 // confirm-with-the-official-source messages; the engine never guesses.
 import { z } from "zod";
+import { gceEntry, gceIndependent, triples } from "./gce";
 import { calendarDay } from "./calendar-day";
 import { DmatProfileSchema, type DmatProfile } from "./dmat";
 
@@ -94,7 +95,10 @@ export type Profile = {
       | "pearson"
       | "wjec"
       | "other";
-    schoolYears: number;
+    schoolYears?: number;
+    qualificationContext?: 'uk' | 'british_international' | 'national' | 'unknown';
+    qualificationType?: 'al' | 'ial' | 'pre_u' | 'aice' | 'other' | 'unknown';
+    evidence?: 'final' | 'provisional' | 'school' | 'unknown';
     subjects: {
       independenceGroup: string;
       level: "AL" | "AS";
@@ -168,6 +172,7 @@ const FactKeySchema = z.enum([
   "certificate_country",
   "class12_percent",
   "curriculum",
+  "gce_qualification_context", "gce_qualification_type", "gce_evidence", "gce_science_or_math_count",
   "gce_al_count",
   "gce_awarding_body",
   "gce_distinct_al_count",
@@ -483,7 +488,10 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
     );
   }
   if (p.gce) {
-    const subjects = p.gce.subjects;
+    const subjects = p.gce.subjects.map(s => {
+      const entry = gceEntry(s.independenceGroup.trim().toLowerCase(), p.gce!.awardingBody);
+      return {...s, list: entry?.list ?? 'unrecognized', category: entry?.category ?? 'other'};
+    });
     const alSubjects = subjects.filter((subject) => subject.level === "AL");
     const gradeRank = {
       U: 0,
@@ -501,10 +509,14 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
     );
     const hasAlCategory = (...categories: (typeof alSubjects)[number]["category"][]) =>
       alSubjects.some((subject) => categories.includes(subject.category));
+    raw.gce_qualification_context = p.gce.qualificationContext;
+    raw.gce_qualification_type = p.gce.qualificationType;
+    raw.gce_evidence = p.gce.evidence;
     raw.gce_awarding_body = p.gce.awardingBody;
     raw.gce_school_years = p.gce.schoolYears;
     raw.gce_al_count = alSubjects.length;
-    raw.gce_distinct_al_count = independenceGroups.size;
+    const entries = alSubjects.map(s => gceEntry(s.independenceGroup.trim().toLowerCase(), p.gce!.awardingBody));
+    raw.gce_distinct_al_count = entries.every((a,i) => a && entries.slice(i+1).every(b => b && gceIndependent(a,b))) ? independenceGroups.size : 0;
     raw.gce_min_al_grade =
       alSubjects.length > 0
         ? Math.min(...alSubjects.map((subject) => gradeRank[subject.grade]))
@@ -535,6 +547,7 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
       "social_studies",
       "economics",
     );
+    raw.gce_science_or_math_count = alSubjects.filter(s => ['math','biology','chemistry','physics','computer_science'].includes(s.category)).length;
     raw.gce_has_science_or_math_al = hasAlCategory(
       "math",
       "biology",
@@ -602,11 +615,16 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     return parsed.success && parsed.data.status !== "draft" ? [parsed.data] : [];
   });
   const facts = deriveFacts(profile);
-  const matched = live.filter((r) => ruleMatches(facts, r));
+  // A positive GCE path matches one complete three-AL witness. Other routes,
+  // whole-profile diagnostics and process outcomes retain ordinary matching.
+  const witnesses = profile.gce ? triples(profile.gce.subjects.filter(s=>s.level==='AL')).map(subjects=>deriveFacts({...profile,gce:{...profile.gce!,subjects}})) : [];
+  const positiveGce = (r: ParsedRule) => r.conditions.curriculum === 'gce' && r.outcomes.path !== undefined && r.outcomes.path !== 'unknown';
+  const scopedGce = (r: ParsedRule) => ['gce_qualification_context','gce_qualification_type','gce_evidence','intake_index'].every(key=>Object.hasOwn(r.conditions,key));
+  const matched = live.filter(r => positiveGce(r) ? scopedGce(r) && witnesses.some(w=>ruleMatches(w,r)) : ruleMatches(facts,r));
 
   const citations: Citation[] = [];
   const unknowns: string[] = [];
-  const cite = (rule: ParsedRule, support: ResultSupport) => {
+  const cite = (rule: ParsedRule, support: ResultSupport, diagnosticClaim?: string) => {
     const existing = citations.find((c) => c.ruleId === rule.id);
     if (existing) {
       if (!existing.supports.includes(support)) existing.supports.push(support);
@@ -616,7 +634,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       ruleId: rule.id,
       sourceUrl: rule.source_url,
       verifiedAt: rule.last_verified_at ?? null,
-      claim: rule.outcomes.note ?? rule.source_quote,
+      claim: diagnosticClaim ?? rule.outcomes.note ?? rule.source_quote,
       status: rule.status === "beta" ? "beta" : "verified",
       supports: [support],
     });
@@ -663,6 +681,44 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   }
 
   const path = resolve<Result["path"]>("path") ?? "unknown";
+  if (path === 'unknown' && profile.targetDegree === 'bachelor' && profile.curriculumType === 'gce') {
+    // Diagnostics reuse published criteria; no catalogue or threshold can publish
+    // a path on its own. Pick the smallest failed-condition set for this target.
+    const candidates = live.filter(r => positiveGce(r) && scopedGce(r) && r.conditions.target_field !== undefined && conditionPasses(facts.target_field,r.conditions.target_field));
+    const labels: Record<string,string> = {
+      gce_qualification_context:'qualification context/system (national-system certificates need their country proposal)',
+      gce_qualification_type:'qualification type (Pre-U/AICE require separate verification)',
+      gce_evidence:'awarding-body certificate evidence (school certificates alone are insufficient; provisional results need dated review)',
+      gce_awarding_body:'recognised awarding body', gce_school_years:'actual ascending school years (ordinary duration; exceptions need recognition review)',
+      intake_index:'intake applicability (historical/body-specific scope requires verification)',
+      gce_distinct_al_count:'independent full A-Level subjects',gce_list_a_count:'List A subjects',
+      gce_general_al_count:'recognised general subjects from List A/B (List C vocational programme restrictions need confirmation; unlisted subjects need ZAB)',
+      gce_min_al_grade:'minimum grade rank on the same trio (C = 3)',
+      gce_has_math_al:'target mathematics A-Level',gce_has_technical_support_al:'target supporting science/computing A-Level',
+      gce_has_humanities_al:'target humanities A-Level',gce_has_social_economics_al:'target social/economics A-Level',
+      gce_has_science_or_math_al:'target science/math A-Level',gce_science_or_math_count:'target science/math A-Level count',
+    };
+    const comparisons = candidates.flatMap(rule => (witnesses.length ? witnesses : [facts]).map(witness => ({rule,failed:Object.entries(rule.conditions).filter(([key,cond])=>!conditionPasses(witness[key],cond))})));
+    const score = (failed: [string, Condition][]) => failed.reduce((sum,[key])=>sum+(key.startsWith('gce_has_')||key==='gce_science_or_math_count'?1:10),0);
+    comparisons.sort((a,b)=>score(a.failed)-score(b.failed));
+    const nearest=comparisons[0];
+    for (const legacy of live.filter(r=>positiveGce(r) && !scopedGce(r))) {
+      unknowns.push('Stored GCE rule applicability is unverified for qualification system/type, certificate evidence and intake. Confirm the applicable assessment with '+legacy.source_url);
+      cite(legacy,'unknowns','Stored GCE applicability requires source review.');
+    }
+    if(nearest) {
+      const details=nearest.failed.map(([key,cond]) => {
+        const comparison=typeof cond==='object'?cond:{op:'eq',value:cond};
+        const operator={eq:'',neq:'not ',gte:'at least ',gt:'more than ',lte:'at most ',lt:'less than ',in:'one of ',nin:'none of '}[comparison.op];
+        const requirement=operator+(Array.isArray(comparison.value)?comparison.value.join(', '):String(comparison.value));
+        return (labels[key]??key)+': requires '+requirement;
+      });
+      if(!witnesses.length) details.unshift('The formula requires three full independent A-Levels; AS cannot replace the missing third AL.');
+      const diagnostic='GCE formula/applicability not established: '+details.join('; ')+'. Confirm with '+nearest.rule.source_url;
+      unknowns.push(diagnostic);
+      cite(nearest.rule,'unknowns',diagnostic);
+    }
+  }
   if (!matched.some((r) => r.outcomes.path !== undefined))
     unknowns.push(NO_RULE_MESSAGES.path);
   const flag = (key: "aps" | "testas" | "dmat"): Result["aps"] => {
