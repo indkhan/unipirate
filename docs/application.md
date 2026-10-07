@@ -160,10 +160,11 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
    `visibleSteps` (branching), `withAnswer` (prunes answers whose step
    disappeared), `isAnswered` (gates Continue), `buildProfile` — is pure in
    `app/(public)/check/steps.ts`. Branches: curriculum type is asked before
-   the board; GCE and IB collect per-subject rows (one shared
-   `SubjectRowsEditor`, one static catalog each carrying the DAAD
-   classification); an IB Certificate short of the full diploma skips the
-   detail questions, since no rule can give it a path; the existing-APS
+   the board; GCE collects per-subject rows through `SubjectRowsEditor`; IB uses its own
+   evidence editor and the pure reviewed catalog in `lib/engine/ib.ts`. New IB
+   answers distinguish Diploma award / official IBO results with paper pending
+   from not awarded, Certificate only and unknown, collecting applicable
+   subject and examination evidence only for the first two; the existing-APS
    answer stays independent of visa filing in new/edited APS-versioned flows;
    pre-scope Saudi checks remain readable without inventing an answer. Steps
    rendered as a number input are listed in `NUMBER_STEPS` with their bounds.
@@ -481,7 +482,7 @@ keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.
 | Add/edit an eligibility rule | `/admin` UI (data change, no deploy); new *candidates* go in `scripts/rules.bootstrap.ts` and are seeded as drafts |
 | Support a new fact in rules | `FactKeySchema` + `deriveFacts` in `lib/engine/evaluate.ts`, label in `lib/ai/kb.ts`, tests in `lib/engine/__tests__/` |
 | Add a checker question | `StepId`, `AnswersSchema`, `visibleSteps`, `buildProfile` in `app/(public)/check/steps.ts`; copy in `check-questions.ts`; label in `profile-review.tsx`; tests in `steps.test.ts` |
-| Add a GCE/IB subject | `GCE_SUBJECTS` / `IB_SUBJECTS` in `app/(public)/check/steps.ts` — both editors and `buildProfile` read the catalog |
+| Add a GCE/IB subject | `GCE_SUBJECTS` in checker steps / `IB_SUBJECTS` in `lib/engine/ib.ts` — editor and pure profile mapping share reviewed identities |
 | Add a country or school board | `COUNTRIES` / `BOARDS` in `app/(public)/check/steps.ts` — the checker options, admin rule filter, and result labels all read these catalogs |
 | Publish a seeded rule | `/admin?view=rules`. `pnpm db:seed` writes every bootstrap candidate as a **draft** and the engine skips drafts, so a newly seeded rule changes nothing until a human publishes it |
 | Change dashboard task texts/buckets | `lib/tasks/generate.ts` (+ its tests) |
@@ -780,3 +781,14 @@ The pure reviewed catalogue `lib/engine/gce.ts` supplies List A/B/C identities, 
 Positive GCE records need explicit system/type/evidence/intake scope. Unscoped historical positive records remain available as source-review unknowns rather than silently supplying applicability. Twelve source-reviewed candidates in `scripts/gce.rules.ts` remain drafts, with literal source quotes and null publication metadata. Disposable fixture copies activate the supported GCE acceptance corpus; parent TEST future coverage remains open. Catalogue facts alone cannot establish a path without a published rule.
 
 Science, medicine/pharmacy and arts target groups follow DAAD's named categories. Cambridge's favourable new-formula coverage starts SS2022 and its ordinary transition is SS2024; other bodies are limited to explicit current checker intakes as coverage, not an invented source effective date. National-system, historical, List C programme mapping, Pre-U/AICE/provisional and unclassified-programme variants stay targeted unknowns. See [source verification](up-elig-01-source-verification.md) for applicability, contradictions and authority limits. No migration, publication, seed, KB rebuild, task/application or personal-progress write occurs.
+
+
+### IB evidence and ordinary recognition (UP-ELIG-02)
+
+New and edited IB bachelor answers carry `ibVersion: 1`; historical answers remain readable without manufacturing subject context. Examination year/session is distinct from target intake. Actual ascending full-time schooling, Diploma evidence, exact subject identity, level, grade, language and continued-foreign context, two-year continuity and independence are explicit, including unknown answers. Changing a row identity/level clears affected context. Mathematics course and level come from the actual row; a conflicting historical summary prevents recognition. Caller group/category/recognition flags never establish eligibility.
+
+`lib/engine/ib.ts` performs zero-I/O schema validation and evidence derivation. `lib/engine/ib-annexes.json` is the versioned complete reviewed source index, with literal source rows, programme scope and examination-effective May/November sessions. Exact identity is required; missing identity is different from verified absence. Source conflict 006880 remains unresolved. The index cannot grant access itself: all ordinary science, grade, language, schooling and continuity conditions still match published rule data.
+
+`scripts/ib.rules.ts` contains only draft candidates with null publication metadata. Disposable reviewed fixture copies activate the official acceptance corpus; bootstrap never publishes them. The evaluator quarantines old unscoped IB path shortcuts, including automatic Studienkolleg outcomes. Missing ordinary prerequisites yield targeted unknowns; KMK section 2 alternatives require separate reviewed scope. Current-annex coverage applies to historical examinations as directed by the KMK index. The explicit draft intake coverage starts Winter 2025; earlier intakes and examination years before 2013 remain unknown pending review.
+
+See [IB source verification](ib-source-verification.md) for authority, source versions, effective sessions and unresolved limits. The executable IB corpus is activated in UP-TEST-01; final parent official coverage remains OPEN. No DB, publication, server-shell or version-selection interface was changed.
