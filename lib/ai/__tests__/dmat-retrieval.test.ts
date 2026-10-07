@@ -9,6 +9,7 @@ vi.mock("ai", async importOriginal => ({ ...await importOriginal<typeof import("
 vi.mock("@openrouter/ai-sdk-provider", () => ({ createOpenRouter: () => Object.assign(() => "mock-chat", { textEmbeddingModel: () => "mock-embedding" }) }));
 vi.mock("@/lib/db/queries", () => ({ ...mocks }));
 import { runAssistant } from "../assistant";
+import { ruleToChunk } from "../kb";
 
 const legacy = ruleData.find(r => r.id === "dmat-india-existing-aps-exempt")!;
 const row = { ...legacy, slug: legacy.id, country_code: "in" };
@@ -80,9 +81,9 @@ it("renders the current procedure-scoped exemption instead of the stored text", 
   expect(result.last_verified_at).toBe(completed.last_verified_at);
 });
 
-it("preserves an unrelated rule chunk unchanged", async () => {
-  const other = { ...row, slug: "testas-other", outcomes: { testas: "required" } };
-  const chunk = { ...unrelated, slug: other.slug, source_type: "rule" };
+it("preserves an unrelated rule chunk bound to its current structured rendering", async () => {
+  const other = { ...row, slug: "testas-other", outcomes: { testas: "required" }, last_verified_at: row.last_verified_at ?? null };
+  const chunk = { ...ruleToChunk(other), source_type: "rule" };
   mocks.getPublishedRules.mockResolvedValue([other]);
   mocks.matchKbChunks.mockResolvedValue([chunk]);
   expect((await search())[0].content).toBe(chunk.content);
@@ -164,6 +165,26 @@ it("keeps persisted JEE claims out of the actual assistant search_rules tool res
   expect(result.content).not.toContain(jee.outcomes.note);
   expect(result.content).not.toContain(jee.source_quote);
   expect(result.content).toContain("https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/");
+  expect(result.last_verified_at).toBeNull();
+  expect(mocks.getPublishedRules).toHaveBeenCalledOnce();
+});
+
+
+it("fails closed through actual search_rules when a generic renamed JEE cache loses current family identity", async () => {
+  const jee = jeeLegacy[0];
+  const revised = { ...jee, slug: "renamed-academic-rule", source_url: "https://www.uni-assist.de/",
+    conditions: { target_degree: "bachelor" }, outcomes: { testas: "required" } };
+  const cached = { ...stored, slug: revised.slug, source_url: revised.source_url, title: jee.outcomes.note,
+    content: 'Admission path: direct admission restricted to related subjects.\nNote: ' + jee.outcomes.note + '\nOfficial source says: "' + jee.source_quote + '"' };
+  mocks.getPublishedRules.mockResolvedValue([revised]);
+  mocks.matchKbChunks.mockResolvedValue([cached]);
+  const result = (await search())[0];
+  expect(result.content).toContain("[[unknown]]");
+  expect(result.content).not.toContain("Admission path: direct");
+  expect(result.content).not.toContain(jee.outcomes.note);
+  expect(result.content).not.toContain(jee.source_quote);
+  expect(result.content).not.toContain("Official source says");
+  expect(result.source_url).toBe(revised.source_url);
   expect(result.last_verified_at).toBeNull();
   expect(mocks.getPublishedRules).toHaveBeenCalledOnce();
 });

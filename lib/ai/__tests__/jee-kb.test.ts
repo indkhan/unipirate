@@ -110,10 +110,10 @@ it("preserves independent process outcomes while withholding quarantined JEE tas
   expect(chunk.content).not.toContain(mixed.outcomes.steps[0].text);
   expect(chunk.content).not.toContain(mixed.outcomes.documents[0]);
 });
-it("preserves unrelated-country rule/snippet text and does not infer JEE from legacy false", () => {
+it("preserves current-bound unrelated-country rule/snippet text and does not infer JEE from legacy false", () => {
   const other = { ...row, slug: "sa-independent", country_code: "sa", conditions: { jee_advanced: false },
     source_url: "https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/sa/" };
-  const match = { ...stored, slug: other.slug, country_code: "sa", source_url: other.source_url, content: "Unrelated persisted country evidence" };
+  const match = { ...ruleToChunk(other), source_type: "rule" };
   expect(projectDmatKbMatches([match], [other])[0].content).toBe(match.content);
   expect(projectDmatKbMatches([{ ...match, source_type: "snippet" }], [other])[0].content).toBe(match.content);
 });
@@ -123,4 +123,37 @@ it("a persisted snippet cannot inherit a current structured JEE rule's publicati
   expect(chunk.content).toContain("[[unknown]]");
   expect(chunk.content).not.toContain(row.source_quote);
   expect(chunk.last_verified_at).toBeNull();
+});
+
+
+it("rejects positive persisted content after a generic current rule loses every JEE condition", () => {
+  const revised = { ...row, slug: "renamed-academic-rule", source_url: "https://www.uni-assist.de/",
+    conditions: { target_degree: "bachelor" }, outcomes: { testas: "required" } };
+  const chunk = projectDmatKbMatches([{ ...stored, slug: revised.slug, source_url: revised.source_url }], [revised])[0];
+  expect(chunk.content).toContain("[[unknown]]");
+  expect(chunk.content).not.toContain("Admission path: direct");
+  expect(chunk.content).not.toContain(row.outcomes.note);
+  expect(chunk.content).not.toContain(row.source_quote);
+  expect(chunk.source_url).toBe(revised.source_url);
+  expect(chunk.last_verified_at).toBeNull();
+});
+
+
+const independent = { ...row, slug: "independent-generic-control", country_code: "sa",
+  conditions: { target_degree: "bachelor" }, outcomes: { testas: "required" },
+  source_url: "https://www.uni-assist.de/", source_quote: "Artificial independent control; not admission proof." };
+it.each([
+  { title: "Old title" }, { content: "Old policy" }, { source_url: "https://example.org/stale" }, { source_url: JEE_FIELD_SOURCE },
+  { last_verified_at: "2025-01-01T00:00:00Z" }, { country_code: "in" },
+])("fails closed for an unclassified rule cache whose rendered evidence changed: %j", change => {
+  const cached = { ...ruleToChunk(independent), source_type: "rule", ...change };
+  const result = projectDmatKbMatches([cached], [independent])[0];
+  expect(result.content).toContain("[[unknown]]");
+  expect(result.content).not.toContain(independent.source_quote);
+  expect(result.last_verified_at).toBeNull();
+  expect(result.source_url).toBe(independent.source_url);
+});
+it("retains a valid independent rule's exact current rendering and source metadata", () => {
+  const canonical = ruleToChunk(independent);
+  expect(projectDmatKbMatches([{ ...canonical, source_type: "rule" }], [independent])[0]).toEqual(canonical);
 });

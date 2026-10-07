@@ -18,9 +18,9 @@ const PublishedKbRuleSchema = EngineRuleSchema.innerType().extend({
 
 /** RULES01 reuse boundary: raw RPC matches + caller-visible current rule rows
  * (null means unavailable) -> model-visible chunks. No writes, clock or I/O.
- * Unmatched/invalid rule metadata fails closed; only validated unrelated rules
- * and unrelated curated snippets may retain persisted text.
- * This does not certify freshness of unrelated chunks or synthesize verification.
+ * Unmatched/invalid rule metadata fails closed. Unclassified rule caches must
+ * exactly match current structured rendering; loss of family identity grants no
+ * authority to old prose. Unrelated curated snippets retain their existing contract.
  */
 export function projectDmatKbMatches(matches: readonly unknown[], publishedRules: readonly unknown[] | null): KbChunk[] {
   const identities = (publishedRules ?? []).map(row => ({ row, identity: RuleIdentitySchema.safeParse(row) }));
@@ -36,7 +36,7 @@ export function projectDmatKbMatches(matches: readonly unknown[], publishedRules
     const jee = match.slug === JEE_LEGACY_SLUG ||
       match.source_url === JEE_SOURCE || match.source_url === JEE_FIELD_SOURCE ||
       (rule?.success === true && isJeeRule(rule.data));
-    const unresolved = (): KbChunk => ({ ...match, title: "Rule applicability unresolved",
+    const unresolved = (sourceUrl = match.source_url): KbChunk => ({ ...match, source_url: sourceUrl, title: "Rule applicability unresolved",
       content: "Rule applicability: unknown. [[unknown]] Current structured metadata cannot establish applicability; stored text/quotes are unverified and withheld. Check the cited official source." +
         (jee ? " Confirm JEE qualifying passage, qualification, field and intake with " + JEE_SOURCE + " and " + JEE_FIELD_SOURCE + "." : ""),
       last_verified_at: null });
@@ -46,7 +46,12 @@ export function projectDmatKbMatches(matches: readonly unknown[], publishedRules
     // Without valid current metadata a renamed rule cannot prove unrelatedness.
     if (match.slug === "snippet-dmat-details" || rows.length !== 1) return unresolved();
     if (!rule?.success) return unresolved();
-    if (!dmat && !jee) return match;
-    return ruleToChunk(rule.data, { includeLegacyDmatQuote: false });
+    const current = ruleToChunk(rule.data, { includeLegacyDmatQuote: false });
+    // A rule may lose its JEE/dMAT identity. Without a structured family guard,
+    // cached evidence must bind exactly to the current row, never just its slug.
+    if (!isJeeRule(rule.data) && rule.data.slug !== JEE_LEGACY_SLUG && rule.data.outcomes.dmat === undefined &&
+      Object.entries(current).some(([key, value]) =>
+      match[key as keyof KbChunk] !== value)) return unresolved(current.source_url);
+    return current;
   });
 }
