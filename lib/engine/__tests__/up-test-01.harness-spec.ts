@@ -13,8 +13,9 @@ import * as personas from "./personas";
 // same input, honest unknown; source limits exemption to the completed procedure.
 // This remains a milestone corpus; parent TEST coverage remains OPEN.
 // UP-ELIG-02 activates reviewed IB evidence/recognition acceptance separately.
+export { PAKISTAN_PREP_ACCEPTANCE } from "./pakistan.fixture";
 export { IB_ACCEPTANCE } from "./ib.fixture";
-export const HARNESS_VERSION = "up-test-01/v1-current-behavior.3" as const;
+export const HARNESS_VERSION = "up-test-01/v1-current-behavior.4-pk-bounded" as const;
 export { INDIA_STUDY_ACCEPTANCE } from "./india-study.fixture";
 export { DMAT_ACCEPTANCE } from "./dmat.fixture";
 export const HARNESS_BASELINE_SHA =
@@ -304,6 +305,6 @@ export const APS_TRANSITION_ACCEPTANCE = [
 
 export const FUTURE: FutureSpec[] = [
   { id: "FUTURE-India-jee-main-plus-advanced", family: "India", issue: "UP-ELIG-04", needsFutureSchema: true, verified: false, note: "Separate JEE Main + Advanced facts restrict the route to technology/natural-science targets." },
-  { id: "FUTURE-Pakistan-hssc-streams", family: "Pakistan", issue: "UP-ELIG-08", needsFutureSchema: true, verified: false, note: "HSSC/FSc stream-specific Studienkolleg routes, 49.99/50 boundary, one-year direct routes." },
+  { id: "FUTURE-Pakistan-hssc-streams", family: "Pakistan", issue: "UP-ELIG-08", needsFutureSchema: false, verified: false, note: "Bounded HSSC/Intermediate no-study prep executes separately. Direct one-/two-year conflict, completed degrees and alias classification remain source-blocked; no positive direct coverage." },
   { id: "FUTURE-Saudi-certificate-subtypes", family: "Saudi", issue: "UP-ELIG-09", needsFutureSchema: true, verified: false, note: "Exact certificate type/stream drives national, private-school, industrial, and graduate routes." },
 ];

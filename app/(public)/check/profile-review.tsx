@@ -19,6 +19,7 @@ import {
   isAnswered,
   isNumberStep,
   isIndiaStudyBranch,
+  isPakistanBranch,
   isTextStep,
   visibleSteps,
   withAnswer,
@@ -33,6 +34,7 @@ type ProfileReviewProps = {
 };
 
 const QUESTIONS: Record<StepId, string> = {
+ pkCertificate:'Exact certificate category',pkGroup:'Documentary group',pkSchoolCompletion:'School completion',pkTargetFamily:'Reported target family',pkTargetFamilyReference:'Target-family reference',pkStudyMode:'Reported study mode',pkStudyRegulations:'Study regulations',pkAnnualRecords:'Annual subject/marks records',pkSuccessfulYearsReference:'Successful-year records',pkRecognition:'Reported recognition assessment',pkRecognitionReference:'Recognition reference',pkTargetRelation:'Reported target relationship',pkTargetRelationReference:'Target reference',
   priorStudyMode: "Previous bachelor study mode", priorStudyRecognition: "Reported official recognition",
   priorStudyRecognitionReference: "Reported recognition assessment reference", priorStudyTargetRelation: "Reported official target relationship",
   priorStudyTargetRelationReference: "Reported target assessment reference",
@@ -89,7 +91,7 @@ const QUESTIONS: Record<StepId, string> = {
 export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 }));
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1, ...(initialAnswers.certificateCountry==='pk'?{pakistanVersion:1 as const,qualificationHistoryVersion:1 as const}:{}) }));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const steps = visibleSteps(answers);
@@ -148,7 +150,7 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
             aria-labelledby={`${step}-label`}
             type="number"
             inputMode="decimal"
-            step={step === "priorDegreeYears" || step === "yearsOfUniversityStudy" ? "any" : undefined}
+            step={step === "priorDegreeYears" || step === "yearsOfUniversityStudy" || step === "schoolGradePercent" ? "any" : undefined}
             min={config.min}
             max={config.max}
             placeholder={config.placeholder}
@@ -163,8 +165,9 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
           {"suffix" in config && (
             <span className={styles.percentSuffix}>{config.suffix}</span>
           )}
+          {step === 'schoolGradePercent' && isPakistanBranch(answers) && <button type="button" aria-pressed={answers[step]===null} onClick={()=>select(step,null)}>Cannot confirm overall percentage</button>}
           {answers.ibVersion===1 && ['ibExamYear','ibSchoolYears','ibTotalPoints'].includes(step) && <button type="button" aria-pressed={answers[step]===null} onClick={()=>select(step,null)}>Cannot confirm</button>}
-          {step === "yearsOfUniversityStudy" && isIndiaStudyBranch(answers) && <button type="button" aria-pressed={answers[step] === null} onClick={() => select(step, null)}>Cannot establish successful academic years</button>}
+          {step === "yearsOfUniversityStudy" && (isIndiaStudyBranch(answers)||isPakistanBranch(answers)) && <button type="button" aria-pressed={answers[step] === null} onClick={() => select(step, null)}>Cannot establish successful academic years</button>}
         </div>
       );
     }

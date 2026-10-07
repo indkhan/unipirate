@@ -4,6 +4,7 @@
 // and merges outcomes. Missing rules produce explicit `unknown` outcomes with
 // confirm-with-the-official-source messages; the engine never guesses.
 import { z } from "zod";
+import { derivePakistanFacts, PK_FACT_KEYS, type PakistanProfile, type PakistanStudy } from "./pakistan";
 import { type IbProfile, deriveIbFacts, IB_FACT_LABELS, IB_SOURCE } from "./ib";
 import { gceEntry, gceIndependent, triples } from "./gce";
 import { calendarDay } from "./calendar-day";
@@ -14,6 +15,7 @@ import { DmatProfileSchema, type DmatProfile } from "./dmat";
 export type Term = "winter" | "summer";
 
 export type Profile = {
+  pakistan?: PakistanProfile;
   targetDegree: "bachelor" | "master";
   intake?: { term: Term; year: number };
   nationality?: string; // 'in' | 'pk' | 'sa' | ...
@@ -53,6 +55,7 @@ export type Profile = {
     degreeYears?: number;
     completedYears?: number;
     completion?: "completed" | "in_progress" | "discontinued";
+    pakistanStudy?: PakistanStudy;
     indiaStudyRouteVersion?: 1;
     priorStudyMode?: "regular" | "distance_online" | "other" | "unknown";
     priorStudyRecognition?: "reported_official_confirmed" | "reported_official_rejected" | "unknown";
@@ -131,6 +134,7 @@ const ConditionSchema = z.union([
 type Condition = z.infer<typeof ConditionSchema>;
 
 const FactKeySchema = z.enum([
+  ...PK_FACT_KEYS,
   "in_class12_prior_study_kind", "in_class12_prior_study_country", "in_class12_successful_bachelor_years",
   "in_class12_study_mode", "in_class12_reported_recognition", "in_class12_reported_target_relation",
   "dmat_qualification_scope", "dmat_procedure", "dmat_field_basis",
@@ -496,6 +500,7 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
       "computer_science",
     );
   }
+  Object.assign(raw, derivePakistanFacts(p));
   const facts: Record<string, Fact> = {};
   for (const [k, v] of Object.entries(raw)) if (v !== undefined) facts[k] = v;
   return facts;
@@ -625,6 +630,23 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   }
 
   const path = resolve<Result["path"]>("path") ?? "unknown";
+  if (path === 'unknown' && profile.targetDegree === 'bachelor' && profile.curriculumType === 'national' && (profile.certificateCountry === 'pk' || profile.schoolQualification?.country === 'pk')) {
+    // Explain failed reviewed conditions; thresholds and family mappings stay in data.
+    const candidates = live.filter(r => r.conditions.pk_prior_study_kind === 'none' && r.outcomes.path === 'studienkolleg');
+    const applicableGroup = candidates.filter(r=>r.conditions.pk_documentary_group===facts.pk_documentary_group);
+    const comparisons = (applicableGroup.length ? applicableGroup : candidates).map(rule => ({rule,failed:Object.entries(rule.conditions).filter(([key,cond])=>!conditionPasses(facts[key],cond))})).sort((a,b)=>a.failed.length-b.failed.length);
+    const nearest = comparisons[0];
+    if(nearest && !matched.some(r=>r.conditions.pk_prior_study_kind!==undefined && r.outcomes.path!==undefined)) {
+      const labels:Record<string,string>={aps_issuer_country:'actual qualification issuer',aps_qualification_context:'national qualification context',pk_certificate:'exact HSSC/Intermediate certificate category (FSc/FA/ICom/ICS aliases are not classified)',pk_documentary_group:'documentary Science/Commerce/Humanities group (mixed/unclassified needs assessment)',pk_school_completion:'completed twelve grades',pk_grade_percent:'overall percentage',pk_prior_study_kind:'explicit prior-study answer',pk_target_family:'reported intended target family and applicable reference (outside the preparatory subject scope needs assessment)'};
+      const detail=nearest.failed.map(([key,cond])=>{
+        if(facts[key]===undefined || facts[key]==='unknown')return (labels[key]??key)+' missing or uncertain';
+        if(key==='pk_grade_percent' && typeof cond==='object' && cond.op==='gte')return String(cond.value)+'% condition unmet for this formula; other qualifications require separate assessment';
+        return (labels[key]??key)+' does not meet this bounded formula';
+      }).join('; ');
+      const diagnostic='Pakistan preparatory route unresolved: '+detail+'. Confirm with '+nearest.rule.source_url;
+      unknowns.push(diagnostic);cite(nearest.rule,'unknowns',diagnostic);
+    }
+  }
   if (path === 'unknown' && profile.targetDegree === 'bachelor' && profile.curriculumType === 'gce') {
     // Diagnostics reuse published criteria; no catalogue or threshold can publish
     // a path on its own. Pick the smallest failed-condition set for this target.

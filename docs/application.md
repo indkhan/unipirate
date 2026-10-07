@@ -792,3 +792,50 @@ New and edited IB bachelor answers carry `ibVersion: 1`; historical answers rema
 `scripts/ib.rules.ts` contains only draft candidates with null publication metadata. Disposable reviewed fixture copies activate the official acceptance corpus; bootstrap never publishes them. The evaluator quarantines old unscoped IB path shortcuts, including automatic Studienkolleg outcomes. Missing ordinary prerequisites yield targeted unknowns; KMK section 2 alternatives require separate reviewed scope. Current-annex coverage applies to historical examinations as directed by the KMK index. The explicit draft intake coverage starts Winter 2025; earlier intakes and examination years before 2013 remain unknown pending review.
 
 See [IB source verification](ib-source-verification.md) for authority, source versions, effective sessions and unresolved limits. The executable IB corpus is activated in UP-TEST-01; final parent official coverage remains OPEN. No DB, publication, server-shell or version-selection interface was changed.
+
+
+### Pakistan bounded preparatory assessment (UP-ELIG-08)
+
+New Pakistan drafts and profile edits carry `pakistanVersion: 1` with required
+qualification history. Legacy saved-result reads remain unversioned/readable.
+For national Bachelor study, actual issuing country/context precedes exact
+HSSC/Intermediate/title category, twelve-grade completion, documentary group and
+overall percentage. Unknown percentage is explicit and distinct from an absent
+answer. FSc/FA/ICom/ICS and mixed titles never infer a group. GCE/IB remain
+independent qualification contracts. Target-family reports require a programme or
+institution reference; no field-string mapping establishes programme eligibility.
+
+Pure `lib/engine/pakistan.ts` validates direct callers and derives fourteen narrowly
+scoped `pk_*` semantic facts. Generic legacy history/recognition keys remain
+inactive. Existing `qualificationHistory` preserves degree duration, actual
+successful study, completion, institution, country and field; its Pakistan report
+records mode, regulations, annual subject/marks evidence and applicable reported
+recognition/target assessments. Those are applicant reports, never app verification.
+Elapsed time, two semesters, names, HEC attestation, degree completion and matching
+fields do not establish successful academic years, recognition or relatedness.
+
+The three prep candidates require HSSC/Intermediate, twelve grades, >=50%,
+explicit no study and an intended family within the stated restriction. Thresholds
+and family membership stay in `scripts/pakistan.rules.ts`. The citation claim
+explicitly names Medicine/Natural Sciences/Technology, Social Sciences/Economics
+or Humanities and the subject-restricted preparatory/FSP nature. Below threshold
+means only this formula is unmet. Pure diagnostics compare published candidate
+conditions, prefer the reported documentary group and identify missing scope or
+outside-family requests without assigning an unsupported admission result.
+
+Current DAAD Science 195 and Commerce 199 say one successful academic year, while
+the still-linked 2022 PDF says two. Both source records resolve to cited unknown;
+no positive direct candidate is published or simulated as official acceptance.
+Humanities 206, completed qualifications/Master's, aliases and irregular study
+remain targeted unknown. The prior-study conflict differs from completed
+two-year-degree equivalence. See [source verification](up-elig-08-source-verification.md).
+Verification date is not effective intake; institution final assessment remains.
+
+Issuer/curriculum/certificate/group/history edits invalidate dependent reports;
+target edits clear subject-family/relationship evidence. Restoration upgrades PK
+drafts and stops at newly missing questions; hidden answers prune to stability.
+Passport/visa edits preserve academic evidence. No storage migration, task mutation,
+live-rule change or consumer/RLS repair occurs. Twelve new candidates remain
+drafts with null publication/effective-intake metadata. TEST-01 activates only
+bounded verified prep expectations on disposable copies; parent direct gate stays
+BLOCKED and broader TEST coverage stays OPEN.

@@ -1,3 +1,4 @@
+import { PAKISTAN_PREP_ACCEPTANCE, reviewedPakistanRules } from "./pakistan.fixture";
 // UP-TEST-01 harness runner: CURRENT rows are green acceptance on the
 // baseline (no skips/todo); FUTURE rows are data only, never executed.
 // Pure: evaluate() + fixture data. Zero I/O.
@@ -53,6 +54,7 @@ export function assertExpected(c: CurrentExpectation, r: Result): void {
 }
 
 describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
+  it.each(PAKISTAN_PREP_ACCEPTANCE)('UP-ELIG-08 bounded official $id',c=>{const r=evaluate(c.profile,reviewedPakistanRules());expect(r.path).toBe(c.path);expect(r.citations.map(s=>s.sourceUrl)).toContain('https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=6&ad-layerId='+c.sourceId);});
   it.each(IB_ACCEPTANCE)('UP-ELIG-02 official $id',c=>{const r=evaluate(c.profile,fixtureRules);expect(r.path).toBe(c.path);if(c.reason)expect(r.unknowns.join(' ')).toMatch(c.reason)});
   it.each(GCE_ACCEPTANCE)('UP-ELIG-01 accepted $id',c=>{const r=evaluate(c.profile,fixtureRules);expect(r.path).toBe(c.path);if(c.reason)expect(r.unknowns.some(n=>c.reason!.test(n))).toBe(true)});
   it.each(INDIA_STUDY_ACCEPTANCE)("UP-ELIG-03 accepted $id [$kind]", c => {
@@ -86,7 +88,7 @@ describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
   });
 
   it("version, cited sources, and future-spec index", () => {
-    expect(HARNESS_VERSION).toBe("up-test-01/v1-current-behavior.3");
+    expect(HARNESS_VERSION).toBe("up-test-01/v1-current-behavior.4-pk-bounded");
     expect(HARNESS_BASELINE_SHA).toBe(
       "951ab821920497443cd66dfc7917d044a1f00159",
     );

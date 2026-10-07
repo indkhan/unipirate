@@ -187,3 +187,14 @@ it("restores an issuer edit and retains only its diagnostic marker across valida
   expect(profile.qualificationHistory).not.toHaveProperty("priorStudyTargetRelation");
   expect(profile.apsProcedure).toBeUndefined();
 });
+
+it('upgrades saved Pakistan drafts and stops at the exact certificate without aliasing FSc',()=>{
+ const saved={qualificationHistoryVersion:1,targetDegree:'bachelor',nationality:'pk',certificateCountry:'pk',visaApplicationCountry:'pk',curriculumType:'national',board:'fsc',schoolGradePercent:78,schoolQualificationCountry:'pk',schoolQualificationContext:'national',hasPriorUniversityStudy:false,targetField:'cs',intake:null,apsApplicationContext:'unknown'};
+ const restored=recover(JSON.stringify({answers:saved,stepIndex:99}),'pk');const a=restored.answers as PartialAnswers;
+ expect(a.pakistanVersion).toBe(1);expect(a.pkCertificate).toBeUndefined();expect(a.board).toBeUndefined();expect(restored.stepIndex).toBe(visibleSteps(a).indexOf('pkCertificate'));expect(restored.removeItem).not.toHaveBeenCalled();
+});
+it('Pakistan account edits upgrade legacy records and require explicit certificate/group evidence',()=>{
+ captured.initial=[];renderToStaticMarkup(React.createElement(ProfileReview,{initialAnswers:{qualificationHistoryVersion:1,targetDegree:'bachelor',nationality:'pk',certificateCountry:'pk',curriculumType:'national',board:'fsc'}}));expect(captured.initial[0]).toMatchObject({pakistanVersion:1});expect(captured.initial[0]).not.toHaveProperty('pkCertificate');
+});
+
+it('upgrades unversioned Pakistan drafts into required history without retaining legacy board',()=>{const restored=recover(JSON.stringify({answers:{targetDegree:'bachelor',certificateCountry:'pk',nationality:'pk',visaApplicationCountry:'pk',curriculumType:'national',board:'fsc',schoolGradePercent:78,targetField:'cs',intake:null},stepIndex:99}),'pk');expect(restored.answers).toMatchObject({pakistanVersion:1,qualificationHistoryVersion:1});expect(restored.answers).not.toHaveProperty('board');});
