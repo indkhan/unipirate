@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { RuleIdSchema, RuleVersionSchema, type RuleVersion } from "@/lib/rules/versioning";
 import { CourseCatalogueIdSchema, parseOfferingRow, parseOfferingVersionRow, parseProgrammeRow } from "@/lib/courses/offerings";
 // All user-facing database access lives here — pages, actions, and API routes
 // never build queries inline. Every helper takes a caller-scoped Supabase
@@ -26,6 +28,16 @@ type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
 /** Beta + verified rules — everything RLS exposes to the public. */
 export async function getPublishedRules(db: Db): Promise<Tables<"rules">[]> {
   return unwrap(await db.from("rules").select());
+}
+
+/** Immutable history only; callers must select applicability explicitly before evaluation.
+ * getPublishedRules remains the phase-one compatibility API until all shells move together.
+ */
+export async function listRuleVersions(db: Db, ruleId?: string): Promise<RuleVersion[]> {
+ const id=ruleId===undefined?undefined:RuleIdSchema.parse(ruleId);
+ let query=db.from("rule_versions").select().order("version_number",{ascending:false});
+ if(id!==undefined)query=query.eq("rule_id",id);
+ return z.array(RuleVersionSchema).parse(unwrap(await query));
 }
 
 // ----------------------------------------------------------------- courses

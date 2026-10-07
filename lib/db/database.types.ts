@@ -44,6 +44,7 @@ export type Database = {
           old_status: string | null
           programme_correction: Json | null
           row_id: string
+          rule_publication: Json | null
           table_name: string
         }
         Insert: {
@@ -55,6 +56,7 @@ export type Database = {
           old_status?: string | null
           programme_correction?: Json | null
           row_id: string
+          rule_publication?: Json | null
           table_name: string
         }
         Update: {
@@ -66,6 +68,7 @@ export type Database = {
           old_status?: string | null
           programme_correction?: Json | null
           row_id?: string
+          rule_publication?: Json | null
           table_name?: string
         }
         Relationships: []
@@ -516,6 +519,122 @@ export type Database = {
           },
         ]
       }
+      rule_drafts: {
+        Row: {
+          edited_at: string
+          edited_by: string | null
+          effective_from: string | null
+          effective_until: string | null
+          intake_from: number | null
+          intake_until: number | null
+          raw_snapshot: Json
+          revision: number
+          rule_id: string
+        }
+        Insert: {
+          edited_at?: string
+          edited_by?: string | null
+          effective_from?: string | null
+          effective_until?: string | null
+          intake_from?: number | null
+          intake_until?: number | null
+          raw_snapshot: Json
+          revision?: number
+          rule_id: string
+        }
+        Update: {
+          edited_at?: string
+          edited_by?: string | null
+          effective_from?: string | null
+          effective_until?: string | null
+          intake_from?: number | null
+          intake_until?: number | null
+          raw_snapshot?: Json
+          revision?: number
+          rule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rule_drafts_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: true
+            referencedRelation: "rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rule_versions: {
+        Row: {
+          captured_at: string | null
+          draft_revision: number | null
+          effective_from: string | null
+          effective_until: string | null
+          id: string
+          intake_from: number | null
+          intake_until: number | null
+          provenance: string
+          published_at: string | null
+          raw_snapshot: Json
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rule_id: string
+          status: Database["public"]["Enums"]["rule_status"]
+          supersedes_version_id: string | null
+          version_number: number
+        }
+        Insert: {
+          captured_at?: string | null
+          draft_revision?: number | null
+          effective_from?: string | null
+          effective_until?: string | null
+          id?: string
+          intake_from?: number | null
+          intake_until?: number | null
+          provenance: string
+          published_at?: string | null
+          raw_snapshot: Json
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rule_id: string
+          status: Database["public"]["Enums"]["rule_status"]
+          supersedes_version_id?: string | null
+          version_number: number
+        }
+        Update: {
+          captured_at?: string | null
+          draft_revision?: number | null
+          effective_from?: string | null
+          effective_until?: string | null
+          id?: string
+          intake_from?: number | null
+          intake_until?: number | null
+          provenance?: string
+          published_at?: string | null
+          raw_snapshot?: Json
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rule_id?: string
+          status?: Database["public"]["Enums"]["rule_status"]
+          supersedes_version_id?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rule_versions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rule_versions_rule_id_supersedes_version_id_fkey"
+            columns: ["rule_id", "supersedes_version_id"]
+            isOneToOne: false
+            referencedRelation: "rule_versions"
+            referencedColumns: ["rule_id", "id"]
+          },
+        ]
+      }
       rules: {
         Row: {
           conditions: Json
@@ -677,6 +796,39 @@ export type Database = {
           title: string
         }[]
       }
+      publish_rule_version: {
+        Args: {
+          p_approval_status: Database["public"]["Enums"]["rule_status"]
+          p_expected_draft_revision: number
+          p_expected_predecessor_id: string
+          p_expected_raw_snapshot: Json
+          p_rule_id: string
+        }
+        Returns: {
+          captured_at: string | null
+          draft_revision: number | null
+          effective_from: string | null
+          effective_until: string | null
+          id: string
+          intake_from: number | null
+          intake_until: number | null
+          provenance: string
+          published_at: string | null
+          raw_snapshot: Json
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rule_id: string
+          status: Database["public"]["Enums"]["rule_status"]
+          supersedes_version_id: string | null
+          version_number: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rule_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       remove_my_course: { Args: { course_id: string }; Returns: undefined }
       resolve_course_conflict: {
         Args: { p_keep_new: boolean; p_new_course_id: string }
@@ -703,6 +855,10 @@ export type Database = {
         Returns: boolean
       }
       valid_offering_source_urls: { Args: { facts: Json }; Returns: boolean }
+      valid_rule_publication_snapshot: {
+        Args: { at_time: string; logical_id: string; value: Json }
+        Returns: boolean
+      }
     }
     Enums: {
       course_application_route:

@@ -12,7 +12,8 @@ import type {
   TablesInsert,
   TablesUpdate,
 } from "@/lib/db/database.types";
-import { EngineRuleSchema } from "@/lib/engine/evaluate";
+import { z } from "zod";
+import { DraftSaveSchema, RawRuleSchema, RuleDraftSchema, RuleIdSchema, RuleVersionSchema, jsonEqual, preflightPublication, type RuleDraft, type RuleVersion } from "@/lib/rules/versioning";
 import { toCourseTaskDefinition } from "@/lib/tasks/course-tasks";
 import {
   generateCourseTasks,
@@ -31,76 +32,55 @@ export type AdminRuleFilters = {
   status?: Enums<"rule_status">;
 };
 
-export async function listAdminRules(
-  db: Db,
-  filters: AdminRuleFilters,
-): Promise<Tables<"rules">[]> {
-  let query = db
-    .from("rules")
-    .select()
-    .order("updated_at", { ascending: false });
-
-  if (filters.country) {
-    query = query.eq("country_code", filters.country);
-  }
-
-  if (filters.status) {
-    query = query.eq("status", filters.status);
-  }
-
-  return unwrap(await query);
+export type AdminRule = z.infer<typeof RawRuleSchema> & { draft: RuleDraft; versions: RuleVersion[] };
+function adminRule(draft: RuleDraft, versions: RuleVersion[]): AdminRule {
+ const raw = RawRuleSchema.parse(draft.raw_snapshot);
+ if(raw.id!==draft.rule_id) throw new Error("Workspace logical identity mismatch.");
+ return {...raw,draft,versions};
 }
-
-export async function getAdminRule(
-  db: Db,
-  id: string,
-): Promise<Tables<"rules">> {
-  return unwrap(await db.from("rules").select().eq("id", id).single());
+export async function listAdminRules(db: Db, filters: AdminRuleFilters): Promise<AdminRule[]> {
+ const [draftRows,versionRows]=await Promise.all([
+  db.from("rule_drafts").select().order("edited_at",{ascending:false}),
+  db.from("rule_versions").select().order("version_number",{ascending:false}),
+ ]);
+ const versions=z.array(RuleVersionSchema).parse(unwrap(versionRows));
+ return z.array(RuleDraftSchema).parse(unwrap(draftRows)).map(draft=>adminRule(draft,versions.filter(v=>v.rule_id===draft.rule_id)))
+  .filter(rule=>(!filters.country||rule.country_code===filters.country)&&(!filters.status||rule.status===filters.status));
 }
-
-export async function updateAdminRule(
-  db: Db,
-  id: string,
-  rule: Pick<
-    TablesUpdate<"rules">,
-    | "conditions"
-    | "country_code"
-    | "last_verified_at"
-    | "outcomes"
-    | "source_url"
-    | "source_quote"
-    | "notes"
-    | "status"
-  >,
-): Promise<Tables<"rules">> {
-  return unwrap(
-    await db.from("rules").update(rule).eq("id", id).select().single(),
-  );
+export async function getAdminRuleDraft(db:Db,id:string):Promise<RuleDraft> {
+ return RuleDraftSchema.parse(unwrap(await db.from("rule_drafts").select().eq("rule_id",RuleIdSchema.parse(id)).single()));
 }
-
-export async function reverifyAdminRule(
-  db: Db,
-  id: string,
-): Promise<Tables<"rules">> {
-  const existing = await getAdminRule(db, id);
-  const parsed = EngineRuleSchema.safeParse(existing);
-  if (!parsed.success) {
-    throw new Error(
-      `Rule cannot be verified until its schema errors are fixed: ${parsed.error.message}`,
-    );
-  }
-
-  return unwrap(
-    await db
-      .from("rules")
-      .update({
-        status: "verified",
-        last_verified_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .select()
-      .single(),
-  );
+export async function listAdminRuleVersions(db:Db,id:string):Promise<RuleVersion[]> {
+ return z.array(RuleVersionSchema).parse(unwrap(await db.from("rule_versions").select().eq("rule_id",RuleIdSchema.parse(id)).order("version_number",{ascending:false})));
+}
+export async function getAdminRule(db:Db,id:string):Promise<AdminRule> {
+ const [draft,versions]=await Promise.all([getAdminRuleDraft(db,id),listAdminRuleVersions(db,id)]);
+ return adminRule(draft,versions);
+}
+export class RuleReviewStaleError extends Error {
+ constructor(){super("Rule draft or predecessor changed; reload and review again. Your changes were not published.");}
+}
+/** Compare-and-save the workspace only. DB stamps its revision, editor and time. */
+export async function updateAdminRule(db:Db,input:unknown):Promise<RuleDraft> {
+ const values=DraftSaveSchema.parse(input);
+ const result=await db.from("rule_drafts").update({raw_snapshot:values.next_snapshot,
+  effective_from:values.effective_from,effective_until:values.effective_until,intake_from:values.intake_from,intake_until:values.intake_until})
+  .eq("rule_id",values.rule_id).eq("revision",values.revision).eq("raw_snapshot",JSON.stringify(values.raw_snapshot)).select().maybeSingle();
+ const row=unwrap(result);if(!row)throw new RuleReviewStaleError();
+ return RuleDraftSchema.parse(row);
+}
+/** Preflight exact raw data, compare review tokens, then append through the protected RPC. */
+export async function publishAdminRuleVersion(db:Pick<SupabaseClient<Database>,"from"|"rpc">,input:unknown):Promise<RuleVersion> {
+ const approval=preflightPublication(input);
+ const [draft,versions]=await Promise.all([getAdminRuleDraft(db,approval.rule_id),listAdminRuleVersions(db,approval.rule_id)]);
+ if(draft.revision!==approval.revision||!jsonEqual(draft.raw_snapshot,approval.raw_snapshot)||(versions[0]?.id??null)!==approval.predecessor_id)throw new RuleReviewStaleError();
+ preflightPublication({...approval,raw_snapshot:draft.raw_snapshot});
+ const response=await db.rpc("publish_rule_version",{p_rule_id:approval.rule_id,p_expected_draft_revision:approval.revision,
+  p_expected_raw_snapshot:draft.raw_snapshot,p_expected_predecessor_id:approval.predecessor_id as string,p_approval_status:approval.approval_status});
+ // Trade-off: generated RPC types spell the nullable SQL predecessor as string; null is the
+ // explicit first-publication token required by the DB contract, never a UUID substitute.
+ if(response.error&&/rule (draft|predecessor) changed/.test(response.error.message))throw new RuleReviewStaleError();
+ return RuleVersionSchema.parse(unwrap(response));
 }
 
 export async function listPendingCourses(

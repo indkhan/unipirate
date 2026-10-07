@@ -780,3 +780,56 @@ The pure reviewed catalogue `lib/engine/gce.ts` supplies List A/B/C identities, 
 Positive GCE records need explicit system/type/evidence/intake scope. Unscoped historical positive records remain available as source-review unknowns rather than silently supplying applicability. Twelve source-reviewed candidates in `scripts/gce.rules.ts` remain drafts, with literal source quotes and null publication metadata. Disposable fixture copies activate the supported GCE acceptance corpus; parent TEST future coverage remains open. Catalogue facts alone cannot establish a path without a published rule.
 
 Science, medicine/pharmacy and arts target groups follow DAAD's named categories. Cambridge's favourable new-formula coverage starts SS2022 and its ordinary transition is SS2024; other bodies are limited to explicit current checker intakes as coverage, not an invented source effective date. National-system, historical, List C programme mapping, Pre-U/AICE/provisional and unclassified-programme variants stay targeted unknowns. See [source verification](up-elig-01-source-verification.md) for applicability, contradictions and authority limits. No migration, publication, seed, KB rebuild, task/application or personal-progress write occurs.
+
+### Immutable rule administration and selection (UP-RULES-01 phase one)
+
+The admin rule workspace reads rule_drafts and immutable rule_versions,
+not the rules compatibility mirror. Saving writes only the full raw draft
+and applicability bounds, guarded by its displayed revision and raw JSON token.
+Database triggers own revision, editor and edit time. Editing keeps draft status;
+it does not approve the snapshot. The complete raw JSON editor retains fields
+that a projected editor could otherwise omit. Malformed domain conditions may
+be saved for repair but cannot be published.
+
+Publication is a separate explicit beta/verified choice and confirmation of the
+saved snapshot, literal evidence, source verification date, diff and bounds.
+last_verified_at is supplied source verification metadata, never stamped by
+save/publication. The protected publish_rule_version RPC receives logical ID,
+exact raw snapshot, expected revision and predecessor, and approval status. The
+app preflights the actual raw object with EngineRuleSchema before any RPC
+mutation. It never replaces the token with a projected rule. Database-owned
+reviewer/publication time, immutable successor, audit event and compatibility
+mirror are atomic. Reverification appends a successor. Stale tokens prompt
+reload and review. Course administration retains its existing helpers.
+
+lib/rules/versioning.ts provides pure boundaries, literal diff, explicit
+UTC assessment-instant conversion, selection and impact preview. Date and
+intake intervals are half-open. Intake index is year × 2 + summer 0 / winter 1.
+Assessment applicability is independent of APS/dMAT applicant event dates.
+Selection resolves the newest applicable version per stable logical UUID before
+condition matching. Replacement condition failure cannot revive a predecessor
+within replacement scope; predecessors remain eligible outside it. Missing
+distinguishing intake yields a diagnostic. Human null bounds mean reviewed
+unbounded scope. Legacy null bounds remain unknown historical scope; legacy
+capture time and stored source dates do not establish human publication.
+Selected rules keep logical IDs for citations/task keys; selected version IDs
+carry immutable provenance. Invalid applicable publications fail closed without
+predecessor fallback. Diffs ignore object key order while retaining array order,
+whitespace, literal text, evidence, conditions, outcomes, status and scope.
+
+listRuleVersions in lib/db/queries.ts is an isolated caller-scoped history
+reader. It intentionally performs no status/applicability selection. Existing
+getPublishedRules behavior is unchanged until phase two moves all consumers
+together. previewRuleImpact evaluates only caller-provided before/after
+profiles and selected rules; it counts changed assessments and new resolved
+outcome coverage, including an assessment with no old match. It performs no
+student-data reads, writes, notifications or task reconciliation.
+
+This bounded milestone does not yet make original checks authoritative. The
+existing result/current-reassessment behavior described above remains until
+phase two wires checker/profile/intake/date paths, server-owned immutable check
+metadata/history lookups, original-vs-current display and assistant/KB projection.
+Legacy check JSON must not be retrospectively attributed to captured versions.
+No publication, embedding, schema application or automatic task/application/
+personal-progress update occurs in this code change. Parent UP-RULES-01 remains
+open; do not merge the schema write freeze without completed application wiring.
