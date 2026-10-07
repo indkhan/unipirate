@@ -1,0 +1,26 @@
+# UP-ELIG-04 source contract
+
+Fresh public verification: **2026-10-07**. Retrieval date is not an effective intake. No live database or Anabin access was used. Public inventory is metadata, not admission proof.
+
+| Official source | Short literal evidence | Applicability and limits |
+| --- | --- | --- |
+| [uni-assist India](https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/) | “JEE results are only relevant if you have successfuly passed the JEE Main AND Advanced.” | India school-leaving X+II application documents. Necessary qualifying passage in each exam; not a complete recognition rule or numeric score conversion. No JEE-specific effective intake stated. |
+| [DAAD India bachelor guidance](https://www.daad.in/en/study-research-in-germany/studying-in-germany/bachelor-studies/) | “technology and natural sciences”; “may apply directly to a German university for subject-specific course” | General Advanced route and university assessment. No exhaustive certificate/board coverage or JEE effective intake stated. |
+| [DAAD bachelor brochure](https://www.daad.in/files/2022/08/Bachelor_IBN_2026-1.pdf) | “Successfully clearing the IIT Joint Entrance Examination (Advance)” | Page 2 repeats technology/natural-science scope; page 1 print-run September 2025. The 2026 filename is not an effective intake. |
+| [APS checklist index](https://aps-india.de/checklists/) and [JEE leaflet](https://aps-india.de/wp-content/uploads/2023/05/Leaflet-JEE_English-1.pdf) | “Valid as of April 2023”; “Proof of passing the Joint Entrance Examination (JEE) Main und Advanced along with the Admit Card” | Class X/XII certificates and marksheets plus JEE evidence for APS document verification. April 2023 is leaflet validity, not a German admission intake. |
+| [APS news](https://aps-india.de/news/) | “These updated criteria will apply to admissions beginning with Winter Semester 2026/2027.” | February 23 notice: database update effective March 15, 2026, ordinary Class XII/bachelor-year criteria including 70%. Does not expressly settle JEE-specific threshold or below-70 exemption. March 16 completed-document guidance does not establish future results. |
+| [APS FAQ](https://aps-india.de/faqs/) | “The applicant’s nationality is not the decisive factor.” | Indian academic-document assessment. Nationality/visa cannot establish academic passage or German recognition exceptions. |
+| [JEE Advanced 2026 foreign guidance](https://jeeadv.ac.in/foreign.html) | “NOT required to write JEE (Main) 2026” | Certain foreign/OCI/PIO entry categories for the Indian examination. No German recognition exemption established. |
+| [JEE Advanced 2026 information brochure](https://jeeadv.ac.in/documents/IBEnglish_2026.pdf) | “minimum prescribed marks in each subject AND also in aggregate” | Section 22 distinguishes qualifying marks from mere results/rank possession. Preparatory lists and subsequent-year entry are distinct; no German equivalence established. Numeric thresholds are not encoded. |
+
+## Narrow correction and pending publication
+
+The backlog's unconditional both-passes plus technical direct subject-restricted expectation exceeds verified applicability. Both qualifying passages are necessary for the ordinary contract, but certificate/qualification coverage, reviewed target-field membership and effective intake remain unresolved. The checker asks reported qualifying passage separately: passed/not_passed/no_result/unknown. It never converts scores, percentiles, rank, results or historical jeeAdvanced true into either passage.
+
+Main exemptions, foreign-entry situations, preparatory ranks, cross-year evidence and unclear results require individual assessment; no German exception is invented. A negative/missing JEE answer excludes only JEE. Independent reviewed university-year and school routes retain their own prerequisites; no missing JEE establishes Studienkolleg. There is no JEE-specific 70% threshold or below-70 exemption in code.
+
+The published inventory's legacy in-jee-advanced-direct route (ID df155c8a-8522-459b-b572-51033b93492d) is runtime-quarantined when its positive path lacks the separate passages and explicit applicability. Its source/date remain review citations with an unknown claim. Other independently supported process outcomes are retained. No live record is changed.
+
+Bootstrap replaces the unsafe automatic route with a draft, note-only review candidate carrying the literal uni-assist quote, verification date and no positive path. Published ordinary India03 alternatives remain independent; draft school candidates no longer use historical JEE false as an admission prerequisite. Publication requires official review of certificate/issuer/context/board, technology/natural-science target inclusion and effective intake. The engine requires explicit inclusion scope, not exclusion-only field/certificate conditions.
+
+Executable official JEE cases assert only verified necessary facts and targeted unknowns. Complete positive matcher coverage is clearly labeled artificial unpublished specification data (example.org), never official passing coverage. Parent official acceptance coverage remains OPEN pending publication review.

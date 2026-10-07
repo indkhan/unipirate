@@ -29,7 +29,7 @@ const APS_TRANSITION_CONDITIONS = {
   target_degree: "bachelor", curriculum: "national",
   aps_issuer_country: "in", aps_qualification_context: "national",
   board: { op: "in", value: INDIAN_BOARDS },
-  jee_advanced: false,
+  // UP-ELIG-04: the two ordinary Class XII routes are assessed independently of JEE.
   class12_percent: { op: "lt", value: 70 },
   intake_index: { op: "gte", value: WS_2026_27 },
 } as const;
@@ -138,25 +138,17 @@ export const ruleData: RuleRecord[] = [
       "From Winter Semester 2026/27, Class XII plus APS may qualify for subject-restricted admission via Studienkolleg when the certificate shows at least 70%.",
     last_verified_at: SOURCE_CHECKED_AT,
   },
+  // UP-ELIG-04: source-backed contract, not a publishable positive route.
+  // Certificate prerequisites, reviewed field membership and intake coverage
+  // are still unresolved; retrieval date is not an effective-intake date.
   {
-    id: "in-jee-advanced-direct",
-    country: "in",
-    conditions: {
-      curriculum: "national",
-      board: { op: "in", value: INDIAN_BOARDS },
-      target_degree: "bachelor",
-      jee_advanced: true,
-    },
-    outcomes: {
-      path: "subject_restricted",
-      note: "A valid JEE Advanced result gives direct, subject-specific admission.",
-    },
-    status: "verified",
-    source_url:
-      "https://www.daad.in/en/study-research-in-germany/studying-in-germany/bachelor-studies/",
-    source_quote:
-      "the sole exception is a valid JEE Advanced result (→ direct, subject-specific)",
-    last_verified_at: SOURCE_CHECKED_AT,
+    id: "in-jee-qualifying-pass-review", country: "in", status: "draft",
+    conditions: { target_degree: "bachelor", curriculum: "national",
+      jee_main_status: "passed", jee_advanced_status: "passed", jee_evidence_context: "ordinary" },
+    outcomes: { note: "Both reported qualifying passages do not alone establish JEE access. Confirm qualification/certificate, technology/natural-science target membership and applicable intake with uni-assist/the university. Programme admission is separate; neither a 70% JEE threshold nor a below-70 exemption is verified here." },
+    source_url: "https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/",
+    source_quote: "JEE results are only relevant if you have successfuly passed the JEE Main AND Advanced.",
+    last_verified_at: "2026-10-07T00:00:00Z",
   },
   {
     id: "in-70pct-insufficient-ws2026",

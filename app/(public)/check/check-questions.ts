@@ -10,6 +10,7 @@ import {
 } from "./steps";
 import { DMAT_FIELD_ENTRIES, DMAT_FIELD_SOURCE, DMAT_SOURCE } from "@/lib/engine/dmat";
 
+import { JEE_SOURCE } from "@/lib/engine/jee";
 import { IB_SOURCE } from "@/lib/engine/ib";
 
 export type Option = { value: unknown; label: string; key: string };
@@ -77,9 +78,12 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; so
     question: "What is your overall Class 12 result?",
     subtitle: "Your overall percentage across subjects.",
   },
+  jeeMainStatus: { question: "Have you successfully passed JEE Main?", subtitle: "Report confirmed qualifying passage from official examination evidence. A score, percentile, result sheet or eligibility to sit Advanced alone is not a confirmed pass. Choose Cannot confirm if the wording is unclear. Your report is not independently verified by UniPirate.", sourceUrl: JEE_SOURCE },
+  jeeAdvancedStatus: { question: "Have you successfully qualified in JEE Advanced?", subtitle: "Report official qualifying passage/rank, not merely a result, marks or participation. Preparatory ranks, unclear results or cross-year evidence need individual assessment; use the next evidence question.", sourceUrl: JEE_SOURCE },
+  jeeEvidenceContext: { question: "Does your JEE evidence need an exception or individual assessment?", subtitle: "Choose the relevant uncertainty even if an exam report says qualified. An Indian examination Main exemption or foreign-entry rule does not establish a German recognition exception. Certificate and intake applicability remain separate.", sourceUrl: JEE_SOURCE },
   jeeAdvanced: {
     question: "Do you have a valid JEE Advanced result?",
-    subtitle: "A qualifying JEE Advanced rank changes your admission path.",
+    subtitle: "Historical answer only; new assessments require separate Main and Advanced qualifying passage.",
   },
   hasExistingApsCertificate: {
     question: "Do you already have an APS certificate?",
@@ -141,6 +145,20 @@ const countryOptions = COUNTRIES.map((c) => ({
  * their own bespoke inputs and return []. */
 export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
   switch (stepId) {
+    case "jeeMainStatus":
+    case "jeeAdvancedStatus": return [
+      {value:"passed",key:"passed",label:"Official evidence confirms qualifying passage"},
+      {value:"not_passed",key:"not_passed",label:"Not passed / not qualified"},
+      {value:"no_result",key:"no_result",label:"No result (not taken or pending)"},
+      {value:"unknown",key:"unknown",label:"Cannot confirm qualifying passage"},
+    ];
+    case "jeeEvidenceContext": return [
+      {value:"ordinary",key:"ordinary",label:"Ordinary qualifying evidence; no exception or uncertainty"},
+      {value:"main_exemption",key:"main_exemption",label:"Main exemption / direct foreign-entry exception"},
+      {value:"preparatory_rank",key:"preparatory_rank",label:"Preparatory-course rank only or unclear rank type"},
+      {value:"cross_year",key:"cross_year",label:"Results from different years / year applicability uncertain"},
+      {value:"unclear",key:"unclear",label:"Other unclear examination evidence"},
+    ];
     case 'ibDocumentStatus':return [{value:'awarded',key:'awarded',label:'Diploma awarded; final IBO document available'},{value:'official_results',key:'official_results',label:'Official IBO results confirm Diploma; physical document pending'},{value:'not_awarded',key:'not_awarded',label:'Diploma not awarded'},{value:'certificate',key:'certificate',label:'IB Certificate / course results only'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
     case 'ibExamSession':return [{value:'may',key:'may',label:'May'},{value:'november',key:'november',label:'November'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
     case 'ibSchooling':return [{value:'ascending_full_time',key:'ascending_full_time',label:'Ascending years at schools with full-time instruction'},{value:'other',key:'other',label:'Another schooling pattern'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
