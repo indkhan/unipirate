@@ -111,8 +111,9 @@ export const p10SaudiBachelor: Profile = {
 };
 
 // 11. A-Levels (CAIE) in Saudi Arabia: 3 AL (Math, Physics, CS) + 1 AS (English)
-//     → CS Bachelor's — direct subject-restricted; visa from Saudi → no APS
+//     → CS Bachelor's — direct subject-restricted; APS scope remains independent
 export const p11ALevelsInSaudi: Profile = {
+  intake: {term:"winter",year:2026},
   targetDegree: "bachelor",
   nationality: "pk",
   certificateCountry: "sa",
@@ -120,6 +121,7 @@ export const p11ALevelsInSaudi: Profile = {
   gce: {
     awardingBody: "caie",
     schoolYears: 13,
+    qualificationContext: "british_international", qualificationType: "ial", evidence: "final",
     subjects: [
       {
         independenceGroup: "mathematics",
@@ -155,7 +157,7 @@ export const p11ALevelsInSaudi: Profile = {
   visaApplicationCountry: "sa",
 };
 
-// 12. A-Levels in Pakistan: 2 AL + 2 AS, no math/science AL → fails GCE formula → Studienkolleg
+// 12. A-Levels in Pakistan: 2 AL + 2 AS, no math/science AL → current unknown; formula unmet; alternatives require official review
 export const p12ALevelsInPakistan: Profile = {
   targetDegree: "bachelor",
   nationality: "pk",

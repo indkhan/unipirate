@@ -39,6 +39,7 @@ const p11Answers: Answers = AnswersSchema.parse({
   visaApplicationCountry: "sa",
   curriculumType: "gce",
   gceAwardingBody: "caie",
+  gceVersion:1,gceSchoolYears:13,gceQualificationContext:"british_international",gceQualificationType:"ial",gceEvidence:"final",
   gceSubjects: [
     { subjectId: "mathematics", level: "AL", grade: "A" },
     { subjectId: "physics", level: "AL", grade: "A" },
@@ -46,7 +47,7 @@ const p11Answers: Answers = AnswersSchema.parse({
     { subjectId: "english_language", level: "AS", grade: "A" },
   ],
   targetField: "cs",
-  intake: null,
+  intake: {term:"winter",year:2026},
 });
 
 /**
@@ -202,7 +203,8 @@ describe("visibleSteps", () => {
       "nationality",
       "visaApplicationCountry",
       "curriculumType",
-      "gceAwardingBody",
+      "gceQualificationContext", "gceQualificationType", "gceEvidence",
+      "gceAwardingBody", "gceSchoolYears",
       "gceSubjects",
       "targetField",
       "intake",

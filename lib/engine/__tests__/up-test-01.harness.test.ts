@@ -1,6 +1,7 @@
 // UP-TEST-01 harness runner: CURRENT rows are green acceptance on the
 // baseline (no skips/todo); FUTURE rows are data only, never executed.
 // Pure: evaluate() + fixture data. Zero I/O.
+import { GCE_ACCEPTANCE } from "./gce.fixture";
 import { describe, expect, it } from "vitest";
 
 import { evaluate, type Result } from "../evaluate";
@@ -51,6 +52,7 @@ export function assertExpected(c: CurrentExpectation, r: Result): void {
 }
 
 describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
+  it.each(GCE_ACCEPTANCE)('UP-ELIG-01 accepted $id',c=>{const r=evaluate(c.profile,fixtureRules);expect(r.path).toBe(c.path);if(c.reason)expect(r.unknowns.some(n=>c.reason!.test(n))).toBe(true)});
   it.each(INDIA_STUDY_ACCEPTANCE)("UP-ELIG-03 accepted $id [$kind]", c => {
     const r = evaluate(c.profile, reviewedIndiaStudyRules());
     expect(r.path).toBe(c.path);
@@ -95,7 +97,7 @@ describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
       }
     }
     expect(new Set(FUTURE.map((s) => s.family))).toEqual(
-      new Set(["GCE", "IB", "India", "Pakistan", "Saudi"]),
+      new Set(["IB", "India", "Pakistan", "Saudi"]),
     );
     const currentIds = new Set(CURRENT.map((c) => c.id));
     for (const s of FUTURE) {
