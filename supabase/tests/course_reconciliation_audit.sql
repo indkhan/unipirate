@@ -128,7 +128,7 @@ begin
   foreach supplied in array array['null::text[]','array[null]::text[]','array['''']::text[]','array[[''english'']]::text[]'] loop
     perform pg_temp.expect_state('select public.publish_course_research_version(''00000000-0000-4000-8000-000000000913'',''00000000-0000-4000-8000-000000000931'',0,2,' || supplied || ',decisions,draft) from reconciliation_fixture','23514');
   end loop;
-  foreach supplied in array array['null::jsonb','''null''::jsonb','''{}''::jsonb','''[null]''::jsonb','decisions->0 - ''reason''','jsonb_build_array(decisions->0 - ''reason'')','jsonb_build_array(decisions->0 - ''key'')','jsonb_set(decisions,''{0,key}'',''null'')','jsonb_set(decisions,''{0,reason}'',''null'')'] loop
+  foreach supplied in array array['null::jsonb','''null''::jsonb','''{}''::jsonb','''[null]''::jsonb','(decisions->0) - ''reason''','jsonb_build_array((decisions->0) - ''reason'')','jsonb_build_array((decisions->0) - ''key'')','jsonb_set(decisions,''{0,key}'',''null'')','jsonb_set(decisions,''{0,reason}'',''null'')'] loop
     perform pg_temp.expect_state('select public.publish_course_research_version(''00000000-0000-4000-8000-000000000913'',''00000000-0000-4000-8000-000000000931'',0,2,keys,' || supplied || ',draft) from reconciliation_fixture','23514');
   end loop;
   perform pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,keys,decisions) from reconciliation_fixture$q$,'42883');
