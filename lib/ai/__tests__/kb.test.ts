@@ -64,7 +64,8 @@ describe("ruleToChunk", () => {
     for (const rule of ruleData) {
       const chunk = ruleToChunk(bySlug(rule.id));
       expect(chunk.content.length).toBeGreaterThan(40);
-      expect(chunk.content).toContain(rule.outcomes.aps ? "scoped applicability unverified" : "Official source says:");
+      const legacyDmat = rule.outcomes.dmat === "not_required" && rule.conditions.has_existing_aps !== undefined && rule.conditions.dmat_procedure === undefined;
+      expect(chunk.content).toContain(rule.outcomes.aps ? "scoped applicability unverified" : legacyDmat ? "procedure applicability unverified" : "Official source says:");
       expect(chunk.source_url).toMatch(/^https:\/\//);
     }
   });

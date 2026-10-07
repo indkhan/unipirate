@@ -53,6 +53,21 @@ export type KbChunk = {
 // (see FactKeySchema in lib/engine/evaluate.ts). Unlisted keys fall back to
 // the key with underscores replaced by spaces.
 const FACT_LABELS: Record<string, string> = {
+  dmat_qualification_scope: "reported relevant previous-qualification scope",
+  dmat_procedure: "reported relevant APS procedure for dMAT",
+  dmat_field_basis: "reported previous-degree classification basis",
+  dmat_field_entry: "reported official affected-field group",
+  dmat_field_classification: "reported APS-confirmed previous-degree classification",
+  dmat_field_version: "APS affected-fields list version",
+  dmat_registration_status: "completed APS online-registration event status",
+  dmat_registration_day: "completed APS online registration date (YYYYMMDD; relevant procedure only)",
+  dmat_dispatch_status: "reported complete-document dispatch status",
+  dmat_complete_dispatch_day: "complete APS document dispatch date (YYYYMMDD; relevant procedure only)",
+  dmat_partnership_status: "reported official programme confirmation status",
+  dmat_completed_semesters: "actually completed bachelor semesters (not converted from years)",
+  dmat_prior_qualification_type: "reported previous qualification type for dMAT",
+  dmat_prior_degree_years: "reported previous qualification duration in years for dMAT",
+  dmat_prior_study_completion: "reported previous-study completion status for dMAT",
   aps_confirmed_submission_day: "reported APS-confirmed complete submission date (YYYYMMDD; relevant procedure only)",
   aps_submission_confirmation: "complete submission date confirmation for the relevant APS procedure",
   aps_issuer_country: "country of the relevant qualification issuer",
@@ -160,7 +175,9 @@ function renderOutcomes(outcomes: KbRule["outcomes"]): string[] {
   return lines;
 }
 
-export function ruleToChunk(rule: KbRule): KbChunk {
+export function ruleToChunk(rule: KbRule, options: { includeLegacyDmatQuote?: boolean } = {}): KbChunk {
+  const legacyDmat = rule.outcomes.dmat !== undefined && rule.conditions.has_existing_aps !== undefined &&
+    rule.conditions.dmat_procedure === undefined;
   const conditionLines = Object.entries(rule.conditions).map(([key, cond]) =>
     renderCondition(key, cond),
   );
@@ -168,8 +185,11 @@ export function ruleToChunk(rule: KbRule): KbChunk {
     conditionLines.length > 0
       ? `Applies when: ${conditionLines.join("; ")}.`
       : "Applies to all profiles.",
-    ...renderOutcomes(rule.outcomes),
-    `${rule.outcomes.aps ? "Stored legacy quote (scoped applicability unverified)" : "Official source says"}: "${rule.source_quote}"`,
+    ...renderOutcomes(legacyDmat ? { ...rule.outcomes,
+      dmat: options.includeLegacyDmatQuote === false ? "unknown" : undefined, note: undefined } : rule.outcomes),
+    ...(legacyDmat ? ["Legacy dMAT procedure applicability unverified: certificate possession alone does not establish an exemption for a new or unknown procedure."] : []),
+    ...((legacyDmat && options.includeLegacyDmatQuote === false) ? [] : [
+      `${rule.outcomes.aps ? "Stored legacy quote (scoped applicability unverified)" : legacyDmat ? "Stored legacy quote (procedure applicability unverified)" : "Official source says"}: "${rule.source_quote}"`]),
   ].join("\n");
 
   return {

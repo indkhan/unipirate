@@ -9,7 +9,11 @@ import * as personas from "./personas";
 
 // UP-ELIG-05 only: APS baseline scalars remain unknown pending explicit
 // issuer/scope review. Admission, dMAT and other expectations are unchanged.
-export const HARNESS_VERSION = "up-test-01/v1-current-behavior.1" as const;
+// UP-ELIG-07 corrects only the legacy certificate-only dMAT expectation:
+// same input, honest unknown; source limits exemption to the completed procedure.
+// This remains a milestone corpus; parent TEST coverage remains OPEN.
+export const HARNESS_VERSION = "up-test-01/v1-current-behavior.2" as const;
+export { DMAT_ACCEPTANCE } from "./dmat.fixture";
 export const HARNESS_BASELINE_SHA =
   "951ab821920497443cd66dfc7917d044a1f00159" as const;
 
@@ -262,8 +266,8 @@ export const CURRENT: CurrentExpectation[] = [
   {
     id: "DMAT-exception-existing-aps-exempt", family: "dMAT", kind: "exception",
     profile: { ...personas.p3Indian3yrBsc, hasExistingApsCertificate: true },
-    dMAT: "not_required",
-    assertedIn: "evaluate.test.ts: completed APS exempts dMAT",
+    dMAT: "unknown",
+    assertedIn: "evaluate.test.ts: legacy APS possession alone leaves dMAT unknown; APS dMAT completed-procedure clarification, checked 2026-10-07",
   },
   {
     id: "DMAT-missing-unstated-field-unknown", family: "dMAT", kind: "missing",
@@ -300,7 +304,6 @@ export const FUTURE: FutureSpec[] = [
   { id: "FUTURE-IB-grade3-compensation", family: "IB", issue: "UP-ELIG-02", needsFutureSchema: true, verified: false, note: "One compensated grade 3 passes where KMK rules allow; Math-SL school exceptions with effective sessions." },
   { id: "FUTURE-India-one-year-route", family: "India", issue: "UP-ELIG-03", needsFutureSchema: true, verified: false, note: "Class XII >=70% + one successful recognized related bachelor year gives direct subject-restricted access." },
   { id: "FUTURE-India-jee-main-plus-advanced", family: "India", issue: "UP-ELIG-04", needsFutureSchema: true, verified: false, note: "Separate JEE Main + Advanced facts restrict the route to technology/natural-science targets." },
-  { id: "FUTURE-dMAT-affected-field", family: "dMAT", issue: "UP-ELIG-07", needsFutureSchema: true, verified: false, note: "Prior-degree field, partnership status, and APS timing drive required/not-required/targeted-review." },
   { id: "FUTURE-Pakistan-hssc-streams", family: "Pakistan", issue: "UP-ELIG-08", needsFutureSchema: true, verified: false, note: "HSSC/FSc stream-specific Studienkolleg routes, 49.99/50 boundary, one-year direct routes." },
   { id: "FUTURE-Saudi-certificate-subtypes", family: "Saudi", issue: "UP-ELIG-09", needsFutureSchema: true, verified: false, note: "Exact certificate type/stream drives national, private-school, industrial, and graduate routes." },
 ];

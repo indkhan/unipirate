@@ -4,10 +4,12 @@
 import { describe, expect, it } from "vitest";
 
 import { evaluate, type Result } from "../evaluate";
+import { reviewedDmatRules } from "./dmat.fixture";
 import { officialApsRules, officialIndianProfile } from "./aps-scopes.fixture";
 import { fixtureRules } from "./rules.fixture";
 import {
   CURRENT,
+  DMAT_ACCEPTANCE,
   APS_TRANSITION_ACCEPTANCE,
   FUTURE,
   HARNESS_BASELINE_SHA,
@@ -74,7 +76,7 @@ describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
   });
 
   it("version, cited sources, and future-spec index", () => {
-    expect(HARNESS_VERSION).toBe("up-test-01/v1-current-behavior.1");
+    expect(HARNESS_VERSION).toBe("up-test-01/v1-current-behavior.2");
     expect(HARNESS_BASELINE_SHA).toBe(
       "951ab821920497443cd66dfc7917d044a1f00159",
     );
@@ -87,7 +89,7 @@ describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
       }
     }
     expect(new Set(FUTURE.map((s) => s.family))).toEqual(
-      new Set(["GCE", "IB", "India", "Pakistan", "Saudi", "dMAT"]),
+      new Set(["GCE", "IB", "India", "Pakistan", "Saudi"]),
     );
     const currentIds = new Set(CURRENT.map((c) => c.id));
     for (const s of FUTURE) {
@@ -111,5 +113,10 @@ describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
     ).toThrow();
     // approved facts untouched: the shared fixture still passes
     assertExpected(c, evaluate(c.profile, fixtureRules));
+  });
+  it.each(DMAT_ACCEPTANCE)("UP-ELIG-07 activates $id on reviewed draft copies", c => {
+    const result = evaluate(c.profile, reviewedDmatRules());
+    expect(result.dMAT).toBe(c.dMAT);
+    expect(result.citations.some(citation => citation.supports.includes("dMAT") && citation.sourceUrl === c.sourceUrl)).toBe(true);
   });
 });
