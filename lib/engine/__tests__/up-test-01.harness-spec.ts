@@ -12,7 +12,9 @@ import * as personas from "./personas";
 // UP-ELIG-07 corrects only the legacy certificate-only dMAT expectation:
 // same input, honest unknown; source limits exemption to the completed procedure.
 // This remains a milestone corpus; parent TEST coverage remains OPEN.
-export const HARNESS_VERSION = "up-test-01/v1-current-behavior.2" as const;
+// UP-ELIG-02 activates reviewed IB evidence/recognition acceptance separately.
+export { IB_ACCEPTANCE } from "./ib.fixture";
+export const HARNESS_VERSION = "up-test-01/v1-current-behavior.3" as const;
 export { INDIA_STUDY_ACCEPTANCE } from "./india-study.fixture";
 export { DMAT_ACCEPTANCE } from "./dmat.fixture";
 export const HARNESS_BASELINE_SHA =
@@ -197,16 +199,16 @@ export const CURRENT: CurrentExpectation[] = [
     assertedIn: "evaluate.test.ts: GCE grades below C never direct",
   },
   {
-    id: "GCE-exception-pk-anabin-caveat", family: "GCE", kind: "exception",
+    id: "GCE-negative-pk-two-al", family: "GCE", kind: "exception",
     routesTo: ["UP-ELIG-01", "UP-ELIG-08"], profile: personas.p12ALevelsInPakistan,
-    path: "unknown", aps: "unknown", unknownsMatch: [/anabin/i],
+    path: "unknown", aps: "unknown", unknownsMatch: [/three|3/],
     assertedIn: "evaluate.test.ts: Part E persona 12",
   },
   {
-    id: "IB-negative-sl-stem-studienkolleg", family: "IB", kind: "negative",
+    id: "IB-legacy-evidence-alternatives-unknown", family: "IB", kind: "negative",
     routesTo: ["UP-ELIG-02"], profile: ibP13,
-    path: "studienkolleg", aps: "unknown", unknownsMatch: [/APS/],
-    citedUrls: ["https://www.daad.de/en/studying-in-germany/requirements/ib-diploma/"],
+    path: "unknown", aps: "unknown", unknownsMatch: [/APS/],
+    citedUrls: ["https://www.kmk.org/zab/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/aktuell/283_Vereinb_Anerkenn_Int_Baccalaureate_Diploma-2023-06-15_Liste1__2026-03-26_Liste2-2024-11-19.pdf"],
     assertedIn: "evaluate.test.ts: Part E persona 13",
   },
   {
@@ -301,8 +303,6 @@ export const APS_TRANSITION_ACCEPTANCE = [
 ] as const;
 
 export const FUTURE: FutureSpec[] = [
-  { id: "FUTURE-GCE-fourth-al-trio", family: "GCE", issue: "UP-ELIG-01", needsFutureSchema: false, verified: false, note: "Valid 3-AL trio passes despite a fourth AL below C; two qualifying ALs state the exact unmet condition." },
-  { id: "FUTURE-IB-grade3-compensation", family: "IB", issue: "UP-ELIG-02", needsFutureSchema: true, verified: false, note: "One compensated grade 3 passes where KMK rules allow; Math-SL school exceptions with effective sessions." },
   { id: "FUTURE-India-jee-main-plus-advanced", family: "India", issue: "UP-ELIG-04", needsFutureSchema: true, verified: false, note: "Separate JEE Main + Advanced facts restrict the route to technology/natural-science targets." },
   { id: "FUTURE-Pakistan-hssc-streams", family: "Pakistan", issue: "UP-ELIG-08", needsFutureSchema: true, verified: false, note: "HSSC/FSc stream-specific Studienkolleg routes, 49.99/50 boundary, one-year direct routes." },
   { id: "FUTURE-Saudi-certificate-subtypes", family: "Saudi", issue: "UP-ELIG-09", needsFutureSchema: true, verified: false, note: "Exact certificate type/stream drives national, private-school, industrial, and graduate routes." },

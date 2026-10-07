@@ -1,0 +1,20 @@
+import { describe,expect,it } from 'vitest';
+import { AnswersSchema,PartialAnswersSchema,buildProfile,isAnswered,normalizeAnswers,visibleSteps,withAnswer } from '../steps';
+import { IB_ACCEPTANCE,ordinaryIb } from '@/lib/engine/__tests__/ib.fixture';
+import { evaluate } from '@/lib/engine/evaluate';
+import { fixtureRules } from '@/lib/engine/__tests__/rules.fixture';
+export const ibAnswers={targetDegree:'bachelor' as const,nationality:'pk',certificateCountry:'sa',visaApplicationCountry:'other',curriculumType:'ib' as const,ibVersion:1 as const,ibDocumentStatus:'awarded' as const,ibExamYear:2026,ibExamSession:'may' as const,ibSchoolYears:12,ibSchooling:'ascending_full_time' as const,ibProgramme:'ib' as const,ibSchoolIdentity:'unknown' as const,ibTotalPoints:30,ibSubjects:ordinaryIb.ib!.subjects!.map(s=>({subjectId:s.subjectId!,level:s.level,grade:String(s.grade),language:s.language,continuedForeign:s.continuedForeign,continuity:s.continuity,independence:s.independence})),targetField:'cs',intake:{term:'winter' as const,year:2026}};
+describe('versioned IB checker',()=>{
+ it('collects official paper-pending results separately from Certificate and not awarded',()=>{
+ const a=AnswersSchema.parse({...ibAnswers,ibDocumentStatus:'official_results'});expect(buildProfile(a).ib?.documentStatus).toBe('official_results');expect(evaluate(buildProfile(a),fixtureRules).path).toBe('direct');
+ for(const status of ['not_awarded','certificate','unknown']){const b=AnswersSchema.parse({...ibAnswers,ibDocumentStatus:status});expect(evaluate(buildProfile(b),fixtureRules).path).toBe('unknown');}
+ });
+ it('derives Mathematics course and level from the actual row, no separate summary question',()=>{const a=AnswersSchema.parse(ibAnswers);expect(visibleSteps(a)).not.toContain('ibMathCourse');expect(buildProfile(a).ib?.mathCourse).toBe('AA');expect(buildProfile(a).ib?.mathLevel).toBe('HL');});
+ it('cannot infer continued foreign context or continuity from the language catalog',()=>{const a=AnswersSchema.parse({...ibAnswers,ibSubjects:ibAnswers.ibSubjects.map((s,i)=>i===1?{...s,continuedForeign:'unknown',continuity:'unknown'}:s)});expect(evaluate(buildProfile(a),fixtureRules).path).toBe('unknown');});
+ it('accepts explicit unknown decisive evidence without inventing answers',()=>{const a=AnswersSchema.parse({...ibAnswers,ibExamYear:null,ibExamSession:'unknown',ibSchoolYears:null,ibSchooling:'unknown',ibTotalPoints:null,ibSubjects:ibAnswers.ibSubjects.map(s=>({...s,grade:'unknown',level:'unknown',continuity:'unknown',independence:'unknown',continuedForeign:'unknown'}))});expect(evaluate(buildProfile(a),fixtureRules).path).toBe('unknown');});
+ it('retains unfinished subject identity/text and number drafts',()=>{expect(PartialAnswersSchema.safeParse({...ibAnswers,ibSchoolYears:11.5,ibSchoolName:'',ibSubjects:[]}).success).toBe(true);});
+ it('requires new row context before continue, while unknown is a complete honest answer',()=>{expect(isAnswered({...ibAnswers,ibSubjects:[{subjectId:'physics',level:'HL',grade:'5'}]} as never,'ibSubjects')).toBe(false);expect(isAnswered(AnswersSchema.parse(ibAnswers),'ibSubjects')).toBe(true);});
+ it('prunes exact school identity details when applicant switches to unknown identity',()=>{const a=AnswersSchema.parse({...ibAnswers,ibSchoolIdentity:'known',ibSchoolName:'School',ibSchoolCountry:'Country',ibSchoolCode:'049128'});const b=withAnswer(a,'ibSchoolIdentity','unknown');expect(b.ibSchoolName).toBeUndefined();expect(b.ibSchoolCode).toBeUndefined();});
+ it('keeps unversioned IB results readable and upgrades only edits',()=>{const legacy={targetDegree:'bachelor',nationality:'pk',certificateCountry:'sa',visaApplicationCountry:'other',curriculumType:'ib',ibFullDiploma:false,targetField:'cs',intake:null};expect(AnswersSchema.safeParse(legacy).success).toBe(true);expect(normalizeAnswers(legacy as never)).toEqual(legacy);expect(withAnswer(AnswersSchema.parse(legacy),'targetField','humanities').ibVersion).toBe(1);});
+ it('official acceptance corpus remains executable',()=>expect(IB_ACCEPTANCE.length).toBeGreaterThan(40));
+});

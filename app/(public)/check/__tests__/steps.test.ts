@@ -39,6 +39,7 @@ const p11Answers: Answers = AnswersSchema.parse({
   visaApplicationCountry: "sa",
   curriculumType: "gce",
   gceAwardingBody: "caie",
+  gceVersion:1,gceSchoolYears:13,gceQualificationContext:"british_international",gceQualificationType:"ial",gceEvidence:"final",
   gceSubjects: [
     { subjectId: "mathematics", level: "AL", grade: "A" },
     { subjectId: "physics", level: "AL", grade: "A" },
@@ -46,7 +47,7 @@ const p11Answers: Answers = AnswersSchema.parse({
     { subjectId: "english_language", level: "AS", grade: "A" },
   ],
   targetField: "cs",
-  intake: null,
+  intake: {term:"winter",year:2026},
 });
 
 /**
@@ -89,24 +90,24 @@ function ibAnswers(overrides: {
 }
 
 describe("IB answers reach the seeded IB rules", () => {
-  it("Mathematics at HL gives general direct admission", () => {
+  it("Legacy Mathematics at HL retains reads but lacks decisive continuity/context", () => {
     const profile = buildProfile(ibAnswers({ mathLevel: "HL", targetField: "cs" }));
     expect(profile.ib?.mathLevel).toBe("HL");
-    expect(evaluate(profile, fixtureRules).path).toBe("direct");
+    expect(evaluate(profile, fixtureRules).path).toBe("unknown");
   });
 
   it("Mathematics at SL closes the direct route to a STEM target", () => {
     const profile = buildProfile(
       ibAnswers({ mathLevel: "SL", targetField: "mechanical_engineering" }),
     );
-    expect(evaluate(profile, fixtureRules).path).toBe("studienkolleg");
+    expect(evaluate(profile, fixtureRules).path).toBe("unknown");
   });
 
   it("Mathematics at SL still allows subject-restricted access outside STEM", () => {
     const profile = buildProfile(
       ibAnswers({ mathLevel: "SL", targetField: "humanities" }),
     );
-    expect(evaluate(profile, fixtureRules).path).toBe("subject_restricted");
+    expect(evaluate(profile, fixtureRules).path).toBe("unknown");
   });
 
   it("an IB Certificate short of the diploma is an honest unknown", () => {
@@ -202,7 +203,8 @@ describe("visibleSteps", () => {
       "nationality",
       "visaApplicationCountry",
       "curriculumType",
-      "gceAwardingBody",
+      "gceQualificationContext", "gceQualificationType", "gceEvidence",
+      "gceAwardingBody", "gceSchoolYears",
       "gceSubjects",
       "targetField",
       "intake",
