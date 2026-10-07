@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getUser: vi.fn(), getPublishedRules: vi.fn(), insertCheck: vi.fn(),
+  getUser: vi.fn(), listRuleVersions: vi.fn(), insertCheck: vi.fn(),
   upsertProfile: vi.fn(), materializeAllTasksForUser: vi.fn(), setCookie: vi.fn(),
 }));
 vi.mock("@/lib/db/server", () => ({
@@ -16,6 +16,7 @@ import { submitCheck } from "../actions";
 import { AnswersSchema } from "../steps";
 import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
 import { dmatAnswers } from "./dmat.fixture";
+import { RuleVersionSchema } from "@/lib/rules/versioning";
 import { reviewedDmatRules } from "@/lib/engine/__tests__/dmat.fixture";
 
 const validAnswers = {
@@ -27,14 +28,14 @@ const validAnswers = {
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.getUser.mockResolvedValue({ data: { user: null } });
-  mocks.getPublishedRules.mockResolvedValue([]);
+  mocks.listRuleVersions.mockResolvedValue([]);
   mocks.insertCheck.mockResolvedValue("check-id");
 });
 
 describe("submitCheck", () => {
   it.each([null, { id: "student" }])("preserves dMAT reports and normalization for anonymous/authenticated submission: %j", async user => {
     mocks.getUser.mockResolvedValue({ data: { user } });
-    mocks.getPublishedRules.mockResolvedValue(reviewedDmatRules());
+    mocks.listRuleVersions.mockResolvedValue(reviewedDmatRules().map((rule, index) => RuleVersionSchema.parse({id: "00000000-0000-4000-8000-" + String(index+100).padStart(12,"0"), rule_id: "00000000-0000-4000-8000-" + String(index+200).padStart(12,"0"), version_number: 1, supersedes_version_id: null, raw_snapshot: {...rule, id: "00000000-0000-4000-8000-" + String(index+200).padStart(12,"0")}, status: rule.status, effective_from: null, effective_until: null, intake_from: null, intake_until: null, reviewed_by: "00000000-0000-4000-8000-000000000002", reviewed_at: "2026-01-01T00:00:00Z", published_at: "2026-01-01T00:00:00Z", captured_at: null, draft_revision: 1, provenance: "human_publication"})));
     expect(await submitCheck(JSON.parse(JSON.stringify(dmatAnswers)))).toEqual({ id: "check-id" });
     const expected = AnswersSchema.parse(dmatAnswers);
     expect(mocks.insertCheck).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ answers: expected,
@@ -76,7 +77,7 @@ describe("submitCheck", () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: "student" } } });
     expect(await submitCheck(validAnswers)).toEqual({ id: "check-id" });
     expect(mocks.upsertProfile).toHaveBeenCalledWith(expect.anything(), { user_id: "student", answers: validAnswers });
-    expect(mocks.materializeAllTasksForUser).toHaveBeenCalledWith(expect.anything(), "student");
+    expect(mocks.materializeAllTasksForUser).toHaveBeenCalledWith(expect.anything(), "student", expect.objectContaining({metadata: expect.any(Object)}));
     expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 });
@@ -90,4 +91,18 @@ it("normalizes hidden versioned history before saving a check and account profil
   expect(await submitCheck(input)).toEqual({ id: "check-id" });
   expect(mocks.insertCheck).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ answers: expected }));
   expect(mocks.upsertProfile).toHaveBeenCalledWith(expect.anything(), { user_id: "student", answers: expected });
+});
+
+it("captures protected assessment authority from the server, ignoring client markers", async () => {
+  const input = validAnswers;
+  expect(await submitCheck(input)).toEqual({id: "check-id"});
+  const record = mocks.insertCheck.mock.calls[0][1];
+  expect(record.assessment_metadata).toMatchObject({formatVersion: 1, selectedVersionIds: [], selectionIssues: []});
+  expect(record.assessment_metadata.evaluatedAt).not.toBe("2099-01-01T00:00:00Z");
+  expect(record.assessment_metadata.engineRevision).not.toBe("forged");
+});
+
+it("rejects client authority rather than accepting an evaluation instant or engine revision", async () => {
+ expect(await submitCheck({...validAnswers, assessment_metadata: {evaluatedAt: "2099-01-01T00:00:00Z", engineRevision: "forged"}})).toEqual({error: expect.any(String)});
+ expect(mocks.insertCheck).not.toHaveBeenCalled();
 });

@@ -13,7 +13,7 @@ import type {
   TablesUpdate,
 } from "@/lib/db/database.types";
 import { z } from "zod";
-import { DraftSaveSchema, RawRuleSchema, RuleDraftSchema, RuleIdSchema, RuleVersionSchema, jsonEqual, preflightPublication, type RuleDraft, type RuleVersion } from "@/lib/rules/versioning";
+import { JsonSchema, DraftSaveSchema, RawRuleSchema, RuleDraftSchema, RuleIdSchema, RuleVersionSchema, jsonEqual, preflightPublication, type RuleDraft, type RuleVersion } from "@/lib/rules/versioning";
 import { toCourseTaskDefinition } from "@/lib/tasks/course-tasks";
 import {
   generateCourseTasks,
@@ -399,4 +399,28 @@ export async function attachAdminProgrammeLegacyCourse(db: Db, id: string, cours
   const row = unwrap(await db.from("programmes").update({ legacy_course_id: legacyCourseId })
     .eq("id", programmeId).is("legacy_course_id", null).select().single());
   return parseProgrammeRow(row);
+}
+
+/** Complete authorized population, including previously uncovered profiles.
+ * Page until empty; do not mistake PostgREST's response cap for the population. */
+export async function listAdminImpactProfiles(db: Db) {
+  const rows: {user_id: string; answers: Json}[] = [];
+  for (let offset = 0; ; ) {
+    const response = await db.from("profiles").select("user_id, answers", {count: "exact"}).order("user_id").range(offset, offset + 499);
+    const page = z.array(z.object({user_id: RuleIdSchema, answers: JsonSchema})).parse(
+      unwrap(response));
+    rows.push(...page); offset += page.length;
+    if (response.count !== null ? offset >= response.count : page.length < 500) return rows;
+    if (!page.length) throw new Error("Incomplete impact population read.");
+  }
+}
+
+/** Write replacement vectors before retiring hints. Retrieval never trusts old text. */
+export async function replaceAdminKbChunks(db: Db, input: unknown) {
+  const rows = z.array(z.object({source_type: z.literal("rule"), rule_id: RuleIdSchema, slug: z.string().min(1), title: z.string(), content: z.string(), source_url: z.string().url(), last_verified_at: z.string().datetime({offset: true}).nullable(), country_code: z.string().nullable(), embedding: z.string().refine(value => {try {return z.array(z.number().finite()).min(1).safeParse(JSON.parse(value)).success;} catch {return false;}})}).strict()).parse(input);
+  const existing = unwrap(await db.from("kb_chunks").select("id, slug"));
+  if (rows.length) unwrap(await db.from("kb_chunks").upsert(rows, {onConflict: "slug"}));
+  const keep = new Set(rows.map(row => row.slug));
+  const stale = existing.filter(row => !keep.has(row.slug)).map(row => row.id);
+  if (stale.length) unwrap(await db.from("kb_chunks").delete().in("id", stale));
 }
