@@ -10,6 +10,8 @@ import {
 } from "./steps";
 import { DMAT_FIELD_ENTRIES, DMAT_FIELD_SOURCE, DMAT_SOURCE } from "@/lib/engine/dmat";
 
+import { IB_SOURCE } from "@/lib/engine/ib";
+
 export type Option = { value: unknown; label: string; key: string };
 
 /** Prompt (and optional subtitle) shown for each step of the checker. */
@@ -91,17 +93,25 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; so
     question: "Which subjects did you take?",
     subtitle: "Add each A-Level (AL) and AS subject with its grade.",
   },
+  ibDocumentStatus: {question:'Which IB Diploma evidence do you have?',subtitle:'Official IBO results must confirm Diploma award. School predictions or a candidate-site screenshot alone do not establish it. A physical Diploma still pending differs from not awarded or Certificate only.',sourceUrl:'https://www.uni-assist.de/en/faqs/assemble-your-documents/'},
+  ibExamSession:{question:'Which IB examination session awarded these results?',subtitle:'May or November, separate from your intended university intake. Recognised COVID substitute sessions do not require invented exam attendance.',sourceUrl:IB_SOURCE},
+  ibSchooling:{question:'Were these ascending school years in full-time schooling?',sourceUrl:IB_SOURCE},
+  ibProgramme:{question:'Was this ordinary IB or gemischtsprachiges IB (GIB)?',subtitle:'School identity alone cannot establish a GIB-only exception.',sourceUrl:IB_SOURCE},
+  ibSchoolIdentity:{question:'Can you identify the exact school for a mathematics exception?',subtitle:'Use the official name, country and six-digit IB code where available. Missing identity is not evidence that your school is unlisted. Other ordinary requirements still apply.',sourceUrl:IB_SOURCE},
+  ibSchoolName:{question:'What is the exact school name?',subtitle:'Copy the name shown in the current KMK annex; aliases require confirmation.',sourceUrl:IB_SOURCE},
+  ibSchoolCountry:{question:'Which country heading covers this school in the KMK annex?',subtitle:'Copy the official heading exactly. This is separate from nationality, visa and certificate-country answers.',sourceUrl:IB_SOURCE},
+  ibSchoolCode:{question:'What is the six-digit IB school code?',subtitle:'Keep leading zeros. Enter unknown if you cannot establish it or the GIB annex provides no code.',sourceUrl:IB_SOURCE},
   ibFullDiploma: {
     question: "Did you complete the full IB Diploma?",
     subtitle:
       "German universities do not accept an IB Certificate in place of the Diploma.",
   },
   ibExamYear: {
-    question: "Which year did you sit your IB exams?",
+    question: "Which year is your IB examination session?",
     subtitle: "The requirements changed from the 2025 exam year onward.",
   },
   ibSchoolYears: {
-    question: "How many school years did you complete in total?",
+    question: "How many ascending school years did you actually complete?",
   },
   ibTotalPoints: {
     question: "What was your total IB score?",
@@ -109,7 +119,8 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; so
   },
   ibSubjects: {
     question: "Which six subjects did you take?",
-    subtitle: "Add each subject with its level (HL or SL) and grade.",
+    subtitle: "Use the exact course, level and grade, language context, independence and continuous two-year study. Computer Science cannot replace required Biology, Chemistry or Physics.",
+    sourceUrl: IB_SOURCE,
   },
   ibMathCourse: {
     question: "Which Mathematics course did you take?",
@@ -130,6 +141,11 @@ const countryOptions = COUNTRIES.map((c) => ({
  * their own bespoke inputs and return []. */
 export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
   switch (stepId) {
+    case 'ibDocumentStatus':return [{value:'awarded',key:'awarded',label:'Diploma awarded; final IBO document available'},{value:'official_results',key:'official_results',label:'Official IBO results confirm Diploma; physical document pending'},{value:'not_awarded',key:'not_awarded',label:'Diploma not awarded'},{value:'certificate',key:'certificate',label:'IB Certificate / course results only'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
+    case 'ibExamSession':return [{value:'may',key:'may',label:'May'},{value:'november',key:'november',label:'November'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
+    case 'ibSchooling':return [{value:'ascending_full_time',key:'ascending_full_time',label:'Ascending years at schools with full-time instruction'},{value:'other',key:'other',label:'Another schooling pattern'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
+    case 'ibProgramme':return [{value:'ib',key:'ib',label:'Ordinary IB Diploma Programme'},{value:'gib',key:'gib',label:'Gemischtsprachiges IB (GIB)'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
+    case 'ibSchoolIdentity':return [{value:'known',key:'known',label:'I can provide exact identity from the official annex'},{value:'unknown',key:'unknown',label:'Cannot confirm exact identity / membership'}];
     case "priorStudyMode": return [
       { value: "regular", key: "regular", label: "Regular bachelor degree programme" },
       { value: "distance_online", key: "distance_online", label: "Distance or online" },

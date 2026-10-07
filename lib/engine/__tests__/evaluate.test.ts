@@ -126,13 +126,13 @@ describe("Part E personas", () => {
     expect(r.unknowns.some((u) => /three|3/.test(u))).toBe(true);
   });
 
-  it("13. IB in India, Math SL, 28 pts → Mech Eng: SL math blocks STEM direct entry; APS unknown", () => {
+  it("13. Legacy IB evidence gaps leave admission and alternatives unknown", () => {
     const r = run(p.p13IbInIndia);
-    expect(r.path).toBe("studienkolleg");
+    expect(r.path).toBe("unknown");
     expect(r.aps).toBe("unknown");
     expect(r.unknowns.some((u) => /APS/.test(u))).toBe(true);
     expect(citedUrls(r)).toContain(
-      "https://www.daad.de/en/studying-in-germany/requirements/ib-diploma/",
+      "https://www.kmk.org/zab/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/aktuell/283_Vereinb_Anerkenn_Int_Baccalaureate_Diploma-2023-06-15_Liste1__2026-03-26_Liste2-2024-11-19.pdf",
     );
   });
 });
