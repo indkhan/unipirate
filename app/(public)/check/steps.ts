@@ -295,8 +295,9 @@ const AnswerFieldsSchema = z
 
 export type Answers = z.infer<typeof AnswerFieldsSchema>;
 export type PartialAnswers = Partial<Answers>;
-// Draft text can be unfinished; complete submissions retain required-text checks.
+// Draft text/numbers can be unfinished; complete submissions retain strict checks.
 export const PartialAnswersSchema = AnswerFieldsSchema.partial().extend({
+  dmatCompletedSemesters: z.number().finite().optional(),
   dmatDegreeTitle: z.string().trim().max(200).optional(),
   dmatClassificationReference: z.string().trim().max(200).optional(),
   dmatRegistrationDate: z.string().max(10).optional(),

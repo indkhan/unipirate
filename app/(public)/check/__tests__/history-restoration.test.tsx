@@ -4,7 +4,7 @@ import { expect, it, vi } from "vitest";
 import { ProfileReview } from "../profile-review";
 import { CheckFlow } from "../check-flow";
 import { dmatAnswers } from "./dmat.fixture";
-import { visibleSteps } from "../steps";
+import { AnswersSchema, PartialAnswersSchema, visibleSteps, type PartialAnswers } from "../steps";
 
 const captured = vi.hoisted(() => ({ effects: [] as (() => void)[], values: [] as unknown[], initial: [] as unknown[] }));
 vi.mock("react", async (original) => {
@@ -110,4 +110,28 @@ it("keeps an unfinished text draft and stops at its empty required answer", () =
   expect(result.answers).toEqual({ ...unfinished, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1 });
   expect(result.stepIndex).toBe(5);
   expect(result.removeItem).not.toHaveBeenCalled();
+});
+
+it.each([6.5, -1, 101, undefined, 0, 6, 100])("restores semester draft %s without discarding history or enabling invalid results", dmatCompletedSemesters => {
+  const seed = { ...dmatAnswers, priorStudyCompletion: "in_progress", yearsOfUniversityStudy: 3,
+    dmatProcedure: "unknown", dmatFieldBasis: "unknown", dmatPartnershipStatus: "none",
+    dmatSemesterStatus: "known", dmatCompletedSemesters } as const;
+  const stepIndex = visibleSteps(seed).indexOf("dmatCompletedSemesters");
+  const raw = JSON.stringify({ answers: seed, stepIndex });
+  const result = recover(raw);
+  const restored = result.answers as PartialAnswers;
+  expect(restored).toMatchObject({ priorStudyInstitution: "Example University", priorStudyCountry: "in",
+    priorStudyField: "Mechanical Engineering", priorStudyCompletion: "in_progress", yearsOfUniversityStudy: 3,
+    dmatProcedure: "unknown", dmatFieldBasis: "unknown", dmatPartnershipStatus: "none", dmatSemesterStatus: "known" });
+  expect(restored.dmatCompletedSemesters).toBe(dmatCompletedSemesters);
+  expect(result.stepIndex).toBe(stepIndex);
+  expect(result.removeItem).not.toHaveBeenCalled();
+  expect(PartialAnswersSchema.safeParse(JSON.parse(raw).answers).success).toBe(true);
+  const valid = dmatCompletedSemesters !== undefined && Number.isInteger(dmatCompletedSemesters) &&
+    dmatCompletedSemesters >= 0 && dmatCompletedSemesters <= 100;
+  expect(AnswersSchema.safeParse(restored).success).toBe(valid);
+  const html = renderToStaticMarkup(React.createElement(CheckFlow, { initialAnswers: restored, initialStepIndex: stepIndex }));
+  expect(html).toContain("See my result");
+  expect(html.includes('disabled=""')).toBe(!valid);
+  expect(html.includes('aria-invalid="true"')).toBe(!valid && dmatCompletedSemesters !== undefined);
 });

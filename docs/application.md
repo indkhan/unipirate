@@ -648,6 +648,10 @@ not-completed/not-sent reports need no invented date. Partnership confirmation
 records issuer role/name, programme kind, group number and reference; pending or
 unknown reports cannot establish it. Enrolled bachelor exceptions use reported
 actual completed semesters, never completed years multiplied by two.
+The partial draft schema retains finite semester numbers, including unfinished
+fractions or out-of-range entries, so reload does not discard valid history.
+Completed answers, profile validation and fact derivation still require integer
+semesters from 0 through 100; invalid drafts keep the result action disabled.
 An unknown initial/new procedure still collects independent confirmed partnership,
 APS-confirmed unaffected classification and applicable actual-semester evidence.
 Procedure edits reset registration/dispatch reports while preserving those

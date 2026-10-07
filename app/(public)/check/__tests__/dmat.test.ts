@@ -1,11 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { AnswersSchema, buildProfile, isAnswered, normalizeAnswers, PartialAnswersSchema, visibleSteps, withAnswer } from "../steps";
 import { deriveFacts, evaluate } from "@/lib/engine/evaluate";
-import { reviewedDmatRules } from "@/lib/engine/__tests__/dmat.fixture";
+import { dmatProfile, reviewedDmatRules } from "@/lib/engine/__tests__/dmat.fixture";
+import { DmatProfileSchema } from "@/lib/engine/dmat";
 
 import { dmatAnswers } from "./dmat.fixture";
 
 describe("UP-ELIG-07 progressive reported inputs", () => {
+  it.each([6.5, -1, 101, undefined, 0, 6, 100])("keeps semester %s partial while final schema and facts retain integer bounds", completedSemesters => {
+    expect(PartialAnswersSchema.safeParse({ dmatCompletedSemesters: completedSemesters }).success).toBe(true);
+    const valid = completedSemesters === undefined || (Number.isInteger(completedSemesters) && completedSemesters >= 0 && completedSemesters <= 100);
+    const report = { ...dmatProfile.dmat!, completedSemesters };
+    expect(DmatProfileSchema.safeParse(report).success).toBe(valid);
+    const profile = { ...dmatProfile, qualificationHistory: { ...dmatProfile.qualificationHistory!, completion: "in_progress" as const }, dmat: report };
+    if (completedSemesters !== undefined && valid) expect(deriveFacts(profile).dmat_completed_semesters).toBe(completedSemesters);
+    else {
+      expect(deriveFacts(profile)).not.toHaveProperty("dmat_completed_semesters");
+      expect(evaluate(profile, reviewedDmatRules()).dMAT).toBe("unknown");
+    }
+  });
+  it("rejects nonnumeric/nonfinite draft semester shapes", () => {
+    for (const value of ["6.5", null, {}, NaN, Infinity, -Infinity]) {
+      expect(PartialAnswersSchema.safeParse({ dmatCompletedSemesters: value }).success).toBe(false);
+    }
+  });
   it.each(["single", "multiple", "unknown"] as const)("round-trips the earlier intake with %s qualification scope", dmatQualificationScope => {
     const answers = AnswersSchema.parse({ ...dmatAnswers, dmatQualificationScope, intake: { term: "winter", year: 2026 } });
     expect(evaluate(buildProfile(answers), reviewedDmatRules()).dMAT).toBe("not_required");
