@@ -1,0 +1,120 @@
+{
+  "provenance": {
+    "file": "C:/codebases/unipirate/.orchestrator/course-real-smoke-output-attempt-10.json",
+    "note": "Saved public observations only, not new verification or reconstructed model arguments. Selected complete original paragraphs in original order; omissions separated by blank lines are not a contiguous evidence quote.",
+    "daadParagraphs": [
+      6,
+      7,
+      10,
+      11,
+      12,
+      19,
+      20,
+      23,
+      24,
+      26,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      44,
+      46,
+      57,
+      63,
+      67
+    ],
+    "faqParagraphs": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      77,
+      87,
+      88,
+      89,
+      90
+    ],
+    "fee": "First navigation paragraph from already bounded 20,000-character capture; no restored body or fee answer."
+  },
+  "seed": {
+    "url": "https://www2.daad.de/deutschland/studienangebote/international-programmes/en/detail/7715/",
+    "name": "Computer Science (BSc)",
+    "university": "Saarland University",
+    "text": "Computer Science (BSc) - International Programmes - DAAD Skip to main content Services More information on daad.de More info CHE University Ranking DAAD database on admission requirements Applying Help and Advice 0 0 International Programme"
+  },
+  "observations": [
+    {
+      "url": "https://www2.daad.de/deutschland/studienangebote/international-programmes/en/detail/7715/",
+      "content": "## Computer Science (BSc) Computer Science (BSc)\n\n### Saarland University • Saarbrücken\n\nAll courses and seminars are entirely taught in English.\n\nWhen living in Germany, it is useful to learn some German, e.g. in language classes offered by the university.\n\nOne final deadline on 15 July for the following winter semester and additional early submission deadlines: <https://saarland-informatics-campus.de/en/computerscience-course/faq/>\n\nFrom the fourth semester on, you can specialise your programme according to your interests by selecting among a wide range of more than 20 core courses that go deeper into a specific field (e.g. artificial intelligence, computer graphics, visual computing, complexity theory, software engineering, databases, compilers, and so on). Finally, you can get to the bottom of things with advanced courses that are on the edge of current research.\n\nYou will complete your studies by writing a Bachelor’s thesis in one of the more than 70 research groups headed by world-class faculty here at Saarland Informatics Campus. After completing your Bachelor’s degree, you can continue studying at Saarland University by applying to one of our Master’s programmes or our graduate school to pursue a PhD.\n\nCurrently **394.30 EUR** per semester, including a semester ticket covering public transport in Germany\n\nMore information: <https://www.uni-saarland.de/en/study/organisation/fees/semester-fee.html>\n\nThe Welcome Center at Saarland University provides information on working and living in Saarbrücken. For more information, please visit their website: <https://www.uni-saarland.de/en/global/welcome-center/living-working.html>.\n\n<https://saarland-informatics-campus.de/en/studium-studies/further-services-and-support/#CS-custom-anchor-Financing-your-studies-and-finding-a-place-to-live>\n\n**Admission Requirements**\n\nThis is a competitive programme with a limited number of seats. To be considered for admission you must provide a University Entrance Qualification (UEQ) and choose one of three application tracks listed and detailed below.\n\n**The University Entrance Qualification**\n\nThe central component of your application is a University Entrance Qualification enabling for direct access to study programmes at German universities (UEQ). Without a UEQ, it is legally impossible to enrol. What constitutes a UEQ depends on various aspects. We cannot assess whether your documents constitute a UEQ before you apply. We can only check your application documents after you submit your complete application.\n\n**Application Tracks**\n\nIn addition to the UEQ, you need to provide additional qualifications. Depending on your ability to prove these additional qualifications you can choose one of the following three tracks:\n\nNote that you cannot apply for multiple tracks. You have to choose one when submitting your application. After you submit your application, you can no longer change between tracks.\n\nDetailed information: <https://saarland-informatics-campus.de/en/computerscience-course/faq/>\n\nOne final deadline on 15 July for the following winter semester and additional early submission deadlines: <https://saarland-informatics-campus.de/en/computerscience-course/faq/>\n\nJobs as tutors and research assistants are available in the department and cooperating institutes each semester. Openings are posted on bulletin boards and on our websites.\n\nAdditionally, check out the career portal of Saarland University: <https://www.uni-saarland.de/en/institution/career-center.html>.\n\nLocated in the south-west of Germany, very close to the French border, Saarland University is a campus university offering an extensive range of courses and internationally networked state-of-the-art research. International students receive excellent supervision and can enjoy a comprehensive range of sports, culture and leisure activities while studying at the university surrounded by forest.\n\nAt SIC, activities of all informatics facilities, co-located at Saarbrücken, converge. The renowned Max Planck Institutes for Computer Science and Software Systems as well as the German Center for Artificial Intelligence, the Center for Bioinformatics and the Cluster for Multimodal Computing and Interaction and Saarland University with three departments and 23 degree programmes cover the entire spectrum of computer science.\n\n[Saarland University](https://www.uni-saarland.de/start.html)\n\nSaarland University offers an outstanding education in computer science at all levels: Bachelor’s, Master’s, and doctorate.   \nMoreover, Saarbrücken is a fantastic place to live — I moved here more than 45 years ago and have always enjoyed living here.\n\nWith 900 researchers and 2,600 students from 80 countries, Saarland Informatics Campus is one of the leading locations for informatics in Germany and in Europe. Five globally renowned research institutes and Saarland University with three collaborating departments and 23 academic programmes cover all areas of computer science.",
+      "retrieved_at": "2026-10-07T20:59:44.843Z",
+      "origin": "web"
+    },
+    {
+      "url": "https://saarland-informatics-campus.de/wp-content/uploads/Stipendienleitfaden.pdf",
+      "content": "# Stipendienleitfaden Allgemeine Daten zu Stipendien \n\n• Es existieren über 2.000 Förderprogramme in \n\nDeutschland • Ausgaben des Bundes an die Begabtenförde-\n\nrungswerke  haben  sich  in  den  letzten  5 Jahren ",
+      "retrieved_at": "2026-10-07T20:59:53.910Z",
+      "origin": "web"
+    },
+    {
+      "url": "https://www.uni-saarland.de/en/study/organisation/fees/semester-fee.html",
+      "content": "[Skip to content](/en/study/organisation/fees/semester-fee.html#content) [Skip to search](/en/search.html) [Skip to footer](/en/study/organisation/fees/semester-fee.html#footer) [Skip to chatbot](/en/study/organisation/fees/semester-fee.html#chatbot-button)",
+      "retrieved_at": "2026-10-07T20:59:53.188Z",
+      "origin": "web"
+    },
+    {
+      "url": "https://saarland-informatics-campus.de/en/computerscience-course/faq/",
+      "content": "# Application Process and Frequently Asked Questions (FAQ) about our International Bachelor Programs\n\nThis page provides information about the admission requirements, the selection process, and the application timeline. **The admission office will not reply to questions and inquiries if the corresponding answer is included on this page.** Our FAQs also explain everything you need to know if you are interested in studying Computer Science or Cybersecurity at Saarland University at the Saarland Informatics Campus in Saarbrücken.\n\n**Please note:** You are currently viewing the admission requirements for 2026! The new admission requirements, including the **schedule for 2027**, will be published here as soon as **the portal opens in December 2026** for the new round of applications for the **2027/28 winter semester**.\n\n## Admission Requirements\n\nThis is a competitive program that has a limited number of seats. To be considered for admission, you must provide a University Entrance Qualification (UEQ) and choose one of three application tracks listed and detailed below.\n\n### The University Entrance Qualification\n\nThe central component of your application is a University Entrance Qualification enabling direct access to study programs at **German** universities (UEQ). Without a UEQ, it is legally impossible to enroll. What constitutes a recognizable direct UEQ depends on various aspects (please see the **Appendix** below). We cannot assess whether your documents constitute a UEQ before you apply. We can only check your application documents *after* you submit your complete application. We will ignore any mail that asks us for an assessment of documents prior to an application.\n\nPlease note that all your qualification documents (in particular certificates, examination results, and transcripts relating to your university entrance qualification) must be submitted with a certified translation by a sworn translator, unless they are already issued in English, German, or French.\n\n### Application Tracks\n\nIn addition to the UEQ, you need to provide additional qualifications. You can do this in one of the following three tracks:\n\n1. You provide documentation of having successfully participated in a prestigious science/informatics/mathematics olympiad, and results from an English test.  \n   (Please refer to the Appendix for the requirements for the **English test** and the **olympiads** we accept.) → [Olympiad Track](#CS-custom-anchor-Olympiad-Track)\n2. You provide the results of an aptitude test and an English test (please refer to the Appendix for the requirements for the **English test** and the **aptitude tests** we accept.).  \n   In addition, you take part in an interview which is conducted via video conference. → [Aptitude Track](#CS-custom-anchor-Aptitude-Track)\n3. You submit a letter in which you describe your skills, competences and interests in line with the degree programs and participate in an **ONSITE** interview. The number of places for the onsite interview may be limited. → [Interview Track](#CS-custom-anchor-Interview-Track)\n\nNote that you cannot apply for multiple tracks. You have to choose one when submitting your application. After you submit your application, you can no longer change between tracks.\n\n### Selection Criteria\n\nAfter all documents you provided have been carefully examined, your UEQ grade will be combined with your track results into a score that gives you a position in a ranking of all participants. We admit the best N applicants from this ranking to the study program, where N depends on the number of available seats in the program.\n\n## Timeline\n\nThe program starts in the winter term in mid-October. The application portal usually opens in December of the previous year. Our final application deadline is July 15 (interview track June 15) . However, if you want early feedback on your application (early accept), you can apply to one of the earlier “preliminary review deadlines”: January 15 or June 15. See the next section for details.\n\nAfter the final deadline, we review all applications within four weeks. Final decisions about acceptance/rejections are communicated before August 31. The decision notification will include a formal confirmation letter. In case of acceptance, you will need this letter to enroll at the university. Please do not request status updates prior to this date. Note that if you want to apply in the interview track, **you have to apply for one of the** preliminary review deadlines (see below). In other words: **The interview track is only available if you apply by June 15. It is not available after June 15.**\n\n### Preliminary Review Deadlines\n\nTo provide timely feedback, we have two preliminary review deadlines (PRDs) on January 15, and June 15.\n\n**Only** if you have **all** required proofs and additional qualification documents, you may submit an application to **one (and only one)** of the **PRDs** before the final deadline (July 15). The upcoming PRD will be the one you submitted to.\n\nAll applications submitted to a review deadline will be reviewed within four weeks after this deadline.\n\n[Apply now!](https://applications.saarland-informatics-campus.de)\n\n## Language Requirements\n\nYou need to provide proof of English language proficiency for the Olympiad and Aptitude track unless your are a native speaker. We accept the following English tests:\n\n* IELTS Academic Test\n* TOEFL iBT Test\n* TOEFL Essential\n* Cambridge Certificate\n* Pearson Test of English academic (PTE academic)\n\nYou are considered a native speaker if you obtained your high-school diploma in one of the following countries: Australia, Canada, Ireland, New Zealand, UK, USA. We cannot make any exceptions from this rule.",
+      "retrieved_at": "2026-10-07T20:59:53.189Z",
+      "origin": "web"
+    },
+    {
+      "url": "https://saarland-informatics-campus.de/en/studium-studies/further-services-and-support/#CS-custom-anchor-Financing-your-studies-and-finding-a-place-to-live",
+      "content": "*   [Here](https://www.uni-saarland.de/en/study/organisation/financing.html) you will find all information about Bafög, scholarships, jobbing, student loans, educational loans, educational funds and social and emergency funds.\n*   Other helpful links on the topic of scholarships: \n    *   [UNIVERSUM](https://www.uni-saarland.de/page/karriere/einstiegsmoeglichkeiten/stipendium.html) scholarship with job prospects for Master’s students\n    *   For doctoral students, it is also worthwhile to take a look at the[index of foundations](https://www.stiftungen.org/stiftungen/zahlen-und-daten/liste-der-groessten-stiftungen.html)(in particular also for general scholarships).\n    *   An additional way to finance your stay abroad is the[Auslands-Bafög](https://www.stw-saarland.de/en/finanzen/)or[www.bafög.de](https://www.xn--bafg-7qa.de/SiteGlobals/Forms/bafoeg/weltkarte/weltkarte_formular.html), even if you are not receiving any Bafög funding for studying in Germany.\n    *   Internships [(IAESTE)](https://www.iaeste.de/en/)\n    *   [Scholarship Guide (pdf, in German)](https://saarland-informatics-campus.de/wp-content/uploads/Stipendienleitfaden.pdf)\n    *   [Scholarship flyer (in German) of the Stiftung der Deutschen Wirtschaft](https://www.sdw.org/content/uploads/Vorschau_Studienfoerderwerk_A4_Fact-Sheet_2026.jpg)\n    *   [StudienStiftungSaar](https://studienstiftungsaar.de/)\n    *   [Graduate School](http://www.graduateschool-computerscience.de/)",
+      "retrieved_at": "2026-10-07T20:59:53.189Z",
+      "origin": "web"
+    },
+    {
+      "url": "https://applications.saarland-informatics-campus.de",
+      "content": "# Saarland Informatics Campus Application Portal\n\nWelcome to the application portal. Before you create an account and start the [application process](https://saarland-informatics-campus.de/en/computerscience-course/faq/), please read carefully all information about the application process and our [FAQs.](https://saarland-informatics-campus.de/en/computerscience-course/faq/)",
+      "retrieved_at": "2026-10-07T20:59:53.910Z",
+      "origin": "web"
+    }
+  ],
+  "literals": {
+    "admission": "The central component of your application is a University Entrance Qualification enabling for direct access to study programmes at German universities (UEQ). Without a UEQ, it is legally impossible to enrol. What constitutes a UEQ depends on various aspects. We cannot assess whether your documents constitute a UEQ before you apply. We can only check your application documents after you submit your complete application.",
+    "identity": "## Computer Science (BSc) Computer Science (BSc)",
+    "university": "### Saarland University • Saarbrücken",
+    "teaching": "All courses and seminars are entirely taught in English.",
+    "fee": "Currently **394.30 EUR** per semester, including a semester ticket covering public transport in Germany",
+    "deadline": "One final deadline on 15 July for the following winter semester and additional early submission deadlines: <https://saarland-informatics-campus.de/en/computerscience-course/faq/>",
+    "warning": "**Please note:** You are currently viewing the admission requirements for 2026! The new admission requirements, including the **schedule for 2027**, will be published here as soon as **the portal opens in December 2026** for the new round of applications for the **2027/28 winter semester**.",
+    "language": "* IELTS Academic Test\n* TOEFL iBT Test\n* TOEFL Essential\n* Cambridge Certificate\n* Pearson Test of English academic (PTE academic)",
+    "exemption": "You are considered a native speaker if you obtained your high-school diploma in one of the following countries: Australia, Canada, Ireland, New Zealand, UK, USA. We cannot make any exceptions from this rule.",
+    "tracks": "Note that you cannot apply for multiple tracks. You have to choose one when submitting your application. After you submit your application, you can no longer change between tracks."
+  }
+}

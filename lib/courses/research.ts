@@ -116,15 +116,16 @@ export function focusedResearchUrls(urls: string[], domains: string[], observati
     const key = canonicalResearchUrl(url);
     if (!captured.has(key) && !unique.has(key)) unique.set(key, url);
   }
-  const score = (url: string) => {
-    const labels = observations.filter(o => o.origin === "web").flatMap(o => [...o.content.matchAll(/\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g)])
-      .filter(m => m[2] === url).map(m => m[1]).join(" ");
-    const context = `${new URL(url).pathname} ${labels}`;
-    return /admission|application|apply|requirement|deadline|regulation|\.pdf|bewerbung|zulassung|ordnung/i.test(context) ? 0
-      : /tuition|semester.fee|semesterbeitrag/i.test(context) ? 1
-      : /home|career|living|welcome|privacy|contact|logo|banner|\.svg|\.png|\.jpg/i.test(context) ? 3 : 2;
-  };
-  return [...unique.values()].sort((a, b) => score(a) - score(b));
+  return [...unique.values()].sort((a, b) => researchUrlPriority(a, observations) - researchUrlPriority(b, observations));
+}
+function researchUrlPriority(url: string, observations: Observation[]): number {
+  const labels = observations.filter(o => o.origin === "web").flatMap(o => [...o.content.matchAll(/\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g)])
+    .filter(m => m[2] === url).map(m => m[1]).join(" ");
+  const parsed = new URL(url);
+  const context = `${parsed.hostname} ${parsed.pathname} ${labels}`;
+  return /admission|application|apply|requirement|deadline|regulation|\bfaq\b|bewerbung|zulassung|ordnung/i.test(context) ? 0
+    : /tuition|semester.fee|semesterbeitrag/i.test(context) ? 1
+    : /home|career|living|welcome|privacy|contact|logo|banner|\.svg|\.png|\.jpg/i.test(context) ? 3 : 2;
 }
 function identifies(source: Observation, seed: Pick<ResearchSeed, "name" | "university">): boolean {
   return source.content.includes(seed.name) && source.content.includes(seed.university);
@@ -352,20 +353,32 @@ export function buildResearchContext(input: ResearchSeed, captures: Observation[
   const eligible = observations.filter(o => o.origin === "web" && domains.some(d => onDomain(o.url, d)));
   const reachable = identityLinkedSources(seed, eligible);
   const anchors = eligible.filter(o => identifies(o, seed));
-  const ranked = focusedResearchUrls(eligible.filter(o => reachable.has(o.url) && !anchors.includes(o)).map(o => o.url), domains, []);
-  const selected = [...anchors, ...ranked.map(url => eligible.find(o => o.url === url)!)].slice(0, 4);
+  const ranked = eligible.filter(o => reachable.has(o.url) && !anchors.includes(o))
+    .sort((a, b) => researchUrlPriority(a.url, eligible) - researchUrlPriority(b.url, eligible));
+  const selected = [...anchors, ...ranked].slice(0, 4);
   const sources = selected.map(o => {
     const paragraphs = o.content.split(/\n\s*\n/);
     const priority = (p: string) => {
-      if (/^\[Skip|^\*.*Information for/i.test(p) || (p.match(/\]\(/g)?.length ?? 0) > 4) return 3;
-      if (p.includes(seed.name) || p.includes(seed.university)) return 0;
-      return /application|admission|deadline|winter|summer|intake|applicant|language|English|German|IELTS|TOEFL|tuition|semester|fee|document|exempt|requirement|bewerbung|zulassung/i.test(p) ? 1 : 2;
+      // Preserve availability/effective-scope caveats before any topic assertions.
+      if (/currently viewing|will be published|not yet|unpublished|availability notice|effective (?:from|for)|valid (?:from|for)/i.test(p)) return 0;
+      if (/^\[Skip|^\*.*Information for/i.test(p) || (p.match(/\]\(/g)?.length ?? 0) > 4) return 6;
+      // A university mention in marketing prose is not programme identity.
+      if (p.includes(seed.name) || (p.length <= 240 && p.includes(seed.university))) return 1;
+      if (/IELTS Academic|TOEFL (?:iBT|Essential)|Cambridge Certificate|language requirement|language proficiency|English test|native speaker|exempt|tuition|semester (?:fee|contribution|ticket)|per semester|semesterbeitrag/i.test(p)) return 2;
+      if (/deadline|application portal|apply now|winter|summer|intake|applicant/i.test(p)) return 3;
+      return /application|admission|language|English|German|IELTS|TOEFL|fee|document|requirement|qualification|bewerbung|zulassung/i.test(p) ? 4 : 5;
     };
     const excerpts: string[] = []; let used = 0;
+    // Trade-off: literal paragraph heuristics cannot recover uncaptured text or
+    // guarantee every topic fits. Omission counts keep manual review explicit.
     for (const p of paragraphs.sort((a, b) => priority(a) - priority(b))) {
-      if (!p || used >= 4000) continue;
-      const excerpt = p.slice(0, Math.min(2000, 4000 - used));
-      excerpts.push(excerpt); used += excerpt.length;
+      // Never expose an assertion while clipping its controlling availability caveat.
+      if (priority(p) === 0 && p.length > 4000 - used) continue;
+      // Separate contiguous slices, never one quote assembled across omissions.
+      for (let offset = 0; offset < p.length && used < 4000; offset += 2000) {
+        const excerpt = p.slice(offset, offset + Math.min(2000, 4000 - used));
+        excerpts.push(excerpt); used += excerpt.length;
+      }
     }
     return { url: o.url, retrieved_at: o.retrieved_at, excerpts };
   });
