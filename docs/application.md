@@ -822,3 +822,18 @@ neither replaces APS nor guarantees recognition/admission; a low score alone is
 not an APS refusal. The current APS clarification permits other complete documents
 before the dMAT certificate. Source checks dated 2026-10-07 are verification dates,
 not policy cutoffs. No database migration or generated type change is required.
+
+### Bounded import model context
+
+Captured observations remain unchanged for literal evidence validation and manual
+review. The model receives at most four official identity-linked sources and
+16,000 characters of literal excerpts (4,000 per source, 2,000 per excerpt).
+Identity and admission/intake/language/fee/document paragraphs rank before navigation
+and unrelated prose; unrelated search-only sources do not consume model context.
+Excerpts are actual substrings, not rewritten summaries or inferred applicability.
+Omitted sources/text are disclosed; unknown effective scope remains unknown. Quotes
+must come from one excerpt and are still checked against original observations.
+This intentionally favors a useful partial multi-source draft over exhaustive
+research within the unchanged 90-second bound. Provider latency remains a root-owned
+real-workflow acceptance gate. Offering-free publication messaging now correctly
+requires captured intake/applicant scope before publication.

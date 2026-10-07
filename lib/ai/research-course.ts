@@ -3,7 +3,7 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText, tool } from "ai";
 import { z } from "zod";
 import { getServerEnv } from "@/lib/env";
-import { buildResearchDraft, canonicalResearchUrl, focusedResearchUrls, links, officialDomains, onDomain, ObservationSchema, ResearchOutputSchema, ResearchSeedSchema, ResearchUrlSchema, type Observation, type ResearchSeed } from "@/lib/courses/research";
+import { buildResearchContext, buildResearchDraft, canonicalResearchUrl, focusedResearchUrls, links, officialDomains, onDomain, ObservationSchema, ResearchOutputSchema, ResearchSeedSchema, ResearchUrlSchema, type Observation, type ResearchSeed } from "@/lib/courses/research";
 
 export const COURSE_EXTRACTION_MODEL = "nvidia/nemotron-3.5-lightning:free";
 const searchResponse = z.object({ results: z.array(z.object({ url: z.string().max(2048) })).max(20) });
@@ -12,6 +12,7 @@ type Generate = (seed: ResearchSeed, observations: Observation[], signal: AbortS
 async function generateDraft(seed: ResearchSeed, observations: Observation[], signal: AbortSignal): Promise<unknown> {
   const apiKey = getServerEnv().OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OpenRouter unavailable");
+  const context = buildResearchContext(seed, observations);
   const result = await generateText({
     model: createOpenRouter({ apiKey })(COURSE_EXTRACTION_MODEL, { extraBody: { reasoning: { enabled: false } } }),
     tools: { submit_research: tool({ description: "Return the source-supported pending course research draft. Data only; no side effects.", inputSchema: ResearchOutputSchema }) },
@@ -38,10 +39,13 @@ Preserve different source assertions under the same field key so conflicts remai
 Route values require explicit source wording; never equate VPD with a completed university application.
 For complete scope, quote the actual intake year, winter/summer term and literal applicant group.
 References must use exact retrieved URLs, not search snippets or model knowledge. PDF observations
-have the same evidence rules. Pasted observations are only seeds and cannot establish official evidence.`,
+have the same evidence rules. Pasted observations are only seeds and cannot establish official evidence.
+The supplied sources contain bounded literal excerpts. Quote within one excerpt; never
+join omitted text into a fabricated quote or infer missing scope from omissions.
+Return a compact partial draft; omit unsupported claims and keep unknown scope null.`,
     // The full paste remains in the recovery draft, but is not duplicated into
     // provider context; retrieved observations are the sole evidence input.
-    prompt: JSON.stringify({ identity: { name: seed.name, university: seed.university, url: seed.url }, observations: observations.filter(o => o.origin === "web") }),
+    prompt: JSON.stringify({ identity: { name: seed.name, university: seed.university, url: seed.url }, ...context }),
   });
   // Native tool arguments are untrusted data, not evidence or reviewed facts.
   // Exactly one forced data submission; no execute handler or follow-up loop.
@@ -125,7 +129,12 @@ export async function researchCourse(input: unknown, dependencies?: {
         // Regulations/PDF links can first appear on the retrieved university page.
         await extract(observations.filter(o => o.origin === "web").flatMap(o => links(o.content)), domains);
       } catch { issues.push(`Linked official pages/PDFs ${controller.signal.aborted ? "timeout" : "invalid response or unavailable"}; research incomplete.`); }
-      try { controller.signal.throwIfAborted(); output = await generate(seed, observations, controller.signal); }
+      try {
+        controller.signal.throwIfAborted();
+        const context = buildResearchContext(seed, observations);
+        if (context.omitted_sources || context.omitted_characters) issues.push("AI context is limited to four identity-linked sources and literal excerpts (16,000 characters); omitted source text remains captured for manual review and unresolved in AI research.");
+        output = await generate(seed, observations, controller.signal);
+      }
       catch { issues.push(`AI research ${controller.signal.aborted ? "timeout" : "invalid response or unavailable"} (${COURSE_EXTRACTION_MODEL}); paste/manual review retained.`); }
     }
     return buildResearchDraft(seed, observations, output, issues);

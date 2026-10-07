@@ -315,3 +315,34 @@ export function readResearch(metadata: unknown): ResearchDraft | null {
   if (!hasResearch(metadata)) return null;
   return ResearchDraftSchema.parse((metadata as Record<string, unknown>).research);
 }
+
+// Model context is a bounded view of captures; original observations remain evidence.
+export function buildResearchContext(input: ResearchSeed, captures: Observation[]) {
+  const seed = ResearchSeedSchema.parse(input);
+  const observations = z.array(ObservationSchema).max(12).parse(captures);
+  const domains = officialDomains(seed, observations);
+  const eligible = observations.filter(o => o.origin === "web" && domains.some(d => onDomain(o.url, d)));
+  const reachable = identityLinkedSources(seed, eligible);
+  const anchors = eligible.filter(o => identifies(o, seed));
+  const ranked = focusedResearchUrls(eligible.filter(o => reachable.has(o.url) && !anchors.includes(o)).map(o => o.url), domains, []);
+  const selected = [...anchors, ...ranked.map(url => eligible.find(o => o.url === url)!)].slice(0, 4);
+  const sources = selected.map(o => {
+    const paragraphs = o.content.split(/\n\s*\n/);
+    const priority = (p: string) => {
+      if (/^\[Skip|^\*.*Information for/i.test(p) || (p.match(/\]\(/g)?.length ?? 0) > 4) return 3;
+      if (p.includes(seed.name) || p.includes(seed.university)) return 0;
+      return /application|admission|deadline|winter|summer|intake|applicant|language|English|German|IELTS|TOEFL|tuition|semester|fee|document|exempt|requirement|bewerbung|zulassung/i.test(p) ? 1 : 2;
+    };
+    const excerpts: string[] = []; let used = 0;
+    for (const p of paragraphs.sort((a, b) => priority(a) - priority(b))) {
+      if (!p || used >= 4000) continue;
+      const excerpt = p.slice(0, Math.min(2000, 4000 - used));
+      excerpts.push(excerpt); used += excerpt.length;
+    }
+    return { url: o.url, retrieved_at: o.retrieved_at, excerpts };
+  });
+  return z.object({ sources: z.array(z.object({ url: ResearchUrlSchema, retrieved_at: z.string().datetime(), excerpts: z.array(z.string().max(2000)).max(4000) }).strict()).max(4), omitted_sources: z.number().int().nonnegative(), omitted_characters: z.number().int().nonnegative() }).strict().parse({
+    sources, omitted_sources: eligible.length - sources.length,
+    omitted_characters: eligible.reduce((n, o) => n + o.content.length, 0) - sources.flatMap(s => s.excerpts).reduce((n, p) => n + p.length, 0),
+  });
+}

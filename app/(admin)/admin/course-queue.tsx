@@ -360,7 +360,7 @@ function ResearchReview({ course }: { course: Tables<"courses"> }) {
     <h4 className="font-semibold">Research: {draft.status} · pending human review</h4>
     <p className="text-sm">Open the official sources and check programme identity, actual effective intake and applicant scope before accepting a fact. Unchecked facts publish as unresolved. No dates or tasks are inferred from this draft.</p>
     {draft.issues.map(issue => <p className="text-sm text-amber-700" key={issue}>{issue}</p>)}
-    {draft.offerings.length === 0 && <p>No supported effective intake found. Publishing retains only the course identity; requirements and fees stay unknown. Manual pasted values remain in the review form until publication.</p>}
+    {draft.offerings.length === 0 && <p>Publication requires supported effective intake and applicant scope. Repair the offering scope before publishing; sourced captures and manual pasted values remain available for review.</p>}
     {!!draft.unscoped?.length && <details><summary>Sourced captures with unknown effective intake (not publishable)</summary>{draft.unscoped.map(f => <div key={f.key}><p>{f.verbatim} · {f.applicability}</p>{f.evidence.map((e, i) => <blockquote key={i}><q>{e.source_quote}</q> · <a href={e.source_url} target="_blank" rel="noreferrer">{e.source_url}</a> · retrieved {e.retrieved_at}</blockquote>)}</div>)}</details>}
     {draft.offerings.map((offering, index) => <fieldset key={index} className="grid gap-2 rounded border p-3">
       <legend>{offering.intake_term} {offering.intake_year} · {offering.applicant_group}</legend>

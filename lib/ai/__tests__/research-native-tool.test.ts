@@ -25,6 +25,10 @@ describe("native research tool through installed SDK (synthetic HTTP only)", () 
       expect(body.tools[0].function.parameters.properties).toHaveProperty("offerings");
       expect(body.max_tokens).toBe(6000);
       expect(body).not.toHaveProperty("response_format");
+      const prompt = JSON.parse(body.messages.at(-1).content);
+      expect(prompt.sources).toHaveLength(1);
+      expect(prompt.sources[0].excerpts).toContain(content);
+      expect(prompt).not.toHaveProperty("observations");
       return response();
     });
     vi.stubGlobal("fetch", fetcher);
