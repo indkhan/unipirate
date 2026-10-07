@@ -309,12 +309,12 @@ describe("engine behavior", () => {
     expect(r.unknowns.some((u) => /dMAT/i.test(u))).toBe(true);
   });
 
-  it("a completed APS exempts an Indian master's applicant from dMAT", () => {
+  it("a legacy APS possession answer alone leaves dMAT applicability unknown", () => {
     const existingAps: Profile = {
       ...p.p3Indian3yrBsc,
       hasExistingApsCertificate: true,
     };
-    expect(run(existingAps).dMAT).toBe("not_required");
+    expect(run(existingAps).dMAT).toBe("unknown");
   });
 
   it("an Indian passport with a Saudi degree does not enter the India dMAT tree", () => {

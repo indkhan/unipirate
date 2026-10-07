@@ -18,10 +18,12 @@ import {
 import { z } from "zod";
 
 import { EMBEDDING_MODEL } from "@/lib/ai/kb";
+import { projectDmatKbMatches } from "@/lib/ai/kb-retrieval";
 import { parseMarkers } from "@/lib/ai/markers";
 import type { Database } from "@/lib/db/database.types";
 import {
   getProfile,
+  getPublishedRules,
   insertAssistantMessage,
   listApplicationsWithCourses,
   listTasks,
@@ -137,14 +139,11 @@ function assistantTools(options: {
           value: query,
         });
         const matches = await matchKbChunks(db, JSON.stringify(embedding), 6);
-        return matches.map((m) => ({
-          slug: m.slug,
-          title: m.title,
-          content: m.content,
-          source_url: m.source_url,
-          last_verified_at: m.last_verified_at,
-          country_code: m.country_code,
-        }));
+        // Current structured rows are caller-scoped through the existing helper.
+        // A failed read must not resurrect an old certificate-only exemption.
+        const rules = matches.some(m => m.source_type === "rule")
+          ? await getPublishedRules(db).catch(() => null) : [];
+        return projectDmatKbMatches(matches, rules);
       },
     }),
 

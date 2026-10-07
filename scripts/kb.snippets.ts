@@ -97,9 +97,9 @@ export const kbSnippets: KbChunk[] = [
     slug: "snippet-dmat-details",
     title: "dMAT test details (India, Master's)",
     content:
-      "dMAT is required for Indian Master's applicants whose prior degree is in Engineering (including CS/IT engineering), Commerce/Accounting/Finance/Economics, or Business/Management, for Summer Semester 2027 intake onward, as part of APS documentation. Run by g.a.s.t. (the TestDaF body); about 3.5 hours, in English, core plus General Academic Module; fee €150. First cycle: registration 29 Jun–15 Sep 2026, exam 26 Sep 2026, results 12 Oct 2026 — not feasible for Winter Semester 2026/27, which does not require it. Exempt: already-issued APS certificates, exchange/double-degree/partnership programs, PhD, and enrolled bachelor students below semester 5 (3-year) or 7 (4-year). For interdisciplinary degrees, APS India's official affected-fields list and the certificate wording decide, not the marketing name of the program.",
+      "Selected previous-degree groups in APS India's dMAT scope apply from Summer Semester 2027. Classification uses official previous-degree title and branch, not a target Master's title or passport. The non-exhaustive affected-fields list is v1.0, 29 June 2026 (https://aps-india.de/wp-content/uploads/2026/06/dMAT_India_Affected_Fields_List.pdf). Standalone CS/BCA/IT/AI/Data Science and unclear or mixed titles are not automatically Engineering; absence from the list does not prove exemption. Completed APS online registration or complete-document dispatch before 29 June 2026 exempts that procedure. An existing certificate exempts its relevant completed procedure, not a later new evaluation. Partnership needs official confirmation and group number. Other complete documents may be submitted before the dMAT certificate is available; issuance awaits its certificate and checks. Recognition and admission remain independent; low scores do not establish refusal.",
     source_url: "https://aps-india.de/dmat/",
-    last_verified_at: CHECKED_AT,
+    last_verified_at: "2026-10-07T00:00:00Z",
     country_code: "in",
   },
   {

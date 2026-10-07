@@ -32,6 +32,16 @@ type ProfileReviewProps = {
 };
 
 const QUESTIONS: Record<StepId, string> = {
+  dmatQualificationScope: "Relevant prior qualifications", dmatProcedure: "Relevant dMAT APS procedure",
+  dmatDegreeTitle: "Reported official degree title", dmatFieldBasis: "Reported classification basis",
+  dmatFieldEntry: "APS list v1.0 group", dmatApsClassification: "Reported APS classification",
+  dmatClassificationReference: "Reported classification confirmation", dmatRegistrationStatus: "APS online registration",
+  dmatRegistrationDate: "Completed APS registration date", dmatDispatchStatus: "Complete-document dispatch",
+  dmatDispatchDate: "Complete-document dispatch date", dmatPartnershipStatus: "Official programme confirmation",
+  dmatPartnershipKind: "Programme kind", dmatPartnershipIssuerRole: "Confirmation issuer role",
+  dmatPartnershipIssuer: "Confirmation issuer", dmatPartnershipGroup: "Programme group number",
+  dmatPartnershipReference: "Reported programme confirmation", dmatSemesterStatus: "Semester records",
+  dmatCompletedSemesters: "Actually completed semesters",
   apsProcedureStatus: "Relevant APS procedure",
   apsSubmissionConfirmation: "APS confirmation of complete submission",
   apsSubmissionDate: "Reported complete submission date confirmed by APS",
@@ -73,7 +83,7 @@ const QUESTIONS: Record<StepId, string> = {
 export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), apsScopeVersion: 1, apsTransitionVersion: 1 }));
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1 }));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const steps = visibleSteps(answers);

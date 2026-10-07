@@ -5,6 +5,7 @@
 // confirm-with-the-official-source messages; the engine never guesses.
 import { z } from "zod";
 import { calendarDay } from "./calendar-day";
+import { DmatProfileSchema, type DmatProfile } from "./dmat";
 
 // ---------------------------------------------------------------- profile
 
@@ -25,6 +26,7 @@ export type Profile = {
   visaMissionContext?: "saudi_study" | "other" | "unknown";
   apsApplicationContext?: "uni_assist" | "unknown";
   hasExistingApsCertificate?: boolean;
+  dmat?: DmatProfile;
   // Reported APS confirmation for this Class XII(/one-bachelor-year) procedure;
   // another/uncertain academic basis cannot confirm it. Never a courier alias.
   apsProcedure?: {
@@ -142,6 +144,11 @@ const ConditionSchema = z.union([
 type Condition = z.infer<typeof ConditionSchema>;
 
 const FactKeySchema = z.enum([
+  "dmat_qualification_scope", "dmat_procedure", "dmat_field_basis",
+  "dmat_field_entry", "dmat_field_classification", "dmat_field_version",
+  "dmat_registration_status", "dmat_registration_day", "dmat_dispatch_status",
+  "dmat_complete_dispatch_day", "dmat_partnership_status", "dmat_completed_semesters",
+  "dmat_prior_qualification_type", "dmat_prior_degree_years", "dmat_prior_study_completion",
   // New names deliberately leave legacy aps_application_day rows inactive.
   "aps_confirmed_submission_day",
   "aps_submission_confirmation",
@@ -368,6 +375,37 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
       raw.prior_study_completion = history.completion;
     }
   }
+  // New semantic keys do not activate legacy raw-field/date/boolean rules.
+  // Validate direct callers too: a malformed report must never yield an exemption.
+  const dmat = DmatProfileSchema.safeParse(p.dmat);
+  if (p.targetDegree === "master" && apsQualification?.country === "in" &&
+      apsQualification.context === "national" && dmat.success) {
+    const report = dmat.data;
+    raw.dmat_qualification_scope = report.qualificationScope;
+    if (report.qualificationScope === "single") {
+      raw.dmat_procedure = report.procedure;
+      raw.dmat_registration_status = report.registration?.status;
+      raw.dmat_registration_day = report.registration?.status === "completed" ? calendarDay(report.registration.date) : undefined;
+      raw.dmat_dispatch_status = report.dispatch?.status;
+      raw.dmat_complete_dispatch_day = report.dispatch?.status === "complete" ? calendarDay(report.dispatch.date) : undefined;
+      raw.dmat_partnership_status = report.partnership?.status;
+      if (report.degreeTitle && p.qualificationHistory?.field?.trim()) {
+        raw.dmat_field_basis = report.field?.basis;
+        if (report.field?.basis === "list_v1") {
+          raw.dmat_field_entry = report.field.entry;
+          raw.dmat_field_version = report.field.version;
+        }
+        if (report.field?.basis === "aps_confirmation") raw.dmat_field_classification = report.field.classification;
+      }
+      const history = p.qualificationHistory;
+      if (history?.hasPriorUniversityStudy) {
+        raw.dmat_prior_qualification_type = history.qualificationType;
+        raw.dmat_prior_degree_years = history.degreeYears;
+        raw.dmat_prior_study_completion = history.completion;
+        raw.dmat_completed_semesters = report.completedSemesters;
+      }
+    }
+  }
   // Trade-off: history facts are captured but deliberately NOT admitted to
   // FactKeySchema yet. Supporting old published conditions would activate
   // unreviewed routes. Recognition, field equivalence and certificate criteria
@@ -556,7 +594,13 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   // a data conflict and therefore resolves to unknown with both sources cited.
   function resolve<V>(key: "path" | "aps" | "testas" | "dmat" | `aps:${ApsScope}`): V | undefined {
     const scope = key.startsWith("aps:") ? key.slice(4) as ApsScope : undefined;
-    const outcome = (r: ParsedRule) => scope ? r.outcomes.aps_scopes?.[scope]?.value : r.outcomes[key as "path" | "aps" | "testas" | "dmat"];
+    const outcome = (r: ParsedRule) => {
+      // Possession is not applicability to the relevant completed procedure.
+      // Keep other outcomes on the same historical row available.
+      if (key === "dmat" && r.outcomes.dmat === "not_required" &&
+          r.conditions.has_existing_aps !== undefined && r.conditions.dmat_procedure === undefined) return undefined;
+      return scope ? r.outcomes.aps_scopes?.[scope]?.value : r.outcomes[key as "path" | "aps" | "testas" | "dmat"];
+    };
     const support = (scope ? key : {
       path: "path",
       aps: "aps",

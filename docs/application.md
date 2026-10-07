@@ -624,3 +624,75 @@ warning; no source statement of exemption is invented. APS FAQ exceptions
 require applicable facts and source confirmation, not inferred exemptions.
 The Saudi checklist omission means not_listed and permits additional requests.
 JSON additions need no migration or generated database type change.
+
+### dMAT previous-qualification contract (UP-ELIG-07)
+
+New checker flows use `dmatVersion: 1` and progressively collect a reported
+previous-degree title/branch and classification basis only for master's profiles
+with an explicitly named Indian national tertiary issuer. Neither nationality,
+visa destination nor the target master's field classifies a previous degree.
+The version 1.0 affected-fields PDF (29 June 2026) is non-exhaustive. Reported
+clear list-group classification records its entry, version and exact source URL;
+an APS classification records its decision and confirmation reference. Raw titles,
+missing classification, mixed titles and multiple qualifications remain unknown
+and point to targeted APS review. These reports do not independently verify facts.
+
+Relevant completed APS procedure and certificate possession are separate facts.
+An old certificate alone cannot establish an exemption for a new or unknown
+procedure. Completed online registration and complete-document dispatch are
+separate June events, using `CalendarDateSchema` and `calendarDay`; neither is
+aliased to the March APS-confirmed complete-submission event, payment or receipt.
+Rule data uses strict `< 20260629` boundaries. Incomplete/unknown shipment cannot
+exempt; later receipt does not erase a complete pre-boundary dispatch. Explicit
+not-completed/not-sent reports need no invented date. Partnership confirmation
+records issuer role/name, programme kind, group number and reference; pending or
+unknown reports cannot establish it. Enrolled bachelor exceptions use reported
+actual completed semesters, never completed years multiplied by two.
+The partial draft schema retains finite semester numbers, including unfinished
+fractions or out-of-range entries, so reload does not discard valid history.
+Completed answers, profile validation and fact derivation still require integer
+semesters from 0 through 100; invalid drafts keep the result action disabled.
+An unknown initial/new procedure still collects independent confirmed partnership,
+APS-confirmed unaffected classification and applicable actual-semester evidence.
+Procedure edits reset registration/dispatch reports while preserving those
+qualification/programme facts; a relevant completed procedure retains its shortcut.
+The multiple/unknown-qualification review candidate applies from SS2027 onward,
+so qualification uncertainty cannot defeat the earlier-intake exemption.
+
+Changing issuer/history, degree, procedure or classification prunes dependent
+answers; passport/visa changes preserve these reports. Legacy answers/results
+remain readable. The legacy certificate-only harness input is unchanged but now
+expects unknown; a separate relevant-completed-procedure case tests the exemption.
+The previously future affected-field case executes against disposable copies of
+reviewed candidates. Parent TEST coverage remains OPEN. Existing generated task
+IDs and manual/completed progress receive no storage or task-generation changes.
+
+Thirty-four source-backed bootstrap candidates remain DRAFT, including the
+pre-Summer-2027 boundary and explicit positive/exception conditions. Intake,
+semester and date policy stays in reviewed data. No seed, publication or embedding
+runs here; production classification depends on separate admin review/publication.
+Newly rendered KB chunks suppress the obsolete certificate-possession exemption
+and label its quote as historical evidence rather than current applicability.
+Runtime `search_rules` now projects persisted dMAT matches through the pure
+`projectDmatKbMatches(matches, publishedRules)` interface in `lib/ai/kb-retrieval.ts`.
+Matches are raw RPC rows; rule rows are caller-visible current published metadata
+from the existing `getPublishedRules` helper, or null if unavailable. Zod validates
+both boundaries. Scoped dMAT matches use structured outcomes, exact source identity
+and stable slugs, never arbitrary-text matching. Valid beta/verified rule metadata
+is rendered with `ruleToChunk`; certificate-only applicability is quarantined
+across dMAT outcomes, including unknown, and its historical quote/note is withheld
+from model evidence. Other outcomes
+and source URLs/current supplied verification dates are retained. Missing, invalid,
+unpublished or ambiguous metadata yields unknown with no invented verification date.
+The stable `snippet-dmat-details` is always quarantined as unknown because this
+interface has no trusted structured snippet metadata, even after a rebuild.
+Rule matches cannot prove unrelatedness without valid matching current metadata;
+unmatched or invalid rules fail closed even under renamed slugs/other source URLs.
+Valid current unrelated rules and unrelated curated snippets are unchanged.
+RULES01 can reuse this projection boundary;
+broader freshness and snippet-authority policy are explicitly outside its scope.
+No persisted chunks are rewritten/deleted, and no embedding/publication runs. dMAT
+neither replaces APS nor guarantees recognition/admission; a low score alone is
+not an APS refusal. The current APS clarification permits other complete documents
+before the dMAT certificate. Source checks dated 2026-10-07 are verification dates,
+not policy cutoffs. No database migration or generated type change is required.

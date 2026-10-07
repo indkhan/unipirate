@@ -1,5 +1,5 @@
 ﻿import styles from "./check.module.css";
-import { isAnswered, TEXT_STEPS } from "./steps";
+import { DATE_STEPS, isAnswered, TEXT_STEPS } from "./steps";
 
 /** Shared text controls for the checker and saved-profile review. */
 export function QualificationTextInput({ step, value, onChange }: {
@@ -8,12 +8,13 @@ export function QualificationTextInput({ step, value, onChange }: {
   onChange: (value: string | undefined) => void;
 }) {
   const config = TEXT_STEPS[step];
-  const invalid = step === "apsSubmissionDate" && value !== undefined && !isAnswered({apsSubmissionDate: value}, step);
+  const date = DATE_STEPS.some(key => key === step);
+  const invalid = date && value !== undefined && !isAnswered({ [step]: value }, step);
   return (
     <div>
       <label className={styles.inputLabel} htmlFor={`${step}-input`}>{config.label}</label>
       <input id={`${step}-input`} className={styles.input} type="text"
-        placeholder={step === "apsSubmissionDate" ? "YYYY-MM-DD" : undefined}
+        placeholder={date ? "YYYY-MM-DD" : undefined}
         aria-invalid={invalid || undefined} aria-describedby={invalid ? `${step}-error` : undefined}
         maxLength={config.maxLength} value={value ?? ""}
         onChange={(event) => onChange(event.target.value === "" ? undefined : event.target.value)} />

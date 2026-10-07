@@ -23,7 +23,8 @@ export const p2CbseJeeAdvanced: Profile = {
   jeeAdvanced: true,
 };
 
-// 3. Indian 3-yr B.Sc → Master's — APS + dMAT (CS field, SS 2027 intake)
+// 3. Legacy Indian 3-yr B.Sc → Master's (SS 2027): field/procedure absent;
+// dMAT is unknown. Standalone CS is not automatically an affected Engineering degree.
 export const p3Indian3yrBsc: Profile = {
   targetDegree: "master",
   intake: { term: "summer", year: 2027 },
