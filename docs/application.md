@@ -666,6 +666,16 @@ capture cap now reports any omitted text explicitly as unresolved rather than hi
 the truncation. Shared 90-second budget, provider/model and SDK remain unchanged.
 Sanitized failure categories report timeout or invalid/unavailable response, never
 provider bodies or keys. Real provider acceptance still requires root's clean smoke.
+The configured `nvidia/nemotron-3.5-lightning:free` import uses the existing SDK's
+`generateText` with one forced native `submit_research` tool, strict
+`ResearchOutputSchema` input and no execute handler or agent loop. Its supported
+OpenRouter setting disables reasoning through `extraBody.reasoning.enabled: false`;
+no response-format request is sent. Exactly one valid tool submission is required
+before the existing literal observation/provenance checks build a pending draft.
+The 6,000-token output cap favors a rich partial draft over exhaustive prose within
+the unchanged shared 90-second limit. Missing, wrong, malformed or truncated tool
+output retains explicit incomplete/manual recovery. Root's same-model diagnostic
+established native-tool capability, not full-workflow operational acceptance.
 Reviewed routes use kind `route` and its typed route value. Portal facts use kind
 `description`, literal HTTPS portal URL as `verbatim`, and exact keys
 `application_link:university`, `application_link:vpd`, `application_link:uniassist`.
