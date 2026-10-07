@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import type { ToolSet } from "ai";
+import jeeLegacy from "@/lib/engine/__tests__/jee-legacy.fixture.json";
 import { ruleData } from "@/scripts/rules.bootstrap";
 
 const mocks = vi.hoisted(() => ({ embed: vi.fn(), streamText: vi.fn(), getPublishedRules: vi.fn(), matchKbChunks: vi.fn() }));
@@ -149,4 +150,20 @@ it.each(["unknown", "required", "not_required"] as const)("withholds certificate
   expect(result.content).not.toContain("Official source says");
   expect(result.source_url).toBe(renamed.source_url);
   expect(result.last_verified_at).toBe(renamed.last_verified_at);
+});
+
+
+it("keeps persisted JEE claims out of the actual assistant search_rules tool result", async () => {
+  const jee = jeeLegacy[0];
+  mocks.getPublishedRules.mockResolvedValue([jee]);
+  mocks.matchKbChunks.mockResolvedValue([{ ...stored, slug: jee.slug, title: jee.outcomes.note,
+    content: jee.outcomes.note + ' Official source says: "' + jee.source_quote + '"',
+    source_url: jee.source_url, last_verified_at: jee.last_verified_at }]);
+  const result = (await search())[0];
+  expect(result.content).toContain("[[unknown]]");
+  expect(result.content).not.toContain(jee.outcomes.note);
+  expect(result.content).not.toContain(jee.source_quote);
+  expect(result.content).toContain("https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/");
+  expect(result.last_verified_at).toBeNull();
+  expect(mocks.getPublishedRules).toHaveBeenCalledOnce();
 });

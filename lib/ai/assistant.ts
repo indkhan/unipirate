@@ -140,7 +140,7 @@ function assistantTools(options: {
         });
         const matches = await matchKbChunks(db, JSON.stringify(embedding), 6);
         // Current structured rows are caller-scoped through the existing helper.
-        // A failed read must not resurrect an old certificate-only exemption.
+        // A failed read must not resurrect old dMAT exemptions or JEE admission claims.
         const rules = matches.some(m => m.source_type === "rule")
           ? await getPublishedRules(db).catch(() => null) : [];
         return projectDmatKbMatches(matches, rules);

@@ -549,6 +549,29 @@ function ruleMatches(facts: Record<string, Fact>, rule: ParsedRule): boolean {
   );
 }
 
+// Shared structured quarantine for evaluation and assistant evidence. No I/O.
+type JeeRule = { conditions: Record<string, Condition>; outcomes: { path?: string } };
+export const isJeeRule = (r: JeeRule) =>
+  conditionPasses(true, r.conditions.jee_advanced ?? false) ||
+  ["jee_main_status", "jee_advanced_status", "jee_evidence_context"].some(key => Object.hasOwn(r.conditions, key));
+const jeePath = (r: JeeRule) => r.outcomes.path !== undefined && isJeeRule(r);
+// Explicit inclusion belongs in reviewed rule data; exclusions do not define a field/certificate set.
+const includedJeeScope = (condition: Condition | undefined): boolean =>
+  typeof condition === "string" || typeof condition === "number" ||
+  (typeof condition === "object" && condition !== null &&
+    (condition.op === "eq" || condition.op === "in"));
+const boundedJeeIntake = (condition: Condition | undefined): boolean =>
+  includedJeeScope(condition) || (typeof condition === "object" && condition !== null &&
+    ["gte", "gt", "lte", "lt"].includes(condition.op));
+export const isScopedJeePathRule = (r: JeeRule) => r.outcomes.path === "subject_restricted" &&
+  r.conditions.jee_main_status === "passed" && r.conditions.jee_advanced_status === "passed" &&
+  r.conditions.jee_evidence_context === "ordinary" &&
+  r.conditions.target_degree === "bachelor" && r.conditions.curriculum === "national" &&
+  r.conditions.aps_issuer_country === "in" && r.conditions.aps_qualification_context === "national" &&
+  includedJeeScope(r.conditions.board) && includedJeeScope(r.conditions.target_field) &&
+  boundedJeeIntake(r.conditions.intake_index);
+export const isQuarantinedJeeRule = (r: JeeRule) => jeePath(r) && r.outcomes.path !== "unknown" && !isScopedJeePathRule(r);
+
 // --------------------------------------------------------------- evaluate
 
 export const NO_RULE_MESSAGES = {
@@ -575,25 +598,6 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   // Only reviewed evidence-scoped path conditions can establish ordinary recognition.
   const ibPath = (r: ParsedRule) => r.conditions.curriculum === 'ib' && r.outcomes.path !== undefined;
   const scopedIb = (r: ParsedRule) => r.conditions.ib_evidence === 'v1' && r.conditions.ib_document_status !== undefined && r.conditions.ib_exam_year !== undefined;
-  const jeePath = (r: ParsedRule) => r.outcomes.path !== undefined &&
-    (conditionPasses(true, r.conditions.jee_advanced ?? false) ||
-      ["jee_main_status", "jee_advanced_status", "jee_evidence_context"].some(key => Object.hasOwn(r.conditions, key)));
-  // Explicit inclusion belongs in reviewed rule data; exclusions do not define a field/certificate set.
-  const includedJeeScope = (condition: Condition | undefined): boolean =>
-    typeof condition === "string" || typeof condition === "number" ||
-    (typeof condition === "object" && condition !== null &&
-      (condition.op === "eq" || condition.op === "in"));
-  const boundedJeeIntake = (condition: Condition | undefined): boolean =>
-    includedJeeScope(condition) || (typeof condition === "object" && condition !== null &&
-      ["gte", "gt", "lte", "lt"].includes(condition.op));
-  const scopedJee = (r: ParsedRule) => r.outcomes.path === "subject_restricted" &&
-    r.conditions.jee_main_status === "passed" && r.conditions.jee_advanced_status === "passed" &&
-    r.conditions.jee_evidence_context === "ordinary" &&
-    r.conditions.target_degree === "bachelor" && r.conditions.curriculum === "national" &&
-    r.conditions.aps_issuer_country === "in" && r.conditions.aps_qualification_context === "national" &&
-    includedJeeScope(r.conditions.board) && includedJeeScope(r.conditions.target_field) &&
-    boundedJeeIntake(r.conditions.intake_index);
-  const quarantinedJee = (r: ParsedRule) => jeePath(r) && r.outcomes.path !== "unknown" && !scopedJee(r);
   const matched = live.filter(r => ibPath(r) && !scopedIb(r) ? false : positiveGce(r) ? scopedGce(r) && witnesses.some(w=>ruleMatches(w,r)) : ruleMatches(facts,r));
 
   const citations: Citation[] = [];
@@ -608,7 +612,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       ruleId: rule.id,
       sourceUrl: rule.source_url,
       verifiedAt: rule.last_verified_at ?? null,
-      claim: diagnosticClaim ?? (quarantinedJee(rule) ? "Stored JEE route requires qualifying-pass and applicability review." : rule.outcomes.note ?? rule.source_quote),
+      claim: diagnosticClaim ?? (isQuarantinedJeeRule(rule) ? "Stored JEE route requires qualifying-pass and applicability review." : rule.outcomes.note ?? rule.source_quote),
       status: rule.status === "beta" ? "beta" : "verified",
       supports: [support],
     });
@@ -619,7 +623,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   function resolve<V>(key: "path" | "aps" | "testas" | "dmat" | `aps:${ApsScope}`): V | undefined {
     const scope = key.startsWith("aps:") ? key.slice(4) as ApsScope : undefined;
     const outcome = (r: ParsedRule) => {
-      if (key === "path" && quarantinedJee(r)) return undefined;
+      if (key === "path" && isQuarantinedJeeRule(r)) return undefined;
       // Possession is not applicability to the relevant completed procedure.
       // Keep other outcomes on the same historical row available.
       if (key === "dmat" && r.outcomes.dmat === "not_required" &&
@@ -660,12 +664,12 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       (profile.jee !== undefined || profile.jeeAdvanced === true)) {
     const report = JeeProfileSchema.safeParse(profile.jee);
     const jee = report.success ? report.data : {};
-    const legacyRules = live.filter(r => quarantinedJee(r) && ruleMatches(facts, r));
+    const legacyRules = live.filter(r => isQuarantinedJeeRule(r) && ruleMatches(facts, r));
     for (const rule of legacyRules) {
       const message = "Stored JEE route is quarantined pending Main and Advanced qualifying passage, qualification, target field and intake review. Confirm with " + rule.source_url;
       unknowns.push(message); cite(rule, "unknowns", message);
     }
-    const ordinaryMatched = matched.some(r => jeePath(r) && scopedJee(r) && ruleMatches(facts, r));
+    const ordinaryMatched = matched.some(r => jeePath(r) && isScopedJeePathRule(r) && ruleMatches(facts, r));
     if (!ordinaryMatched) {
       if (jee.context && jee.context !== "ordinary") {
         unknowns.push("JEE " + jee.context + " needs individual assessment by uni-assist/the university. Main exemptions/foreign entry, preparatory ranks and cross-year or unclear results have no verified German exception here. Confirm with " + JEE_SOURCE + " and https://jeeadv.ac.in/foreign.html");
@@ -758,14 +762,14 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   const documents: string[] = [];
   const steps: Result["stepsDetailed"] = [];
   for (const rule of matched) {
-    for (const doc of quarantinedJee(rule) ? [] : rule.outcomes.documents ?? []) {
+    for (const doc of isQuarantinedJeeRule(rule) ? [] : rule.outcomes.documents ?? []) {
       // Trade-off: old free-text APS entries lack machine-readable scope.
       // Suppress them pending admin review; never infer scope from their prose.
       if (/\bAPS\b/i.test(doc)) continue;
       if (!documents.includes(doc)) documents.push(doc);
       cite(rule, "documents");
     }
-    for (const step of quarantinedJee(rule) ? [] : rule.outcomes.steps ?? []) {
+    for (const step of isQuarantinedJeeRule(rule) ? [] : rule.outcomes.steps ?? []) {
       if (/\bAPS\b/i.test(step.text)) continue;
       if (!steps.some((s) => s.text === step.text)) {
         steps.push({ ...step, ruleId: rule.id });
