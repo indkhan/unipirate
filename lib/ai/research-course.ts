@@ -3,7 +3,7 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { getServerEnv } from "@/lib/env";
-import { buildResearchDraft, links, officialDomains, onDomain, ObservationSchema, ResearchOutputSchema, ResearchSeedSchema, ResearchUrlSchema, type Observation, type ResearchSeed } from "@/lib/courses/research";
+import { buildResearchDraft, canonicalResearchUrl, focusedResearchUrls, links, officialDomains, onDomain, ObservationSchema, ResearchOutputSchema, ResearchSeedSchema, ResearchUrlSchema, type Observation, type ResearchSeed } from "@/lib/courses/research";
 
 export const COURSE_EXTRACTION_MODEL = "nvidia/nemotron-3.5-lightning:free";
 const searchResponse = z.object({ results: z.array(z.object({ url: z.string().max(2048) })).max(20) });
@@ -35,7 +35,9 @@ Route values require explicit source wording; never equate VPD with a completed 
 For complete scope, quote the actual intake year, winter/summer term and literal applicant group.
 References must use exact retrieved URLs, not search snippets or model knowledge. PDF observations
 have the same evidence rules. Pasted observations are only seeds and cannot establish official evidence.`,
-    prompt: JSON.stringify({ seed, observations }),
+    // The full paste remains in the recovery draft, but is not duplicated into
+    // provider context; retrieved observations are the sole evidence input.
+    prompt: JSON.stringify({ identity: { name: seed.name, university: seed.university, url: seed.url }, observations: observations.filter(o => o.origin === "web") }),
   });
   return object;
 }
@@ -80,15 +82,20 @@ export async function researchCourse(input: unknown, dependencies?: {
     }));
   };
   const extract = async (urls: string[], domains: string[]) => {
-    const wanted = [...new Set(urls)].filter(u => domains.some(d => onDomain(u, d)) && !observations.some(o => o.origin === "web" && o.url === u)).slice(0, Math.min(6, 12 - observations.length));
+    const wanted = focusedResearchUrls(urls, domains, observations).slice(0, Math.min(6, 12 - observations.length));
     if (!wanted.length) return;
     const response = extractResponse.parse(await post("extract", { urls: wanted, extract_depth: "advanced", format: "markdown", timeout: 20 }));
     for (const result of response.results) {
-      if (!wanted.includes(result.url) || !ResearchUrlSchema.safeParse(result.url).success || !result.raw_content.trim()) continue;
+      if (!ResearchUrlSchema.safeParse(result.url).success || !wanted.some(url => canonicalResearchUrl(url) === canonicalResearchUrl(result.url)) || !result.raw_content.trim()) continue;
+      if (observations.some(o => o.origin === "web" && canonicalResearchUrl(o.url) === canonicalResearchUrl(result.url))) continue;
+      if (onDomain(result.url, "daad.de") && !(result.raw_content.includes(seed.name) && result.raw_content.includes(seed.university))) {
+        issues.push("A retrieved DAAD page did not match the programme identity and was excluded from evidence."); continue;
+      }
       if (observations.length >= 12) break;
+      if (result.raw_content.length > 20_000) issues.push("A retrieved source exceeded the 20,000-character capture bound; omitted text is unresolved and requires manual source review.");
       observations.push(ObservationSchema.parse({ url: result.url, content: result.raw_content.slice(0, 20_000), retrieved_at: new Date().toISOString(), origin: "web" }));
     }
-    if (wanted.some(url => !observations.some(o => o.origin === "web" && o.url === url))) issues.push("Some requested pages/PDFs could not be retrieved.");
+    if (wanted.some(url => !observations.some(o => o.origin === "web" && canonicalResearchUrl(o.url) === canonicalResearchUrl(url)))) issues.push("Some requested pages/PDFs could not be retrieved.");
   };
   try {
     if (!key) issues.push("Tavily is not configured; research incomplete. Paste/manual review remains available.");
@@ -103,7 +110,7 @@ export async function researchCourse(input: unknown, dependencies?: {
             await extract([...(domains.some(d => onDomain(seed.url, d)) ? [seed.url] : []), ...found], domains);
             domains = officialDomains(seed, observations);
           }
-        } catch { issues.push("Official web search/retrieval failed or exceeded bounds; research incomplete."); }
+        } catch { issues.push(`Official web search/retrieval ${controller.signal.aborted ? "timeout" : "invalid response or unavailable"}; failed or exceeded bounds; research incomplete.`); }
         if (controller.signal.aborted) break;
       }
       try {
@@ -111,9 +118,9 @@ export async function researchCourse(input: unknown, dependencies?: {
         await extract([...(domains.some(d => onDomain(seed.url, d)) ? [seed.url] : []), ...followed, ...found], domains);
         // Regulations/PDF links can first appear on the retrieved university page.
         await extract(observations.filter(o => o.origin === "web").flatMap(o => links(o.content)), domains);
-      } catch { issues.push("Linked official pages/PDFs could not be retrieved; research incomplete."); }
+      } catch { issues.push(`Linked official pages/PDFs ${controller.signal.aborted ? "timeout" : "invalid response or unavailable"}; research incomplete.`); }
       try { controller.signal.throwIfAborted(); output = await generate(seed, observations, controller.signal); }
-      catch { issues.push(`AI research unavailable or invalid (${COURSE_EXTRACTION_MODEL}); paste/manual review retained.`); }
+      catch { issues.push(`AI research ${controller.signal.aborted ? "timeout" : "invalid response or unavailable"} (${COURSE_EXTRACTION_MODEL}); paste/manual review retained.`); }
     }
     return buildResearchDraft(seed, observations, output, issues);
   } finally { clearTimeout(timeout); }

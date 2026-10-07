@@ -58,10 +58,11 @@ export const ResearchDraftSchema = z.object({
           || (source && links(source.content).includes(observed.url)))) ctx.addIssue({ code: "custom", message: "Field evidence needs captured offering applicability or its explicit source link" });
       }
       if (f.status === "pending" && f.verbatim) {
-        const field = semanticField({ ...f, verbatim: f.verbatim });
-        const previous = assertions.get(field);
-        if (previous !== undefined && previous !== f.verbatim) ctx.addIssue({ code: "custom", message: "Competing semantic assertions require unresolved conflict review" });
-        assertions.set(field, f.verbatim);
+        for (const field of semanticFields({ ...f, verbatim: f.verbatim })) {
+          const previous = assertions.get(field);
+          if (previous !== undefined && previous !== f.verbatim) ctx.addIssue({ code: "custom", message: "Competing semantic assertions require unresolved conflict review" });
+          assertions.set(field, f.verbatim);
+        }
       }
     }
   }
@@ -87,6 +88,29 @@ export function onDomain(url: string, domain: string): boolean {
 export function links(content: string): string[] {
   return [...content.matchAll(/https:\/\/[^\s<>"\])]+/g)].map(m => m[0]).filter(url => ResearchUrlSchema.safeParse(url).success);
 }
+export function canonicalResearchUrl(value: string): string {
+  const url = new URL(ResearchUrlSchema.parse(value));
+  url.hash = ""; url.pathname = url.pathname.replace(/\/$/, "") || "/";
+  return url.href;
+}
+// Prioritize explicit source link labels/paths; no model recommendations or search snippets.
+export function focusedResearchUrls(urls: string[], domains: string[], observations: Observation[]): string[] {
+  const captured = new Set(observations.filter(o => o.origin === "web").map(o => canonicalResearchUrl(o.url)));
+  const unique = new Map<string, string>();
+  for (const url of urls) if (domains.some(d => onDomain(url, d))) {
+    const key = canonicalResearchUrl(url);
+    if (!captured.has(key) && !unique.has(key)) unique.set(key, url);
+  }
+  const score = (url: string) => {
+    const labels = observations.filter(o => o.origin === "web").flatMap(o => [...o.content.matchAll(/\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g)])
+      .filter(m => m[2] === url).map(m => m[1]).join(" ");
+    const context = `${new URL(url).pathname} ${labels}`;
+    return /admission|application|apply|requirement|deadline|regulation|\.pdf|bewerbung|zulassung|ordnung/i.test(context) ? 0
+      : /tuition|semester.fee|semesterbeitrag/i.test(context) ? 1
+      : /home|career|living|welcome|privacy|contact|logo|banner|\.svg|\.png|\.jpg/i.test(context) ? 3 : 2;
+  };
+  return [...unique.values()].sort((a, b) => score(a) - score(b));
+}
 function identifies(source: Observation, seed: Pick<ResearchSeed, "name" | "university">): boolean {
   return source.content.includes(seed.name) && source.content.includes(seed.university);
 }
@@ -98,6 +122,9 @@ export function officialDomains(seed: Pick<ResearchSeed, "name" | "university">,
     if (source.origin !== "web" || !onDomain(source.url, "daad.de") || !identifies(source, seed)) continue;
     const endorsed = [...source.content.matchAll(/\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g)]
       .filter(m => m[1].includes(seed.university) || /university|hochschule|homepage|website|application|bewerbung/i.test(m[1])).map(m => m[2]);
+    // DAAD also emits plain angle-bracket links alongside explicit programme
+    // admission/deadline labels. The retrieved identity page supplies provenance.
+    endorsed.push(...source.content.split("\n").filter(line => /admission|application|deadline|bewerbung|zulassung/i.test(line)).flatMap(links));
     for (const link of endorsed.filter(u => ResearchUrlSchema.safeParse(u).success)) {
       const host = new URL(link).hostname.replace(/^www\./, "");
       // Trade-off: German university domains only; other hosts remain unresolved
@@ -113,19 +140,22 @@ function literalGroup(content: string, group: string): boolean {
 }
 // Known source-named language instruments have independent requirement identities.
 // IELTS and TOEFL may be valid alternatives; model field labels cannot split IELTS.
-function semanticField(f: Pick<z.infer<typeof fact>, "key" | "kind" | "verbatim" | "deadline_kind">): string {
-  if (f.kind === "route") return "route";
-  if (f.kind === "deadline") return `deadline:${stageOf(f.key) ?? "unknown"}:${f.deadline_kind}`;
+function semanticFields(f: Pick<z.infer<typeof fact>, "key" | "kind" | "verbatim" | "deadline_kind">): string[] {
+  if (f.kind === "route") return ["route"];
+  if (f.kind === "deadline") return [`deadline:${stageOf(f.key) ?? "unknown"}:${f.deadline_kind}`];
   if (f.kind === "language") {
     const instruments = [...f.verbatim.matchAll(/\b(IELTS|TOEFL|TestDaF|DSH|Cambridge|CEFR)\b/gi)].map(m => m[1].toLowerCase());
-    if (instruments.length) return `language:${[...new Set(instruments)].sort().join("+")}`;
-    if (/exempt|exemption|waiv|befreit|befreiung/i.test(f.verbatim)) return "language:exemption";
+    if (instruments.length) return [...new Set(instruments)].map(i => `language:${i}`);
+    if (/exempt|exemption|waiv|befreit|befreiung/i.test(f.verbatim)) return ["language:exemption"];
+    // Unknown instrument equivalence cannot be established; differing assertions
+    // require review instead of trusting arbitrary model keys to separate them.
+    return ["language:unknown"];
   }
   if (f.kind === "fee") {
-    if (/tuition|studiengebühr/i.test(f.verbatim)) return "fee:tuition";
-    if (/semester (?:fee|contribution)|semesterbeitrag/i.test(f.verbatim)) return "fee:semester";
+    if (/tuition|studiengebühr/i.test(f.verbatim)) return ["fee:tuition"];
+    if (/semester (?:fee|contribution)|semesterbeitrag/i.test(f.verbatim)) return ["fee:semester"];
   }
-  return `${f.kind}:${f.key}`;
+  return [`${f.kind}:${f.key}`];
 }
 // Conservative literal stage support, never inferred from a host or route.
 // Trade-off: other source wording needs manual literal capture before review.
@@ -192,7 +222,7 @@ export function buildResearchDraft(seed: ResearchSeed, observations: Observation
     }
     const facts: z.infer<typeof OfferingFactSchema>[] = [];
     const applicantGroup = offering.applicant_group;
-    const grouped = new Map<string, z.infer<typeof fact>[]>();
+    const grouped: { fields: Set<string>; alternatives: z.infer<typeof fact>[] }[] = [];
     for (const candidate of offering.facts) {
       const candidateSource = sourceFor(candidateScopes.get(candidate)!);
       const supported = candidate.applicability === offering.applicant_group && candidate.evidence.every(e => {
@@ -207,10 +237,15 @@ export function buildResearchDraft(seed: ResearchSeed, observations: Observation
         draft.issues.push("A candidate lacked source, wording or applicability support and was left unresolved.");
         continue;
       }
-      const field = semanticField(candidate);
-      grouped.set(field, [...(grouped.get(field) ?? []), candidate]);
+      const fields = new Set(semanticFields(candidate));
+      const overlaps = grouped.filter(g => [...g.fields].some(field => fields.has(field)));
+      for (const group of overlaps) {
+        for (const field of group.fields) fields.add(field);
+        grouped.splice(grouped.indexOf(group), 1);
+      }
+      grouped.push({ fields, alternatives: [...overlaps.flatMap(g => g.alternatives), candidate] });
     }
-    for (const alternatives of grouped.values()) {
+    for (const { alternatives } of grouped) {
       const first = alternatives[0];
       const key = first.key;
       const conflict = alternatives.some(f => f.verbatim !== first.verbatim || f.kind !== first.kind || f.route !== first.route || f.deadline_kind !== first.deadline_kind);

@@ -15,6 +15,24 @@ export const output = { offerings: [{ intake_term: "winter", intake_year: 2027, 
 ] }] };
 
 describe("research evidence boundary", () => {
+  it.each([
+    ["IELTS 6.5 or TOEFL 90.", "IELTS 7.0.", true],
+    ["IELTS 7.0.", "IELTS 6.5 or TOEFL 90.", true],
+    ["IELTS 6.5.", "TOEFL 90.", false],
+    ["IELTS 6.5 or TOEFL 90.", "IELTS 6.5 or TOEFL 90.", false],
+    ["Unknown test score 60.", "Unknown test score 70.", true],
+  ])("checks overlapping instrument assertions %s / %s", (first, second, conflict) => {
+    const sources = observations.map((s, i) => i === 2 ? { ...s, content: `${s.content} ${first} ${second}` } : s);
+    const language = output.offerings[0].facts[2];
+    const candidates = [first, second].map((verbatim, i) => ({ ...language, key: i ? "language_requirement" : "english", verbatim, evidence: [reference(sources[2].url, verbatim)] }));
+    const draft = buildResearchDraft(seed, sources, { offerings: [{ ...output.offerings[0], facts: candidates }] }, []);
+    expect(draft.conflicts).toHaveLength(conflict ? 1 : 0);
+    const stored = buildResearchDraft(seed, sources, { offerings: [{ ...output.offerings[0], facts: [candidates[0]] }] }, []);
+    stored.offerings[0].facts.push({ ...stored.offerings[0].facts[0], key: "language_requirement", verbatim: second, evidence: [{ ...stored.offerings[0].facts[0].evidence[0], source_quote: second }] });
+    expect(ResearchDraftSchema.safeParse(stored).success).toBe(!conflict);
+    if (conflict) expect(() => prepareResearchReview(stored, 0, ["english", "language_requirement"], "11111111-1111-4111-8111-111111111111", "2026-10-07T13:00:00Z")).toThrow();
+    else expect(prepareResearchReview(stored, 0, ["english", "language_requirement"], "11111111-1111-4111-8111-111111111111", "2026-10-07T13:00:00Z").filter(f => f.status === "verified")).toHaveLength(2);
+  });
   it("preserves opposing IELTS requirements despite arbitrary model keys, while TOEFL remains a separate alternative", () => {
     const sources = observations.map((s, i) => i === 2 ? { ...s, content: `${s.content} IELTS 7.0. TOEFL 90.` } : s);
     const language = output.offerings[0].facts[2];
@@ -67,6 +85,11 @@ describe("research evidence boundary", () => {
     expect(officialDomains(seed, [{ ...observations[0], origin: "paste" }])).toEqual(["daad.de", "uni-assist.de"]);
     expect(officialDomains(seed, [{ ...observations[0], content: observations[0].content.replace("Synthetic Computing", "Unrelated") }])).toEqual(["daad.de", "uni-assist.de"]);
     expect(officialDomains(seed, [{ ...observations[0], content: "Synthetic Computing Synthetic University [Sponsor](https://evil.de)" }])).toEqual(["daad.de", "uni-assist.de"]);
+  });
+  it("recognizes DAAD's literal topical angle-bracket links without endorsing bare navigation links", () => {
+    const source = { ...observations[0], content: "Synthetic Computing Synthetic University\nApplication deadlines: <https://campus-example.de/computing/admission>\nNavigation: <https://other-example.de/home>" };
+    expect(officialDomains(seed, [source])).toContain("campus-example.de");
+    expect(officialDomains(seed, [source])).not.toContain("other-example.de");
   });
   it("rejects reviewer/status spoofing in a stored research envelope", () => {
     const draft = buildResearchDraft(seed, observations, output, []);

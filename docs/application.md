@@ -642,11 +642,30 @@ Legacy keep-update resolution checks both incoming and canonical research marker
 it cannot replace a research canonical record through the old task-sync workflow.
 Known source-named language instruments (IELTS, TOEFL, TestDaF, DSH, Cambridge,
 CEFR) identify independent semantic requirements regardless of model field labels.
+Combined assertions participate in each named instrument identity: an IELTS/TOEFL
+assertion overlaps a separate IELTS assertion. Different verbatim assertions with
+overlapping instruments require unresolved conflict review; no score parsing or
+equivalence is invented. Disjoint instruments and identical wording remain valid.
+Unknown instrument wording is conservatively grouped for review. Initial generation,
+manual recovery and publication enforce the same overlap decisions.
 Competing wording for the same instrument is unresolved; distinct instruments remain
 separate alternatives. Recovery cannot insert opposing pending semantic assertions.
 Route, stage/deadline, explicit language exemptions, tuition and semester-fee wording
 also receive semantic conflict identities; unrelated document/prerequisite labels
 remain separate captures rather than conflating all requirements into one field.
+
+Bounded retrieval deduplicates fragment/trailing-slash source variants while keeping
+the actually returned source URL and literal captured text. Retrieved DAAD identity
+mismatches are excluded from applicable evidence. Admission/application/regulation/PDF
+links rank before generic home/living/career navigation; current fees follow those
+consequential sources. DAAD's topical literal angle-bracket links can establish a
+university domain through the same retrieved programme identity boundary. The model
+receives retrieved web observations and identity, without duplicating the full paste;
+paste remains available in manual recovery. The existing 20,000-character source
+capture cap now reports any omitted text explicitly as unresolved rather than hiding
+the truncation. Shared 90-second budget, provider/model and SDK remain unchanged.
+Sanitized failure categories report timeout or invalid/unavailable response, never
+provider bodies or keys. Real provider acceptance still requires root's clean smoke.
 Reviewed routes use kind `route` and its typed route value. Portal facts use kind
 `description`, literal HTTPS portal URL as `verbatim`, and exact keys
 `application_link:university`, `application_link:vpd`, `application_link:uniassist`.
