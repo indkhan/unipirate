@@ -473,10 +473,11 @@ keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.
   `lib/engine/__tests__/personas.ts` holds the 13 verified student personas
   shared between engine and checker tests.
 - `lib/db/__tests__/rls.integration.test.ts` asserts anon/owner/admin
-  visibility against the real linked Supabase project. It self-skips (with a
-  console warning) when env keys are missing, the schema is behind, or the
-  secret key cannot use the auth admin API — so `pnpm test` is green in any
-  environment.
+  visibility against the explicitly configured disposable/local Supabase
+  service. It self-skips (with a console warning) when required env keys are
+  absent. When configured, missing schema/auth/admin/API failures FAIL and must
+  not be claimed green — use loopback/disposable isolation before execution and
+  run the actual required RLS suite before merge.
 - Before merging: `pnpm test && pnpm lint && pnpm typecheck && pnpm build`.
 
 ## Where to make common changes
