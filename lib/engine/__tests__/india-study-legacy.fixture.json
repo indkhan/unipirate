@@ -1,0 +1,223 @@
+[
+  {
+    "id": "df155c8a-8522-459b-b572-51033b93492d",
+    "conditions": {
+      "board": {
+        "op": "in",
+        "value": [
+          "cbse",
+          "cisce",
+          "state_board"
+        ]
+      },
+      "curriculum": "national",
+      "jee_advanced": true,
+      "target_degree": "bachelor"
+    },
+    "outcomes": {
+      "note": "A valid JEE Advanced result gives direct, subject-specific admission.",
+      "path": "subject_restricted"
+    },
+    "status": "verified",
+    "source_url": "https://www.daad.in/en/study-research-in-germany/studying-in-germany/bachelor-studies/",
+    "source_quote": "the sole exception is a valid JEE Advanced result (→ direct, subject-specific)",
+    "last_verified_at": "2026-07-04T00:00:00+00:00",
+    "notes": "Bootstrap candidate: in-jee-advanced-direct. Review in /admin before publishing.",
+    "created_at": "2026-07-05T09:06:19.617351+00:00",
+    "updated_at": "2026-07-05T10:49:27.942964+00:00",
+    "slug": "in-jee-advanced-direct",
+    "country_code": "in"
+  },
+  {
+    "id": "8d95fa83-385f-4863-88cc-7dfe0a3036c6",
+    "conditions": {
+      "board": {
+        "op": "in",
+        "value": [
+          "cbse",
+          "cisce",
+          "state_board"
+        ]
+      },
+      "curriculum": "national",
+      "intake_index": {
+        "op": "gte",
+        "value": 4053
+      },
+      "jee_advanced": false,
+      "target_degree": "bachelor",
+      "class12_percent": {
+        "op": "gte",
+        "value": 70
+      }
+    },
+    "outcomes": {
+      "note": "From Winter Semester 2026/27, Class XII with at least 70% may qualify for the subject-restricted Studienkolleg pathway.",
+      "path": "studienkolleg"
+    },
+    "status": "verified",
+    "source_url": "https://aps-india.de/news/",
+    "source_quote": "From Winter Semester 2026/27, Class XII plus APS may qualify for subject-restricted admission via Studienkolleg when the certificate shows at least 70%.",
+    "last_verified_at": "2026-07-04T00:00:00+00:00",
+    "notes": "Bootstrap candidate: in-school-studienkolleg-ws2026. Review in /admin before publishing.",
+    "created_at": "2026-07-05T09:06:19.617351+00:00",
+    "updated_at": "2026-07-05T10:49:27.942964+00:00",
+    "slug": "in-school-studienkolleg-ws2026",
+    "country_code": "in"
+  },
+  {
+    "id": "f787cf74-25be-48db-b20f-2382d4baeb83",
+    "conditions": {
+      "board": {
+        "op": "in",
+        "value": [
+          "cbse",
+          "cisce",
+          "state_board"
+        ]
+      },
+      "curriculum": "national",
+      "intake_index": {
+        "op": "lte",
+        "value": 4052
+      },
+      "jee_advanced": false,
+      "target_degree": "bachelor"
+    },
+    "outcomes": {
+      "note": "Class 12 from Indian boards gives no direct admission without a valid JEE Advanced result; route is Studienkolleg + Feststellungsprüfung.",
+      "path": "studienkolleg"
+    },
+    "status": "verified",
+    "source_url": "https://www.daad.in/en/study-research-in-germany/studying-in-germany/bachelor-studies/",
+    "source_quote": "Class 12 from Indian boards → no direct admission; the sole exception is a valid JEE Advanced result (→ direct, subject-specific). Otherwise: Studienkolleg + FSP.",
+    "last_verified_at": "2026-07-04T00:00:00+00:00",
+    "notes": "Bootstrap candidate: in-school-studienkolleg. Review in /admin before publishing.",
+    "created_at": "2026-07-05T09:06:19.617351+00:00",
+    "updated_at": "2026-07-05T10:49:27.942964+00:00",
+    "slug": "in-school-studienkolleg",
+    "country_code": "in"
+  },
+  {
+    "id": "c29d930a-87c9-49ba-8e30-b764e42760ca",
+    "conditions": {
+      "board": {
+        "op": "in",
+        "value": [
+          "cbse",
+          "cisce",
+          "state_board"
+        ]
+      },
+      "curriculum": "national",
+      "intake_index": {
+        "op": "gte",
+        "value": 4053
+      },
+      "jee_advanced": false,
+      "target_degree": "bachelor",
+      "class12_percent": {
+        "op": "lt",
+        "value": 70
+      },
+      "has_existing_aps": false
+    },
+    "outcomes": {
+      "note": "From Winter Semester 2026/27, a new applicant without an existing APS certificate needs at least 70% overall in Class XII for the Studienkolleg or one-year-bachelor pathways.",
+      "path": "insufficient"
+    },
+    "status": "verified",
+    "source_url": "https://aps-india.de/news/",
+    "source_quote": "anabin criteria updated 15 March 2026; for admissions from Winter Semester 2026/27, minimum 70% overall in Class XII, all boards, applies to BOTH pathways",
+    "last_verified_at": "2026-07-04T00:00:00+00:00",
+    "notes": "Bootstrap candidate: in-70pct-insufficient-ws2026. Review in /admin before publishing.",
+    "created_at": "2026-07-05T09:06:19.617351+00:00",
+    "updated_at": "2026-07-05T10:49:27.942964+00:00",
+    "slug": "in-70pct-insufficient-ws2026",
+    "country_code": "in"
+  },
+  {
+    "id": "1cb0cf24-8f39-44b4-b692-b9cb164e47fd",
+    "conditions": {
+      "board": {
+        "op": "in",
+        "value": [
+          "cbse",
+          "cisce",
+          "state_board"
+        ]
+      },
+      "curriculum": "national",
+      "intake_index": {
+        "op": "gte",
+        "value": 4053
+      },
+      "jee_advanced": false,
+      "target_degree": "bachelor",
+      "class12_percent": {
+        "op": "lt",
+        "value": 70
+      },
+      "aps_application_day": {
+        "op": "lt",
+        "value": 20260315
+      }
+    },
+    "outcomes": {
+      "note": "Your APS application predates 15 March 2026 and is assessed under the old criteria. The APS certificate remains valid, but the university makes the final admission decision; confirm the pathway with the university.",
+      "path": "unknown"
+    },
+    "status": "verified",
+    "source_url": "https://aps-india.de/news/",
+    "source_quote": "Applications submitted before 15 March 2026 are assessed based on the criteria applicable at the time of submission; already-issued APS certificates remain valid.",
+    "last_verified_at": "2026-07-04T00:00:00+00:00",
+    "notes": "Bootstrap candidate: in-70pct-grandfathered-aps-unknown. Review in /admin before publishing.",
+    "created_at": "2026-07-05T09:06:19.617351+00:00",
+    "updated_at": "2026-07-05T10:49:27.942964+00:00",
+    "slug": "in-70pct-grandfathered-aps-unknown",
+    "country_code": "in"
+  },
+  {
+    "id": "0e872b82-e7fb-41bb-9a35-53ecbe200df4",
+    "conditions": {
+      "board": {
+        "op": "in",
+        "value": [
+          "cbse",
+          "cisce",
+          "state_board"
+        ]
+      },
+      "curriculum": "national",
+      "intake_index": {
+        "op": "gte",
+        "value": 4053
+      },
+      "jee_advanced": false,
+      "target_degree": "bachelor",
+      "class12_percent": {
+        "op": "gte",
+        "value": 70
+      },
+      "years_of_university_study": {
+        "op": "gte",
+        "value": 1
+      },
+      "university_study_field_matches_target": true,
+      "university_study_institution_recognized": true
+    },
+    "outcomes": {
+      "note": "≥1 completed academic year of a recognized Bachelor's plus ≥70% in Class XII gives direct subject-restricted admission (both conditions required from WS 2026/27).",
+      "path": "subject_restricted"
+    },
+    "status": "verified",
+    "source_url": "https://aps-india.de/news/",
+    "source_quote": "direct subject-restricted admission after ≥1 completed academic year of a recognized Bachelor's — both conditions required",
+    "last_verified_at": "2026-07-04T00:00:00+00:00",
+    "notes": "Bootstrap candidate: in-1yr-bachelor-70pct-subject-restricted. Review in /admin before publishing.",
+    "created_at": "2026-07-05T09:06:19.617351+00:00",
+    "updated_at": "2026-07-05T10:49:27.942964+00:00",
+    "slug": "in-1yr-bachelor-70pct-subject-restricted",
+    "country_code": "in"
+  }
+]
