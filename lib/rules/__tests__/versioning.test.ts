@@ -67,3 +67,12 @@ it("impact includes new coverage with no old match and never mutates supplied pr
 });
 
 it("legacy null scope differs from explicitly reviewed unbounded publication",()=>{const before=version(1,{provenance:"legacy_capture"});const after=version(2);expect(meaningfulRuleDiff(before,after)).toEqual(expect.arrayContaining([expect.objectContaining({field:"scope_review",before:"unknown historical scope",after:"explicitly reviewed bounds"})]));});
+
+it.each([['2026-10-07T12:00:00.000001Z',1],['2026-10-07T12:00:00Z',2],['2026-10-08T00:00:00Z',1]])('publication %s is available only at exact evaluatedAt', (published_at,n)=>{
+ expect(selectRuleVersions([version(1),version(2,{published_at})],{...context,evaluatedAt:'2026-10-07T12:00:00Z'}).selected[0].version.version_number).toBe(n);
+});
+it('excludes future invalid replacement before resolving logical identity',()=>{
+ const r=selectRuleVersions([version(1),version(2,{published_at:'2026-10-07T12:00:01Z',status:null,raw_snapshot:null})],{...context,evaluatedAt:'2026-10-07T12:00:00Z'});
+ expect(r.selected[0].version.version_number).toBe(1);expect(r.diagnostics).toEqual([]);
+});
+it('rejects assessment day inconsistent with instant',()=>expect(()=>selectRuleVersions([],{...context,evaluatedAt:'2026-10-06T23:59:59Z'})).toThrow());

@@ -57,12 +57,15 @@ export function jsonEqual(a:unknown,b:unknown):boolean {
 }
 export type SelectionDiagnostic={ruleId:string;versionId:string;reason:"missing_intake"|"legacy_scope_unknown"|"invalid_publication"};
 export function selectRuleVersions(input:unknown,context:unknown):{selected:{version:RuleVersion;rule:EngineRule}[];diagnostics:SelectionDiagnostic[]} {
- const {assessmentDate,intake}=z.object({assessmentDate:CalendarDateSchema,intake:z.object({term:z.enum(["summer","winter"]),year:z.number().int().min(1).max(9999)}).optional()}).strict().parse(context);
+ const {assessmentDate,intake,evaluatedAt}=z.object({evaluatedAt:timestamp.optional(),assessmentDate:CalendarDateSchema,intake:z.object({term:z.enum(["summer","winter"]),year:z.number().int().min(1).max(9999)}).optional()}).strict().parse(context);
+ if(evaluatedAt && assessmentDateUtc(evaluatedAt)!==assessmentDate)throw new Error("Assessment day must match evaluatedAt.");
  const versions=z.array(RuleVersionSchema).parse(input).sort((a,b)=>a.rule_id.localeCompare(b.rule_id)||b.version_number-a.version_number);
  const target=intake?intakeIndex(intake.term,intake.year):undefined;
  const selected:{version:RuleVersion;rule:EngineRule}[]=[],diagnostics:SelectionDiagnostic[]=[];
  const resolved=new Set<string>();
  for(const version of versions){
+  // Availability precedes supersession, status, applicability and conditions.
+  if(evaluatedAt && version.published_at && instantOrder(version.published_at)>instantOrder(evaluatedAt))continue;
   if(resolved.has(version.rule_id))continue;
   if(version.effective_from!==null&&assessmentDate<version.effective_from || version.effective_until!==null&&assessmentDate>=version.effective_until)continue;
   if(target!==undefined && (version.intake_from!==null&&target<version.intake_from || version.intake_until!==null&&target>=version.intake_until))continue;
@@ -103,4 +106,13 @@ export function previewRuleImpact(cases:readonly {before:{profile:Profile;rules:
   if((["path","aps","testAS","dMAT"] as const).some(key=>before[key]==="unknown"&&after[key]!=="unknown"))newCoverage++;
  }
  return {changed,newCoverage};
+}
+
+/** Preserve PostgreSQL microseconds; Date alone rounds same-day publication races. */
+export function instantOrder(value:string):bigint {
+ const valid=timestamp.parse(value);
+ const fraction=valid.match(/\.(\d+)/)?.[1]??'';
+ if(fraction.length>6)throw new Error('Instant precision exceeds PostgreSQL microseconds.');
+ const whole=valid.replace(/\.\d+/, '');
+ return BigInt(new Date(whole).getTime())*BigInt(1000)+BigInt(fraction.padEnd(6,'0'));
 }
