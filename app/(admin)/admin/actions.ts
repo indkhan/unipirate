@@ -173,7 +173,10 @@ export async function publishCourseResearchAction(formData: FormData) {
   const values = z.object({ id: z.string().uuid(), attest: z.literal("yes"), accepted: z.array(z.string().min(1).max(250)).max(400) }).strict().parse({
     id: formData.get("id"), attest: formData.get("attest"), accepted: formData.getAll("accepted"),
   });
-  await publishAdminCourseResearch(db, values.id, values.accepted, user.id);
+  const reconciliation = z.array(z.object({ key: z.string().min(1).max(250), reason: z.string().trim().min(20).max(2000) }).strict()).max(400).parse(
+    formData.getAll("reconciled").map(key => ({ key, reason: formData.get(`reconciliation_reason:${key}`) })),
+  );
+  await publishAdminCourseResearch(db, values.id, values.accepted, user.id, reconciliation);
   redirect(`/admin?view=reviews&queue=pending&message=${encodeURIComponent("Reviewed research published; unaccepted facts remain unresolved.")}`);
 }
 

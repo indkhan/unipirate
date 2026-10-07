@@ -168,8 +168,10 @@ function semanticFields(f: Pick<z.infer<typeof fact>, "key" | "kind" | "verbatim
     return ["language:unknown"];
   }
   if (f.kind === "fee") {
-    if (/tuition|studiengebühr/i.test(f.verbatim)) return ["fee:tuition"];
-    if (/semester (?:fee|contribution)|semesterbeitrag/i.test(f.verbatim)) return ["fee:semester"];
+    const fields: string[] = [];
+    if (/tuition|studiengebühr/i.test(f.verbatim)) fields.push("fee:tuition");
+    if (/semester (?:fee|contribution)|semesterbeitrag/i.test(f.verbatim)) fields.push("fee:semester");
+    return fields.length ? fields : ["fee:unknown"];
   }
   return [`${f.kind}:${f.key}`];
 }
@@ -290,12 +292,27 @@ export function buildResearchDraft(seed: ResearchSeed, observations: Observation
   if (draft.issues.length || !draft.offerings.length || draft.conflicts.length || draft.offerings.some(o => o.facts.some(f => f.status === "unresolved"))) draft.status = "incomplete";
   return ResearchDraftSchema.parse(draft);
 }
-export function prepareResearchReview(draft: ResearchDraft, index: number, selected: string[], reviewer: string, now: string): z.infer<typeof OfferingFactSchema>[] {
+export const ResearchReconciliationSchema = z.array(z.object({ key: z.string().min(1).max(250), reason: z.string().trim().min(20).max(2000) }).strict()).max(400);
+export function researchNeedsReconciliation(draft: ResearchDraft): boolean {
+  const context = buildResearchContext({ url: draft.identity.source_url, name: draft.identity.name, university: draft.identity.university, text: draft.paste ?? " ".repeat(200) }, draft.observations.map(o => o.origin === "manual" ? { ...o, origin: "web" as const } : o));
+  if (context.omitted_sources > 0) return true;
+  // Paragraph separators alone cannot hide an assertion; substantive partial
+  // paragraphs/sources require human reconciliation, without inferring their facts.
+  return draft.observations.filter(o => o.origin !== "paste").some(o => {
+    const excerpts = context.sources.filter(s => s.url === o.url).flatMap(s => s.excerpts);
+    return o.content.split(/\n\s*\n/).some(p => p.trim() && !excerpts.includes(p));
+  });
+}
+export function prepareResearchReview(draft: ResearchDraft, index: number, selected: string[], reviewer: string, now: string, reconciliation: unknown = []): z.infer<typeof OfferingFactSchema>[] {
   draft = ResearchDraftSchema.parse(draft);
   z.string().uuid().parse(reviewer); z.string().datetime().parse(now);
+  const decisions = ResearchReconciliationSchema.parse(reconciliation);
+  if (new Set(decisions.map(d => d.key)).size !== decisions.length || decisions.some(d => !selected.includes(d.key))) throw new Error("Invalid reconciliation selection");
+  const omitted = researchNeedsReconciliation(draft);
   const offering = draft.offerings[z.number().int().min(0).parse(index)];
   if (!offering || new Set(selected).size !== selected.length) throw new Error("Invalid offering or duplicate review selection");
   for (const key of selected) {
+    if (omitted && !decisions.some(d => d.key === key)) throw new Error("Context omissions require explicit full-source reconciliation for each accepted assertion");
     const fact = offering.facts.find(f => f.key === key);
     if (!fact || fact.status !== "pending" || !fact.verbatim || !fact.evidence.length || draft.conflicts.some(c => c.offering === index && c.key === key)) throw new Error("Only supported pending facts can be accepted; conflicts require resolution");
     if (fact.kind === "deadline" && (!supportedStage(fact) || fact.key !== `deadline:${stageOf(fact.key)}:${fact.deadline_kind}`)) throw new Error("Deadline stage needs explicit literal support");

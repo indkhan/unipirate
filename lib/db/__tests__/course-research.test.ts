@@ -37,6 +37,26 @@ function client(conflict = false, failure?: string, changes: Record<string, unkn
 beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-10-07T13:00:00Z")); });
 afterEach(() => vi.useRealTimers());
 describe("research publication helpers (synthetic HTTP, no RLS claim)", () => {
+  it("requires field reconciliation, audits it server-side, and prevents JSON from removing captured omissions", async () => {
+    const omitted = structuredClone(draft); omitted.observations[0].content += "\n\n" + "Application navigation ".repeat(220) + "\n\nIELTS 7.0.";
+    const failed = client(false, undefined, { field_extraction: { research: omitted } });
+    await expect(publishAdminCourseResearch(failed.db, id, ["0:english"], id)).rejects.toThrow(/reconcil/i); expect(failed.writes).toEqual([]);
+    const recovered = structuredClone(omitted); recovered.observations[0].content = draft.observations[0].content;
+    await saveAdminCourseResearchDraft(failed.db, id, recovered);
+    const saved = failed.writes[0].body.field_extraction as { research: typeof draft };
+    expect(saved.research.observations.some(o => o.content.includes("IELTS 7.0."))).toBe(true);
+    const published = client(false, undefined, { field_extraction: { research: omitted } });
+    await publishAdminCourseResearch(published.db, id, ["0:english"], id, [{ key: "0:english", reason: "Compared full captured official sources and reconciled actual scope and requirements." }]);
+    const audit = published.writes.filter(w => w.table === "courses").at(-1)?.body.field_extraction;
+    expect(audit).toMatchObject({ research_reconciliations: [expect.objectContaining({ reviewed_by: id, reviewed_at: "2026-10-07T13:00:00.000Z", decisions: [expect.objectContaining({key:"0:english"})], versions: [{offering_id: offeringId, version: 2}], observations: expect.arrayContaining([expect.objectContaining({content: omitted.observations[0].content})]) })] });
+    expect(published.writes.findIndex(w => w.table === "courses" && !!w.body.field_extraction)).toBeLessThan(published.writes.findIndex(w => w.table === "course_offering_versions" && w.body.review_status === "verified"));
+    const legacy = client(true, undefined, { field_extraction: { research: omitted } }, { field_extraction: {} });
+    await publishAdminCourseResearch(legacy.db, id, ["0:english"], id, [{ key: "0:english", reason: "Compared full captured sources and reconciled applicability for this assertion." }]);
+    const guarded = legacy.writes.find(w => w.table === "courses")!.body.field_extraction;
+    const replacement = client(true, undefined, { field_extraction: {} }, { field_extraction: guarded });
+    await expect(resolveCourseConflict(replacement.db, id, true)).rejects.toThrow(/research/i);
+    expect(replacement.writes).toEqual([]);
+  });
   it("cannot publish unscoped recovery captures even with an empty selection", async () => {
     const recovery = structuredClone(draft);
     recovery.unscoped = recovery.offerings[0].facts.filter(f => f.status === "pending").map(f => ({ ...f, applicability: "Unresolved effective intake/applicant scope" }));
@@ -78,7 +98,7 @@ describe("research publication helpers (synthetic HTTP, no RLS claim)", () => {
     const edited = structuredClone(draft); edited.observations[0].content += " Human source capture.";
     await saveAdminCourseResearchDraft(db, id, edited);
     expect(writes).toHaveLength(1);
-    expect(writes[0].body).toMatchObject({ field_extraction: { research: { observations: [expect.objectContaining({ origin: "manual" })] } } });
+    expect(writes[0].body).toMatchObject({ field_extraction: { research: { observations: expect.arrayContaining([expect.objectContaining({ origin: "manual" })]) } } });
     expect(writes[0].body).not.toHaveProperty("review_status");
   });
   it("blocks legacy edits and recovery on published research before mutations", async () => {

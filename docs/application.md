@@ -837,3 +837,31 @@ This intentionally favors a useful partial multi-source draft over exhaustive
 research within the unchanged 90-second bound. Provider latency remains a root-owned
 real-workflow acceptance gate. Offering-free publication messaging now correctly
 requires captured intake/applicant scope before publication.
+
+### Omission reconciliation and combined fee conflicts
+
+Omitted substantive captured text cannot silently turn a surviving AI assertion into
+a verified fact. The review guard recomputes omissions from original captures (also
+for manual recovery); draft status, issue strings and client flags cannot bypass it.
+Each selected field requires a separate authenticated admin reconciliation checkbox
+and rationale after comparing the full captured sources and actual applicability.
+Unselected fields remain unresolved. Separator whitespace alone is not a substantive
+omission. Known model conflicts still require correction and cannot be overridden by
+this decision. No contradiction is inferred automatically from raw source wording.
+
+The caller-scoped publication helper validates all decisions before mutation, binds
+reviewer/time from the authenticated action and stores research_reconciliations audit
+records in existing course metadata: decisions, complete captured observations, and
+reviewed offering/version references before inserting the verified version. The
+canonical research marker also guards reconciled legacy courses against generic
+approval/replacement. These audit records are outside the strict
+pending/model/manual draft schema; they are not model-supplied verification flags.
+Manual JSON recovery retains original non-paste captures so omission provenance cannot
+be erased. The existing capture-count limit may reject a repair that exceeds capacity;
+it never silently discards historical text. No migration or generated type extension.
+
+Combined fee wording participates in both tuition and semester-fee identities.
+Overlapping differing assertions stay unresolved during build, stored-draft validation
+and review, while disjoint fees and identical quoted duplicates remain valid.
+No amounts, equivalences, dates or applicability are parsed/invented to settle a conflict.
+Native provider settings, timeout, retries and model context budget are unchanged.

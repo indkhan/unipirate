@@ -23,7 +23,7 @@ import type { ApplicationWithCourse } from "@/lib/db/queries";
 import { profileFromAnswers } from "@/lib/tasks/profile";
 import { todayIsoBerlin } from "@/lib/tasks/dates";
 import { unwrap } from "@/lib/db/unwrap";
-import { hasResearch, readResearch, prepareResearchReview, ResearchDraftSchema } from "@/lib/courses/research";
+import { hasResearch, readResearch, ResearchReconciliationSchema, prepareResearchReview, ResearchDraftSchema } from "@/lib/courses/research";
 import { getProgrammeByLegacyCourse, listCourseOfferings } from "@/lib/db/queries";
 import { z } from "zod";
 
@@ -443,7 +443,7 @@ export async function attachAdminProgrammeLegacyCourse(db: Db, id: string, cours
  * assertions. Retry reuses the canonical link/scopes and appends history.
  */
 export async function publishAdminCourseResearch(
-  db: Pick<SupabaseClient<Database>, "from" | "rpc">, courseId: string, accepted: string[], reviewerId: string,
+  db: Pick<SupabaseClient<Database>, "from" | "rpc">, courseId: string, accepted: string[], reviewerId: string, reconciliation: unknown = [],
 ) {
   const id = CourseCatalogueIdSchema.parse(courseId);
   const reviewer = CourseCatalogueIdSchema.parse(reviewerId);
@@ -452,11 +452,13 @@ export async function publishAdminCourseResearch(
   const draft = readResearch(submitted.field_extraction);
   if (!draft) throw new Error("No research draft to review");
   if (!draft.offerings.length) throw new Error("Effective offering scope is required before research publication; unscoped captures require manual recovery");
+  const decisions = ResearchReconciliationSchema.parse(reconciliation);
+  if (new Set(decisions.map(d => d.key)).size !== decisions.length || decisions.some(d => !accepted.includes(d.key))) throw new Error("Invalid reconciliation selection");
   const known = new Set(draft.offerings.flatMap((o, i) => o.facts.map(f => `${i}:${f.key}`)));
   if (new Set(accepted).size !== accepted.length || accepted.some(key => !known.has(key))) throw new Error("Unknown or duplicate research review selection");
   const now = new Date().toISOString();
   // Validate EVERY selection/snapshot before the first mutation.
-  const snapshots = draft.offerings.map((o, i) => ({ scope: o, facts: prepareResearchReview(draft, i, accepted.filter(k => k.startsWith(`${i}:`)).map(k => k.slice(k.indexOf(":") + 1)), reviewer, now) }));
+  const snapshots = draft.offerings.map((o, i) => ({ scope: o, facts: prepareResearchReview(draft, i, accepted.filter(k => k.startsWith(`${i}:`)).map(k => k.slice(k.indexOf(":") + 1)), reviewer, now, decisions.filter(d => d.key.startsWith(`${i}:`)).map(d => ({ ...d, key: d.key.slice(d.key.indexOf(":") + 1) }))) }));
   const canonicalId = submitted.conflicts_with ?? submitted.id;
   const canonical = submitted.conflicts_with ? await getAdminCourse(db, canonicalId) : submitted;
   if (canonical.name !== draft.identity.name || canonical.university_name !== draft.identity.university) throw new Error("Research identity does not match the canonical course; reconcile labels before review");
@@ -471,6 +473,7 @@ export async function publishAdminCourseResearch(
     legacy_course_id: canonicalId, name: canonical.name ?? draft.identity.name, university_name: canonical.university_name ?? draft.identity.university,
     degree: submitted.conflicts_with ? canonical.degree : null, source_url: draft.identity.source_url,
   });
+  let metadata = (canonical.field_extraction ?? {}) as Record<string, Json>;
   if (programme) {
     const scopes = await listCourseOfferings(db, programme.id);
     for (const snapshot of snapshots) {
@@ -482,6 +485,14 @@ export async function publishAdminCourseResearch(
       const versions = await listAdminOfferingVersions(db, stored.id);
       const next = (versions[0]?.version ?? 0) + 1;
       await insertAdminOfferingVersion(db, { offering_id: stored.id, version: next, review_status: "pending", reviewed_at: null, reviewed_by: null, facts: pendingFacts });
+      const scopeDecisions = decisions.filter(d => d.key.startsWith(`${snapshots.indexOf(snapshot)}:`));
+      if (scopeDecisions.length) {
+        const previous = Array.isArray(metadata.research_reconciliations) ? metadata.research_reconciliations : [];
+        // Persist authenticated reconciliation before making this version verified.
+        const audit = { reviewed_by: reviewer, reviewed_at: now, decisions: scopeDecisions, versions: [{ offering_id: stored.id, version: next + 1 }], observations: draft.observations.filter(o => o.origin !== "paste") };
+        metadata = { ...metadata, research: metadata.research ?? draft as unknown as Json, research_reconciliations: [...previous, audit] as Json };
+        unwrap(await db.from("courses").update({ field_extraction: metadata }).eq("id", canonicalId).select().single());
+      }
       await insertAdminOfferingVersion(db, { offering_id: stored.id, version: next + 1, review_status: "verified", reviewed_at: now, reviewed_by: reviewer, facts: snapshot.facts });
     }
   }
@@ -502,6 +513,9 @@ export async function saveAdminCourseResearchDraft(db: Db, courseId: string, inp
   // Existing web observations can carry forward verbatim. Newly entered content
   // is a human capture, so cannot masquerade as a server/provider observation.
   draft.observations = draft.observations.map(o => o.origin === "web" && !previous?.observations.some(p => JSON.stringify(p) === JSON.stringify(o)) ? { ...o, origin: "manual" as const } : o);
+  // Preserve original captures: manual JSON cannot erase omitted contradictory text.
+  const retained = (previous?.observations ?? []).filter(o => o.origin !== "paste" && !draft.observations.some(p => JSON.stringify(p) === JSON.stringify(o)));
+  draft.observations = [...retained, ...draft.observations];
   const metadata = existing.field_extraction as Record<string, Json>;
   return unwrap(await db.from("courses").update({ field_extraction: { ...metadata, research: ResearchDraftSchema.parse(draft) } }).eq("id", id).select().single());
 }

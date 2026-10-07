@@ -5,7 +5,7 @@ import type { Json, Tables } from "@/lib/db/database.types";
 import type { ConflictCourse } from "@/lib/db/admin-queries";
 import { courseTaskAdminPreview, deriveCourseTaskCandidates } from "@/lib/tasks/course-tasks";
 import { cn } from "@/lib/utils";
-import { hasResearch, readResearch } from "@/lib/courses/research";
+import { hasResearch, researchNeedsReconciliation, readResearch } from "@/lib/courses/research";
 
 import {
   resolveConflictAction,
@@ -355,6 +355,7 @@ function ResearchReview({ course }: { course: Tables<"courses"> }) {
   try { draft = readResearch(course.field_extraction); }
   catch { return <p role="alert">Invalid research capture. Publication blocked; retain the manual source and submit a corrected draft.</p>; }
   if (!draft) return null;
+  const needsReconciliation = researchNeedsReconciliation(draft);
   return <><form action={publishCourseResearchAction} className="mt-4 grid gap-3 rounded border p-3">
     <input type="hidden" name="id" value={course.id} />
     <h4 className="font-semibold">Research: {draft.status} · pending human review</h4>
@@ -367,6 +368,10 @@ function ResearchReview({ course }: { course: Tables<"courses"> }) {
       <p className="text-sm">Effective scope: <q>{offering.scope.source_quote}</q> · <a href={offering.scope.source_url} target="_blank" rel="noreferrer" className="underline">Official scope source</a></p>
       {offering.facts.map(fact => <div key={fact.key} className="border-b pb-2 text-sm">
         <label className="flex gap-2"><input type="checkbox" name="accepted" value={`${index}:${fact.key}`} disabled={fact.status !== "pending"} />Accept {fact.key}: {fact.verbatim ?? "Unresolved"} ({fact.status})</label>
+        {needsReconciliation && fact.status === "pending" && <div className="grid gap-2">
+          <label><input type="checkbox" name="reconciled" value={`${index}:${fact.key}`} />I compared the full captured sources, including omitted text, and reconciled applicability/conflicting assertions for this field.</label>
+          <label>Source reconciliation rationale (cite the captured source URLs and explain applicability)<textarea name={`reconciliation_reason:${index}:${fact.key}`} minLength={20} maxLength={2000} className="w-full rounded border p-2" /></label>
+        </div>}
         <p>Applicability: {fact.applicability}</p>
         {fact.evidence.map((e, i) => <blockquote key={i}><q>{e.source_quote}</q> · <a href={e.source_url} target="_blank" rel="noreferrer" className="underline">{e.source_url}</a> · retrieved {e.retrieved_at}</blockquote>)}
         {draft.conflicts.filter(c => c.offering === index && c.key === fact.key).map(c => <p key={c.key} className="text-amber-700">Source conflict: {c.alternatives.map(a => a.verbatim).join(" / ")}. Remains unresolved.</p>)}

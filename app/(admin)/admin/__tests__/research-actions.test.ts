@@ -38,10 +38,20 @@ it("requires explicit source/scope attestation before publication", async () => 
 it("publishes selected review keys through the caller-scoped helper", async () => {
   mocks.publish.mockResolvedValue(undefined);
   await expect(publishCourseResearchAction(form({ id, attest: "yes", accepted: "0:english" }))).rejects.toThrow("redirect");
-  expect(mocks.publish).toHaveBeenCalledWith({}, id, ["0:english"], id);
+  expect(mocks.publish).toHaveBeenCalledWith({}, id, ["0:english"], id, []);
 });
 it("retains research provenance when editing the legacy manual fallback", async () => {
   const data = form({ id, source_url: "https://www.daad.de/example", name: "Synthetic", university_name: "Synthetic", tuition: "null", deadlines: "[]", requirements: "[]" });
   await expect(updateCourseAction(data)).rejects.toThrow("redirect");
   expect(mocks.edit).toHaveBeenCalledWith({}, id, expect.objectContaining({ field_extraction: expect.objectContaining({ research: metadata.research }) }));
+});
+
+it("binds reconciliation to authenticated admin and rejects short or forged manual decisions", async () => {
+ const data=form({id,attest:"yes",accepted:"0:english",reconciled:"0:english","reconciliation_reason:0:english":"Compared full official captured sources and confirmed effective applicability."});
+ await expect(publishCourseResearchAction(data)).rejects.toThrow("redirect");
+ expect(mocks.publish).toHaveBeenCalledWith({},id,["0:english"],id,[expect.objectContaining({key:"0:english"})]);
+ mocks.publish.mockClear(); data.set("reconciliation_reason:0:english","yes");
+ await expect(publishCourseResearchAction(data)).rejects.toThrow(); expect(mocks.publish).not.toHaveBeenCalled();
+ mocks.requireAdmin.mockRejectedValue(new Error("Non-admin"));
+ await expect(publishCourseResearchAction(data)).rejects.toThrow("Non-admin");
 });
