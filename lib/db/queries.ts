@@ -1,3 +1,7 @@
+import { z } from "zod";
+import { AnswersSchema } from "@/app/(public)/check/steps";
+import { AssessmentMetadataSchema, AssessmentResultSchema } from "@/lib/rules/assessment";
+import { RuleIdSchema, RuleVersionSchema, type RuleVersion } from "@/lib/rules/versioning";
 import { CourseCatalogueIdSchema, parseOfferingRow, parseOfferingVersionRow, parseProgrammeRow } from "@/lib/courses/offerings";
 // All user-facing database access lives here — pages, actions, and API routes
 // never build queries inline. Every helper takes a caller-scoped Supabase
@@ -26,6 +30,23 @@ type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
 /** Beta + verified rules — everything RLS exposes to the public. */
 export async function getPublishedRules(db: Db): Promise<Tables<"rules">[]> {
   return unwrap(await db.from("rules").select());
+}
+
+/** Immutable history only; callers must select applicability explicitly before evaluation.
+ * Current consumers use evaluateAssessment with an explicit server instant.
+ */
+export async function listRuleVersions(db: Db, ruleId?: string): Promise<RuleVersion[]> {
+ const id=ruleId===undefined?undefined:RuleIdSchema.parse(ruleId);
+ const rows: RuleVersion[] = [];
+ for (let offset = 0; ; ) {
+  let query=db.from("rule_versions").select("*", {count: "exact"}).order("rule_id").order("version_number",{ascending:false}).range(offset,offset+499);
+  if(id!==undefined)query=query.eq("rule_id",id);
+  const response = await query;
+  const page=z.array(RuleVersionSchema).parse(unwrap(response));
+  rows.push(...page); offset += page.length;
+  if (response.count !== null ? offset >= response.count : page.length < 500) return rows;
+  if (!page.length) throw new Error("Incomplete immutable rule history read.");
+ }
 }
 
 // ----------------------------------------------------------------- courses
@@ -472,7 +493,7 @@ export async function upsertGeneratedTasks(
   rows: GeneratedTaskUpsert[],
 ): Promise<void> {
   if (rows.length === 0) return;
-  unwrap(await db.from("tasks").upsert(rows, { onConflict: "user_id,task_key" }));
+  unwrap(await db.from("tasks").upsert(rows, { onConflict: "user_id,task_key", ignoreDuplicates: true }));
 }
 
 // ------------------------------------------------------------------- checks
@@ -480,10 +501,19 @@ export async function upsertGeneratedTasks(
 /** Anonymous eligibility check record; returns the shareable id. */
 export async function insertCheck(
   db: Db,
-  check: TablesInsert<"checks">,
+  check: unknown,
 ): Promise<string> {
+  const validated = z.object({
+    answers: AnswersSchema, result: AssessmentResultSchema, assessment_metadata: AssessmentMetadataSchema,
+    owner_token_hash: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
+    claimed_by: z.string().uuid().optional(), claimed_at: z.string().datetime().nullable(),
+  }).strict().superRefine((value, ctx) => {
+    if (Boolean(value.claimed_by) !== Boolean(value.claimed_at) ||
+        (value.claimed_by ? value.owner_token_hash !== null : value.owner_token_hash === null))
+      ctx.addIssue({code: z.ZodIssueCode.custom, message: "Invalid server ownership."});
+  }).parse(check);
   const row = unwrap<{ id: string }>(
-    await db.from("checks").insert(check).select("id").single(),
+    await db.from("checks").insert(validated as unknown as TablesInsert<"checks">).select("id").single(),
   );
   return row.id;
 }
@@ -492,10 +522,11 @@ export async function getCheck(
   db: RpcDb,
   id: string,
 ): Promise<
-  Pick<Tables<"checks">, "id" | "answers" | "result" | "created_at"> | null
+  Pick<Tables<"checks">, "id" | "answers" | "result" | "created_at" | "assessment_metadata"> | null
 > {
-  const rows = unwrap(await db.rpc("get_shared_check", { p_check_id: id }));
-  return rows[0] ?? null;
+  const rows = unwrap(await db.rpc("get_shared_check", { p_check_id: RuleIdSchema.parse(id) }));
+  if (!rows[0]) return null;
+  return z.object({id: RuleIdSchema, answers: z.unknown(), result: z.unknown(), created_at: z.string().datetime({offset: true}), assessment_metadata: z.unknown()}).parse(rows[0]) as Pick<Tables<"checks">, "id" | "answers" | "result" | "created_at" | "assessment_metadata">;
 }
 
 /**
@@ -602,4 +633,21 @@ export async function listCourseOfferings(db: Db, programmeId: string) {
 export async function listReviewedOfferingVersions(db: Db, offeringId: string) {
   const rows = unwrap(await db.from("course_offering_versions").select().eq("offering_id", CourseCatalogueIdSchema.parse(offeringId)).eq("review_status", "verified").order("version", { ascending: false }));
   return rows.map(parseOfferingVersionRow);
+}
+
+/** Exact protected references only. Missing IDs remain missing, never substituted. */
+export async function getRuleVersionsByIds(db: Db, input: unknown): Promise<RuleVersion[]> {
+  const ids = z.array(RuleIdSchema).parse(input);
+  if (!ids.length) return [];
+  return z.array(RuleVersionSchema).parse(unwrap(await db.from("rule_versions").select().in("id", ids)));
+}
+
+/** RPC text is untrusted; attach stored logical identity through an exact slug lookup. */
+export async function matchKbRuleHints(db: Db & RpcDb, embedding: string) {
+  const vector = z.array(z.number().finite()).min(1).parse(JSON.parse(embedding));
+  const matches = z.array(z.object({slug: z.string().min(1)})).parse(await matchKbChunks(db, JSON.stringify(vector)));
+  if (!matches.length) return [];
+  const rows = z.array(z.object({slug: z.string(), rule_id: RuleIdSchema.nullable()})).parse(
+    unwrap(await db.from("kb_chunks").select("slug, rule_id").in("slug", matches.map(match => match.slug))));
+  return matches.flatMap(match => {const exact = rows.filter(row => row.slug === match.slug); return exact.length === 1 ? [exact[0]] : [];});
 }

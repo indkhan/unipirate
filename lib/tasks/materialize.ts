@@ -6,7 +6,7 @@ import {
   ensureApplication,
   getApplicationWithCourse,
   getProfile,
-  getPublishedRules,
+  listRuleVersions,
   listApplicationsWithCourses,
   listActiveCourseTaskDefinitions,
   listGeneratedTasksByPrefix,
@@ -14,7 +14,9 @@ import {
   type ApplicationWithCourse,
 } from "@/lib/db/queries";
 import type { Database } from "@/lib/db/database.types";
-import { evaluate, type Profile } from "@/lib/engine/evaluate";
+import type { Profile } from "@/lib/engine/evaluate";
+import { evaluateAssessment, type Assessment } from "@/lib/rules/assessment";
+import { currentAssessmentContext } from "@/lib/rules/current";
 import {
   generateCourseTasks,
   generateGlobalTasks,
@@ -117,9 +119,10 @@ export async function trackCourse(
 export async function materializeAllTasksForUser(
   db: Db,
   userId: string,
+  assessment?: Assessment,
 ): Promise<void> {
   const profile = await currentProfile(db, userId);
-  const result = profile ? evaluate(profile, await getPublishedRules(db)) : null;
+  const result = assessment?.result ?? (profile ? evaluateAssessment(profile, await listRuleVersions(db), currentAssessmentContext()).result : null);
   await materializeGeneratedPrefix(
     db,
     userId,
