@@ -197,9 +197,9 @@ export const CURRENT: CurrentExpectation[] = [
     assertedIn: "evaluate.test.ts: GCE grades below C never direct",
   },
   {
-    id: "GCE-exception-pk-anabin-caveat", family: "GCE", kind: "exception",
+    id: "GCE-negative-pk-two-al", family: "GCE", kind: "exception",
     routesTo: ["UP-ELIG-01", "UP-ELIG-08"], profile: personas.p12ALevelsInPakistan,
-    path: "unknown", aps: "unknown", unknownsMatch: [/anabin/i],
+    path: "unknown", aps: "unknown", unknownsMatch: [/three|3/],
     assertedIn: "evaluate.test.ts: Part E persona 12",
   },
   {
@@ -301,7 +301,6 @@ export const APS_TRANSITION_ACCEPTANCE = [
 ] as const;
 
 export const FUTURE: FutureSpec[] = [
-  { id: "FUTURE-GCE-fourth-al-trio", family: "GCE", issue: "UP-ELIG-01", needsFutureSchema: false, verified: false, note: "Valid 3-AL trio passes despite a fourth AL below C; two qualifying ALs state the exact unmet condition." },
   { id: "FUTURE-IB-grade3-compensation", family: "IB", issue: "UP-ELIG-02", needsFutureSchema: true, verified: false, note: "One compensated grade 3 passes where KMK rules allow; Math-SL school exceptions with effective sessions." },
   { id: "FUTURE-India-jee-main-plus-advanced", family: "India", issue: "UP-ELIG-04", needsFutureSchema: true, verified: false, note: "Separate JEE Main + Advanced facts restrict the route to technology/natural-science targets." },
   { id: "FUTURE-Pakistan-hssc-streams", family: "Pakistan", issue: "UP-ELIG-08", needsFutureSchema: true, verified: false, note: "HSSC/FSc stream-specific Studienkolleg routes, 49.99/50 boundary, one-year direct routes." },

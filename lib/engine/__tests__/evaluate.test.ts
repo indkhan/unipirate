@@ -118,12 +118,12 @@ describe("Part E personas", () => {
     );
   });
 
-  it("12. Pakistan GCE profile → unknown pending country-specific anabin check", () => {
+  it("12. Two-AL profile in Pakistan → unknown with exact formula shortfall", () => {
     const r = run(p.p12ALevelsInPakistan);
     expect(r.path).toBe("unknown");
     expect(r.aps).toBe("unknown");
-    // open anabin-proposal question surfaces honestly
-    expect(r.unknowns.some((u) => /anabin/i.test(u))).toBe(true);
+    // Location is not qualification-system identity.
+    expect(r.unknowns.some((u) => /three|3/.test(u))).toBe(true);
   });
 
   it("13. IB in India, Math SL, 28 pts → Mech Eng: SL math blocks STEM direct entry; APS unknown", () => {
