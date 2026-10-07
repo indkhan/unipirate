@@ -909,3 +909,76 @@ their unresolved field and captured, applicant-scoped alternatives. Separate cap
 applicant offerings and unrelated semantic fields remain independent.
 No amounts, equivalences, dates or applicability are parsed/invented to settle a conflict.
 Native provider settings, timeout, retries and model context budget are unchanged.
+### Indian Class XII plus successful bachelor study (UP-ELIG-03)
+
+New/restored checker and profile edits carry `indiaStudyRouteVersion: 1`.
+Existing qualification history records study mode and applicant-reported official
+recognition and target-relationship assessments with nonblank references (up to
+500 characters) identifying authority, document/communication and applicable
+conclusion. Recognition must cover this institution, bachelor programme and attained
+study; relationship must cover this previous field and intended target. Reports are
+not app verification. Names, equal field strings, marketing, guessed accreditation
+or a Class XII-only APS certificate cannot supply these assessments. Another
+programme/target or uncertain basis requires the explicit unknown answer.
+
+The actual national Indian school issuer/context is collected before successful-year
+uncertainty; bachelor assessment questions are progressive and relationship follows
+target selection. `yearsOfUniversityStudy: null` means successful academic years
+cannot be established, only in this versioned India branch; it maps to absent
+`completedYears`. Empty values remain incomplete. Finite unfinished/out-of-range
+numeric drafts and unfinished reference text survive restoration; complete answers
+retain numeric bounds and required applicable references. Duration, degree completion
+and enrolment never supply attainment. Ongoing/discontinued successful study remains
+usable. Institution, country, type, mode and history edits prune recognition and
+relationship; previous field/target edits prune relationship. Academic-basis edits
+clear APS timing; timing questions follow recognition and target relationship so
+fresh forward answers cannot invalidate an already-passed timing step. Restored
+partial edits stop at the first missing assessment and recollect timing afterwards.
+Nationality/visa edits preserve academic evidence. Legacy result
+reads do not demand new answers.
+
+Only six `in_class12_*` semantic facts become accepted rule keys: prior-study kind,
+country, successful bachelor years, mode, reported recognition and reported target
+relationship. Missing references yield unknown. Generic study years/recognition/
+relationship keys and historical published UUID
+`0e872b82-e7fb-41bb-9a35-53ecbe200df4` remain inactive; exact saved metadata is
+retained in acceptance fixtures as metadata, not factual proof. No ECTS conversion
+or recognition lookup is introduced.
+
+The positive draft in `scripts/india-study.rules.ts` requires national Indian
+Class XII, CBSE/CISCE/state board, >=70%, intake index >=4053 (Winter 2026/27),
+Indian regular bachelor study, >=1 explicitly successful academic year and reported
+applicable official recognition/previous-or-closely-related target assessment with
+references. Policy thresholds stay in data. The subject-restricted result labels
+reported evidence and university admission discretion. Degree completion and JEE
+failure are not prerequisites. Explicit school-only history retains Studienkolleg;
+scoped review candidates prevent less-specific legacy school fallback from hiding
+failed/missing direct-route prerequisites. Independent JEE stays separate. Foreign
+and distance/online study are coverage unknowns, not blanket rejections. Missing
+applicability yields targeted unknown; India assessment uncertainty sentinels do
+not infer a qualification issuer/context. An explicit unknown actual issuer in
+versioned Indian national history remains an issuer diagnostic, including when a
+saved legacy school rule matches; known foreign issuers remain isolated. The
+validated answers-to-profile boundary preserves the history version for explicit
+unknown issuer only in versioned Indian national Class XII/bachelor history. That
+diagnostic marker is mapped separately from mode and assessment reports, which
+remain hidden/unmapped until the actual Indian issuer is established. Missing
+issuer remains incomplete; unversioned and non-Indian contexts are unchanged.
+
+ELIG06 remains separate: below 70%, pre-15-March submission yields transition
+unknown; on/after yields the ordinary two-route threshold unmet; missing confirmation
+asks for the relevant APS milestone. Certificate possession neither grandfathers
+admission nor substitutes for bachelor assessment. Scoped APS requirements and
+preparation remain independent of academic access.
+
+Sources rechecked 2026-10-07: [APS News](https://aps-india.de/news/) (23 February
+eligibility notice and 16 March attained-qualification clarification),
+[DAAD India](https://www.daad.in/en/study-research-in-germany/studying-in-germany/bachelor-studies/),
+[uni-assist India](https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/)
+and [APS FAQ](https://aps-india.de/faqs/). Verification is not the effective intake:
+updated criteria apply from Winter 2026/27; criteria update is 15 March 2026.
+Direct DAAD IN-12/IN-1Y records remain unverified; no anabin access workaround was
+used. Only the successful-year India FUTURE case now executes accepted coverage
+on disposable published copies. CURRENT baselines remain; parent TEST coverage
+stays OPEN for other unimplemented families. Candidates remain drafts; no seed,
+publication, embedding, migration, provider or live database operation occurs.

@@ -53,6 +53,12 @@ export type KbChunk = {
 // (see FactKeySchema in lib/engine/evaluate.ts). Unlisted keys fall back to
 // the key with underscores replaced by spaces.
 const FACT_LABELS: Record<string, string> = {
+  in_class12_prior_study_kind: "reported prior-study kind for Indian Class XII",
+  in_class12_prior_study_country: "reported bachelor institution country for Indian Class XII",
+  in_class12_successful_bachelor_years: "reported successfully completed bachelor academic years (not programme duration)",
+  in_class12_study_mode: "reported previous bachelor study mode",
+  in_class12_reported_recognition: "applicant-reported official recognition assessment with applicable reference (not app verification)",
+  in_class12_reported_target_relation: "applicant-reported official previous-field/target relationship with applicable reference (not guaranteed admission)",
   dmat_qualification_scope: "reported relevant previous-qualification scope",
   dmat_procedure: "reported relevant APS procedure for dMAT",
   dmat_field_basis: "reported previous-degree classification basis",

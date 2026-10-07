@@ -4,6 +4,7 @@ import {
   COUNTRIES,
   INTAKE_OPTIONS,
   TARGET_FIELDS,
+  isIndiaStudyBranch,
   type PartialAnswers,
   type StepId,
 } from "./steps";
@@ -13,6 +14,11 @@ export type Option = { value: unknown; label: string; key: string };
 
 /** Prompt (and optional subtitle) shown for each step of the checker. */
 export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; sourceUrl?: string }> = {
+  priorStudyMode: { question: "Was this bachelor study in a regular degree programme?", subtitle: "Distance or online and other modes need separate applicability confirmation.", sourceUrl: "https://aps-india.de/news/" },
+  priorStudyRecognition: { question: "What does an official assessment say about this institution, bachelor programme and study?", subtitle: "Report an applicable APS, uni-assist or university assessment. Institution marketing, an accreditation-name guess or an APS certificate covering only Class XII cannot confirm this bachelor study. Choose Cannot confirm for another programme or uncertain basis. UniPirate does not independently verify your report.", sourceUrl: "https://aps-india.de/faqs/" },
+  priorStudyRecognitionReference: { question: "Which official assessment establishes that recognition conclusion?", subtitle: "Identify the assessing authority, document or communication and its conclusion for THIS institution, bachelor programme and attained study. This is applicant-reported official assessment, not app verification.", sourceUrl: "https://aps-india.de/news/" },
+  priorStudyTargetRelation: { question: "What does an official assessment say about your previous field and this intended target?", subtitle: "Report the applicable subject-scope conclusion. Matching field names or a recognition assessment alone cannot establish this relationship. Choose Cannot confirm if the assessment covers another target.", sourceUrl: "https://aps-india.de/news/" },
+  priorStudyTargetRelationReference: { question: "Which official assessment covers this previous field and intended target?", subtitle: "Identify the assessing authority, document or communication and applicable target-scope conclusion. Your report does not guarantee programme admission.", sourceUrl: "https://aps-india.de/news/" },
   dmatQualificationScope: { question: "Can this dMAT assessment use one relevant previous qualification?", subtitle: "Multiple relevant qualifications or an uncertain basis need APS confirmation.", sourceUrl: DMAT_FIELD_SOURCE },
   dmatDegreeTitle: { question: "What is the official title of that previous qualification?", subtitle: "Copy the degree title from your academic documents. Your reported study field supplies the branch or major; neither your target Master's title nor a marketing title determines classification.", sourceUrl: DMAT_FIELD_SOURCE },
   dmatProcedure: { question: "Which APS procedure is relevant to this qualification?", subtitle: "Holding an old certificate alone does not confirm completion of this procedure. Choose a new evaluation when that certificate does not cover the relevant qualifications.", sourceUrl: DMAT_SOURCE },
@@ -120,6 +126,20 @@ const countryOptions = COUNTRIES.map((c) => ({
  * their own bespoke inputs and return []. */
 export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
   switch (stepId) {
+    case "priorStudyMode": return [
+      { value: "regular", key: "regular", label: "Regular bachelor degree programme" },
+      { value: "distance_online", key: "distance_online", label: "Distance or online" },
+      { value: "other", key: "other", label: "Another mode" },
+      { value: "unknown", key: "unknown", label: "Cannot confirm" }];
+    case "priorStudyRecognition": return [
+      { value: "reported_official_confirmed", key: "reported_official_confirmed", label: "Official assessment confirms this bachelor study is recognised" },
+      { value: "reported_official_rejected", key: "reported_official_rejected", label: "Official assessment rejects recognition of this bachelor study" },
+      { value: "unknown", key: "unknown", label: "Cannot confirm an applicable assessment" }];
+    case "priorStudyTargetRelation": return [
+      { value: "reported_official_previous", key: "reported_official_previous", label: "Official assessment confirms the previous subject" },
+      { value: "reported_official_closely_related", key: "reported_official_closely_related", label: "Official assessment confirms a closely related subject" },
+      { value: "reported_official_unrelated", key: "reported_official_unrelated", label: "Official assessment places this target outside the subject scope" },
+      { value: "unknown", key: "unknown", label: "Cannot confirm an applicable target assessment" }];
     case "dmatQualificationScope": return [
       { value: "single", key: "single", label: "One relevant qualification" },
       { value: "multiple", key: "multiple", label: "Multiple relevant qualifications" },
@@ -183,6 +203,7 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
       return [{ value: "saudi_study", label: "Yes, I confirmed this checklist applies", key: "saudi_study" }, { value: "other", label: "Another checklist applies", key: "other" }, { value: "unknown", label: "Unsure", key: "unknown" }];
     case "priorStudyCountry": {
       const options = [...countryOptions, { value: "other", label: "Another country", key: "other" }];
+      if (isIndiaStudyBranch(answers)) options.push({ value: "unknown", label: "Cannot confirm the institution country", key: "unknown" });
       const saved = answers.priorStudyCountry;
       // Preserve stored country codes beyond the small supported-country catalog.
       if (saved && /^[a-z]{2}$/i.test(saved) && !options.some((o) => o.value === saved)) {

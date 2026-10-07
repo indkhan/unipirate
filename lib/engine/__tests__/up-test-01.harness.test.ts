@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { evaluate, type Result } from "../evaluate";
+import { INDIA_STUDY_ACCEPTANCE, reviewedIndiaStudyRules } from "./india-study.fixture";
 import { reviewedDmatRules } from "./dmat.fixture";
 import { officialApsRules, officialIndianProfile } from "./aps-scopes.fixture";
 import { fixtureRules } from "./rules.fixture";
@@ -50,6 +51,11 @@ export function assertExpected(c: CurrentExpectation, r: Result): void {
 }
 
 describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
+  it.each(INDIA_STUDY_ACCEPTANCE)("UP-ELIG-03 accepted $id [$kind]", c => {
+    const r = evaluate(c.profile, reviewedIndiaStudyRules());
+    expect(r.path).toBe(c.path);
+    if (c.reason) expect(r.unknowns.some(n => c.reason!.test(n))).toBe(true);
+  });
   for (const c of APS_TRANSITION_ACCEPTANCE) {
     it(`UP-ELIG-06 official confirmed submission ${c.date}`, () => {
       const profile = {...officialIndianProfile, curriculumType: "national" as const,

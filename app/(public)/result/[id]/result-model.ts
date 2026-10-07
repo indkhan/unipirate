@@ -91,7 +91,10 @@ export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
   return [
     {
       key: "path",
-      label: PATH_LABELS[result.path],
+      label: result.path === "subject_restricted" && profile.qualificationHistory?.indiaStudyRouteVersion === 1 &&
+        profile.targetDegree === "bachelor" && profile.curriculumType === "national" && profile.schoolQualification?.country === "in"
+        ? "Your reported qualifications indicate a subject-restricted direct route. UniPirate has not independently verified your reports; the university decides programme admission."
+        : PATH_LABELS[result.path],
       citations: citationsFor(result, "path"),
       unknown: result.path === "unknown",
     },

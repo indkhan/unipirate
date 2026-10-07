@@ -51,6 +51,12 @@ export type Profile = {
     degreeYears?: number;
     completedYears?: number;
     completion?: "completed" | "in_progress" | "discontinued";
+    indiaStudyRouteVersion?: 1;
+    priorStudyMode?: "regular" | "distance_online" | "other" | "unknown";
+    priorStudyRecognition?: "reported_official_confirmed" | "reported_official_rejected" | "unknown";
+    priorStudyRecognitionReference?: string;
+    priorStudyTargetRelation?: "reported_official_previous" | "reported_official_closely_related" | "reported_official_unrelated" | "unknown";
+    priorStudyTargetRelationReference?: string;
   };
   // Everything below `fullDiploma` is optional: an IB Certificate is never
   // accepted as a Diploma, so the checker stops asking once the answer is "no"
@@ -144,6 +150,8 @@ const ConditionSchema = z.union([
 type Condition = z.infer<typeof ConditionSchema>;
 
 const FactKeySchema = z.enum([
+  "in_class12_prior_study_kind", "in_class12_prior_study_country", "in_class12_successful_bachelor_years",
+  "in_class12_study_mode", "in_class12_reported_recognition", "in_class12_reported_target_relation",
   "dmat_qualification_scope", "dmat_procedure", "dmat_field_basis",
   "dmat_field_entry", "dmat_field_classification", "dmat_field_version",
   "dmat_registration_status", "dmat_registration_day", "dmat_dispatch_status",
@@ -353,6 +361,30 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
     target_field: p.targetField,
     has_existing_aps: p.hasExistingApsCertificate,
   };
+  if (p.targetDegree === "bachelor" && p.curriculumType === "national" &&
+      (p.schoolQualification?.country === "in" || ((!p.schoolQualification?.country || p.schoolQualification.country === "unknown") && p.certificateCountry === "in" && p.qualificationHistory?.indiaStudyRouteVersion === 1))) {
+    const h = p.qualificationHistory;
+    // Explicit unknowns only in this route assessment; no issuer/context inference.
+    raw.aps_issuer_country ??= "unknown";
+    raw.aps_qualification_context ??= "unknown";
+    raw.class12_percent ??= "unknown";
+    raw.intake_index ??= "unknown";
+    raw.in_class12_prior_study_kind = h?.hasPriorUniversityStudy === false ? "none" : h?.hasPriorUniversityStudy === true
+      ? h.qualificationType === "bachelor" ? "bachelor" : h.qualificationType ? "other" : "unknown" : "unknown";
+    raw.in_class12_prior_study_country = h?.hasPriorUniversityStudy && /^[a-z]{2}$/.test(h.country ?? "") ? h.country : "unknown";
+    raw.in_class12_successful_bachelor_years = h?.qualificationType === "bachelor" && typeof h.completedYears === "number" &&
+      Number.isFinite(h.completedYears) && h.completedYears >= 0 && h.completedYears <= 50 ? h.completedYears : "unknown";
+    raw.in_class12_study_mode = h?.priorStudyMode ?? "unknown";
+    const reference = (value: unknown) => typeof value === "string" && value.trim().length > 0 && value.trim().length <= 500;
+    // These are applicant-reported applicable official assessments, not app verification.
+    // An APS-held flag, institution name or equal field strings supplies no assessment.
+    const basis = h?.indiaStudyRouteVersion === 1 && h.hasPriorUniversityStudy && h.qualificationType === "bachelor" &&
+      !!h.institution?.trim() && !!h.field?.trim();
+    raw.in_class12_reported_recognition = basis && reference(h.priorStudyRecognitionReference)
+      ? h.priorStudyRecognition === "reported_official_confirmed" ? "confirmed" : h.priorStudyRecognition === "reported_official_rejected" ? "rejected" : "unknown" : "unknown";
+    raw.in_class12_reported_target_relation = basis && !!p.targetField?.trim() && reference(h.priorStudyTargetRelationReference)
+      ? h.priorStudyTargetRelation === "reported_official_previous" ? "previous" : h.priorStudyTargetRelation === "reported_official_closely_related" ? "closely_related" : h.priorStudyTargetRelation === "reported_official_unrelated" ? "unrelated" : "unknown" : "unknown";
+  }
   if (p.targetDegree === "bachelor" && p.curriculumType === "national" &&
       p.schoolQualification?.country === "in" && p.schoolQualification.context === "national") {
     const procedure = p.apsProcedure;

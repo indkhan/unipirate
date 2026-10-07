@@ -18,6 +18,7 @@ import {
   normalizeAnswers,
   isAnswered,
   isNumberStep,
+  isIndiaStudyBranch,
   isTextStep,
   visibleSteps,
   withAnswer,
@@ -32,6 +33,9 @@ type ProfileReviewProps = {
 };
 
 const QUESTIONS: Record<StepId, string> = {
+  priorStudyMode: "Previous bachelor study mode", priorStudyRecognition: "Reported official recognition",
+  priorStudyRecognitionReference: "Reported recognition assessment reference", priorStudyTargetRelation: "Reported official target relationship",
+  priorStudyTargetRelationReference: "Reported target assessment reference",
   dmatQualificationScope: "Relevant prior qualifications", dmatProcedure: "Relevant dMAT APS procedure",
   dmatDegreeTitle: "Reported official degree title", dmatFieldBasis: "Reported classification basis",
   dmatFieldEntry: "APS list v1.0 group", dmatApsClassification: "Reported APS classification",
@@ -83,7 +87,7 @@ const QUESTIONS: Record<StepId, string> = {
 export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1 }));
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1 }));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const steps = visibleSteps(answers);
@@ -157,6 +161,7 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
           {"suffix" in config && (
             <span className={styles.percentSuffix}>{config.suffix}</span>
           )}
+          {step === "yearsOfUniversityStudy" && isIndiaStudyBranch(answers) && <button type="button" aria-pressed={answers[step] === null} onClick={() => select(step, null)}>Cannot establish successful academic years</button>}
         </div>
       );
     }
