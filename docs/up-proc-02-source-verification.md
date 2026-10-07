@@ -27,13 +27,9 @@ Injected asOfIso is real UTC Z seconds with optional1–3 fraction digits. Artic
 
 Output: guidance, unknowns, processRuleIds, assessedAt. Status current/conditional/unknown/review_needed/unresolved. Only current contains usable amounts/steps. Evidence observation/source quote are retained **review evidence only**, never payable/required facts in other states; alternatives/additional text must carry that status too. Current is applicable sourced guidance, not proof of visa obligation/grant. Editorial advice explicitly labelled. Conflicts for kind/fact_key/currency/period across overlapping age/purpose contenders retain both sources; consistent semantic fact_key is a reviewer responsibility. No parsing/conversion/summing/winner policy.
 
-### Inventory vs authorization contract (comments-only clarification, no runtime change)
+### Inventory vs authorization contract
 
-`processRuleIds` is the inventory of all validated `matched:true` non-draft candidate logical IDs, including ineligible jurisdiction/purpose/date rows and stale/conflicting rows. It is NEVER authorization for payable amounts, evidence, tasks, or current assistant claims. No `currentRuleIds` field is emitted; do not add one.
-
-Consumers authorize payable evidence/steps strictly from `guidance.filter(g => g.status === 'current')`. Other guidance entries and the literal `observation`/`source_quote` inside `evidence` are review/conditional context only and cannot render payable facts.
-
-Future task display must preserve saved edits/completion/dates/bucket/inactive state with no blanket hide/rewrite/reactivation. Academic/APS resolution is unchanged by this clarification; parent PROC-02 stays OPEN until shell integration.
+`processRuleIds` is the inventory of all validated `matched:true` non-draft candidate logical IDs, including ineligible jurisdiction/purpose/date rows and stale/conflicting rows. It is NEVER authorization for payable amounts, evidence, tasks, or current assistant claims. Consumers authorize payable evidence/steps strictly from `guidance.filter(g => g.status === 'current')`; other guidance entries and the literal `observation`/`source_quote` inside `evidence` are review/conditional context only and cannot render payable facts. Future task display must preserve saved edits/completion/dates/bucket/inactive state with no blanket hide/rewrite/reactivation.
 
 Step keys remain rule:<logical UUID>:step:<order>, never version/capture IDs. No task creation here.
 

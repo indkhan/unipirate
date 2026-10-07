@@ -1,18 +1,4 @@
 // Pure process projection. No clock, DB, questionnaire, task or publication I/O.
-// Inventory contract (comments only, no runtime change):
-// - processRuleIds is the inventory of all validated matched:true non-draft
-//   candidate logical IDs, including ineligible jurisdiction/purpose/date,
-//   stale (review_needed) and conflicting (unresolved) rows.
-// - processRuleIds is NEVER authorization for payable amounts, evidence,
-//   tasks, or current assistant claims.
-// - Consumers authorize payable evidence/steps strictly from
-//   guidance.filter(g => g.status === 'current'); other guidance entries and
-//   literal observation/source_quote are review/conditional context only and
-//   cannot render payable facts.
-// - Future task display must preserve saved edits/completion/dates/bucket/
-//   inactive state with no blanket hide/rewrite/reactivation.
-// - No currentRuleIds field. Academic/APS resolution unchanged; parent PROC-02
-//   stays OPEN until shell integration.
 import { z } from "zod";
 
 const Text = z.string().refine(s => s.trim().length > 0);
@@ -39,11 +25,6 @@ export type ProcessOutcome = z.infer<typeof ProcessOutcomeSchema>;
 
 // Matcher is private in evaluate.ts. The caller must supply already matched,
 // validated candidates; matched is an explicit adapter attestation, not a fact.
-// Inventory note: every validated matched:true non-draft candidate enters the
-// live set and therefore processRuleIds, even when later filtered as ineligible
-// (jurisdiction/purpose/date) or projected as stale/conflicting. Eligibility
-// filtering never removes an ID from the inventory; only draft/malformed rows
-// are excluded before the inventory is built.
 const Candidate = z.object({
   id: z.string().uuid(), matched: z.literal(true),
   status: z.enum(["draft", "beta", "verified"]),
@@ -73,16 +54,9 @@ export type ProcessGuidance = {
 const official = "https://www.auswaertiges-amt.de/en/sperrkonto-388600";
 
 /** asOfIso is assessment time, never intake or source publication time.
- * Financial amounts are usable only for current guidance. Evidence observations
- * remain verbatim for review and must never be rendered as payable amounts.
- *
- * Authorization contract: only guidance entries with status === 'current'
- * authorize payable amounts/steps (consumers use
- * guidance.filter(g => g.status === 'current')). Entries with
- * conditional/unknown/review_needed/unresolved status, and the literal
- * observation/source_quote inside evidence, are review/conditional context
- * only. processRuleIds is the full validated inventory described above and
- * must never be read as authorization.
+ * Financial amounts are usable only for current guidance; other observations
+ * stay verbatim review context. processRuleIds is all validated matched:true
+ * non-draft inventory including ineligible/stale/conflicting rows, never authorization.
  */
 export function projectProcess(profile: unknown, publishedRules: unknown[], asOfIso: string) {
   const asOf = Date.parse(Utc.parse(asOfIso));
@@ -139,8 +113,5 @@ export function projectProcess(profile: unknown, publishedRules: unknown[], asOf
   });
   if (!guidance.length) unknowns.push("No published matched process coverage — confirm purpose, mission and application route with " + official + " or https://www.uni-assist.de/en/how-to-apply/pay-all-fees/handling-fees/");
   for (const g of guidance) if (g.status !== "current") unknowns.push(g.reasons.join(" ") + " Confirm with " + g.evidence.source_url);
-  // processRuleIds is the validated non-draft inventory only (see header): it
-  // includes ineligible/stale/conflicting IDs and never authorizes amounts,
-  // evidence, tasks, or current assistant claims. No currentRuleIds is emitted.
   return { guidance, unknowns, processRuleIds: [...new Set(live.map(r=>r.id))], assessedAt: asOfIso };
 }
