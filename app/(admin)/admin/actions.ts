@@ -183,7 +183,9 @@ export async function publishCourseResearchAction(formData: FormData) {
 export async function saveCourseResearchDraftAction(formData: FormData) {
   const { db } = await requireAdmin();
   const values = z.object({ id: z.string().uuid(), draft: z.string().min(2).max(850_000) }).strict().parse({ id: formData.get("id"), draft: formData.get("draft") });
-  const draft = ResearchDraftSchema.parse(JSON.parse(values.draft));
+  // Shape validation here; retained original captures are merged and the complete
+  // evidence/scope contract is validated by the caller-scoped recovery helper.
+  const draft = ResearchDraftSchema.innerType().parse(JSON.parse(values.draft));
   await saveAdminCourseResearchDraft(db, values.id, draft);
   redirect(`/admin?view=reviews&queue=pending&course=${values.id}&message=${encodeURIComponent("Research recovery saved as pending. Review and publication are still required.")}`);
 }

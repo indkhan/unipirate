@@ -55,3 +55,9 @@ it("binds reconciliation to authenticated admin and rejects short or forged manu
  mocks.requireAdmin.mockRejectedValue(new Error("Non-admin"));
  await expect(publishCourseResearchAction(data)).rejects.toThrow("Non-admin");
 });
+
+it("propagates stale publication failure without success redirect or conflict cleanup", async () => {
+  mocks.publish.mockRejectedValue(new Error("research changed; reload and review again"));
+  await expect(publishCourseResearchAction(form({ id, attest: "yes", accepted: "0:english", reconciled: "0:english", "reconciliation_reason:0:english": "Compared complete actual captured sources and applicability." }))).rejects.toThrow("research changed; reload and review again");
+  expect(mocks.resolve).not.toHaveBeenCalled(); expect(mocks.review).not.toHaveBeenCalled();
+});

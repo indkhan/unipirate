@@ -5,7 +5,7 @@ import type { Json, Tables } from "@/lib/db/database.types";
 import type { ConflictCourse } from "@/lib/db/admin-queries";
 import { courseTaskAdminPreview, deriveCourseTaskCandidates } from "@/lib/tasks/course-tasks";
 import { cn } from "@/lib/utils";
-import { hasResearch, researchNeedsReconciliation, readResearch } from "@/lib/courses/research";
+import { hasResearch, researchNeedsReconciliation, readResearch, type ResearchAuditRecord } from "@/lib/courses/research";
 
 import {
   resolveConflictAction,
@@ -19,6 +19,7 @@ import {
 } from "./actions";
 import { statusBadge } from "./admin-shared";
 import { ActionButton } from "./action-button";
+import { ResearchHistory, UntrustedLegacyReconciliation } from "./research-history";
 
 function compactJson(value: Json | null): string {
   if (value === null) return "Not extracted";
@@ -290,7 +291,7 @@ function CourseEditForm({ course, definitions }: { course: Tables<"courses">; de
   );
 }
 
-export function CourseQueue({ courses, definitionsByCourse }: { courses: Tables<"courses">[]; definitionsByCourse: Map<string, Tables<"course_task_definitions">[]> }) {
+export function CourseQueue({ courses, definitionsByCourse, researchHistoryByCourse = new Map() }: { courses: Tables<"courses">[]; definitionsByCourse: Map<string, Tables<"course_task_definitions">[]>; researchHistoryByCourse?: Map<string, ResearchAuditRecord[]> }) {
   return (
     <section className="rounded-lg border bg-card p-4">
       <div className="flex items-baseline justify-between gap-3">
@@ -335,7 +336,7 @@ export function CourseQueue({ courses, definitionsByCourse }: { courses: Tables<
             </div>
 
             <CourseEditForm course={course} definitions={definitionsByCourse.get(course.id) ?? []} />
-            <ResearchReview course={course} />
+            <ResearchReview course={course} history={researchHistoryByCourse.get(course.id) ?? []} />
           </article>
         ))}
       </div>
@@ -349,17 +350,20 @@ export function CourseQueue({ courses, definitionsByCourse }: { courses: Tables<
   );
 }
 
-function ResearchReview({ course }: { course: Tables<"courses"> }) {
-  if (!hasResearch(course.field_extraction)) return null;
+function ResearchReview({ course, history }: { course: Tables<"courses">; history: ResearchAuditRecord[] }) {
+  const legacy = course.field_extraction && typeof course.field_extraction === "object" && !Array.isArray(course.field_extraction) ? course.field_extraction.research_reconciliations : undefined;
+  const journal = <><ResearchHistory records={history} /><UntrustedLegacyReconciliation value={legacy} /></>;
+  if (!hasResearch(course.field_extraction)) return journal;
   let draft;
   try { draft = readResearch(course.field_extraction); }
-  catch { return <p role="alert">Invalid research capture. Publication blocked; retain the manual source and submit a corrected draft.</p>; }
-  if (!draft) return null;
+  catch { return <>{journal}<p role="alert">Invalid research capture. Publication blocked; retain the manual source and submit a corrected draft.</p></>; }
+  if (!draft) return journal;
   const needsReconciliation = researchNeedsReconciliation(draft);
-  return <><form action={publishCourseResearchAction} className="mt-4 grid gap-3 rounded border p-3">
+  return <>{journal}<form action={publishCourseResearchAction} className="mt-4 grid gap-3 rounded border p-3">
     <input type="hidden" name="id" value={course.id} />
     <h4 className="font-semibold">Research: {draft.status} · pending human review</h4>
     <p className="text-sm">Open the official sources and check programme identity, actual effective intake and applicant scope before accepting a fact. Unchecked facts publish as unresolved. No dates or tasks are inferred from this draft.</p>
+    {needsReconciliation && <p className="text-amber-700">The AI context omitted captured content. Compare every full captured source before deciding each accepted field; known conflicts require explicit correction first.</p>}
     {draft.issues.map(issue => <p className="text-sm text-amber-700" key={issue}>{issue}</p>)}
     {draft.offerings.length === 0 && <p>Publication requires supported effective intake and applicant scope. Repair the offering scope before publishing; sourced captures and manual pasted values remain available for review.</p>}
     {!!draft.unscoped?.length && <details><summary>Sourced captures with unknown effective intake (not publishable)</summary>{draft.unscoped.map(f => <div key={f.key}><p>{f.verbatim} · {f.applicability}</p>{f.evidence.map((e, i) => <blockquote key={i}><q>{e.source_quote}</q> · <a href={e.source_url} target="_blank" rel="noreferrer">{e.source_url}</a> · retrieved {e.retrieved_at}</blockquote>)}</div>)}</details>}
@@ -368,8 +372,8 @@ function ResearchReview({ course }: { course: Tables<"courses"> }) {
       <p className="text-sm">Effective scope: <q>{offering.scope.source_quote}</q> · <a href={offering.scope.source_url} target="_blank" rel="noreferrer" className="underline">Official scope source</a></p>
       {offering.facts.map(fact => <div key={fact.key} className="border-b pb-2 text-sm">
         <label className="flex gap-2"><input type="checkbox" name="accepted" value={`${index}:${fact.key}`} disabled={fact.status !== "pending"} />Accept {fact.key}: {fact.verbatim ?? "Unresolved"} ({fact.status})</label>
-        {needsReconciliation && fact.status === "pending" && <div className="grid gap-2">
-          <label><input type="checkbox" name="reconciled" value={`${index}:${fact.key}`} />I compared the full captured sources, including omitted text, and reconciled applicability/conflicting assertions for this field.</label>
+        {fact.status === "pending" && <div className="grid gap-2">
+          <label><input type="checkbox" name="reconciled" value={`${index}:${fact.key}`} />I compared the full captured sources, including omitted text, and confirmed applicability for this field. Known conflicts require separate correction before acceptance.</label>
           <label>Source reconciliation rationale (cite the captured source URLs and explain applicability)<textarea name={`reconciliation_reason:${index}:${fact.key}`} minLength={20} maxLength={2000} className="w-full rounded border p-2" /></label>
         </div>}
         <p>Applicability: {fact.applicability}</p>
@@ -478,7 +482,7 @@ function SourceChanges({
   );
 }
 
-export function ConflictQueue({ conflicts }: { conflicts: ConflictCourse[] }) {
+export function ConflictQueue({ conflicts, researchHistoryByCourse = new Map() }: { conflicts: ConflictCourse[]; researchHistoryByCourse?: Map<string, ResearchAuditRecord[]> }) {
   if (conflicts.length === 0) return null;
 
   return (
@@ -541,7 +545,7 @@ export function ConflictQueue({ conflicts }: { conflicts: ConflictCourse[] }) {
                   {conflict.source_url}
                 </a>
                     <CourseEditForm course={conflict} definitions={[]} />
-                    <ResearchReview course={conflict} />
+                    <ResearchReview course={conflict} history={researchHistoryByCourse.get(conflict.id) ?? []} />
               </div>
             </div>
 

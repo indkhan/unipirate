@@ -5,12 +5,14 @@ import { COUNTRIES } from "@/app/(public)/check/steps";
 import {
   getAdminCourse, getAdminRule, listAdminCourses, listAdminCourseTaskDefinitions,
   listAdminRules, listConflictCourses, listPendingCourses,
-  listRecentAdminAuditEvents,
+  listRecentAdminAuditEvents, listAdminCourseResearchHistory,
 } from "@/lib/db/admin-queries";
 
 import { AdminShell } from "./admin-shell";
 import { adminHref, parseAdminState } from "./admin-state";
 import { AuditLog } from "./audit-log";
+import { ResearchHistory, UntrustedLegacyReconciliation } from "./research-history";
+import { parseResearchAuditEvent } from "@/lib/courses/research";
 import { ConflictQueue, CourseQueue, CourseTaskLibrary } from "./course-queue";
 import { OverviewPanel } from "./overview-panel";
 import { RuleEditor, RulesTable } from "./rules-panel";
@@ -36,11 +38,16 @@ export default async function AdminPage({ searchParams }: Props) {
   } else if (state.view === "reviews") {
     const tabs = [["pending", "Pending courses", pending.length], ["conflicts", "Conflicts", conflicts.length]] as const;
     let panel: React.ReactNode;
-    if (state.queue === "conflicts") panel = <ConflictQueue conflicts={state.course ? conflicts.filter(c => c.id === state.course) : conflicts} />;
+    if (state.queue === "conflicts") {
+      const displayed = state.course ? conflicts.filter(c => c.id === state.course) : conflicts;
+      const history = new Map(await Promise.all(displayed.map(async c => [c.id, await listAdminCourseResearchHistory(db, c.conflicts_with ?? c.id)] as const)));
+      panel = <ConflictQueue conflicts={displayed} researchHistoryByCourse={history} />;
+    }
     else {
       const selected = state.course ? pending.find(c => c.id === state.course) : pending[0];
       const defs = selected ? await listAdminCourseTaskDefinitions(db, selected.id) : [];
-      panel = <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]"><div className="grid h-fit gap-2">{pending.map(course => <Link key={course.id} href={adminHref({ view: "reviews", queue: "pending", course: course.id })} className="rounded-lg border bg-card p-3 text-sm hover:border-[var(--route-blue)] focus-visible:outline-2 focus-visible:outline-[var(--route-blue)]"><strong className="block truncate">{course.name ?? "Untitled course"}</strong><span className="block truncate text-muted-foreground">{course.university_name ?? "University unknown"}</span><span className="mt-2 block text-xs text-[var(--signal)]">{course.extraction_method ?? "Unknown extraction"}</span></Link>)}</div><CourseQueue courses={selected ? [selected] : []} definitionsByCourse={new Map(selected ? [[selected.id, defs]] : [])} /></div>;
+      const history = selected ? await listAdminCourseResearchHistory(db, selected.conflicts_with ?? selected.id) : [];
+      panel = <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]"><div className="grid h-fit gap-2">{pending.map(course => <Link key={course.id} href={adminHref({ view: "reviews", queue: "pending", course: course.id })} className="rounded-lg border bg-card p-3 text-sm hover:border-[var(--route-blue)] focus-visible:outline-2 focus-visible:outline-[var(--route-blue)]"><strong className="block truncate">{course.name ?? "Untitled course"}</strong><span className="block truncate text-muted-foreground">{course.university_name ?? "University unknown"}</span><span className="mt-2 block text-xs text-[var(--signal)]">{course.extraction_method ?? "Unknown extraction"}</span></Link>)}</div><CourseQueue courses={selected ? [selected] : []} definitionsByCourse={new Map(selected ? [[selected.id, defs]] : [])} researchHistoryByCourse={new Map(selected ? [[selected.id, history]] : [])} /></div>;
     }
     content = <Workspace title="Course reviews" description="Verify imported facts and resolve official source changes."><div className="mb-4 flex gap-2 overflow-x-auto">{tabs.map(([queue,label,n]) => <Button key={queue} asChild variant={state.queue === queue ? "default" : "outline"}><Link href={adminHref({ view: "reviews", queue })}>{label} · {n}</Link></Button>)}</div>{panel}</Workspace>;
   } else if (state.view === "rules") {
@@ -56,7 +63,15 @@ export default async function AdminPage({ searchParams }: Props) {
     content = <Workspace title="Course task library" description="Task changes can update students planning the selected course."><form className="mb-4 flex gap-2"><input type="hidden" name="view" value="tasks" /><input name="q" defaultValue={state.q} placeholder="Search course or university" className="h-10 min-w-0 flex-1 rounded-md border bg-background px-3" /><Button type="submit">Search</Button></form><div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]"><div className="grid h-fit gap-2">{approved.map(c => <Link key={c.id} className="rounded-lg border bg-card p-3 text-sm hover:border-[var(--route-blue)]" href={adminHref({ view: "tasks", course: c.id, q: state.q })}><strong className="block">{c.name ?? "Untitled course"}</strong><span className="text-muted-foreground">{c.university_name ?? "University unknown"}</span></Link>)}</div><CourseTaskLibrary courses={selected ? [selected] : []} definitionsByCourse={new Map(selected ? [[selected.id, defs]] : [])} /></div></Workspace>;
   } else {
     const events = await listRecentAdminAuditEvents(db, 100);
-    content = <Workspace title="Audit history" description="A chronological record of consequential admin changes."><AuditLog events={events} /></Workspace>;
+    const researchEvents = events.filter(e => e.course_reconciliation !== null).map(e => parseResearchAuditEvent({ id: e.id, row_id: e.row_id, table_name: e.table_name, action: e.action, actor_user_id: e.actor_user_id, created_at: e.created_at, course_reconciliation: e.course_reconciliation }));
+    const selected = state.course ? await getAdminCourse(db, state.course) : undefined;
+    const history = selected ? await listAdminCourseResearchHistory(db, selected.conflicts_with ?? selected.id, 100) : [];
+    const legacy = selected?.field_extraction && typeof selected.field_extraction === "object" && !Array.isArray(selected.field_extraction) ? selected.field_extraction.research_reconciliations : undefined;
+    content = <Workspace title="Audit history" description="A chronological record of consequential admin changes.">
+      <form className="mb-4 flex gap-2"><input type="hidden" name="view" value="audit" /><label>Course research history<select name="course" defaultValue={state.course ?? ""} className="ml-2 rounded border p-2"><option value="">Recent events</option>{courses.filter(c => c.review_status === "approved").map(c => <option key={c.id} value={c.id}>{c.name ?? c.id} · {c.university_name}</option>)}</select></label><Button type="submit">View history</Button></form>
+      <ResearchHistory records={history} /><UntrustedLegacyReconciliation value={legacy} />
+      <AuditLog events={events} researchEvents={researchEvents} />
+    </Workspace>;
   }
   return <AdminShell state={state} counts={counts}>{content}</AdminShell>;
 }

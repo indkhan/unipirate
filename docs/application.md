@@ -355,7 +355,8 @@ There is no migration, DB publication, seed or KB rebuild in this change.
    sources and selects accepted supported facts. Unselected/conflicting facts remain
    unresolved, and normalized dates stay null. `publishAdminCourseResearch` validates
    all selections before writes, reuses canonical programme/offering identities and
-   appends pending and reviewed snapshots with the authenticated reviewer's metadata.
+   calls one atomic reviewed-version/protected-journal RPC per offering, with DB-derived
+   reviewer/time and the original raw research equality token.
    A new legacy course publishes only its identity; broad unreviewed requirements,
    fees and deadlines are cleared rather than entering legacy task planning. Existing
    tasks and definitions are untouched. Research updates publish scoped versions
@@ -849,22 +850,53 @@ Unselected fields remain unresolved. Separator whitespace alone is not a substan
 omission. Known model conflicts still require correction and cannot be overridden by
 this decision. No contradiction is inferred automatically from raw source wording.
 
-The caller-scoped publication helper validates all decisions before mutation and
-binds new reviewer/time values from the authenticated action. However, the current
-research_reconciliations array resides in caller-editable course metadata: sibling
-entries cannot be authenticated by UUID/schema validation or by appending an admin
-record. This array is untrusted provenance, and trusted-history acceptance remains
-blocked pending the root-reviewed additive audit proposal in the issue handoff.
-The existing admin_audit_events journal is protected by RLS but has no suitable
-reconciliation payload column; programme_correction cannot be repurposed. No
-migration is written/applied in this repair. Original entries/full captures must
-remain available as explicitly untrusted data; future trusted decisions belong in
-the protected journal with DB-authenticated actor/time and offering/version links.
-The canonical research marker still guards legacy courses against generic replacement.
-Manual JSON recovery retains original non-paste captures so omission provenance cannot
-be erased. The existing capture-count limit may reject a repair that exceeds capacity;
-it never silently discards historical text. No generated types or applied migrations
-are changed by the conflict repair.
+The caller-scoped publication helper retains the original RAW stored research JSON
+and preflights every offering/selection before any mutation. Every accepted local
+field requires a rationale, including when the model context omitted nothing.
+Identity approval, programme attachment and exact scope lookup remain separate
+requests. Each offering calls the authenticated admin-only
+publish_course_research_version RPC once with the next actual version number,
+local accepted keys/decisions and that same raw JSON equality token. The token is
+never reconstructed from parsed/trimmed Zod output or refreshed after preflight.
+Immediately after locking the submitted row, SQL rejects changed research with
+"research changed; reload and review again". Facts/full observations originate only
+from the locked row; reviewer and one consistent timestamp originate from DB
+identity/clock. One verified version and its protected audit event are atomic.
+There are no direct pending/verified inserts or editable metadata audit appends in
+this workflow. Errors propagate without automatic retry, success redirect or
+conflict cleanup. Keep-original resolution runs only after every RPC succeeds.
+Trade-off: setup and multiple offerings are not one transaction; an earlier
+successful version survives a later failure, and retry may append another version.
+No application/task/definition/progress sync is introduced.
+
+The reserved additive migration adds admin_audit_events.course_reconciliation
+without replacing existing status/programme-correction history or relaxing RLS.
+The payload records complete original observations, submitted ID, identity/scope,
+field decisions, immutable reviewer/time and actual offering/version UUID links.
+Caller-scoped admin queries bound history reads to a canonical envelope row ID.
+Strict pure Zod validation checks the entire protected payload/envelope; malformed
+records render explicitly unavailable, without partial trusted claims. The existing
+review queues receive validated history through page props. The existing audit view
+shows recent protected events and offers an approved-course history selector, so
+journal captures remain reachable after the incoming submission is deleted.
+The immutable payload retains reviewer/time after an account deletion nulls the
+outer actor FK; it is never mislabeled as a system review.
+
+Legacy research_reconciliations arrays remain caller-editable and visibly labelled
+"Untrusted legacy reconciliation data — caller-editable metadata". No UUID, timestamp
+or schema validation retrofits authenticity. They never enter the protected journal.
+The canonical research marker still guards legacy generic replacements even before
+a partial publication succeeds. If absent, only original raw research is merged as
+an untrusted guard marker using an exact conditional metadata update; existing
+canonical research and sibling metadata are preserved, and concurrent sibling edits
+force reload. Incoming legacy journal siblings are never copied into the canonical.
+Manual recovery preserves every original web/manual/paste observation exactly plus
+original draft.paste, while newly entered web content is labelled manual. Retained
+captures are merged before final evidence/scope validation; capacity overflow rejects
+instead of silently truncating evidence. Source quotes and retrieval timestamps remain
+unchanged. The root-generated schema types are consumed unchanged. Root owns SQL/RLS,
+DB/browser/build and real-provider acceptance; unit HTTP fixtures prove control flow,
+not database atomicity or operational provider success.
 
 Combined fee wording participates in both tuition and semester-fee identities.
 Overlapping differing assertions stay unresolved during build, stored-draft validation

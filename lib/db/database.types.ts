@@ -38,6 +38,7 @@ export type Database = {
         Row: {
           action: string
           actor_user_id: string | null
+          course_reconciliation: Json | null
           created_at: string
           id: string
           new_status: string | null
@@ -49,6 +50,7 @@ export type Database = {
         Insert: {
           action: string
           actor_user_id?: string | null
+          course_reconciliation?: Json | null
           created_at?: string
           id?: string
           new_status?: string | null
@@ -60,6 +62,7 @@ export type Database = {
         Update: {
           action?: string
           actor_user_id?: string | null
+          course_reconciliation?: Json | null
           created_at?: string
           id?: string
           new_status?: string | null
@@ -676,6 +679,33 @@ export type Database = {
           source_url: string
           title: string
         }[]
+      }
+      publish_course_research_version: {
+        Args: {
+          p_accepted_keys: string[]
+          p_decisions: Json
+          p_expected_research: Json
+          p_offering_id: string
+          p_offering_index: number
+          p_submitted_course_id: string
+          p_version: number
+        }
+        Returns: {
+          created_at: string
+          facts: Json
+          id: string
+          offering_id: string
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "course_offering_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       remove_my_course: { Args: { course_id: string }; Returns: undefined }
       resolve_course_conflict: {

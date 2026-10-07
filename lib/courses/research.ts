@@ -1,6 +1,6 @@
 // Pure research contracts and evidence/review decisions. No provider or DB I/O.
 import { z } from "zod";
-import { ProgrammeSchema, OfferingFactSchema, OfferingSchema, OfferingVersionSchema } from "./offerings";
+import { ProgrammeSchema, OfferingFactSchema, OfferingSchema, OfferingVersionSchema, CourseEvidenceSchema } from "./offerings";
 
 const label = z.string().trim().min(1).max(240);
 export const ResearchUrlSchema = ProgrammeSchema.shape.source_url.refine(value => {
@@ -373,4 +373,42 @@ export function buildResearchContext(input: ResearchSeed, captures: Observation[
     sources, omitted_sources: eligible.length - sources.length,
     omitted_characters: eligible.reduce((n, o) => n + o.content.length, 0) - sources.flatMap(s => s.excerpts).reduce((n, p) => n + p.length, 0),
   });
+}
+
+// This parser accepts protected DB audit envelopes only. Calling it on editable
+// metadata cannot authenticate that metadata; shells query the protected journal.
+const auditTimestamp = CourseEvidenceSchema.innerType().shape.retrieved_at;
+const auditKey = z.string().min(1).max(240).refine(value => value.trim().length > 0);
+export const ResearchAuditPayloadSchema = z.object({
+  format: z.literal("up-course-01/reconciliation-v1"),
+  submitted_course_id: z.string().uuid(), reviewed_by: z.string().uuid(), reviewed_at: auditTimestamp,
+  identity: z.object({ name: auditKey, university: auditKey, source_url: ResearchUrlSchema }).strict(),
+  scope: OfferingSchema.omit({ programme_id: true }).extend({ scope: ref }).strict(),
+  offering_index: z.number().int().min(0).max(7), accepted_keys: z.array(auditKey).max(50),
+  decisions: z.array(z.object({ key: auditKey, reason: z.string().min(20).max(2000) }).strict()).max(50),
+  observations: z.array(ObservationSchema.extend({ retrieved_at: auditTimestamp })).max(12),
+  version: z.object({ id: z.string().uuid(), offering_id: z.string().uuid(), version: z.number().int().positive() }).strict(),
+}).strict().superRefine((payload, ctx) => {
+  if (new Set(payload.accepted_keys).size !== payload.accepted_keys.length
+    || new Set(payload.decisions.map(d => d.key)).size !== payload.decisions.length
+    || payload.decisions.length !== payload.accepted_keys.length
+    || payload.decisions.some(d => !payload.accepted_keys.includes(d.key))) ctx.addIssue({ code: "custom", message: "Invalid protected reconciliation selection" });
+});
+const ResearchAuditEnvelopeSchema = z.object({
+  id: z.string().uuid(), row_id: z.string().uuid(), table_name: z.literal("courses"), action: z.literal("update"),
+  actor_user_id: z.string().uuid().nullable(), created_at: auditTimestamp, course_reconciliation: ResearchAuditPayloadSchema,
+}).strict().superRefine((row, ctx) => {
+  if ((row.actor_user_id !== null && row.actor_user_id !== row.course_reconciliation.reviewed_by)
+    || Date.parse(row.created_at) !== Date.parse(row.course_reconciliation.reviewed_at)) ctx.addIssue({ code: "custom", message: "Protected envelope and immutable review metadata disagree" });
+});
+export type ResearchAuditRecord =
+  | { status: "available"; id: string; canonicalId: string; payload: z.infer<typeof ResearchAuditPayloadSchema> }
+  | { status: "unavailable"; id: string };
+export function parseResearchAuditEvent(input: unknown): ResearchAuditRecord {
+  const parsed = ResearchAuditEnvelopeSchema.safeParse(input);
+  if (!parsed.success) {
+    const identity = z.object({ id: z.string().uuid() }).safeParse(input);
+    return { status: "unavailable", id: identity.success ? identity.data.id : "unknown" };
+  }
+  return { status: "available", id: parsed.data.id, canonicalId: parsed.data.row_id, payload: parsed.data.course_reconciliation };
 }
