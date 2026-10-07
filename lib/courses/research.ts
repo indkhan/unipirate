@@ -42,6 +42,10 @@ export const ResearchDraftSchema = z.object({
   // Manual observations represent an admin's own source capture. They expand
   // review provenance through the same DAAD identity/link rule, never AI trust.
   const domains = officialDomains(draft.identity, draft.observations.map(o => o.origin === "manual" ? { ...o, origin: "web" as const } : o));
+  const recoverySources = identityLinkedSources(draft.identity, draft.observations.filter(o => o.origin !== "paste" && domains.some(d => onDomain(o.url, d))));
+  for (const f of draft.unscoped ?? []) {
+    if (f.applicability !== "Unresolved effective intake/applicant scope" || f.evidence.some(e => !recoverySources.has(e.source_url))) ctx.addIssue({ code: "custom", message: "Unscoped recovery needs captured identity/link provenance and unresolved applicability" });
+  }
   for (const o of draft.offerings) {
     const source = draft.observations.find(s => s.origin !== "paste" && s.url === o.scope.source_url && s.content.includes(o.scope.source_quote));
     if (!source || !identifies(source, draft.identity) || !(o.intake_term === "winter" ? /winter/i : /summer|sommer/i).test(o.scope.source_quote)
@@ -114,6 +118,18 @@ export function focusedResearchUrls(urls: string[], domains: string[], observati
 function identifies(source: Observation, seed: Pick<ResearchSeed, "name" | "university">): boolean {
   return source.content.includes(seed.name) && source.content.includes(seed.university);
 }
+// Recover wording through actual retrieved identity pages and their observed link
+// chain, independently of an AI scope assertion. At most twelve observations.
+function identityLinkedSources(seed: Pick<ResearchSeed, "name" | "university">, sources: Observation[]): Set<string> {
+  const reachable = new Set(sources.filter(s => identifies(s, seed)).map(s => s.url));
+  for (let pass = 0; pass < sources.length; pass++) {
+    const before = reachable.size;
+    const linked = new Set(sources.filter(s => reachable.has(s.url)).flatMap(s => links(s.content)));
+    for (const source of sources) if (linked.has(source.url)) reachable.add(source.url);
+    if (reachable.size === before) break;
+  }
+  return reachable;
+}
 // University domains are admitted only through a retrieved DAAD identity page's
 // outbound links, never a model recommendation or a user's claimed domain.
 export function officialDomains(seed: Pick<ResearchSeed, "name" | "university">, observations: Observation[]): string[] {
@@ -181,6 +197,7 @@ export function buildResearchDraft(seed: ResearchSeed, observations: Observation
   }
   const domains = officialDomains(seed, observations);
   const eligible = observations.filter(s => s.origin === "web" && domains.some(d => onDomain(s.url, d)));
+  const recoverySources = identityLinkedSources(seed, eligible);
   const sourceFor = (reference: z.infer<typeof ref>) => eligible.find(s => s.url === reference.source_url && s.content.includes(reference.source_quote));
   const capture = (reference: z.infer<typeof ref>) => ({ ...reference, retrieved_at: sourceFor(reference)!.retrieved_at, last_verified_at: null, verified_by: null, source_hash: null });
   type CandidateOffering = z.infer<typeof ResearchOutputSchema>["offerings"][number];
@@ -203,16 +220,18 @@ export function buildResearchDraft(seed: ResearchSeed, observations: Observation
   }
   for (const offering of merged) {
     const source = offering.scope ? sourceFor(offering.scope) : undefined;
-    if (offering.intake_year === null || offering.intake_term === null || offering.applicant_group === null || offering.scope === null) {
-      draft.issues.push("Effective intake/applicant scope is unknown; sourced captures require scope review before publication.");
+    if (offering.intake_year === null || offering.intake_term === null || offering.applicant_group === null || offering.scope === null || !scopeSource(offering)) {
+      draft.issues.push("Effective intake/applicant scope is unknown or unsupported; sourced captures require scope review before publication.");
+      const before = draft.unscoped!.length;
       for (const [index, candidate] of offering.facts.entries()) {
         if (!candidate.evidence.every(e => {
           const observed = sourceFor(e);
-          return observed && e.source_quote.includes(candidate.verbatim) && (identifies(observed, seed) || (source && identifies(source, seed) && links(source.content).includes(observed.url)));
+          return observed && e.source_quote.includes(candidate.verbatim) && recoverySources.has(observed.url);
         })) continue;
         const checked = OfferingFactSchema.safeParse({ ...candidate, applicability: "Unresolved effective intake/applicant scope", key: `unscoped:${draft.unscoped!.length}:${index}:${candidate.key}`, status: "pending", date: null, time: null, timezone: null, evidence: candidate.evidence.map(capture) });
         if (checked.success) draft.unscoped!.push(checked.data);
       }
+      if (draft.unscoped!.length === before) draft.issues.push("No factual capture for this unsupported scope matched retrieved literal identity/link evidence.");
       continue;
     }
     const season = offering.intake_term === "winter" ? /winter/i : /summer|sommer/i;

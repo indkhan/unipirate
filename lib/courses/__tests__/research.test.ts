@@ -15,6 +15,44 @@ export const output = { offerings: [{ intake_term: "winter", intake_year: 2027, 
 ] }] };
 
 describe("research evidence boundary", () => {
+  it.each(["year", "term", "group", "quote", "missing"])("retains source-supported multi-source captures with unsupported %s scope, never a publishable offering", mismatch => {
+    const offering = structuredClone(output.offerings[0]);
+    if (mismatch === "year") offering.intake_year = 2030;
+    if (mismatch === "term") offering.intake_term = "summer";
+    if (mismatch === "group") offering.applicant_group = "EU applicants";
+    if (mismatch === "quote") offering.scope.source_quote = "Invented scope";
+    const draft = buildResearchDraft(seed, observations, { offerings: [{ ...offering, scope: mismatch === "missing" ? null : offering.scope }] }, []);
+    expect(draft.offerings).toEqual([]);
+    expect(draft.unscoped?.map(f => f.verbatim)).toEqual(expect.arrayContaining(["Apply by 31 May.", "Apply by 30 June.", "IELTS 6.5."]));
+    expect(new Set(draft.unscoped?.flatMap(f => f.evidence.map(e => e.source_url))).size).toBe(3);
+    expect(draft.unscoped?.every(f => f.status === "pending" && f.applicability === "Unresolved effective intake/applicant scope" && f.date === null && f.evidence.every(e => !e.verified_by && !e.last_verified_at))).toBe(true);
+    expect(() => prepareResearchReview(draft, 0, [draft.unscoped![0].key], "11111111-1111-4111-8111-111111111111", "2026-10-07T13:00:00Z")).toThrow();
+    expect(draft.status).toBe("incomplete");
+  });
+  it("excludes fabricated wording and wrong identities when recovering unsupported scope", () => {
+    const offering = structuredClone(output.offerings[0]); offering.intake_year = 2030;
+    offering.facts[0].evidence[0].source_quote = "Fabricated deadline";
+    const draft = buildResearchDraft(seed, observations, { offerings: [offering] }, []);
+    expect(draft.unscoped?.map(f => f.verbatim)).not.toContain("Apply by 31 May.");
+    offering.facts[0].evidence[0] = reference("https://evil.invalid/fabricated", "Apply by 31 May.");
+    expect(buildResearchDraft(seed, observations, { offerings: [offering] }, []).unscoped?.flatMap(f => f.evidence.map(e => e.source_url))).not.toContain("https://evil.invalid/fabricated");
+    const wrong = observations.map(s => ({ ...s, content: s.content.replaceAll(seed.name, "Unrelated Programme") }));
+    expect(buildResearchDraft(seed, wrong, { offerings: [offering] }, []).unscoped).toEqual([]);
+  });
+  it("recovers a linked regulation without invented scope, rejecting unlinked sources and fabricated recovery labels", () => {
+    const sources = observations.map((s, i) => i === 2 ? { ...s, content: "IELTS 6.5." } : s);
+    sources.push({ ...sources[2], url: "https://uni-example.de/unrelated.pdf" });
+    const offering = structuredClone(output.offerings[0]); offering.intake_year = 2030;
+    offering.facts = [offering.facts[2], { ...offering.facts[2], key: "unrelated", evidence: [reference(sources[3].url, "IELTS 6.5.")] }];
+    const draft = buildResearchDraft(seed, sources, { offerings: [offering] }, []);
+    expect(draft.unscoped).toHaveLength(1);
+    expect(draft.unscoped![0].evidence[0].source_url).toBe(sources[2].url);
+    const edited = structuredClone(draft); edited.unscoped![0].applicability = "Winter 2030 EU applicants";
+    expect(ResearchDraftSchema.safeParse(edited).success).toBe(false);
+    edited.unscoped![0].applicability = "Unresolved effective intake/applicant scope";
+    edited.unscoped![0].evidence[0].source_url = sources[3].url;
+    expect(ResearchDraftSchema.safeParse(edited).success).toBe(false);
+  });
   it.each([
     ["IELTS 6.5 or TOEFL 90.", "IELTS 7.0.", true],
     ["IELTS 7.0.", "IELTS 6.5 or TOEFL 90.", true],

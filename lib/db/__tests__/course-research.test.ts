@@ -37,6 +37,18 @@ function client(conflict = false, failure?: string, changes: Record<string, unkn
 beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-10-07T13:00:00Z")); });
 afterEach(() => vi.useRealTimers());
 describe("research publication helpers (synthetic HTTP, no RLS claim)", () => {
+  it("cannot publish unscoped recovery captures even with an empty selection", async () => {
+    const recovery = structuredClone(draft);
+    recovery.unscoped = recovery.offerings[0].facts.filter(f => f.status === "pending").map(f => ({ ...f, applicability: "Unresolved effective intake/applicant scope" }));
+    recovery.offerings = [];
+    const { db, writes } = client(false, undefined, { field_extraction: { research: recovery } });
+    await expect(publishAdminCourseResearch(db, id, [], id)).rejects.toThrow(/scope/i);
+    expect(writes).toEqual([]);
+    const pending = client();
+    await saveAdminCourseResearchDraft(pending.db, id, recovery);
+    expect(pending.writes[0].body).toMatchObject({ field_extraction: { research: { offerings: [], unscoped: expect.arrayContaining([expect.objectContaining({ status: "pending", applicability: "Unresolved effective intake/applicant scope" })]) } } });
+    expect(pending.writes[0].body).not.toHaveProperty("review_status");
+  });
   it("blocks a legacy incoming update to research canonical without reaching the RPC", async () => {
     const { db, writes } = client(true, undefined, { field_extraction: {} }, { field_extraction: { research: draft } });
     await expect(resolveCourseConflict(db, id, true)).rejects.toThrow(/research/i);

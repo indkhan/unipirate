@@ -634,6 +634,15 @@ No existing applicability map is rewritten or given an inferred vocabulary.
 ### COURSE01 / PROC01 interface
 
 The shared payload remains `OfferingFactSchema`; no catalogue schema change.
+Missing or unsupported nonnull model scope uses the same unscoped recovery path:
+only literal fact wording from retrieved official identity pages or their actually
+captured link chain survives. Model intake/applicant assertions are discarded, with
+explicit unresolved applicability, pending status and no planning/reviewer metadata.
+Unlinked sources and invented wording do not survive recovery; an empty recovery
+reports that no capture matched evidence. Recovery validation enforces this provenance
+and unknown label. Publication requires a captured valid offering scope and cannot
+publish an unscoped-only draft even with an empty acceptance selection. The existing
+strict offering/review/conflict guards remain the boundary when a human repairs scope.
 Manual recovery and publication validate the same captured applicability boundary:
 `source_scope` must equal the actual offering scope quote, every field's applicant
 label must equal the offering label, and its evidence must carry that captured

@@ -451,6 +451,7 @@ export async function publishAdminCourseResearch(
   const submitted = await getAdminCourse(db, id);
   const draft = readResearch(submitted.field_extraction);
   if (!draft) throw new Error("No research draft to review");
+  if (!draft.offerings.length) throw new Error("Effective offering scope is required before research publication; unscoped captures require manual recovery");
   const known = new Set(draft.offerings.flatMap((o, i) => o.facts.map(f => `${i}:${f.key}`)));
   if (new Set(accepted).size !== accepted.length || accepted.some(key => !known.has(key))) throw new Error("Unknown or duplicate research review selection");
   const now = new Date().toISOString();
