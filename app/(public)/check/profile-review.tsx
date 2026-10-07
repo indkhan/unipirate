@@ -75,6 +75,7 @@ const QUESTIONS: Record<StepId, string> = {
   gceSchoolYears:'Actual school years',gceQualificationContext:'GCE qualification system',gceQualificationType:'GCE qualification type',gceEvidence:'Awarding-body evidence',
   gceAwardingBody: "A-Level awarding body",
   gceSubjects: "A-Level subjects",
+  ibDocumentStatus:"IB Diploma evidence",ibExamSession:"IB examination session",ibSchooling:"Schooling pattern",ibProgramme:"IB programme",ibSchoolIdentity:"Exact exception school identity",ibSchoolName:"School name",ibSchoolCountry:"Annex country heading",ibSchoolCode:"IB school code",
   ibFullDiploma: "Full IB Diploma",
   ibExamYear: "IB exam year",
   ibSchoolYears: "School years",
@@ -88,7 +89,7 @@ const QUESTIONS: Record<StepId, string> = {
 export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1 }));
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 }));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const steps = visibleSteps(answers);
@@ -162,6 +163,7 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
           {"suffix" in config && (
             <span className={styles.percentSuffix}>{config.suffix}</span>
           )}
+          {answers.ibVersion===1 && ['ibExamYear','ibSchoolYears','ibTotalPoints'].includes(step) && <button type="button" aria-pressed={answers[step]===null} onClick={()=>select(step,null)}>Cannot confirm</button>}
           {step === "yearsOfUniversityStudy" && isIndiaStudyBranch(answers) && <button type="button" aria-pressed={answers[step] === null} onClick={() => select(step, null)}>Cannot establish successful academic years</button>}
         </div>
       );
@@ -240,7 +242,7 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
             <section className={styles.reviewCard} key={step}>
               <h2 id={`${step}-label`}>{QUESTION_COPY[step].sourceUrl ? QUESTION_COPY[step].question : QUESTIONS[step]}</h2>
               {QUESTION_COPY[step].sourceUrl && <p className={styles.subtitle}>
-                {QUESTION_COPY[step].subtitle} <a href={QUESTION_COPY[step].sourceUrl} target="_blank" rel="noreferrer">Official APS guidance</a>
+                {QUESTION_COPY[step].subtitle} <a href={QUESTION_COPY[step].sourceUrl} target="_blank" rel="noreferrer">Official source guidance</a>
               </p>}
               {field(step)}
               {!isAnswered(answers, step) ? (

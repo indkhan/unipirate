@@ -1,0 +1,27 @@
+# UP-ELIG-02 IB source verification
+
+Verified 2026-10-07. This records the reviewed contract; drafts are not a production recognition decision.
+
+## Official sources and applicable examination dates
+
+- [Current KMK resolution](https://www.kmk.org/zab/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/aktuell/283_Vereinb_Anerkenn_Int_Baccalaureate_Diploma-2023-06-15_Liste1__2026-03-26_Liste2-2024-11-19.pdf): resolution 15 June 2023, Annex 1 26 March 2026, Annex 2 19 November 2024. Ordinary HL language/math/science clause applies from examination 2025. Section 1 still requires twelve ascending full-time school years, six eligible subjects, two A/B languages with continued foreign A or B HL, Biology/Chemistry/Physics, mathematics, social science, three HL and two-year continuity. Grade 3 compensation needs a different same/higher-level grade 5 and 24 total points; multiple 3s or 1/2 do not satisfy ordinary recognition. Computer Science is a sixth-subject option, not the required natural science.
+- [Historical KMK resolution](https://www.kmk.org/zab/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/283_Vereinb_Anerkenn_Int_Baccalaureate_Diploma-2022-03-24_Liste1-2023-03-01_Liste2-2023-03-01_DE.pdf): resolution 24 March 2022 governs examinations through 2024; HL mathematics or natural science remains necessary. Mathematics SL/HL through examination 2020 is distinct from AA/AI SL from 2021. The latter normally excludes mathematical, scientific and technical target scope unless the applicable annex exception is established.
+- [KMK index](https://www.kmk.org/downloads-dokumente/beschluesse-und-veroeffentlichungen/bildung-/-schule/allgemeine-bildung.html) states: “Gültig bis einschließlich Prüfung 2024; es gelten Anlagen 1 und 2 der Fassung vom 15.06.2023”. Thus the historical resolution does not freeze a 2023 school list. Publication dates and university intakes are not examination-effective dates.
+
+## Reviewed annex scope
+
+All pages 5–21 of the current official PDF were read, including both complete annexes and programme footnotes. The pure JSON index preserves 316 Annex 1 rows and 35 Annex 2 rows, exact source identities/country headings, six-digit codes where printed, literal row quotes, effective examination year/session and programme scope. Version: kmk-2023/annex1-2026-03-26/annex2-2024-11-19. It is source data, not a hardcoded student exception list.
+
+Critical literal rows: “58 SIS Swiss International School Stuttgart-Fellbach 049128 Mai 2026”; “29 Saudi Arabien DS Djidda Mai 2021”. The first cannot cover November 2025. The second belongs to the GIB annex and cannot automatically cover ordinary IB. Annex 2's Sydney/Manila footnotes separately extend those schools to ordinary IB. Code 006880 / Sinarmas World Academy occurs under both INDIEN and INDONESIEN. Selecting either country cannot resolve the official contradiction; the engine returns source_conflict. Exact identity mismatches and absent examination/programme context remain unknown. The exception changes mathematics scope only, never science/grade requirements.
+
+## Document evidence, language context and COVID
+
+[DAAD guidance](https://www.daad.de/en/studying-in-germany/requirements/ib-diploma/) is nonbinding orientation to the KMK decision and recognition authorities. It confirms independent subjects and continued-foreign language context; ab initio cannot replace the required A/B pair. It explicitly acknowledges substitute achievements for May 2020, November 2020 and May 2021. No exam-attendance condition was invented. Literal document limit: “German universities do not accept a so-called IB Certificate.”
+
+[uni-assist's official document FAQ](https://www.uni-assist.de/en/faqs/assemble-your-documents/) distinguishes official IBO electronic transcripts accessible through IBIS from a school Results Summary / candidate website overview. Literal: “We need to be able to access and download your electronic transcript from the IBIS website.” Official results confirming Diploma award with the physical paper pending are represented separately from not awarded/Certificate/unknown. This does not promise every university accepts provisional documents: uni-assist imposes deadlines and still requires final documents and two-year reports.
+
+## Deliberate limits and publication
+
+Ordinary recognition failure does not establish Studienkolleg admission. KMK section 2 describes an additional examination/Feststellungsprüfung or qualifying successful one-year prior study; exact alternative eligibility and subject scope require separate reviewed rules. No alternative was fabricated. Unclassified target other with AA/AI SL stays unknown. Missing continuity, language context, math identity, intake, examination session or school/programme scope is not assumed false or treated as a complete whitelist absence.
+
+Current implementation coverage is ordinary examination years 2013 onward and target intakes Winter 2025 onward. Earlier scope needs source review. Diploma evidence is reported, not remotely verified. The complete source index is reviewed data; normal runtime never fetches it. All candidate rules remain DRAFT with null publication metadata. Only explicit disposable test copies are verified. Existing positive IB shortcuts are quarantined until replacement rules undergo root review and authorized publication. No linked DB, live service, provider, migration, server-shell or publication action is required by this source change. Final UP-TEST-01 official coverage remains OPEN.

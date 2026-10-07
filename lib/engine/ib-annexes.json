@@ -1,0 +1,5243 @@
+{
+  "version": "kmk-2023/annex1-2026-03-26/annex2-2024-11-19",
+  "sourceUrl": "https://www.kmk.org/zab/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/aktuell/283_Vereinb_Anerkenn_Int_Baccalaureate_Diploma-2023-06-15_Liste1__2026-03-26_Liste2-2024-11-19.pdf",
+  "verifiedAt": "2026-10-07T00:00:00Z",
+  "reviewedScope": "Complete Annex 1 (316 rows including duplicated 006880) and Annex 2 (35 rows), programme footnotes and effective examination sessions. Exact source identities; no fuzzy aliases.",
+  "complete": true,
+  "entries": [
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "International School of Braunschweig-Wolfsburg",
+      "code": "007026",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 International School of Braunschweig-Wolfsburg 007026 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Nymphenburger Schulen",
+      "code": "006478",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Nymphenburger Schulen 006478 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "International School Mainfranken",
+      "code": "049981",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 International School Mainfranken 049981 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Strothoff International School Rhein-Main Campus Dreieich",
+      "code": "006277",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Strothoff International School Rhein-Main Campus Dreieich 006277 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "UWC Robert Bosch College",
+      "code": "049998",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 UWC Robert Bosch College 049998 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Schuldorf Bergstrasse / State International School Seeheim Jugenheim",
+      "code": "050262",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 Schuldorf Bergstrasse / State International School Seeheim Jugenheim 050262 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Leibniz Gymnasium Dortmund International School",
+      "code": "004496",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "7 Leibniz Gymnasium Dortmund International School 004496 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Leonardo da Vinci Campus Nauen",
+      "code": "004360",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "8 Leonardo da Vinci Campus Nauen 004360 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "St. George's The British International School Munich",
+      "code": "060142",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "9 St. George's The British International School Munich 060142 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Thuringia International School",
+      "code": "002860",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "10 Thuringia International School 002860 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "International School of Ulm/Neu-Ulm Management GmbH",
+      "code": "002884",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "11 International School of Ulm/Neu-Ulm Management GmbH 002884 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Felix Klein Gymnasium",
+      "code": "003647",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "12 Felix Klein Gymnasium 003647 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Franconian International School",
+      "code": "003168",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "13 Franconian International School 003168 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "International School of Augsburg",
+      "code": "002880",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "14 International School of Augsburg 002880 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "International School of Neustadt",
+      "code": "002881",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "15 International School of Neustadt 002881 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "ISF International School Frankfurt Rhein-Main",
+      "code": "003156",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "16 ISF International School Frankfurt Rhein-Main 003156 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "ISR International School on the Rhine",
+      "code": "003698",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "17 ISR International School on the Rhine 003698 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "St. George's The British International School Cologne",
+      "code": "002808",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "18 St. George's The British International School Cologne 002808 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "accadis International School Bad Homburg",
+      "code": "006072",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "19 accadis International School Bad Homburg 006072 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Heidelberger Privatschulcentrum",
+      "code": "052128",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "20 Heidelberger Privatschulcentrum 052128 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Cologne International School",
+      "code": "004869",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "21 Cologne International School 004869 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "St. George's The British International School Duisburg-Düsseldorf",
+      "code": "006857",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "22 St. George's The British International School Duisburg-Düsseldorf 006857 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Berlin British School gGmbH",
+      "code": "001377",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "23 Berlin British School gGmbH 001377 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Dresden International School gGmbH",
+      "code": "001388",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "24 Dresden International School gGmbH 001388 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Frankfurt International School",
+      "code": "000007",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "25 Frankfurt International School 000007 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "International School Ruhr",
+      "code": "049069",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "26 International School Ruhr 049069 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "International School of Dusseldorf",
+      "code": "000065",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "27 International School of Dusseldorf 000065 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "SIS Swiss International School Regensburg",
+      "code": "050384",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "28 SIS Swiss International School Regensburg 050384 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Nelson Mandela State International School Berlin",
+      "code": "002330",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "29 Nelson Mandela State International School Berlin 002330 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Heidelberg International School",
+      "code": "002692",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "30 Heidelberg International School 002692 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Metropolitan School Frankfurt",
+      "code": "004506",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "31 Metropolitan School Frankfurt 004506 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Friedrich-Ebert-Gymnasium Bonn",
+      "code": "000973",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "32 Friedrich-Ebert-Gymnasium Bonn 000973 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "International School Hannover Region",
+      "code": "001171",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "33 International School Hannover Region 001171 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "International School of Stuttgart",
+      "code": "001046",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "34 International School of Stuttgart 001046 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Berlin Brandenburg International School",
+      "code": "000822",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "35 Berlin Brandenburg International School 000822 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Leipzig International School",
+      "code": "001202",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "36 Leipzig International School 001202 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "International School of Bremen",
+      "code": "002807",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "37 International School of Bremen 002807 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Metropolitan International School",
+      "code": "049680",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "38 Metropolitan International School 049680 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Hittorf-Gymnasium",
+      "code": "060877",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "39 Hittorf-Gymnasium 060877 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "International School Campus",
+      "code": "060396",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "40 International School Campus 060396 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Berlin Metropolitan School",
+      "code": "003754",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "41 Berlin Metropolitan School 003754 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Schillerschule Hannover",
+      "code": "006174",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "42 Schillerschule Hannover 006174 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Berlin I.S. - Stiftung Private-Kant-Schulen gGmbH",
+      "code": "001220",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "43 Berlin I.S. - Stiftung Private-Kant-Schulen gGmbH 001220 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Schule Schloss Salem",
+      "code": "000622",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "44 Schule Schloss Salem 000622 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "International School of Hamburg",
+      "code": "000115",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "45 International School of Hamburg 000115 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Munich International School",
+      "code": "000169",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "46 Munich International School 000169 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Internationales Gymnasium Reinsdorf",
+      "code": "049647",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "47 Internationales Gymnasium Reinsdorf 049647 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "SIS Swiss International School Berlin",
+      "code": "051071",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "48 SIS Swiss International School Berlin 051071 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Internationales Gymnasium Geithain",
+      "code": "051400",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "49 Internationales Gymnasium Geithain 051400 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Bavarian International School gAG",
+      "code": "000823",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "50 Bavarian International School gAG 000823 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Bonn International School",
+      "code": "000972",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "51 Bonn International School 000972 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Stiftung Louisenlund",
+      "code": "003661",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "52 Stiftung Louisenlund 003661 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Helmholtz-Gymnasium Bonn",
+      "code": "049804",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "53 Helmholtz-Gymnasium Bonn 049804 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Berlin Cosmopolitan School",
+      "code": "004882",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "54 Berlin Cosmopolitan School 004882 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Albert-Schweitzer-Gymnasium Wolfsburg",
+      "code": "061760",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "55 Albert-Schweitzer-Gymnasium Wolfsburg 061760 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "Europäische Schule RheinMain gGmbH",
+      "code": "061504",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "56 Europäische Schule RheinMain gGmbH 061504 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "SIS Swiss International School Kassel",
+      "code": "063387",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "57 SIS Swiss International School Kassel 063387 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "SIS Swiss International School Stuttgart-Fellbach",
+      "code": "049128",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "58 SIS Swiss International School Stuttgart-Fellbach 049128 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "DEUTSCHLAND",
+      "name": "SIS Swiss International School gGmbH",
+      "code": "051082",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "59 SIS Swiss International School gGmbH 051082 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "ARGENTINIEN",
+      "name": "Escuela Goethe Rosario - 8222",
+      "code": "000767",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Escuela Goethe Rosario - 8222 000767 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "ÄGYPTEN",
+      "name": "Malvern College Egypt",
+      "code": "060054",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Malvern College Egypt 060054 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ÄGYPTEN",
+      "name": "Alretaj International School, Rahn Schulen Kairo",
+      "code": "051542",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Alretaj International School, Rahn Schulen Kairo 051542 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ASERBAIDSCHAN",
+      "name": "The International School of Azerbaijan (TISA)",
+      "code": "001303",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 The International School of Azerbaijan (TISA) 001303 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "BAHAMAS",
+      "name": "Lyford Cay International School",
+      "code": "001512",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Lyford Cay International School 001512 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "BOSNIEN UND HERZEGOWINA",
+      "name": "UWC in Mostar",
+      "code": "003338",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 UWC in Mostar 003338 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "BOSNIEN UND HERZEGOWINA",
+      "name": "Druga Gimnazija Sarajevo",
+      "code": "001258",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Druga Gimnazija Sarajevo 001258 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "BRASILIEN",
+      "name": "International School of Curitiba",
+      "code": "000793",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 International School of Curitiba 000793 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "BRASILIEN",
+      "name": "Escola Suíço-Brasileira de São Paulo",
+      "code": "000925",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Escola Suíço-Brasileira de São Paulo 000925 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "BRASILIEN",
+      "name": "Associação Escola Suíco-Brasileira de Curitiba",
+      "code": "001167",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Associação Escola Suíco-Brasileira de Curitiba 001167 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "BRASILIEN",
+      "name": "Escola Suíço Brasileira Rio de Janeiro",
+      "code": "006032",
+      "effective": {
+        "year": 2025,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Escola Suíço Brasileira Rio de Janeiro 006032 November 2025"
+    },
+    {
+      "annex": 1,
+      "country": "BRASILIEN",
+      "name": "Colégio Positivo Internacional – Educação Infantil, Ensino Fundamental e Médio",
+      "code": "050124",
+      "effective": {
+        "year": 2025,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 Colégio Positivo Internacional – Educação Infantil, Ensino Fundamental e Médio 050124 November 2025"
+    },
+    {
+      "annex": 1,
+      "country": "CHILE",
+      "name": "Colegio Alemán de San Felipe de",
+      "code": "003166",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Colegio Alemán de San Felipe de 003166 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "CHILE",
+      "name": "Bradford School",
+      "code": "049359",
+      "effective": {
+        "year": 2022,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Bradford School 049359 November 2022"
+    },
+    {
+      "annex": 1,
+      "country": "CHILE",
+      "name": "Colegio Alemán de Temuco",
+      "code": "006556",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Colegio Alemán de Temuco 006556 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "CHILE",
+      "name": "Instituto Alemán de Osorno",
+      "code": "004896",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Instituto Alemán de Osorno 004896 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "CHILE",
+      "name": "Colegio Alemán de Los Ángeles",
+      "code": "007037",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 Colegio Alemán de Los Ángeles 007037 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "CHILE",
+      "name": "The British School - Punta Arenas",
+      "code": "003374",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 The British School - Punta Arenas 003374 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "CHINA",
+      "name": "Nanjing International School",
+      "code": "001127",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Nanjing International School 001127 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "CHINA",
+      "name": "Dulwich College Shanghai Pudong",
+      "code": "003057",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Dulwich College Shanghai Pudong 003057 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "CHINA",
+      "name": "EtonHouse International School, Suzhou",
+      "code": "002717",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 EtonHouse International School, Suzhou 002717 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "CHINA",
+      "name": "Suzhou Industrial Park Foreign Language School",
+      "code": "051650",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Suzhou Industrial Park Foreign Language School 051650 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "CHINA",
+      "name": "Suzhou Singapore International School",
+      "code": "001459",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 Suzhou Singapore International School 001459 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "CHINA",
+      "name": "Changchun American International School",
+      "code": "003457",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 Changchun American International School 003457 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "CHINA",
+      "name": "Nord Anglia International School Shanghai,",
+      "code": "002593",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "7 Nord Anglia International School Shanghai, 002593 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "CHINA",
+      "name": "Yew Chung International School Pudong",
+      "code": "006318",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "8 Yew Chung International School Pudong 006318 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "CHINA",
+      "name": "International School of Tianjin",
+      "code": "001409",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "9 International School of Tianjin 001409 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "CHINA",
+      "name": "Shanghai American School",
+      "code": "001207",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "10 Shanghai American School 001207 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "CHINA",
+      "name": "Canadian International School of Hefei",
+      "code": "051749",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "11 Canadian International School of Hefei 051749 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "CHINA",
+      "name": "Shanghai Yue Kong Pao Senior Secondary School",
+      "code": "050336",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "12 Shanghai Yue Kong Pao Senior Secondary School 050336 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "DÄNEMARK",
+      "name": "Ikast-Brande Gymnasium",
+      "code": "004672",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Ikast-Brande Gymnasium 004672 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "DÄNEMARK",
+      "name": "Grenaa Gymnasium",
+      "code": "001488",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Grenaa Gymnasium 001488 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "ECUADOR",
+      "name": "Unidad Educativa Particular Alemán Humboldt",
+      "code": "061270",
+      "effective": {
+        "year": 2022,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Unidad Educativa Particular Alemán Humboldt 061270 November 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ECUADOR",
+      "name": "Plantel Educativo Particular Terranova",
+      "code": "003500",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Plantel Educativo Particular Terranova 003500 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ECUADOR",
+      "name": "Unidad Educativa Letort",
+      "code": "003515",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Unidad Educativa Letort 003515 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ECUADOR",
+      "name": "Unidad Educativa Bilingüe SEK - Los Valles",
+      "code": "049360",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Unidad Educativa Bilingüe SEK - Los Valles 049360 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ECUADOR",
+      "name": "Colegio Americano de Guayaquil",
+      "code": "000380",
+      "effective": {
+        "year": 2022,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 Colegio Americano de Guayaquil 000380 November 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ECUADOR",
+      "name": "ISM International Academy",
+      "code": "003574",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 ISM International Academy 003574 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ECUADOR",
+      "name": "Unidad Educativa Saint Dominic School",
+      "code": "051176",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "7 Unidad Educativa Saint Dominic School 051176 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ECUADOR",
+      "name": "Johannes Kepler",
+      "code": "004326",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "8 Johannes Kepler 004326 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ECUADOR",
+      "name": "Unidad Educativa Internacional Pensionado Atahualpa",
+      "code": "052081",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "9 Unidad Educativa Internacional Pensionado Atahualpa 052081 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "FRANKREICH",
+      "name": "Le Gymnase Jean Sturm/Lucie Berger",
+      "code": "051802",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Le Gymnase Jean Sturm/Lucie Berger 051802 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "GEORGIEN",
+      "name": "Newton Free School",
+      "code": "060626",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Newton Free School 060626 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "GEORGIEN",
+      "name": "British Georgian Academy",
+      "code": "061753",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 British Georgian Academy 061753 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "GEORGIEN",
+      "name": "European School LTD",
+      "code": "006343",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 European School LTD 006343 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "GRIECHENLAND",
+      "name": "Campion School",
+      "code": "001267",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Campion School 001267 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "GRIECHENLAND",
+      "name": "Private Lyceum- International Education Center of the Moraitis School",
+      "code": "000346",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Private Lyceum- International Education Center of the Moraitis School 000346 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "GRIECHENLAND",
+      "name": "Costeas-Geitonas School CGS",
+      "code": "000762",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Costeas-Geitonas School CGS 000762 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "GRIECHENLAND",
+      "name": "Pinewood - American International School of Thessaloniki",
+      "code": "001125",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Pinewood - American International School of Thessaloniki 001125 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "GRIECHENLAND",
+      "name": "Ekpedeftiria Douka (Doukas School)",
+      "code": "001346",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 Ekpedeftiria Douka (Doukas School) 001346 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "GRIECHENLAND",
+      "name": "American Community Schools of Athens",
+      "code": "000066",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 American Community Schools of Athens 000066 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "HONGKONG",
+      "name": "German Swiss International School",
+      "code": "006164",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 German Swiss International School 006164 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "HONGKONG",
+      "name": "Discovery College",
+      "code": "003544",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Discovery College 003544 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "INDIEN",
+      "name": "Don Bosco International School",
+      "code": "052099",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Don Bosco International School 052099 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "INDIEN",
+      "name": "DSB International School",
+      "code": "049230",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 DSB International School 049230 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "INDIEN",
+      "name": "Sinarmas World Academy",
+      "code": "006880",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Sinarmas World Academy 006880 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "INDONESIEN",
+      "name": "SMA Tzu Chi Pantai Indah Kapuk",
+      "code": "051029",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 SMA Tzu Chi Pantai Indah Kapuk 051029 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "INDONESIEN",
+      "name": "Bali Island School",
+      "code": "001529",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Bali Island School 001529 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "INDONESIEN",
+      "name": "Sinarmas World Academy",
+      "code": "006880",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Sinarmas World Academy 006880 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "IRAK",
+      "name": "Da Vinci School International",
+      "code": "049732",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Da Vinci School International 049732 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "IRLAND",
+      "name": "Villiers School",
+      "code": "049953",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Villiers School 049953 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "ISLE OF MAN",
+      "name": "King William's College",
+      "code": "001345",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 King William's College 001345 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ISRAEL",
+      "name": "Eastern Mediterranean International School",
+      "code": "049521",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Eastern Mediterranean International School 049521 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ITALIEN",
+      "name": "International School of Como",
+      "code": "002695",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 International School of Como 002695 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "JORDANIEN",
+      "name": "Asamiah International School",
+      "code": "049161",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Asamiah International School 049161 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "JORDANIEN",
+      "name": "The International Academy - Amman",
+      "code": "002742",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 The International Academy - Amman 002742 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "KAMBODSCHA",
+      "name": "International School of Phnom Penh",
+      "code": "001222",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 International School of Phnom Penh 001222 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "KANADA",
+      "name": "Branksome Hall",
+      "code": "001437",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Branksome Hall 001437 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "KANADA",
+      "name": "Upper Canada College",
+      "code": "000838",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Upper Canada College 000838 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "KANADA",
+      "name": "Ashbury College",
+      "code": "000055",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Ashbury College 000055 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "KANADA",
+      "name": "King's-Edgehill School",
+      "code": "000147",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 King's-Edgehill School 000147 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "KANADA",
+      "name": "Ancaster High School",
+      "code": "006534",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 Ancaster High School 006534 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "KANADA",
+      "name": "Parkland Secondary School",
+      "code": "060033",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 Parkland Secondary School 060033 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "KATAR",
+      "name": "International School of London Qatar",
+      "code": "004881",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 International School of London Qatar 004881 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "KENIA",
+      "name": "Braeburn Garden Estate Secondary School",
+      "code": "001379",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Braeburn Garden Estate Secondary School 001379 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "KOLUMBIEN",
+      "name": "Colegio Gran Bretaña",
+      "code": "003741",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Colegio Gran Bretaña 003741 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "KOLUMBIEN",
+      "name": "Corporación Cultural Colegio Aleman de Cali",
+      "code": "001465",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Corporación Cultural Colegio Aleman de Cali 001465 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "LETTLAND",
+      "name": "Rigas Starptautiska Skola (International School of Riga)",
+      "code": "002334",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Rigas Starptautiska Skola (International School of Riga) 002334 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "LIBANON",
+      "name": "DISB - German International School Beirut",
+      "code": "002220",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 DISB - German International School Beirut 002220 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "LITAUEN",
+      "name": "Erudito Licėjus Vilnius Vilnius",
+      "code": "062045",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Erudito Licėjus Vilnius Vilnius 062045 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "LITAUEN",
+      "name": "American International School of Vilnius",
+      "code": "049326",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 American International School of Vilnius 049326 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "LITAUEN",
+      "name": "Erudito Licėjus Kaunas",
+      "code": "061100",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Erudito Licėjus Kaunas 061100 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "LUXEMBURG",
+      "name": "Fräi-ëffentlech Waldorfschoul Lëtzebuerg",
+      "code": "002105",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Fräi-ëffentlech Waldorfschoul Lëtzebuerg 002105 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "MAROKKO",
+      "name": "Rabat American School",
+      "code": "000656",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Rabat American School 000656 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "MEXIKO",
+      "name": "Colegio Suizo de México - Campus Cuernavaca",
+      "code": "004342",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Colegio Suizo de México - Campus Cuernavaca 004342 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "MEXIKO",
+      "name": "Colegio Suizo de México, A.C. Campus México D.F.",
+      "code": "004343",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Colegio Suizo de México, A.C. Campus México D.F. 004343 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "MEXIKO",
+      "name": "Colegio Suizo de México - Campus Querétaro",
+      "code": "051154",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Colegio Suizo de México - Campus Querétaro 051154 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "NAMIBIA",
+      "name": "Windhoek International School",
+      "code": "001179",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Windhoek International School 001179 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "NIEDERLANDE",
+      "name": "Rivers International School Arnhem",
+      "code": "000539",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Rivers International School Arnhem 000539 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "NIEDERLANDE",
+      "name": "United World College Maastricht",
+      "code": "000512",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 United World College Maastricht 000512 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "NIEDERLANDE",
+      "name": "The British School in the Netherlands",
+      "code": "003669",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 The British School in the Netherlands 003669 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "NORDMAZEDONIEN",
+      "name": "NOVA International Schools",
+      "code": "002853",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 NOVA International Schools 002853 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "NORWEGEN",
+      "name": "Arendal videregående skole",
+      "code": "003548",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Arendal videregående skole 003548 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "ÖSTERREICH",
+      "name": "Lower Austrian International School",
+      "code": "006220",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Lower Austrian International School 006220 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "ÖSTERREICH",
+      "name": "St. Gilgen International School GmbH",
+      "code": "003854",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 St. Gilgen International School GmbH 003854 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "ÖSTERREICH",
+      "name": "AMADEUS International School Vienna",
+      "code": "049897",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 AMADEUS International School Vienna 049897 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "ÖSTERREICH",
+      "name": "Schloss Krumbach International School",
+      "code": "062039",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Schloss Krumbach International School 062039 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ÖSTERREICH",
+      "name": "Campus Wien West",
+      "code": "049514",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 Campus Wien West 049514 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "ÖSTERREICH",
+      "name": "International School Carinthia",
+      "code": "050944",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 International School Carinthia 050944 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "PERU",
+      "name": "CEP Mixto Reina del Mundo",
+      "code": "001494",
+      "effective": {
+        "year": 2022,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 CEP Mixto Reina del Mundo 001494 November 2022"
+    },
+    {
+      "annex": 1,
+      "country": "PERU",
+      "name": "Montessori International College",
+      "code": "051230",
+      "effective": {
+        "year": 2024,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Montessori International College 051230 November 2024"
+    },
+    {
+      "annex": 1,
+      "country": "PERU",
+      "name": "Cooperativa de Servicios Educacionales (I.E. Augusto Weberbauer)",
+      "code": "006276",
+      "effective": {
+        "year": 2025,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Cooperativa de Servicios Educacionales (I.E. Augusto Weberbauer) 006276 November 2025"
+    },
+    {
+      "annex": 1,
+      "country": "PHILIPPINEN",
+      "name": "Saint Jude Catholic School",
+      "code": "050941",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Saint Jude Catholic School 050941 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "POLEN",
+      "name": "I Liceum Ogolnoksztalcace Dwujezyczneim. E. Dembowskiego in Gliwice",
+      "code": "006264",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 I Liceum Ogolnoksztalcace Dwujezyczneim. E. Dembowskiego in Gliwice 006264 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "POLEN",
+      "name": "Prywatne Liceum Ogólnokształcące im. Melchiora Wańkowicza",
+      "code": "003498",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Prywatne Liceum Ogólnokształcące im. Melchiora Wańkowicza 003498 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "POLEN",
+      "name": "II Liceum Ogólnokształcące im. Tadeusza",
+      "code": "049645",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 II Liceum Ogólnokształcące im. Tadeusza 049645 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "POLEN",
+      "name": "Private High School Gaudium et Studium",
+      "code": "061361",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Private High School Gaudium et Studium 061361 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "POLEN",
+      "name": "Międzynarodowe Szkoły Paderewski w Lublinie",
+      "code": "001158",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 Międzynarodowe Szkoły Paderewski w Lublinie 001158 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "POLEN",
+      "name": "XXXIII Liceum Ogolnoksztalcace Dwujezyczne",
+      "code": "000703",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 XXXIII Liceum Ogolnoksztalcace Dwujezyczne 000703 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "POLEN",
+      "name": "II LO Gen Zamoyskiej I H Modrzejewskiej",
+      "code": "001349",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "7 II LO Gen Zamoyskiej I H Modrzejewskiej 001349 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "POLEN",
+      "name": "I SLO im. Jam Saheba Digvijay Sinhji",
+      "code": "001531",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "8 I SLO im. Jam Saheba Digvijay Sinhji 001531 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "POLEN",
+      "name": "Zespól Szkól Szczecin International School",
+      "code": "002275",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "9 Zespól Szkól Szczecin International School 002275 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "POLEN",
+      "name": "International School of Poznań",
+      "code": "002709",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "10 International School of Poznań 002709 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "PORTUGAL",
+      "name": "PaRK International School",
+      "code": "060986",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 PaRK International School 060986 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "RUMÄNIEN",
+      "name": "Mark Twain International SchoolBucharest",
+      "code": "002707",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Mark Twain International SchoolBucharest 002707 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "RUMÄNIEN",
+      "name": "Hermann Oberth German School",
+      "code": "062080",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Hermann Oberth German School 062080 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "SAMBIA",
+      "name": "American International School of Lusaka",
+      "code": "001302",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 American International School of Lusaka 001302 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "SAMBIA",
+      "name": "International School of Lusaka",
+      "code": "000892",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 International School of Lusaka 000892 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "SAUDI ARABIEN",
+      "name": "The British International School of Jeddah",
+      "code": "001118",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 The British International School of Jeddah 001118 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "SAUDI ARABIEN",
+      "name": "The KAUST School",
+      "code": "006139",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 The KAUST School 006139 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEDEN",
+      "name": "Sigtunaskolan Humanistiska Läroverket",
+      "code": "000198",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Sigtunaskolan Humanistiska Läroverket 000198 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "Gymnasium am Münsterplatz",
+      "code": "006416",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Gymnasium am Münsterplatz 006416 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "Gymnasium Bäumlihof",
+      "code": "049465",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Gymnasium Bäumlihof 049465 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "Leysin American School",
+      "code": "000642",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Leysin American School 000642 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "Stiftsschule Engelberg",
+      "code": "031012",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Stiftsschule Engelberg 031012 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "SIS Swiss International School Zürich",
+      "code": "001446",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 SIS Swiss International School Zürich 001446 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "Institut auf dem Rosenberg",
+      "code": "060726",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 Institut auf dem Rosenberg 060726 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "Scuola Rudolf Steiner di Origlio",
+      "code": "061401",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "7 Scuola Rudolf Steiner di Origlio 061401 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "Obersee Bilingual School",
+      "code": "049482",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "8 Obersee Bilingual School 049482 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "International School of Ticino",
+      "code": "060003",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "9 International School of Ticino 060003 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "Literargymnasium Rämibühl",
+      "code": "001533",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "10 Literargymnasium Rämibühl 001533 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "Collège Alpin Beau Soleil",
+      "code": "001522",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "11 Collège Alpin Beau Soleil 001522 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "Lyceum Alpinum Zuoz",
+      "code": "000928",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "12 Lyceum Alpinum Zuoz 000928 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "SCHWEIZ",
+      "name": "International School of Schaffhausen",
+      "code": "001929",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "13 International School of Schaffhausen 001929 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "SENEGAL",
+      "name": "International School of Dakar",
+      "code": "049526",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 International School of Dakar 049526 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "SINGAPUR",
+      "name": "German European School Singapore",
+      "code": "002746",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 German European School Singapore 002746 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "SLOVENIEN",
+      "name": "II. gimnazija Maribor",
+      "code": "000563",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 II. gimnazija Maribor 000563 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "SLOVENIEN",
+      "name": "Gimnazija Novo mesto",
+      "code": "061438",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Gimnazija Novo mesto 061438 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "SLOVENIEN",
+      "name": "Gimnazija Kranj",
+      "code": "006494",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Gimnazija Kranj 006494 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "SLOVENIEN",
+      "name": "Gimnazija Bezigrad",
+      "code": "000562",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Gimnazija Bezigrad 000562 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "SPANIEN",
+      "name": "Ágora Lledó International School",
+      "code": "006657",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Ágora Lledó International School 006657 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "SPANIEN",
+      "name": "I.E.S. Martínez Montañés",
+      "code": "000547",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 I.E.S. Martínez Montañés 000547 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "SPANIEN",
+      "name": "Salesians Sant Àngel (Salesians de Sarriá)",
+      "code": "051289",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Salesians Sant Àngel (Salesians de Sarriá) 051289 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "SPANIEN",
+      "name": "Institut D'Educacio Secundaria Son Pacs",
+      "code": "007127",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Institut D'Educacio Secundaria Son Pacs 007127 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "SPANIEN",
+      "name": "Colegio CEU San Pablo Montepríncipe",
+      "code": "050810",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 Colegio CEU San Pablo Montepríncipe 050810 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "SPANIEN",
+      "name": "Colegio del Salvador",
+      "code": "060977",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 Colegio del Salvador 060977 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "SPANIEN",
+      "name": "Colegio Internacional Ausiàs March",
+      "code": "052047",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "7 Colegio Internacional Ausiàs March 052047 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "SPANIEN",
+      "name": "Agora Sant Cugat International School",
+      "code": "049070",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "8 Agora Sant Cugat International School 049070 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "SPANIEN",
+      "name": "American School of Valencia",
+      "code": "002097",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "9 American School of Valencia 002097 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "SÜDKOREA",
+      "name": "Dwight School Seoul",
+      "code": "049716",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Dwight School Seoul 049716 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "TAIWAN",
+      "name": "Taipei European Schools Foundation",
+      "code": "001407",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Taipei European Schools Foundation 001407 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "THAILAND",
+      "name": "Panyaden International School",
+      "code": "061269",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Panyaden International School 061269 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "THAILAND",
+      "name": "St. Andrews International School, Green Valley, Rayong",
+      "code": "003440",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 St. Andrews International School, Green Valley, Rayong 003440 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "TSCHECHISCHE REPUBLIK",
+      "name": "Gymnázium Evolution, s.r.o.",
+      "code": "052100",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Gymnázium Evolution, s.r.o. 052100 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "TOGO",
+      "name": "École Internationale Arc-en-Ciel",
+      "code": "001126",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 École Internationale Arc-en-Ciel 001126 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Yeni Yol Schools",
+      "code": "060817",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Yeni Yol Schools 060817 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Nesibe AYDIN Educational Instutitions (Ankara)",
+      "code": "049668",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Nesibe AYDIN Educational Instutitions (Ankara) 049668 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Terakki Foundation Schools",
+      "code": "004969",
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Terakki Foundation Schools 004969 November 2021"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "TED Bursa College",
+      "code": "002870",
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 TED Bursa College 002870 November 2021"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Terakki Foundation Sisli Terakki Tepeoren High School",
+      "code": "051116",
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 Terakki Foundation Sisli Terakki Tepeoren High School 051116 November 2021"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Gaziantep Kolej Vakfı Cemil Alevli College",
+      "code": "050190",
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 Gaziantep Kolej Vakfı Cemil Alevli College 050190 November 2021"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Bodrum Private Marmara College Marmara Egitim Kurumlari",
+      "code": "002724",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "7 Bodrum Private Marmara College Marmara Egitim Kurumlari 002724 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Uskudar American Academy",
+      "code": "049954",
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "8 Uskudar American Academy 049954 November 2021"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Private ALEV Schools",
+      "code": "051309",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "9 Private ALEV Schools 051309 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "TED Ankara College Foundation High School",
+      "code": "001129",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "10 TED Ankara College Foundation High School 001129 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Eyuboglu Schools",
+      "code": "000811",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "11 Eyuboglu Schools 000811 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "İSTEK Özel Atanur Oğuz Anadolu Lisesi",
+      "code": "051678",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "12 İSTEK Özel Atanur Oğuz Anadolu Lisesi 051678 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "NUN Okullari",
+      "code": "052477",
+      "effective": {
+        "year": 2022,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "13 NUN Okullari 052477 November 2022"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Özel Bilkent Lisesi",
+      "code": "004503",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "14 Özel Bilkent Lisesi 004503 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "ITU Gelistirme Vakfi Özel Ekrem Elginkan Lisesi",
+      "code": "006497",
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "15 ITU Gelistirme Vakfi Özel Ekrem Elginkan Lisesi 006497 November 2021"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "ALKEV Schools",
+      "code": "060137",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "16 ALKEV Schools 060137 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Özel Acarkent Doga Anadolu Lisesi",
+      "code": "003709",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "17 Özel Acarkent Doga Anadolu Lisesi 003709 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Bodrum Private Marmara College",
+      "code": "050583",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "18 Bodrum Private Marmara College 050583 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Tarsus American School",
+      "code": "002205",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "19 Tarsus American School 002205 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Enka Schools",
+      "code": "002546",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "20 Enka Schools 002546 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Bilkent Laboratory and International School",
+      "code": "000894",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "21 Bilkent Laboratory and International School 000894 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "ozel Istek Ozel Antalya Lara Okulu",
+      "code": "061882",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "22 ozel Istek Ozel Antalya Lara Okulu 061882 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "BJK Kabataş Vakfı Özel Anadolu Lisesi",
+      "code": "061762",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "23 BJK Kabataş Vakfı Özel Anadolu Lisesi 061762 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "FMV Özel Ayazaga Isik High School",
+      "code": "049736",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "24 FMV Özel Ayazaga Isik High School 049736 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "The Sezin School",
+      "code": "061977",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "25 The Sezin School 061977 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "SEV American College",
+      "code": "051592",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "26 SEV American College 051592 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Maia Schools Antalya",
+      "code": "062028",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "27 Maia Schools Antalya 062028 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Kabatas Erkek Lisesi",
+      "code": "061823",
+      "effective": {
+        "year": 2024,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "28 Kabatas Erkek Lisesi 061823 November 2024"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Privatschule Der Deutschen Botschaft Ankara",
+      "code": "001418",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "29 Privatschule Der Deutschen Botschaft Ankara 001418 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "FMV Özel Erenköy Işık Lisesi",
+      "code": "049823",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "30 FMV Özel Erenköy Işık Lisesi 049823 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Uluslararası Murat Hüdavendigar Anadolu İmam Hatip Lisesi",
+      "code": "061740",
+      "effective": {
+        "year": 2025,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "31 Uluslararası Murat Hüdavendigar Anadolu İmam Hatip Lisesi 061740 November 2025"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "FMV Özel Isik Lisesi",
+      "code": "062099",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "32 FMV Özel Isik Lisesi 062099 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "ÖZEL ANTALYA TOPLUM KOLEJİ ANADOLU LİSESİ",
+      "code": "061620",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "33 ÖZEL ANTALYA TOPLUM KOLEJİ ANADOLU LİSESİ 061620 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "TÜRKEI",
+      "name": "Özel Çakır Anadolu Lisesi",
+      "code": "002722",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "34 Özel Çakır Anadolu Lisesi 002722 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "UNGARN",
+      "name": "Karinthy Frigyes Gimnázium",
+      "code": "000680",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Karinthy Frigyes Gimnázium 000680 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VENEZUELA",
+      "name": "Colegio Guayamurí",
+      "code": "006528",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Colegio Guayamurí 006528 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE ARABISCHE EMIRATE",
+      "name": "GEMS Wellington Academy - Silicon Oasis",
+      "code": "050260",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 GEMS Wellington Academy - Silicon Oasis 050260 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE ARABISCHE EMIRATE",
+      "name": "Raha International School",
+      "code": "003271",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Raha International School 003271 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE ARABISCHE EMIRATE",
+      "name": "GEMS Wellington International School",
+      "code": "004437",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 GEMS Wellington International School 004437 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE ARABISCHE EMIRATE",
+      "name": "Greenfield International School",
+      "code": "003749",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Greenfield International School 003749 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE ARABISCHE EMIRATE",
+      "name": "Towheed Iranian School",
+      "code": "050464",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 Towheed Iranian School 050464 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE ARABISCHE EMIRATE",
+      "name": "Dunecrest American School L.L.C.",
+      "code": "060568",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 Dunecrest American School L.L.C. 060568 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Deutsche Schule London",
+      "code": "004439",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Deutsche Schule London 004439 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Ellesmere College",
+      "code": "002852",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 Ellesmere College 002852 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Gresham's School",
+      "code": "003433",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Gresham's School 003433 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Bromsgrove School",
+      "code": "004397",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Bromsgrove School 004397 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Warminster School",
+      "code": "002643",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 Warminster School 002643 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Scarborough College",
+      "code": "002743",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 Scarborough College 002743 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "St Leonards School",
+      "code": "002276",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "7 St Leonards School 002276 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Felsted School",
+      "code": "002679",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "8 Felsted School 002679 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Hockerill Anglo-European College",
+      "code": "000815",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "9 Hockerill Anglo-European College 000815 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Rossall School",
+      "code": "001045",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "10 Rossall School 001045 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Stonyhurst College",
+      "code": "049093",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "11 Stonyhurst College 049093 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Windermere School",
+      "code": "003061",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "12 Windermere School 003061 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Haileybury",
+      "code": "001122",
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "13 Haileybury 001122 Mai 2021"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Europa School UK",
+      "code": "061145",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "14 Europa School UK 061145 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Worth School",
+      "code": "001382",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "15 Worth School 001382 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Bradfield College",
+      "code": "007028",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "16 Bradfield College 007028 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Bryanston School",
+      "code": "006656",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "17 Bryanston School 006656 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Ryde School with Upper Chine",
+      "code": "006147",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "18 Ryde School with Upper Chine 006147 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "EF International Academy Oxford",
+      "code": "004900",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "19 EF International Academy Oxford 004900 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Box Hill School",
+      "code": "003660",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "20 Box Hill School 003660 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Charterhouse",
+      "code": "004404",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "21 Charterhouse 004404 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Sidcot School",
+      "code": "003237",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "22 Sidcot School 003237 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Oakham School",
+      "code": "001264",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "23 Oakham School 001264 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Bedford School",
+      "code": "001414",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "24 Bedford School 001414 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Marymount International School London",
+      "code": "000128",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "25 Marymount International School London 000128 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "International School of London",
+      "code": "000057",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "26 International School of London 000057 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "King Edward's School Witley",
+      "code": "002100",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "27 King Edward's School Witley 002100 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Rugby School",
+      "code": "061492",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "28 Rugby School 061492 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Leighton Park School",
+      "code": "004497",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "29 Leighton Park School 004497 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Kent College Canterbury",
+      "code": "004936",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "30 Kent College Canterbury 004936 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Taunton School",
+      "code": "003299",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "31 Taunton School 003299 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Wellington College",
+      "code": "003687",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "32 Wellington College 003687 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Ardingly College",
+      "code": "001289",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "33 Ardingly College 001289 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Malvern College",
+      "code": "000641",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "34 Malvern College 000641 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "St. Clare's, Oxford",
+      "code": "000041",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "35 St. Clare's, Oxford 000041 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "ACS Egham International School",
+      "code": "001211",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "36 ACS Egham International School 001211 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "St Edwards School Oxford",
+      "code": "003639",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "37 St Edwards School Oxford 003639 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Fettes College",
+      "code": "002569",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "38 Fettes College 002569 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Brentwood School",
+      "code": "003054",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "39 Brentwood School 003054 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "UWC Atlantic College",
+      "code": "000017",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "40 UWC Atlantic College 000017 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Chester International School",
+      "code": "051995",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "41 Chester International School 051995 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Cheltenham Ladies' College",
+      "code": "003684",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "42 Cheltenham Ladies' College 003684 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTES KÖNIGREICH",
+      "name": "Buckswood School",
+      "code": "007062",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "43 Buckswood School 007062 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "Silicon Valley International School",
+      "code": "003497",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 Silicon Valley International School 003497 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "British International School Chicago South Loop",
+      "code": "003362",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 British International School Chicago South Loop 003362 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "Harriton High School",
+      "code": "001234",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "3 Harriton High School 001234 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "Mountainside High School",
+      "code": "060119",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "4 Mountainside High School 060119 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "EF Academy - Thornwood",
+      "code": "006047",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "5 EF Academy - Thornwood 006047 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "Novi High School",
+      "code": "003976",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "6 Novi High School 003976 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "Northville High School",
+      "code": "049113",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "7 Northville High School 049113 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "Lycée Français de Chicago",
+      "code": "007038",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "8 Lycée Français de Chicago 007038 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "Edmonds-Woodway High School",
+      "code": "000874",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "9 Edmonds-Woodway High School 000874 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "Chambersburg Area Senior High School",
+      "code": "050424",
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "10 Chambersburg Area Senior High School 050424 Mai 2023"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "East Bay German International School",
+      "code": "061993",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "11 East Bay German International School 061993 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "Charlotte Country Day School",
+      "code": "000667",
+      "effective": {
+        "year": 2024,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "12 Charlotte Country Day School 000667 Mai 2024"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "Christ Church Episcopal School",
+      "code": "001081",
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "13 Christ Church Episcopal School 001081 Mai 2025"
+    },
+    {
+      "annex": 1,
+      "country": "VEREINIGTE STAATEN VON AMERIKA",
+      "name": "Northfield High School",
+      "code": "051702",
+      "effective": {
+        "year": 2026,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "14 Northfield High School 051702 Mai 2026"
+    },
+    {
+      "annex": 1,
+      "country": "VIETNAM",
+      "name": "International School, Ho Chi Minh City",
+      "code": "001047",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 International School, Ho Chi Minh City 001047 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "VIETNAM",
+      "name": "European International School",
+      "code": "049623",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "2 European International School 049623 Mai 2022"
+    },
+    {
+      "annex": 1,
+      "country": "ZYPERN",
+      "name": "The English School of Kyrenia",
+      "code": "004596",
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "1 The English School of Kyrenia 004596 Mai 2022"
+    },
+    {
+      "annex": 2,
+      "country": "Argentinien",
+      "name": "Pestalozzi-Schule Buenos Aires",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "1 Argentinien Pestalozzi-Schule Buenos Aires November 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Argentinien",
+      "name": "DS Villa Ballester Buenos Aires",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "2 Argentinien DS Villa Ballester Buenos Aires November 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Argentinien",
+      "name": "DS Temperley",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "3 Argentinien DS Temperley November 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Ägypten",
+      "name": "Deutsche Schule Beverly Hills, Kairo",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "4 Ägypten Deutsche Schule Beverly Hills, Kairo Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Ägypten",
+      "name": "Neue Deutsche Schule Alexandria",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "5 Ägypten Neue Deutsche Schule Alexandria Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Ägypten",
+      "name": "Deutsche Schule Hurghada",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "6 Ägypten Deutsche Schule Hurghada Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Äthiopien",
+      "name": "DS Addis Abeba",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "7 Äthiopien DS Addis Abeba Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Australien",
+      "name": "DIS Sydney",
+      "code": null,
+      "effective": {
+        "year": 2022,
+        "session": "november"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "8 Australien DIS Sydney1 November 2022",
+      "programmeQuote": "Gilt sowohl für Absolventinnen und Absolventen mit GIB als auch mit konventionellem IB."
+    },
+    {
+      "annex": 2,
+      "country": "Bolivien",
+      "name": "DS St. Cruz de Bolivia",
+      "code": null,
+      "effective": {
+        "year": 2022,
+        "session": "november"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "9 Bolivien DS St. Cruz de Bolivia November 2022"
+    },
+    {
+      "annex": 2,
+      "country": "Chile",
+      "name": "DS Concepción",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "10 Chile DS Concepción Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Chile",
+      "name": "DS Thomas Morus Santiago",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "11 Chile DS Thomas Morus Santiago Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Chile",
+      "name": "DS Valdivia",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "12 Chile DS Valdivia Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Chile",
+      "name": "DS Valparaíso",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "13 Chile DS Valparaíso Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "China",
+      "name": "DS Shenyang",
+      "code": null,
+      "effective": {
+        "year": 2025,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "14 China DS Shenyang Mai 2025"
+    },
+    {
+      "annex": 2,
+      "country": "Ecuador",
+      "name": "DS Cuenca",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "15 Ecuador DS Cuenca Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Ecuador",
+      "name": "DS Guayaquil",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "16 Ecuador DS Guayaquil November 2021"
+    },
+    {
+      "annex": 2,
+      "country": "El Salvador",
+      "name": "DS San Salvador",
+      "code": null,
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "17 El Salvador DS San Salvador Mai 2022"
+    },
+    {
+      "annex": 2,
+      "country": "Irak",
+      "name": "DS Erbil",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "18 Irak DS Erbil Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Katar",
+      "name": "DIS Doha",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "19 Katar DIS Doha Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Kolumbien",
+      "name": "DS Barranquilla",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "20 Kolumbien DS Barranquilla Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Kolumbien",
+      "name": "DS Cali",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "21 Kolumbien DS Cali Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Kolumbien",
+      "name": "DS Medellin",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "22 Kolumbien DS Medellin November 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Nicaragua",
+      "name": "DS Managua",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "23 Nicaragua DS Managua November 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Paraguay",
+      "name": "DS Asunción",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "24 Paraguay DS Asunción November 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Peru",
+      "name": "DS Max Uhle Arequipa",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "25 Peru DS Max Uhle Arequipa November 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Peru",
+      "name": "Beata Imelda, Lima",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "november"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "26 Peru Beata Imelda, Lima November 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Philippinen",
+      "name": "DS Manila",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "ib",
+        "gib"
+      ],
+      "sourceQuote": "27 Philippinen DS Manila1 Mai 2021",
+      "programmeQuote": "Gilt sowohl für Absolventinnen und Absolventen mit GIB als auch mit konventionellem IB."
+    },
+    {
+      "annex": 2,
+      "country": "Russland",
+      "name": "DS Sankt Petersburg",
+      "code": null,
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "28 Russland DS Sankt Petersburg Mai 2023"
+    },
+    {
+      "annex": 2,
+      "country": "Saudi Arabien",
+      "name": "DS Djidda",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "29 Saudi Arabien DS Djidda Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Taiwan",
+      "name": "DS Taipei",
+      "code": null,
+      "effective": {
+        "year": 2023,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "30 Taiwan DS Taipei Mai 2023"
+    },
+    {
+      "annex": 2,
+      "country": "Türkei",
+      "name": "DS Ankara",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "31 Türkei DS Ankara Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Türkei",
+      "name": "DS Izmir",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "32 Türkei DS Izmir Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Türkei",
+      "name": "IELEV Özel Istanbul",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "33 Türkei IELEV Özel Istanbul Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Vereinigte Arabische Emirate",
+      "name": "DIS Sharjah",
+      "code": null,
+      "effective": {
+        "year": 2021,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "34 Vereinigte Arabische\nEmirate\nDIS Sharjah Mai 2021"
+    },
+    {
+      "annex": 2,
+      "country": "Vietnam",
+      "name": "IGS Ho Chi Minh City",
+      "code": null,
+      "effective": {
+        "year": 2022,
+        "session": "may"
+      },
+      "programmes": [
+        "gib"
+      ],
+      "sourceQuote": "35 Vietnam IGS Ho Chi Minh City Mai 2022"
+    }
+  ]
+}

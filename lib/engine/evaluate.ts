@@ -4,6 +4,7 @@
 // and merges outcomes. Missing rules produce explicit `unknown` outcomes with
 // confirm-with-the-official-source messages; the engine never guesses.
 import { z } from "zod";
+import { type IbProfile, deriveIbFacts, IB_FACT_LABELS, IB_SOURCE } from "./ib";
 import { gceEntry, gceIndependent, triples } from "./gce";
 import { calendarDay } from "./calendar-day";
 import { DmatProfileSchema, type DmatProfile } from "./dmat";
@@ -59,31 +60,7 @@ export type Profile = {
     priorStudyTargetRelation?: "reported_official_previous" | "reported_official_closely_related" | "reported_official_unrelated" | "unknown";
     priorStudyTargetRelationReference?: string;
   };
-  // Everything below `fullDiploma` is optional: an IB Certificate is never
-  // accepted as a Diploma, so the checker stops asking once the answer is "no"
-  // and the remaining facts stay undefined rather than being invented.
-  ib?: {
-    fullDiploma: boolean;
-    totalPoints?: number;
-    examYear?: number;
-    schoolYears?: number;
-    mathLevel: "HL" | "SL" | null;
-    mathCourse: "AA" | "AI" | "other" | null;
-    subjects?: {
-      group: 1 | 2 | 3 | 4 | 5 | 6;
-      level: "HL" | "SL";
-      grade: number;
-      category:
-        | "language"
-        | "math"
-        | "biology"
-        | "chemistry"
-        | "physics"
-        | "other";
-      foreignLanguage?: boolean;
-      recognizedForGermany: boolean;
-    }[];
-  };
+  ib?: IbProfile;
   gce?: {
     awardingBody:
       | "aqa"
@@ -186,6 +163,8 @@ const FactKeySchema = z.enum([
   "gce_min_al_grade",
   "gce_school_years",
   "has_existing_aps",
+  "ib_evidence", "ib_document_status", "ib_exam_session", "ib_schooling", "ib_independent_subjects", "ib_continuity",
+  "ib_has_continued_foreign", "ib_has_pre2025_eligible_hl", "ib_grade3_count", "ib_compensation_max_grade", "ib_annex_status", "ib_math_conflict",
   "ib_all_subjects_recognized",
   "ib_exam_year",
   "ib_full_diploma",
@@ -447,46 +426,7 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
   // FactKeySchema yet. Supporting old published conditions would activate
   // unreviewed routes. Recognition, field equivalence and certificate criteria
   // remain missing until the dependent source-review issues define them.
-  if (p.ib) {
-    raw.ib_full_diploma = p.ib.fullDiploma;
-    raw.ib_total_points = p.ib.totalPoints;
-    raw.ib_exam_year = p.ib.examYear;
-    raw.ib_school_years = p.ib.schoolYears;
-    raw.ib_math_level = p.ib.mathLevel ?? undefined;
-    raw.ib_math_course = p.ib.mathCourse ?? undefined;
-  }
-  if (p.ib?.subjects) {
-    const subjects = p.ib.subjects;
-    raw.ib_subject_count = subjects.length;
-    raw.ib_hl_count = subjects.filter((subject) => subject.level === "HL").length;
-    raw.ib_min_subject_grade =
-      subjects.length > 0
-        ? Math.min(...subjects.map((subject) => subject.grade))
-        : undefined;
-    raw.ib_all_subjects_recognized = subjects.every(
-      (subject) => subject.recognizedForGermany,
-    );
-    raw.ib_language_count = subjects.filter(
-      (subject) => subject.group === 1 || subject.group === 2,
-    ).length;
-    raw.ib_has_foreign_language_hl = subjects.some(
-      (subject) =>
-        (subject.group === 1 || subject.group === 2) &&
-        subject.level === "HL" &&
-        subject.foreignLanguage === true,
-    );
-    raw.ib_has_social_science = subjects.some((subject) => subject.group === 3);
-    raw.ib_has_natural_science = subjects.some((subject) =>
-      ["biology", "chemistry", "physics"].includes(subject.category),
-    );
-    raw.ib_has_2025_eligible_hl = subjects.some(
-      (subject) =>
-        subject.level === "HL" &&
-        ["language", "math", "biology", "chemistry", "physics"].includes(
-          subject.category,
-        ),
-    );
-  }
+  if (p.ib) Object.assign(raw, deriveIbFacts(p.ib));
   if (p.gce) {
     const subjects = p.gce.subjects.map(s => {
       const entry = gceEntry(s.independenceGroup.trim().toLowerCase(), p.gce!.awardingBody);
@@ -620,7 +560,11 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   const witnesses = profile.gce ? triples(profile.gce.subjects.filter(s=>s.level==='AL')).map(subjects=>deriveFacts({...profile,gce:{...profile.gce!,subjects}})) : [];
   const positiveGce = (r: ParsedRule) => r.conditions.curriculum === 'gce' && r.outcomes.path !== undefined && r.outcomes.path !== 'unknown';
   const scopedGce = (r: ParsedRule) => ['gce_qualification_context','gce_qualification_type','gce_evidence','intake_index'].every(key=>Object.hasOwn(r.conditions,key));
-  const matched = live.filter(r => positiveGce(r) ? scopedGce(r) && witnesses.some(w=>ruleMatches(w,r)) : ruleMatches(facts,r));
+  // Quarantine old IB shortcuts even when loaded from an existing published DB row.
+  // Only reviewed evidence-scoped path conditions can establish ordinary recognition.
+  const ibPath = (r: ParsedRule) => r.conditions.curriculum === 'ib' && r.outcomes.path !== undefined;
+  const scopedIb = (r: ParsedRule) => r.conditions.ib_evidence === 'v1' && r.conditions.ib_document_status !== undefined && r.conditions.ib_exam_year !== undefined;
+  const matched = live.filter(r => ibPath(r) && !scopedIb(r) ? false : positiveGce(r) ? scopedGce(r) && witnesses.some(w=>ruleMatches(w,r)) : ruleMatches(facts,r));
 
   const citations: Citation[] = [];
   const unknowns: string[] = [];
@@ -718,6 +662,19 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       unknowns.push(diagnostic);
       cite(nearest.rule,'unknowns',diagnostic);
     }
+  }
+  if (path === 'unknown' && profile.targetDegree === 'bachelor' && profile.curriculumType === 'ib') {
+    const candidates = live.filter(r => ibPath(r) && scopedIb(r) && r.outcomes.path !== 'unknown');
+    const comparisons = candidates.map(rule => ({rule, failed:Object.entries(rule.conditions).filter(([key,cond])=>!conditionPasses(facts[key],cond))})).sort((a,b)=>a.failed.length-b.failed.length);
+    const nearest=comparisons[0];
+    if(nearest){
+      const diagnostic='IB ordinary recognition not established: '+nearest.failed.map(([key])=>IB_FACT_LABELS[key]??key).join('; ')+'. Confirm with '+nearest.rule.source_url;
+      unknowns.push(diagnostic);cite(nearest.rule,'unknowns',diagnostic);
+    }
+    const annexStatus = facts.ib_annex_status;
+    if (facts.ib_math_level === 'SL' && annexStatus !== 'applicable') unknowns.push('IB mathematics scope requires annex review: '+String(annexStatus ?? 'missing_identity')+'; confirm exact school identity, programme and effective examination session with '+IB_SOURCE);
+    if(!nearest)unknowns.push('IB subject identity, two-year continuity, language context and applicable examination evidence require a reviewed rule: '+IB_SOURCE);
+    unknowns.push('Ordinary recognition gaps do not establish Studienkolleg admission. KMK section 2 describes an additional examination/Feststellungsprüfung or qualifying successful prior study; confirm your applicable alternative and subject scope with the recognition authority: '+IB_SOURCE);
   }
   if (!matched.some((r) => r.outcomes.path !== undefined))
     unknowns.push(NO_RULE_MESSAGES.path);
