@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getProfile: vi.fn(), getPublishedRules: vi.fn(), listApplicationsWithCourses: vi.fn(), listTasks: vi.fn(),
+  getProfile: vi.fn(), listRuleVersions: vi.fn(), listApplicationsWithCourses: vi.fn(), listTasks: vi.fn(),
 }));
 vi.mock("@/lib/db/queries", () => mocks);
 
-import { legacyPublishedAps } from "@/lib/engine/__tests__/aps-legacy-published.fixture";
 
+
+import { legacyPublishedAps } from "@/lib/engine/__tests__/aps-legacy-published.fixture";
+import { version } from "@/lib/rules/__tests__/assessment-fixtures";
 import { buildDashboardView } from "../view";
 
 const task = {
@@ -25,7 +27,7 @@ beforeEach(() => {
 describe("application task visibility", () => {
   it("hides obsolete pending APS work without rewriting saved edits or completion", async () => {
     mocks.getProfile.mockResolvedValue({ answers: { targetDegree: "bachelor", certificateCountry: "in", nationality: "in", curriculumType: "national", board: "cbse", schoolGradePercent: 82, jeeAdvanced: false, visaApplicationCountry: "sa", targetField: "cs", intake: null } });
-    mocks.getPublishedRules.mockResolvedValue(legacyPublishedAps);
+    mocks.listRuleVersions.mockResolvedValue(legacyPublishedAps.map((rule, index) => version(index+1, {rule_id: rule.id, raw_snapshot: rule})));
     mocks.listApplicationsWithCourses.mockResolvedValue([]);
     const pending = { ...task, id: "old", task_key: "rule:f5361a7c-bddf-45fd-9c8d-a23e736f16cc:step:10", course_task_definition_id: null, application_id: null, title: "My certificate reminder", has_personal_edits: true };
     const completed = { ...pending, id: "completed", done: true };
@@ -63,5 +65,6 @@ describe("application task visibility", () => {
     mocks.listApplicationsWithCourses.mockResolvedValue([{ id: "application", status: "planning", courses: null }]);
     const view = await buildDashboardView({ from: vi.fn() }, "student");
     expect(view.buckets.now.map((task) => task.id)).toEqual(["task"]);
+    expect(view.checkedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

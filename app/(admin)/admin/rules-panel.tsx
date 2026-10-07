@@ -1,220 +1,44 @@
 import Link from "next/link";
-
 import { Button } from "@/components/ui/button";
-import type { Enums, Tables } from "@/lib/db/database.types";
+import type { AdminRule } from "@/lib/db/admin-queries";
+import { meaningfulRuleDiff, preflightPublication } from "@/lib/rules/versioning";
 import { cn } from "@/lib/utils";
-
 import { reverifyRuleAction, updateRuleAction } from "./actions";
-import { formatDate, statusBadge } from "./admin-shared";
-import { GuidedRuleFields } from "./guided-rule-editor";
 import { ActionButton } from "./action-button";
-
-export const ruleStatuses = [
-  "draft",
-  "beta",
-  "verified",
-] as const satisfies readonly Enums<"rule_status">[];
-
-function isOlderThanSixMonths(value: string | null): boolean {
-  if (!value) return true;
-
-  const verifiedAt = new Date(value);
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-  return verifiedAt < sixMonthsAgo;
+export const ruleStatuses=["draft","beta","verified"] as const;
+function ReviewTokens({rule}:{rule:AdminRule}) {
+ return <><input type="hidden" name="id" value={rule.id}/><input type="hidden" name="expected_revision" value={rule.draft.revision}/><input type="hidden" name="expected_raw_snapshot" value={JSON.stringify(rule.draft.raw_snapshot)}/><input type="hidden" name="expected_predecessor_id" value={rule.versions[0]?.id??""}/></>;
 }
-
-function reviewAgeBadge(rule: Tables<"rules">) {
-  const stale = isOlderThanSixMonths(rule.last_verified_at);
-
-  return (
-    <span
-      className={cn(
-        "inline-flex rounded-md border px-1.5 py-0.5 text-xs font-medium",
-        stale
-          ? "border-amber-300 bg-amber-50 text-amber-900"
-          : "border-emerald-300 bg-emerald-50 text-emerald-900",
-      )}
-    >
-      {formatDate(rule.last_verified_at)}
-    </span>
-  );
+const scopeNames=["effective_from","effective_until","intake_from","intake_until"] as const;
+export function RuleEditor({rule, impacts = []}:{rule:AdminRule|undefined;countries:readonly {code:string;name:string}[]; impacts?: ({status: string} & ReturnType<typeof import("@/lib/rules/consumer-impact").previewDraftImpact>)[]}) {
+ if(!rule)return <section className="rounded-lg border bg-card p-4"><h2 className="text-sm font-semibold">Rule workspace</h2><p>Select a rule to edit its draft and review immutable history.</p></section>;
+ const predecessor=rule.versions[0];
+ let validation:string|undefined;
+ try{preflightPublication({rule_id:rule.id,revision:rule.draft.revision,raw_snapshot:rule.draft.raw_snapshot,predecessor_id:predecessor?.id??null,approval_status:"beta",confirmed:true});}catch(error){validation=error instanceof Error?error.message:"Invalid saved draft.";}
+ return <section className="grid gap-5 rounded-lg border bg-card p-4">
+  <div><h2 className="text-sm font-semibold">Rule workspace</h2><p className="font-mono text-xs">{rule.slug??rule.id}</p><p className="text-xs">Draft revision {rule.draft.revision} · Predecessor {predecessor?.id??"none"}</p></div>
+  <form action={updateRuleAction} className="grid gap-3"><ReviewTokens rule={rule}/>
+   <label className="grid gap-1 text-xs font-medium">Complete raw draft JSON<textarea name="raw_snapshot" required rows={22} defaultValue={JSON.stringify(rule.draft.raw_snapshot,null,2)} className="rounded-md border bg-background p-2 font-mono text-xs"/></label>
+   <p className="text-xs text-muted-foreground">Keep status draft. Source verification is last_verified_at in this JSON: enter the actual verification timestamp, or null while unresolved. Preserve literal source URLs, quotes and claim text. Saving never approves or publishes.</p>
+   {scopeNames.map(name=><label key={name} className="grid gap-1 text-xs font-medium">{name.startsWith("effective")?"UTC assessment date ":"Target intake index "}{name.endsWith("from")?"from (inclusive)":"until (exclusive)"}<input name={name} type={name.startsWith("effective")?"date":"number"} min={name.startsWith("intake")?2:undefined} max={name==="intake_until"?20000:name==="intake_from"?19999:undefined} step={name.startsWith("intake")?1:undefined} defaultValue={rule.draft[name]??""} className="h-8 rounded-md border bg-background px-2"/></label>)}
+   <p className="text-xs">Intake index = year × 2 + summer 0 / winter 1. Empty bounds require explicit review as unbounded at publication. Assessment date is separate from APS submission and dMAT registration or dispatch.</p>
+   <ActionButton pendingText="Saving…">Save draft</ActionButton>
+  </form>
+  <section className="grid gap-3 border-t pt-4"><h3 className="font-semibold">Review saved snapshot</h3>
+   <p className="text-xs">Source verification: {rule.last_verified_at??"unverified"}. Publication time and reviewer are recorded by the database when publication succeeds.</p>
+   <details><summary>Saved snapshot and literal evidence</summary><pre className="overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(rule.draft.raw_snapshot,null,2)}</pre></details>
+   {(["beta","verified"] as const).map(status=>{const diff=meaningfulRuleDiff(predecessor??null,{...rule.draft,status});return <details key={status}><summary>Changes if published as {status} ({diff.length})</summary>{diff.length===0?<p className="text-xs">No content or scope changes; reverification still appends a new version.</p>:<ul className="grid gap-2 text-xs">{diff.map(change=><li key={change.field}><strong>{change.field}</strong><pre className="overflow-auto whitespace-pre-wrap">Before: {JSON.stringify(change.before,null,2)??"absent"}{"\n"}After: {JSON.stringify(change.after,null,2)??"absent"}</pre></li>)}</ul>}</details>;})}
+   <section><h3>Saved-profile impact preview</h3><p className="text-xs">Hypothetical publication now, across all authorized saved profiles. This does not publish, notify or change personal tasks or applications.</p>{impacts.map(impact => <p key={impact.status} className="text-xs">{impact.status}: population {impact.total}; assessed {impact.assessed}; invalid or missing profiles {impact.invalidProfiles}; policy changes {impact.policyChanged}; source/explanation changes {impact.explanationChanged}; source only {impact.sourceOnly}; newly covered {impact.newCoverage}; unresolved scope before {impact.unresolvedBefore}, after {impact.unresolvedAfter}.{impact.invalidProposal ? " Proposed policy unavailable: fix saved draft validation." : ""}</p>)}</section>
+   {validation&&<p className="whitespace-pre-wrap text-xs text-amber-900">Publication blocked until saved schema/evidence errors are fixed: {validation}</p>}
+   <form action={reverifyRuleAction} className="grid gap-3"><ReviewTokens rule={rule}/>
+    <label className="grid gap-1 text-xs font-medium">Explicit approval status<select name="approval_status" required defaultValue="" className="h-8 rounded-md border bg-background px-2"><option value="" disabled>Choose approval…</option><option value="beta">beta</option><option value="verified">verified</option></select></label>
+    <label className="flex gap-2 text-xs"><input name="confirmed" type="checkbox" required/>I reviewed the saved snapshot, source verification, all changes and applicability bounds; empty bounds are explicitly unbounded.</label>
+    <ActionButton pendingText="Publishing…" confirm="Append this reviewed snapshot as a new immutable rule version?">Publish reviewed snapshot</ActionButton>
+   </form>
+  </section>
+  <section className="grid gap-3 border-t pt-4"><h3 className="font-semibold">Immutable version history</h3>{rule.versions.length===0&&<p className="text-xs">No published or captured history.</p>}{rule.versions.map(version=><details key={version.id}><summary>Version {version.version_number} · {version.provenance==="legacy_capture"?"Legacy capture — unknown historical scope":version.status}</summary><div className="grid gap-1 text-xs"><p>Version UUID: {version.id}</p><p>Predecessor: {version.supersedes_version_id??"none"}</p>{version.provenance==="legacy_capture"?<p>Captured: {version.captured_at}. Human review and publication history unavailable.</p>:<><p>Reviewer: {version.reviewed_by}</p><p>Reviewed: {version.reviewed_at}</p><p>Publication time: {version.published_at}</p></>}{version.provenance==="legacy_capture"?<p>Assessment and intake scope: unknown historical scope.</p>:<p>Assessment scope: [{version.effective_from??"unbounded"}, {version.effective_until??"unbounded"}) · Intake: [{version.intake_from??"unbounded"}, {version.intake_until??"unbounded"})</p>}<pre className="overflow-auto whitespace-pre-wrap">{JSON.stringify(version.raw_snapshot,null,2)}</pre></div></details>)}</section>
+ </section>;
 }
-
-export function RuleEditor({
-  rule,
-  countries,
-}: {
-  rule: Tables<"rules"> | undefined;
-  countries: readonly { code: string; name: string }[];
-}) {
-  if (!rule) {
-    return (
-      <section className="rounded-lg border bg-card p-4">
-        <h2 className="text-sm font-semibold">Rule editor</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Select a rule from the table to edit conditions, outcomes, source, and
-          status.
-        </p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="rounded-lg border bg-card p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold">Rule editor</h2>
-          <p className="mt-1 font-mono text-xs text-muted-foreground">
-            {rule.slug ?? rule.id}
-          </p>
-        </div>
-        <form action={reverifyRuleAction}>
-          <input type="hidden" name="id" value={rule.id} />
-          <ActionButton pendingText="Verifying…" confirm="Publish this saved rule as verified? Verified rules can affect eligibility results.">Verify saved rule</ActionButton>
-        </form>
-      </div>
-
-      <form action={updateRuleAction} className="mt-4 grid gap-3">
-        <input type="hidden" name="id" value={rule.id} />
-        <label className="grid gap-1 text-xs font-medium">
-          Country code
-          <select
-            name="country_code"
-            defaultValue={rule.country_code ?? ""}
-            className="h-8 rounded-md border bg-background px-2 text-sm"
-          >
-            <option value="">Shared / international</option>
-            {countries.map((country) => (
-              <option key={country.code} value={country.code}>
-                {country.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-xs font-medium">
-          Status
-          <select
-            name="status"
-            defaultValue={rule.status}
-            className="h-8 rounded-md border bg-background px-2 text-sm"
-          >
-            {ruleStatuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <GuidedRuleFields conditions={rule.conditions} outcomes={rule.outcomes} />
-
-        <label className="grid gap-1 text-xs font-medium">
-          Source URL
-          <input
-            name="source_url"
-            type="url"
-            required
-            defaultValue={rule.source_url}
-            className="h-8 rounded-md border bg-background px-2 text-sm"
-          />
-        </label>
-
-        <label className="grid gap-1 text-xs font-medium">
-          Source quote
-          <textarea
-            name="source_quote"
-            required
-            defaultValue={rule.source_quote}
-            rows={4}
-            className="rounded-md border bg-background p-2 text-sm"
-          />
-        </label>
-
-        <label className="grid gap-1 text-xs font-medium">
-          Notes
-          <textarea
-            name="notes"
-            defaultValue={rule.notes ?? ""}
-            rows={3}
-            className="rounded-md border bg-background p-2 text-sm"
-          />
-        </label>
-
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            Last verified: {reviewAgeBadge(rule)}
-          </p>
-          <ActionButton pendingText="Saving…">Save rule changes</ActionButton>
-        </div>
-      </form>
-    </section>
-  );
-}
-
-export function RulesTable({
-  rules,
-  selectedRuleId,
-}: {
-  rules: Tables<"rules">[];
-  selectedRuleId: string | undefined;
-}) {
-  return (
-    <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full min-w-[720px] text-left text-sm">
-        <thead className="border-b bg-muted/60 text-xs uppercase text-muted-foreground">
-          <tr>
-            <th className="px-3 py-2 font-medium">Country</th>
-            <th className="px-3 py-2 font-medium">Status</th>
-            <th className="px-3 py-2 font-medium">Last verified</th>
-            <th className="px-3 py-2 font-medium">Source</th>
-            <th className="px-3 py-2 font-medium">Updated</th>
-            <th className="px-3 py-2 font-medium">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rules.map((rule) => (
-            <tr
-              key={rule.id}
-              className={cn(
-                "border-b last:border-b-0",
-                selectedRuleId === rule.id && "bg-muted/60",
-              )}
-            >
-              <td className="px-3 py-2 font-mono text-xs">
-                {rule.country_code ?? "shared"}
-              </td>
-              <td className="px-3 py-2">{statusBadge(rule.status)}</td>
-              <td className="px-3 py-2">{reviewAgeBadge(rule)}</td>
-              <td className="max-w-[240px] truncate px-3 py-2 text-xs">
-                <a
-                  href={rule.source_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline underline-offset-2"
-                  title={rule.source_url}
-                >
-                  {rule.source_url}
-                </a>
-              </td>
-              <td className="px-3 py-2 text-xs text-muted-foreground">
-                {formatDate(rule.updated_at)}
-              </td>
-              <td className="px-3 py-2">
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/admin?view=rules&rule=${rule.id}`}>Edit</Link>
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {rules.length === 0 && (
-        <p className="p-4 text-sm text-muted-foreground">
-          No rules match these filters.
-        </p>
-      )}
-    </div>
-  );
+export function RulesTable({rules,selectedRuleId}:{rules:AdminRule[];selectedRuleId:string|undefined}) {
+ return <div className="overflow-x-auto rounded-lg border"><table className="w-full text-left text-sm"><thead className="border-b bg-muted/60 text-xs"><tr>{["Rule / country","Draft revision","History head","Source verification","Action"].map(label=><th key={label} className="px-3 py-2">{label}</th>)}</tr></thead><tbody>{rules.map(rule=><tr key={rule.id} className={cn("border-b",selectedRuleId===rule.id&&"bg-muted/60")}><td className="px-3 py-2">{rule.slug??rule.id}<br/>{rule.country_code??"shared"}</td><td className="px-3 py-2">{rule.draft.revision} · draft</td><td className="px-3 py-2">{rule.versions[0]?.provenance==="legacy_capture"?"Legacy capture":rule.versions[0]?"v"+rule.versions[0].version_number+" · "+rule.versions[0].status:"No history"}</td><td className="px-3 py-2 text-xs">{rule.last_verified_at??"unverified"}</td><td className="px-3 py-2"><Button asChild variant="outline" size="sm"><Link href={"/admin?view=rules&rule="+rule.id}>Edit / review</Link></Button></td></tr>)}</tbody></table>{rules.length===0&&<p className="p-4 text-sm">No workspaces match these filters.</p>}</div>;
 }
