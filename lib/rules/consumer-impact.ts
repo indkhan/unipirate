@@ -28,9 +28,10 @@ export function previewDraftImpact(population: readonly {answers: unknown}[], ve
   // Draft identity below is a comparison operand only, never a selected immutable
   // input or stored assessment. Publication/reviewer dates remain unavailable.
   const proposed: RuleVersion = {...draft, id: draft.rule_id, version_number: 1, supersedes_version_id: null, raw_snapshot: {...raw, status} as RuleVersion["raw_snapshot"], status, reviewed_by: null, reviewed_at: null, published_at: null, captured_at: null, draft_revision: draft.revision, provenance: "human_publication"};
-  const rules = retained.map(v => EngineRuleSchema.parse(v.raw_snapshot));
-  if (applies) rules.push(policy.data);
-  const after = {...before, result: evaluate(profile, rules), selectedVersions: applies ? [...retained, proposed] : retained};
+  // Match the selector's canonical logical UUID order, including the replacement.
+  const selectedVersions = (applies ? [...retained, proposed] : retained).sort((a, b) => a.rule_id.localeCompare(b.rule_id));
+  const rules = selectedVersions.map(v => EngineRuleSchema.parse(v.raw_snapshot));
+  const after = {...before, result: evaluate(profile, rules), selectedVersions};
   const diff = compareAssessments(before, after);
   result.assessed++;
   result.policyChanged += Number(diff.policyChanged); result.explanationChanged += Number(diff.explanationChanged);

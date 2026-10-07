@@ -12,6 +12,8 @@ import { useState } from "react";
 import { reportAssistantAnswer } from "@/app/(app)/dashboard/actions";
 import { parseMarkers, stripMarkers, type Citation } from "@/lib/ai/markers";
 
+import { responseRuleSources } from "./assistant-sources";
+
 import { VerifiedStamp } from "./verified-stamp";
 import styles from "./assistant-sidebar.module.css";
 
@@ -23,46 +25,11 @@ const SUGGESTIONS = [
   "When should I open my blocked account?",
 ];
 
-type RuleSource = { source_url: string | null; last_verified_at: string | null };
-
 function messageText(message: UIMessage): string {
   return message.parts
     .filter((part): part is { type: "text"; text: string } => part.type === "text")
     .map((part) => part.text)
     .join("");
-}
-
-/** source_url/date for cited rule slugs, from every search_rules output in the
- * conversation — the model may cite a chunk retrieved a few turns earlier. */
-function ruleSources(messages: UIMessage[]): Map<string, RuleSource> {
-  const sources = new Map<string, RuleSource>();
-  for (const message of messages) {
-    for (const part of message.parts) {
-      if (part.type !== "tool-search_rules" || !("output" in part)) continue;
-      const output = part.output;
-      if (!Array.isArray(output)) continue;
-      for (const row of output as Array<Record<string, unknown>>) {
-        if (typeof row.slug !== "string") continue;
-        sources.set(row.slug, {
-          source_url: typeof row.source_url === "string" ? row.source_url : null,
-          last_verified_at:
-            typeof row.last_verified_at === "string" ? row.last_verified_at : null,
-        });
-      }
-    }
-  }
-  return sources;
-}
-
-function formatDate(iso: string | null): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function sourceHost(url: string): string {
@@ -76,13 +43,12 @@ function sourceHost(url: string): string {
 function BotMessage({
   message,
   question,
-  sources,
 }: {
   message: UIMessage;
   question: string;
-  sources: Map<string, RuleSource>;
 }) {
   const [reported, setReported] = useState(false);
+  const sources = responseRuleSources(message.parts);
   const text = messageText(message);
   const { citations, unknown } = parseMarkers(text);
   const ruleCitations = citations.filter((c) => c.type === "rule");
@@ -104,17 +70,25 @@ function BotMessage({
 
         {ruleCitations.map((citation: Citation) => {
           const source = sources.get(citation.ref);
+          if (!source) return (
+            <div key={citation.ref} className={styles.unknownBlock}>
+              <span className={styles.unknownLabel}>Rule source unavailable — {citation.ref}</span>
+            </div>
+          );
           return (
             <div key={citation.ref}>
-              <VerifiedStamp
-                source={
-                  source?.source_url
-                    ? sourceHost(source.source_url)
-                    : citation.ref
-                }
-                date={formatDate(source?.last_verified_at ?? null)}
-                href={source?.source_url}
-              />
+              {source.status === "verified" && source.last_verified_at ? (
+                <VerifiedStamp source={sourceHost(source.source_url)}
+                  date={source.last_verified_at} href={source.source_url} />
+              ) : (
+                <>
+                  <span className={styles.webChip}>Rule verification unavailable</span>
+                  <a className={styles.webLink} href={source.source_url} target="_blank" rel="noreferrer">
+                    {sourceHost(source.source_url)}
+                  </a>
+                  {source.last_verified_at ? <span>{source.last_verified_at}</span> : null}
+                </>
+              )}
             </div>
           );
         })}
@@ -159,7 +133,6 @@ export function AssistantSidebar({ initialUsed }: { initialUsed: number }) {
     transport: new DefaultChatTransport({ api: "/api/assistant/chat" }),
   });
 
-  const sources = ruleSources(messages);
   const used =
     initialUsed + messages.filter((message) => message.role === "user").length;
   const quotaReached = used >= DAILY_QUOTA;
@@ -253,7 +226,6 @@ export function AssistantSidebar({ initialUsed }: { initialUsed: number }) {
                   key={message.id}
                   message={message}
                   question={questionFor(index)}
-                  sources={sources}
                 />
               ),
             )}
