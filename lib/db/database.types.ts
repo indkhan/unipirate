@@ -162,6 +162,7 @@ export type Database = {
       checks: {
         Row: {
           answers: Json
+          assessment_metadata: Json | null
           claimed_at: string | null
           claimed_by: string | null
           created_at: string
@@ -171,6 +172,7 @@ export type Database = {
         }
         Insert: {
           answers: Json
+          assessment_metadata?: Json | null
           claimed_at?: string | null
           claimed_by?: string | null
           created_at?: string
@@ -180,6 +182,7 @@ export type Database = {
         }
         Update: {
           answers?: Json
+          assessment_metadata?: Json | null
           claimed_at?: string | null
           claimed_by?: string | null
           created_at?: string
@@ -777,6 +780,7 @@ export type Database = {
         Args: { p_check_id: string }
         Returns: {
           answers: Json
+          assessment_metadata: Json
           created_at: string
           id: string
           result: Json
@@ -837,6 +841,10 @@ export type Database = {
       result_viewer: {
         Args: { p_check_id: string; p_token_hash?: string }
         Returns: string
+      }
+      valid_check_assessment_metadata: {
+        Args: { value: Json }
+        Returns: boolean
       }
       valid_course_capture_applicability: {
         Args: { value: Json }
