@@ -75,7 +75,7 @@ export function VerdictCard({
           {diagnostic.followUp && <p><strong>{diagnostic.followUp.question}</strong> Other missing conditions may still need answers.</p>}
           {[...result.citations,...result.candidateCitations ?? []].filter(c => diagnostic.ruleIds.includes(c.ruleId) && !verdicts[0].citations.some(v => v.ruleId === c.ruleId)).map(c => <SourceStamp key={c.ruleId} citation={c} />)}
         </div>}
-        {verdicts[0].citations.length === 0 && !diagnostic?.followUp && (
+        {verdicts[0].citations.length === 0 && !diagnostic?.followUp && diagnostic?.status !== 'known_unmet_condition' && (
           <span className={styles.unverified}>Official confirmation needed</span>
         )}
       </div>
