@@ -20,9 +20,11 @@ import {
   normalizeAnswers,
   upgradeSaudiAnswers,
   isSaudiStudyBranch,
+  pakistanAnswerVersion,
   isAnswered,
   isNumberStep,
   isIndiaStudyBranch,
+  isPakistanBranch,
   isTextStep,
   visibleSteps,
   withAnswer,
@@ -53,7 +55,7 @@ export function CheckFlow({
 }: CheckFlowProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1, jeeVersion: 2 })));
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1, ...pakistanAnswerVersion(initialAnswers), jeeVersion: 2 })));
   const [stepIndex, setStepIndex] = useState(initialStepIndex);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -68,7 +70,7 @@ export function CheckFlow({
   }, [posthog]);
 
   useEffect(() => {
-    const safeInitial = normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), qualificationHistoryVersion: 1 as const, apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, jeeVersion: 2 as const }));
+    const safeInitial = normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), qualificationHistoryVersion: 1 as const, apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, ...pakistanAnswerVersion(initialAnswers), jeeVersion: 2 as const }));
     let nextAnswers: PartialAnswers = safeInitial;
     let nextStepIndex = initialStepIndex;
     try {
@@ -83,7 +85,7 @@ export function CheckFlow({
           !initialAnswers.certificateCountry ||
           savedCountry === initialAnswers.certificateCountry
         ) {
-          const recovered = normalizeAnswers(upgradeSaudiAnswers({ ...saved.answers, ...(saved.answers?.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(saved.answers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, jeeVersion: 2 as const }));
+          const recovered = normalizeAnswers(upgradeSaudiAnswers({ ...saved.answers, ...(saved.answers?.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(saved.answers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, ...pakistanAnswerVersion(saved.answers), jeeVersion: 2 as const }));
           const savedSteps = visibleSteps(recovered);
           const firstMissing = savedSteps.findIndex((step) => !isAnswered(recovered, step));
           const recoveredStepIndex = Math.min(
@@ -295,7 +297,7 @@ export function CheckFlow({
                 className={styles.input}
                 type="number"
                 inputMode="decimal"
-                step={step === "priorDegreeYears" || step === "yearsOfUniversityStudy" ? "any" : undefined}
+                step={step === "priorDegreeYears" || step === "yearsOfUniversityStudy" || step === "schoolGradePercent" ? "any" : undefined}
                 min={numberStep.min}
                 max={numberStep.max}
                 aria-invalid={numberError ? "true" : undefined}
@@ -318,8 +320,9 @@ export function CheckFlow({
                 {numberError}
               </p>
             )}
+          {step === 'schoolGradePercent' && isPakistanBranch(answers) && <button type="button" aria-pressed={answers[step]===null} onClick={()=>select(step,null)}>Cannot confirm overall percentage</button>}
           {answers.ibVersion===1 && ['ibExamYear','ibSchoolYears','ibTotalPoints'].includes(step) && <button type="button" aria-pressed={answers[step]===null} onClick={()=>select(step,null)}>Cannot confirm</button>}
-            {step === "yearsOfUniversityStudy" && (isIndiaStudyBranch(answers) || isSaudiStudyBranch(answers)) && <button type="button" aria-pressed={answers[step] === null} onClick={() => select(step, null)}>Cannot establish successful academic years</button>}
+            {step === "yearsOfUniversityStudy" && (isIndiaStudyBranch(answers) || isSaudiStudyBranch(answers) || isPakistanBranch(answers)) && <button type="button" aria-pressed={answers[step] === null} onClick={() => select(step, null)}>Cannot establish successful academic years</button>}
           </div>
         ) : isTextStep(step) ? (
           <QualificationTextInput step={step} value={answers[step]} onChange={(value) => select(step, value)} />

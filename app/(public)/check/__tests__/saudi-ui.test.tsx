@@ -6,6 +6,7 @@ import { ProfileReview } from "../profile-review";
 import { visibleSteps, upgradeSaudiAnswers, withAnswer, isSaudiDegreeBranch, isSaudiStudyBranch, type PartialAnswers } from "../steps";
 import { buildOptions, questionFor } from "../check-questions";
 import { SAUDI_ANABIN } from "@/lib/engine/saudi";
+import { currentPakistanAnswers } from "./pakistan-current.fixture";
 import { indiaAnswers } from "./india-study.fixture";
 import { saudiAnswers } from "./saudi.fixture";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -73,4 +74,22 @@ it.each([{ saudiCertificateSubtype: "unknown" }, { saudiCertificateSubtype: "oth
 it("keeps actual Indian study copy and does not treat incomplete or Master's history as Saudi undergraduate degree", () => {
  expect(questionFor("priorStudyRecognition", indiaAnswers).sourceUrl).toBe("https://aps-india.de/faqs/");
  for (const answers of [{ ...completed, saudiCertificateSubtype: "unknown", priorStudyCompletion: "in_progress" }, { ...completed, saudiCertificateSubtype: "unknown", targetDegree: "master" }, { ...completed, saudiCertificateSubtype: "unknown", priorStudyCountry: "in" }] as const) expect(isSaudiDegreeBranch(answers)).toBe(false);
+});
+
+it.each([1, 2] as const)("preserves missing-issuer Saudi version %s board fallback while explicit uncertainty has no boards", saudiCertificateVersion => {
+ expect(buildOptions("board", { targetDegree: "bachelor", curriculumType: "national", certificateCountry: "sa", saudiCertificateVersion }).map(o => o.value)).toContain("tawjihiyah");
+ expect(buildOptions("board", { targetDegree: "bachelor", curriculumType: "national", certificateCountry: "sa", saudiCertificateVersion, schoolQualificationCountry: "unknown", schoolQualificationContext: "national" })).toEqual([]);
+});
+it("actual Saudi/Pakistan issuer edits expose each source branch once and clear the other country's reports", () => {
+ const pk = withAnswer(withAnswer(saudiAnswers, "schoolQualificationCountry", "pk"), "schoolQualificationContext", "national");
+ const sa = withAnswer(withAnswer(currentPakistanAnswers, "schoolQualificationCountry", "sa"), "schoolQualificationContext", "national");
+ for (const [answers, step, hidden] of [[pk, "pkCertificate", "saudiCertificateSubtype"], [sa, "saudiCertificateSubtype", "pkCertificate"]] as const) {
+  const steps = visibleSteps(answers);
+  expect(new Set(steps).size).toBe(steps.length); expect(steps).toContain(step); expect(steps).not.toContain(hidden);
+  for (const html of [renderToStaticMarkup(<CheckFlow initialAnswers={answers} initialStepIndex={steps.indexOf(step)} />), renderToStaticMarkup(<ProfileReview initialAnswers={answers} />)]) expect(html).toContain(questionFor(step, answers).question);
+ }
+ expect(pk.saudiSubjectAssessmentReference).toBeUndefined(); expect(pk.priorStudyRecognitionReference).toBeUndefined();
+ expect(sa.pkCurrentAssessmentReference).toBeUndefined(); expect(sa.pkRecognitionReference).toBeUndefined();
+ expect(questionFor("pkCurrentAssessment", pk).subtitle).toContain("bounded one-year subject-restricted");
+ expect(questionFor("pkCurrentAssessment", pk).subtitle).toContain("regional brochure still says two years");
 });

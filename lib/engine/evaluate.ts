@@ -5,6 +5,7 @@
 // confirm-with-the-official-source messages; the engine never guesses.
 import { z } from "zod";
 import { type SaudiReport, deriveSaudiFacts, isSaudiAdmissionRule, isScopedSaudiRule, isSaudiSchoolProfile, SAUDI_SOURCE, SAUDI_FACT_LABELS } from "./saudi";
+import { derivePakistanFacts, PK_FACT_KEYS, type PakistanProfile, type PakistanStudy } from "./pakistan";
 import { JeeProfileSchema, type JeeProfile, JEE_SOURCE, JEE_FIELD_SOURCE, JEE_ADMISSION_SOURCE } from "./jee";
 import { type IbProfile, deriveIbFacts, IB_FACT_LABELS, IB_SOURCE } from "./ib";
 import { gceEntry, gceIndependent, triples } from "./gce";
@@ -16,6 +17,7 @@ import { DmatProfileSchema, type DmatProfile } from "./dmat";
 export type Term = "winter" | "summer";
 
 export type Profile = {
+  pakistan?: PakistanProfile;
   targetDegree: "bachelor" | "master";
   intake?: { term: Term; year: number };
   nationality?: string; // 'in' | 'pk' | 'sa' | ...
@@ -58,6 +60,7 @@ export type Profile = {
     completedYears?: number;
     completion?: "completed" | "in_progress" | "discontinued";
     saudiBachelorEvidence?: { version: 2; context?: "national" | "other" | "unknown"; assessment?: "reported_official_norms_full_time" | "reported_official_unmet" | "unknown"; reference?: string };
+    pakistanStudy?: PakistanStudy;
     indiaStudyRouteVersion?: 1;
     priorStudyMode?: "regular" | "distance_online" | "other" | "unknown";
     priorStudyRecognition?: "reported_official_confirmed" | "reported_official_rejected" | "unknown";
@@ -141,6 +144,7 @@ const FactKeySchema = z.enum([
   "sa_certificate_evidence", "sa_certificate_subtype", "sa_reported_subject_assessment", "sa_prior_study_kind",
   "sa_successful_bachelor_years", "sa_reported_recognition", "sa_reported_target_relation",
   "sa_reported_enrollment", "sa_reported_enrollment_relation",
+  ...PK_FACT_KEYS,
   "in_class12_prior_study_kind", "in_class12_prior_study_country", "in_class12_successful_bachelor_years",
   "in_class12_study_mode", "in_class12_reported_recognition", "in_class12_reported_target_relation",
   "dmat_qualification_scope", "dmat_procedure", "dmat_field_basis",
@@ -524,6 +528,7 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
       "computer_science",
     );
   }
+  Object.assign(raw, derivePakistanFacts(p));
   const facts: Record<string, Fact> = {};
   for (const [k, v] of Object.entries(raw)) if (v !== undefined) facts[k] = v;
   return facts;
@@ -589,6 +594,22 @@ export const isScopedJeePathRule = (r: JeeRule) => r.outcomes.path === "subject_
   includedJeeValues(r.conditions.intake_index, [4053, 4054, 4055]);
 export const isQuarantinedJeeRule = (r: JeeRule) => jeePath(r) && r.outcomes.path !== "unknown" && !isScopedJeePathRule(r);
 
+// Pakistan admission rules share the same structured scope guard with KB rendering.
+type PakistanRule = JeeRule & {source_url?: string};
+export const isPakistanRule = (r: PakistanRule) => !['gce','ib'].includes(String(r.conditions.curriculum)) && (Object.keys(r.conditions).some(k=>k.startsWith('pk_')) ||
+  ['certificate_country','aps_issuer_country'].some(k=>r.conditions[k]!==undefined && conditionPasses('pk',r.conditions[k])) ||
+  /daad\.pk|ad-layerId=(193|195|197|199|204|206)(?:&|$)/.test(r.source_url??'') ||
+  /anabin\.kmk\.org\/db\/schulabschluesse-mit-hochschulzugang/.test(r.source_url??'') && !isScopedSaudiRule(r));
+export const isScopedPakistanPathRule = (r: PakistanRule) => {
+ const c=r.conditions;
+ const scope=c.target_degree==='bachelor' && c.curriculum==='national' && c.aps_issuer_country==='pk' && c.aps_qualification_context==='national';
+ const school=scope && includedJeeValues(c.pk_certificate,['hssc','intermediate']) && includedJeeValues(c.pk_documentary_group,['science','commerce','humanities']) && c.pk_school_completion==='completed_12_grades' && typeof c.pk_grade_percent==='object' && c.pk_grade_percent.op==='gte';
+ if(r.outcomes.path==='studienkolleg')return school && c.pk_prior_study_kind==='none' && includedJeeValues(c.pk_target_family,['medicine','natural_sciences','technology','social_sciences','economics','humanities']);
+ return r.outcomes.path==='subject_restricted' && school && c.pk_prior_study_kind==='bachelor' && c.pk_prior_study_country==='pk' && c.pk_prior_study_completion==='in_progress' && typeof c.pk_successful_academic_years==='object' && c.pk_successful_academic_years.op==='gte' && c.pk_study_mode==='full_time' && c.pk_study_regulations==='confirmed' && c.pk_annual_records==='confirmed' && c.pk_reported_recognition==='reported_official_confirmed' && includedJeeValues(c.pk_reported_target_relation,['reported_official_previous','reported_official_closely_related']) && c.pk_current_assessment==='reported_current_support' && includedJeeValues(c.intake_index,[4053,4054,4055]);
+};
+export const isQuarantinedPakistanRule = (r: PakistanRule) => isPakistanRule(r) && r.outcomes.path!==undefined &&
+ !(r.outcomes.path==='unknown' && (r.conditions.aps_issuer_country==='pk' && r.conditions.aps_qualification_context==='national' && Object.keys(r.conditions).some(k=>k.startsWith('pk_')) || r.conditions.target_degree==='master' && r.conditions.certificate_country==='pk')) && !isScopedPakistanPathRule(r);
+
 // --------------------------------------------------------------- evaluate
 
 export const NO_RULE_MESSAGES = {
@@ -629,7 +650,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       ruleId: rule.id,
       sourceUrl: rule.source_url,
       verifiedAt: rule.last_verified_at ?? null,
-      claim: diagnosticClaim ?? (isQuarantinedJeeRule(rule) ? "Stored JEE route requires qualifying-pass and applicability review." : rule.outcomes.note ?? rule.source_quote),
+      claim: diagnosticClaim ?? (isQuarantinedPakistanRule(rule) ? "Stored Pakistan route requires exact qualification, study, target and current scope review." : isQuarantinedJeeRule(rule) ? "Stored JEE route requires qualifying-pass and applicability review." : rule.outcomes.note ?? rule.source_quote),
       status: rule.status === "beta" ? "beta" : "verified",
       supports: [support],
     });
@@ -640,7 +661,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   function resolve<V>(key: "path" | "aps" | "testas" | "dmat" | `aps:${ApsScope}`): V | undefined {
     const scope = key.startsWith("aps:") ? key.slice(4) as ApsScope : undefined;
     const outcome = (r: ParsedRule) => {
-      if (key === "path" && isQuarantinedJeeRule(r)) return undefined;
+      if (key === "path" && (isQuarantinedJeeRule(r) || isQuarantinedPakistanRule(r))) return undefined;
       // Possession is not applicability to the relevant completed procedure.
       // Keep other outcomes on the same historical row available.
       if (key === "dmat" && r.outcomes.dmat === "not_required" &&
@@ -683,6 +704,24 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   }
 
   const path = resolve<Result["path"]>("path") ?? "unknown";
+  if (path === 'unknown' && profile.targetDegree === 'bachelor' && profile.curriculumType === 'national' && (profile.certificateCountry === 'pk' || profile.schoolQualification?.country === 'pk' || profile.pakistan?.version === 1)) {
+    // Explain failed reviewed conditions; thresholds and family mappings stay in data.
+    const study = facts.pk_prior_study_kind === 'bachelor';
+    const candidates = live.filter(r => isScopedPakistanPathRule(r) && (study ? r.outcomes.path === 'subject_restricted' : r.outcomes.path === 'studienkolleg'));
+    const applicableGroup = candidates.filter(r=>r.conditions.pk_documentary_group===facts.pk_documentary_group);
+    const comparisons = (applicableGroup.length ? applicableGroup : candidates).map(rule => ({rule,failed:Object.entries(rule.conditions).filter(([key,cond])=>!conditionPasses(facts[key],cond))})).sort((a,b)=>a.failed.length-b.failed.length);
+    const nearest = comparisons[0];
+    if(nearest) {
+      const labels:Record<string,string>={aps_issuer_country:'actual qualification issuer',aps_qualification_context:'national qualification context',pk_certificate:'exact HSSC/Intermediate certificate category (FSc/FA/ICom/ICS aliases are not classified)',pk_documentary_group:'documentary Science/Commerce/Humanities group (mixed/unclassified needs assessment)',pk_school_completion:'completed twelve grades',pk_grade_percent:'overall percentage',pk_prior_study_kind:'explicit prior-study answer',pk_successful_academic_years:'successful academic years established by annual records and a separate reference',pk_prior_study_country:'Pakistan study country',pk_prior_study_completion:'ongoing Bachelor product subset',pk_study_mode:'full-time academic study',pk_study_regulations:'study under regulations',pk_annual_records:'annual subjects/marks records',pk_reported_recognition:'applicant-reported recognition and applicable reference',pk_reported_target_relation:'applicant-reported previous/neighbouring target relationship and applicable reference',pk_current_assessment:'current applicable institutional assessment/reference (contrary assessment requires individual confirmation conflict)',intake_index:'reviewed current intake coverage (not source commencement)',pk_target_family:'reported intended target family and applicable reference (outside the preparatory subject scope needs assessment)'};
+      const detail=nearest.failed.map(([key,cond])=>{
+        if(facts[key]===undefined || facts[key]==='unknown')return (labels[key]??key)+' missing or uncertain';
+        if(key==='pk_grade_percent' && typeof cond==='object' && cond.op==='gte')return String(cond.value)+'% condition unmet for this formula; other qualifications require separate assessment';
+        return (labels[key]??key)+' does not meet this bounded formula';
+      }).join('; ');
+      const diagnostic='Pakistan '+(study?'current one-year':'preparatory')+' route unresolved: '+detail+'. Confirm with '+nearest.rule.source_url;
+      unknowns.push(diagnostic);cite(nearest.rule,'unknowns',diagnostic);
+    }
+  }
   if (profile.targetDegree === "bachelor" && profile.curriculumType === "national" &&
       (profile.schoolQualification?.country === "in" || (!profile.schoolQualification && profile.certificateCountry === "in")) && (profile.jee !== undefined || profile.jeeAdvanced === true)) {
     const report = JeeProfileSchema.safeParse(profile.jee);
@@ -814,14 +853,15 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   for (const rule of matched) {
     // Saudi path-specific tasks/documents follow the winning clause, not a superseded or conflicting preparation route.
     if (isScopedSaudiRule(rule) && rule.outcomes.path !== undefined && (path === "unknown" || !citations.some(c => c.ruleId === rule.id && c.supports.includes("path")))) continue;
-    for (const doc of isQuarantinedJeeRule(rule) ? [] : rule.outcomes.documents ?? []) {
+    const blockedPakistanTasks = isPakistanRule(rule) && rule.outcomes.path !== undefined && (rule.outcomes.path !== path || !citations.some(c => c.ruleId === rule.id && c.supports.includes("path")));
+    for (const doc of (isQuarantinedJeeRule(rule) || isQuarantinedPakistanRule(rule) || blockedPakistanTasks) ? [] : rule.outcomes.documents ?? []) {
       // Trade-off: old free-text APS entries lack machine-readable scope.
       // Suppress them pending admin review; never infer scope from their prose.
       if (/\bAPS\b/i.test(doc)) continue;
       if (!documents.includes(doc)) documents.push(doc);
       cite(rule, "documents");
     }
-    for (const step of isQuarantinedJeeRule(rule) ? [] : rule.outcomes.steps ?? []) {
+    for (const step of (isQuarantinedJeeRule(rule) || isQuarantinedPakistanRule(rule) || blockedPakistanTasks) ? [] : rule.outcomes.steps ?? []) {
       if (/\bAPS\b/i.test(step.text)) continue;
       if (!steps.some((s) => s.text === step.text)) {
         steps.push({ ...step, ruleId: rule.id });

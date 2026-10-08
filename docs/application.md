@@ -852,6 +852,60 @@ New and edited IB bachelor answers carry `ibVersion: 1`; historical answers rema
 See [IB source verification](ib-source-verification.md) for authority, source versions, effective sessions and unresolved limits. The executable IB corpus is activated in UP-TEST-01; final parent official coverage remains OPEN. No DB, publication, server-shell or version-selection interface was changed.
 
 
+### Pakistan bounded current assessment (UP-ELIG-08)
+
+Actual national school issuer/context is collected once before country-specific
+questions. Pakistan new/edit/restored drafts carry pakistanVersion 1; current
+study evidence separately carries pkStudyEvidenceVersion 2. Legacy reports remain
+readable without inventing a current applicable assessment. Actual India questions
+and prior history remain reachable regardless of the landing country. GCE/IB are
+independent. Passport/visa edits preserve academic reports.
+
+Pure lib/engine/pakistan.ts validates applicant reports and derives fifteen scoped
+pk_* facts. Generic legacy recognition/history facts stay inactive. Exact completed
+twelve-grade HSSC/Intermediate category is separate from documentary Science,
+Commerce or Humanities group; FSc/FA/ICom/ICS titles never infer groups. Missing
+grade differs from 49.99; the literal >=50 condition applies only to this formula.
+Existing qualificationHistory preserves institution, programme, country, completion
+and actual successful years. Names, HEC attestation, elapsed attendance, two semesters
+or field strings establish neither success, recognition nor target relationship.
+
+Three source-backed preparatory candidates restrict no-study applicants to their
+stated Medicine/Natural Sciences/Technology, Social Sciences/Economics or Humanities
+family. Six executable acceptance examples cover these families. Three current
+one-year candidates require the actual Pakistani national qualification, >=50%,
+recognized full-time academic Bachelor study in Pakistan under regulations, annual
+subject/mark records, at least one successful year and separate applicable success,
+recognition and previous/neighbouring-target report references. A current applicable
+assessment report/reference is required; a contrary assessment remains an individual
+confirmation conflict. Direct subject scope follows prior university study, not the
+school group. Ongoing Bachelor is conservative product coverage, not a new official
+qualification requirement. Covered product intakes are exactly 4053/4054/4055;
+missing, historical and other intakes remain targeted unknown. First intake selection
+preserves fresh evidence; subsequent relevant intake/target/school/history edits
+invalidate dependent references. Restored old drafts stop at missing current evidence.
+
+Original anabin PAK-BV01/02/03 German wording was supplied in root's firsthand source
+review and independently adjudicated. DAAD195/199 corroborate one successful year;
+Humanities206 retrieval failure is not contrary evidence. The linked 2022 regional
+PDF still says two years. Three evidence-only candidates disclose that discrepancy
+in result citations and immutable current KB, without executing it as a competing
+current path. No formal withdrawal, legal precedence or historical commencement is
+asserted. Source verification date is not effective intake. Applicant reports are
+labelled separately from verified source rules; university/uni-assist makes the
+individual final decision. Completed two-year-degree discrepancy remains review-only;
+completed four-year Bachelor, Master's, aliases and irregular cases remain unknown.
+
+All fourteen candidates remain draft/unpublished with null publication/effective
+intake. Runtime tests consume actual candidate clones with disposable published
+metadata; Muse's JSON remains its original future-data delivery record and alone
+proves no route. Renamed, exclusion-only, source-only and unscoped legacy Pakistan
+paths are quarantined consistently in engine, legacy retrieval and immutable current
+KB. Selected immutable human versions and captured context remain the sole current
+authority; cached prose, IDs and URLs are hints. Only resolved winning Pakistan
+paths project admission tasks. No DB, seed, embedding, migration or provider operation
+occurs. See [source verification](up-elig-08-source-verification.md).
+
 ### India JEE ordinary qualifying passage (UP-ELIG-04)
 
 New/edited/restored answers use jeeVersion 2; version 1 and historical Advanced booleans remain readable without invented evidence. Separate reported Main/Advanced qualifying passages are never inferred from scores, percentiles, participation, result possession or the legacy boolean. Actual Indian national school issuer/context is established once before collecting a reported completed twelve-grade national secondary certificate. Foreign, missing or unknown issuer/context cannot expose or map hidden India JEE reports. Tertiary history is independent and cannot prove school completion.
@@ -928,6 +982,20 @@ Completed-Bachelor evidence is separately stored in existing qualificationHistor
 
 Current draft coverage is exactly intake4053/4054/4055, not an Anabin effective date or verification-date commencement. Industrial additionally respects uni-assist WS2026/27 onward. Eleven candidates remain draft/null publication; actual candidate copies drive official harness positives only in memory. New facts are Saudi-scoped; generic unsupported legacy history keys remain disabled. Engine and immutable/legacy KB share positive structured-scope guards, including missing/renamed/lost-family/cache controls. JEE440 and immutable Rule34 source/version/provenance/private-writer contracts remain authoritative.
 
-Issuer/context/category/stream/history/target/intake edits prune dependent reports, while first intake selection retains just-collected references and passport/visa edits preserve academic reports. Independent completed history and old answers/results/tasks/applications/personal progress are not rewritten. New evaluations capture a combined explicit ENGINE_REVISION using the existing SHA256 identity of sorted literal path/hash entries for checker steps, engine, JEE/Saudi derivation, assessment/versioning and task profile mapping. Protected historical tokens remain exact.
+Issuer/context/category/stream/history/target/intake edits prune dependent reports, while first intake selection retains just-collected references and passport/visa edits preserve academic reports. Independent completed history and old answers/results/tasks/applications/personal progress are not rewritten. New evaluations capture a combined explicit ENGINE_REVISION using the existing SHA256 identity of sorted literal path/hash entries for the combined union of checker steps, result model, engine, JEE/Saudi/Pakistan derivation, assessment/versioning, immutable/legacy KB and task profile mapping. Protected historical tokens remain exact.
 
 See [current source verification](up-elig-09-source-verification.md) for original literal anchors, root terminal-capture vs worker retrieval limits, applicability and remaining precise unknowns/publication holds. All qualification/recognition/family reports remain applicant reports, not app verification; admitting institutions decide. Worker unit tests do not establish real RLS/browser/provider/CI/build/integration gates; root owns those gates.
+### Cross-issuer national checker routing (UP-ELIG-08 repair)
+
+Versioned national flows collect the actual school issuer/context pair once before
+school evidence. The explicit national issuer supplies the assessed qualification
+country and board catalogue; a landing-country hint never hides available Indian
+board, percentage or prior-study assessment questions. Actual Pakistan issuers
+activate Pakistan evidence on fresh, edited and restored flows regardless of the
+landing country. Issuer/context edits recollect school evidence and clear dependent
+recognition/relationship reports while retaining the core prior-study history.
+Uncovered/uncertain contexts prune hidden evidence and retain only a Pakistan
+source-review marker; that marker derives no Pakistan facts or positive outcome.
+Legacy reads remain unchanged. Passport/visa edits preserve academic reports.
+The explicit current revision adds pakistan-current-v2; protected old assessment
+revisions, immutable source versions and captured UTC instants are never rewritten.

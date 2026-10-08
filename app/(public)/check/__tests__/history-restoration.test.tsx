@@ -1,3 +1,4 @@
+import {currentPakistanAnswers} from './pakistan-current.fixture';
 ﻿import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
@@ -232,6 +233,29 @@ it("does not restore stale foreign degree detail through a missing Saudi subtype
   expect(result.answers).not.toHaveProperty("priorStudyInstitution");
   expect(result.answers).not.toHaveProperty("priorStudyRecognitionReference");
 });
+it('upgrades saved Pakistan drafts and stops at the exact certificate without aliasing FSc',()=>{
+ const saved={qualificationHistoryVersion:1,targetDegree:'bachelor',nationality:'pk',certificateCountry:'pk',visaApplicationCountry:'pk',curriculumType:'national',board:'fsc',schoolGradePercent:78,schoolQualificationCountry:'pk',schoolQualificationContext:'national',hasPriorUniversityStudy:false,targetField:'cs',intake:null,apsApplicationContext:'unknown'};
+ const restored=recover(JSON.stringify({answers:saved,stepIndex:99}),'pk');const a=restored.answers as PartialAnswers;
+ expect(a.pakistanVersion).toBe(1);expect(a.pkCertificate).toBeUndefined();expect(a.board).toBeUndefined();expect(restored.stepIndex).toBe(visibleSteps(a).indexOf('pkCertificate'));expect(restored.removeItem).not.toHaveBeenCalled();
+});
+it('Pakistan account edits upgrade legacy records and require explicit certificate/group evidence',()=>{
+ captured.initial=[];renderToStaticMarkup(React.createElement(ProfileReview,{initialAnswers:{qualificationHistoryVersion:1,targetDegree:'bachelor',nationality:'pk',certificateCountry:'pk',curriculumType:'national',board:'fsc'}}));expect(captured.initial[0]).toMatchObject({pakistanVersion:1});expect(captured.initial[0]).not.toHaveProperty('pkCertificate');
+});
+
+it('upgrades unversioned Pakistan drafts into required history without retaining legacy board',()=>{const restored=recover(JSON.stringify({answers:{targetDegree:'bachelor',certificateCountry:'pk',nationality:'pk',visaApplicationCountry:'pk',curriculumType:'national',board:'fsc',schoolGradePercent:78,targetField:'cs',intake:null},stepIndex:99}),'pk');expect(restored.answers).toMatchObject({pakistanVersion:1,qualificationHistoryVersion:1});expect(restored.answers).not.toHaveProperty('board');});
+
+
+it.each(['pk','in'] as const)('restores %s landing with opposite actual issuer and unique reachable evidence', country=>{
+ const actual=country==='pk'?'in':'pk';
+ const saved={...indiaAnswers,pakistanVersion:1,certificateCountry:country,schoolQualificationCountry:actual,board:'cbse',pkCertificate:'hssc',pkGroup:'science',pkSchoolCompletion:'completed_12_grades',pkTargetFamily:'technology',pkTargetFamilyReference:'Programme source'} as const;
+ const restored=recover(JSON.stringify({answers:saved,stepIndex:99}),country);const answers=restored.answers as PartialAnswers;
+ const steps=visibleSteps(answers);expect(new Set(steps).size).toBe(steps.length);
+ expect(steps).toContain(actual==='in'?'board':'pkCertificate');
+ expect(answers).not.toHaveProperty(actual==='in'?'pkGroup':'board');
+ captured.initial=[];renderToStaticMarkup(React.createElement(ProfileReview,{initialAnswers:saved}));
+ expect(visibleSteps(captured.initial[0] as PartialAnswers)).toEqual(steps);
+ expect(saved.board).toBe('cbse');
+});
 
 it("restores legacy JEE drafts at Main without inventing passage or losing university history", () => {
   const legacy = { ...indiaAnswers, jeeVersion: undefined, jeeMainStatus: undefined,
@@ -275,4 +299,25 @@ it("restores Saudi v2 actual India issuer with selectable Indian boards before a
  expect(buildOptions("board", answers).map(o => o.value)).toEqual(expect.arrayContaining(["cbse", "cisce", "state_board"]));
  const html = renderToStaticMarkup(<CheckFlow initialAnswers={answers} initialStepIndex={recovered.stepIndex as number} />);
  expect(html).toContain("CBSE"); expect(html).not.toContain("Tawjihiyah");
+});
+it('restores old Pakistan study reports without inventing current assessment evidence',()=>{
+ const saved={...currentPakistanAnswers,pkStudyEvidenceVersion:undefined,pkCurrentAssessment:undefined,pkCurrentAssessmentReference:undefined};
+ const restored=recover(JSON.stringify({answers:saved,stepIndex:99}),'pk');const answers=restored.answers as PartialAnswers;
+ expect(answers.pkStudyEvidenceVersion).toBe(2);expect(answers.pkCurrentAssessment).toBeUndefined();expect(restored.stepIndex).toBe(visibleSteps(answers).indexOf('pkCurrentAssessment'));expect(AnswersSchema.safeParse(answers).success).toBe(false);
+});
+it('fresh current Pakistan study flow reaches assessment after first intake and completes actual direct mapping',()=>{
+ let answers:PartialAnswers={qualificationHistoryVersion:1,apsScopeVersion:1,indiaStudyRouteVersion:1};
+ for(let i=0;i<visibleSteps(answers).length;i++){const step=visibleSteps(answers)[i];if(!isAnswered(answers,step))answers=withAnswer(answers,step,currentPakistanAnswers[step as keyof typeof currentPakistanAnswers] as Answers[typeof step]);}
+ expect(AnswersSchema.safeParse(answers).success).toBe(true);expect(answers.pkSuccessfulYearsReference).toBe(currentPakistanAnswers.pkSuccessfulYearsReference);expect(buildProfile(AnswersSchema.parse(answers)).qualificationHistory?.pakistanStudy?.assessment).toBe('reported_current_support');
+});
+
+it('new/current Pakistan flow and profile edits show orientation and the official link without blanket denial',()=>{
+ const initialStepIndex=visibleSteps(currentPakistanAnswers).indexOf('pkCurrentAssessment');
+ for(const html of [renderToStaticMarkup(<CheckFlow initialAnswers={currentPakistanAnswers} initialStepIndex={initialStepIndex}/>),renderToStaticMarkup(<ProfileReview initialAnswers={currentPakistanAnswers}/>)]){
+  expect(html).toContain('bounded one-year subject-restricted');
+  expect(html).toContain('regional brochure still says two years');
+  expect(html).toContain('institution makes the final decision');
+  expect(html).toContain('href="https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang"');
+  expect(html).not.toContain('No direct entry is established');
+ }
 });

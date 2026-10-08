@@ -9,7 +9,8 @@ import { ENGINE_REVISION, currentAssessmentContext } from "../current";
 import { raw, ruleId, version } from "./assessment-fixtures";
 
 const oldRevision = "unipirate/qualification+aps+dmat+india-study+ib+gce@bd836cc/assessment-v1";
-const newRevision = "unipirate/jee-ordinary+saudi+assessment-v1@sha256:9ece1216013df345618b899bb6852ca00e44f1cc03fdbcdbbc7c6eedaaeddc5e";
+const priorSaudiRevision = "unipirate/jee-ordinary+saudi+assessment-v1@sha256:9ece1216013df345618b899bb6852ca00e44f1cc03fdbcdbbc7c6eedaaeddc5e";
+const newRevision = "unipirate/jee-ordinary+saudi+pakistan-current-v2+assessment-v1@sha256:2773be9b5a158e853f1d88febaf5b231a42e3778fc395776470f9de34c4635e5";
 const context = { evaluatedAt: "2026-10-08T12:00:00Z", engineRevision: ENGINE_REVISION };
 const industrialAnswers = { ...saudiAnswers, saudiCertificateSubtype: "industrial_certificate", yearsOfUniversityStudy: 0,
   saudiEnrollment: "reported_document", saudiEnrollmentField: "Computing", saudiEnrollmentReference: "Synthetic enrollment document",
@@ -71,8 +72,8 @@ describe("Saudi authoritative assessments", () => {
     expect(ENGINE_REVISION).toBe(newRevision);
     expect(currentAssessmentContext().engineRevision).toBe(newRevision);
     expect(evaluateAssessment(buildProfile(AnswersSchema.parse(saudiAnswers)), [], context).metadata.engineRevision).toBe(newRevision);
-    const legacy = { answers: saudiAnswers, result: evaluateAssessment(buildProfile(AnswersSchema.parse(saudiAnswers)), [], { ...context, engineRevision: oldRevision }).result,
-      assessment_metadata: { formatVersion: 1, evaluatedAt: context.evaluatedAt, engineRevision: oldRevision, selectedVersionIds: [], selectionIssues: [] } };
+    const legacy = { answers: saudiAnswers, result: evaluateAssessment(buildProfile(AnswersSchema.parse(saudiAnswers)), [], { ...context, engineRevision: priorSaudiRevision }).result,
+      assessment_metadata: { formatVersion: 1, evaluatedAt: context.evaluatedAt, engineRevision: priorSaudiRevision, selectedVersionIds: [], selectionIssues: [] } };
     const before = JSON.stringify(legacy);
     const read = parseStoredAssessment(legacy, []);
     expect(read.kind).toBe("authoritative");
