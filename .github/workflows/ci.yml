@@ -72,8 +72,9 @@ jobs:
             console.log("local Supabase validated: API http://127.0.0.1:54321, DB 127.0.0.1:54322");
           '
 
+      # Use one thread worker: the CPU-heavy immutable corpus can starve fork RPC updates.
       - name: Test (ordinary suite + JSON report)
-        run: pnpm exec vitest run --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
+        run: pnpm exec vitest run --pool=threads --maxWorkers=1 --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
 
       - name: Prove RLS suite actually executed
         run: |
