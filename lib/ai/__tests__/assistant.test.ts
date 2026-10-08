@@ -44,7 +44,7 @@ describe("buildSystemPrompt", () => {
 describe("model configuration", () => {
   it("uses the Nemotron model for chat and course extraction", () => {
     expect(CHAT_MODEL).toBe("nvidia/nemotron-3.5-lightning:free");
-    expect(COURSE_EXTRACTION_MODEL).toBe("nvidia/nemotron-3.5-lightning:free");
+    expect(COURSE_EXTRACTION_MODEL).toBe("nvidia/nemotron-3-super-120b-a12b:free");
   });
 });
 

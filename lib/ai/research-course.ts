@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getServerEnv } from "@/lib/env";
 import { buildResearchContext, buildResearchDraft, canonicalResearchUrl, focusedResearchUrls, links, officialDomains, onDomain, ObservationSchema, ResearchOutputSchema, ResearchSeedSchema, ResearchUrlSchema, type Observation, type ResearchSeed } from "@/lib/courses/research";
 
-export const COURSE_EXTRACTION_MODEL = "nvidia/nemotron-3.5-lightning:free";
+export const COURSE_EXTRACTION_MODEL = "nvidia/nemotron-3-super-120b-a12b:free";
 const searchResponse = z.object({ results: z.array(z.object({ url: z.string().max(2048) })).max(20) });
 const extractResponse = z.object({ results: z.array(z.object({ url: z.string().max(2048), raw_content: z.string().max(500_000) })).max(12) });
 type Generate = (seed: ResearchSeed, observations: Observation[], signal: AbortSignal) => Promise<unknown>;
