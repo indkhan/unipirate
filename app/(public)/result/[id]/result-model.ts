@@ -1,6 +1,7 @@
 import {
   NO_RULE_MESSAGES,
   APS_SCOPES,
+  type ResultDiagnostic,
   type Citation,
   type Profile,
   type Result,
@@ -83,6 +84,25 @@ function flagRelevant(
   return true;
 }
 
+/** Overall academic explanation; candidate failures never override a winner. */
+export function diagnosticRequirement(expected: NonNullable<Result['diagnostics']>[number]['facts'][number]['expected']): string {
+  if (typeof expected !== 'object') return String(expected);
+  const operator = {eq: '', neq: 'not ', gte: 'at least ', gt: 'more than ', lte: 'at most ', lt: 'less than ', in: 'one of ', nin: 'none of '}[expected.op];
+  return operator + (Array.isArray(expected.value) ? expected.value.join(', ') : String(expected.value));
+}
+
+export function primaryDiagnostic(result: Result): ResultDiagnostic | undefined {
+  const academic = result.diagnostics?.filter(d => d.support === 'path') ?? [];
+  return academic.find(d => d.reason === 'equal_specificity_conflict') ?? academic.find(d => d.status === 'known_route') ?? academic.find(d => d.followUp) ?? academic.find(d => d.status === 'source_conflict') ?? academic.find(d => d.status === 'targeted_missing_fact') ?? academic.find(d => d.status === 'known_unmet_condition') ?? academic[0];
+}
+const DIAGNOSTIC_LABELS: Record<ResultDiagnostic['status'], string> = {
+  known_route: 'A supported route is available.',
+  known_unmet_condition: 'A condition is unmet for the cited route; other qualifications may need a separate assessment.',
+  targeted_missing_fact: 'Your admission assessment is missing a specific answer.',
+  source_conflict: 'Conflicting evidence leaves this admission assessment unresolved. Confirm with the cited official sources.',
+  unsupported: 'Your admission route still needs confirmation.',
+};
+
 export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
   const flags = [
     ["testAS", "TestAS", result.testAS],
@@ -99,7 +119,7 @@ export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
         : result.path === "subject_restricted" && profile.qualificationHistory?.indiaStudyRouteVersion === 1 &&
         profile.targetDegree === "bachelor" && profile.curriculumType === "national" && profile.schoolQualification?.country === "in"
         ? "Your reported qualifications indicate a subject-restricted direct route. UniPirate has not independently verified your reports; the university decides programme admission."
-        : result.path === "direct" && profile.qualificationHistory?.saudiBachelorEvidence?.version === 2 ? "Your reported completed Bachelor indicates general undergraduate access to all subjects and higher education institutions. UniPirate has not independently verified your reports; the university decides programme admission. This does not establish Master's equivalence." : PATH_LABELS[result.path],
+        : result.path === "direct" && profile.qualificationHistory?.saudiBachelorEvidence?.version === 2 ? "Your reported completed Bachelor indicates general undergraduate access to all subjects and higher education institutions. UniPirate has not independently verified your reports; the university decides programme admission. This does not establish Master's equivalence." : result.path === 'unknown' && primaryDiagnostic(result) ? DIAGNOSTIC_LABELS[primaryDiagnostic(result)!.status] : PATH_LABELS[result.path],
       citations: citationsFor(result, "path"),
       unknown: result.path === "unknown",
     },
@@ -126,14 +146,17 @@ export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
 }
 
 /** Drops "confirm whether X applies" gaps for flags the profile never needs. */
-export function visibleUnknowns(result: Result, profile: Profile): string[] {
+export function visibleUnknowns(result: Result, profile: Profile, historical = false): string[] {
+  const diagnostic = primaryDiagnostic(result);
   return result.unknowns.filter((unknown) => {
+    if (unknown === NO_RULE_MESSAGES.path && !historical && (diagnostic?.followUp || diagnostic?.status === 'known_unmet_condition')) return false;
     if (unknown === NO_RULE_MESSAGES.testas)
       return flagRelevant("testAS", result, profile);
     if (unknown === NO_RULE_MESSAGES.dmat)
       return flagRelevant("dMAT", result, profile);
     return true;
-  });
+  }).map(message => !historical && (diagnostic?.followUp || diagnostic?.status === 'known_unmet_condition') && diagnostic.relatedUnknowns?.includes(message)
+    ? message.replace(/\.? Confirm with (?:the university|https?:\/\/\S+)\.?$/, '') : message);
 }
 
 export function buildRoute(result: Result): RouteStation[] {
