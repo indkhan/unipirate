@@ -309,7 +309,78 @@ export type ResultSupport =
   | "steps"
   | "unknowns";
 
+export const ResultDiagnosticSchema = z.object({
+  support: z.enum(['path', 'aps', 'aps:qualification', 'aps:application', 'aps:visa', 'testAS', 'dMAT']),
+  status: z.enum(['known_route', 'known_unmet_condition', 'targeted_missing_fact', 'source_conflict', 'unsupported']),
+  reason: z.enum(['route_established', 'condition_unmet', 'fact_missing', 'equal_specificity_conflict', 'applicability_unsupported', 'no_supported_rule']),
+  ruleIds: z.array(z.string()).refine(ids => new Set(ids).size === ids.length),
+  facts: z.array(z.object({key: FactKeySchema, actual: Primitive.optional(), reported: Primitive.optional(), expected: ConditionSchema}).strict()),
+  relatedUnknowns: z.array(z.string()).optional(),
+  followUp: z.object({key: FactKeySchema, question: z.string().min(1)}).strict().optional(),
+}).strict();
+export type ResultDiagnostic = z.infer<typeof ResultDiagnosticSchema>;
+
+const DIAGNOSTIC_QUESTIONS: Partial<Record<FactKey, string>> = {
+  in_class12_prior_study_kind: 'Have you previously studied at a university?',
+  pk_prior_study_kind: 'Have you previously studied at a university?',
+  sa_prior_study_kind: 'Have you previously studied at a university?',
+  in_class12_successful_bachelor_years: 'How many Bachelor academic years have you successfully completed, according to your attained study records?',
+  pk_successful_academic_years: 'How many academic years have you successfully completed, supported by annual subject/mark records and the applicable reference?',
+  sa_successful_bachelor_years: 'How many Bachelor academic years have you successfully completed?',
+  class12_percent: 'What is your reported Class XII overall percentage?',
+  pk_grade_percent: 'What is your reported HSSC/Intermediate overall percentage?',
+  intake_index: 'Which intake are you applying for?',
+  in_class12_reported_recognition: 'What does the applicable official assessment say about this institution, Bachelor programme and attained study, and what is its reference?',
+  in_class12_reported_target_relation: 'What does the applicable official assessment say about your previous field and this intended target, and what is its reference?',
+  pk_reported_recognition: 'What does the applicable official recognition assessment say about your institution and academic Bachelor study, and what is its reference?',
+  pk_reported_target_relation: 'What does the applicable official assessment say about the relationship between your previous field and this intended target, and what is its reference?',
+  pk_current_assessment: 'What does the current applicable institutional assessment say about this qualification, study, target and intake, and what is its reference?',
+  sa_reported_recognition: 'What does the applicable official recognition assessment say about your institution and Bachelor study, and what is its reference?',
+  sa_reported_target_relation: 'What does the applicable official assessment say about your previous field and this intended target, and what is its reference?',
+  sa_certificate_subtype: 'Which exact Saudi school certificate subtype do your documents show?',
+  sa_private_assessment_coverage: 'What does your applicable ZAB diploma/subject assessment report about accreditation, subject breadth and all passing minima, and what is its reference?',
+  jee_main_status: 'Do your official results report qualifying passage in JEE Main?',
+  jee_advanced_status: 'Do your official results report qualifying passage in JEE Advanced?',
+  ib_exam_year: 'In which year did you take your IB examinations?',
+  ib_exam_session: 'Did you take your IB examinations in May or November?',
+  gce_school_years: 'How many ascending school years did you complete?',
+  gce_awarding_body: 'Which awarding body issued your A-Level qualifications?',
+  gce_qualification_context: 'Under which qualification system were your A-Levels awarded?',
+  gce_qualification_type: 'Which exact A-Level qualification type do your documents show?',
+  gce_evidence: 'Do you have final awarding-body certificates, provisional results or school-issued documents?',
+  aps_issuer_country: 'Which country issued the qualification being assessed?',
+  aps_qualification_context: 'Is this qualification from the issuing country’s national system or an international system?',
+  pk_certificate: 'Which exact school certificate category do your documents show?',
+  pk_documentary_group: 'Which documentary Science, Commerce or Humanities group do your school records show?',
+  pk_school_completion: 'Do your records show completed twelve-grade secondary schooling?',
+  pk_target_family: 'What does the applicable official classification say about this exact intended target family, and what is its reference?',
+  pk_annual_records: 'Do you have annual subject and mark records for your prior study?',
+  pk_study_mode: 'Was your prior academic Bachelor study full time?',
+  in_class12_prior_study_country: 'In which country did you undertake your prior university study?',
+  in_class12_study_mode: 'Was your prior Bachelor programme regular, distance/online or another mode?',
+  sa_degree_nominal_years: 'What is the full nominal duration of your completed Bachelor qualification?',
+  sa_degree_norms: 'What does the applicable exact Bachelor assessment say about prescribed study norms and generally full-time study, and what is its reference?',
+  sa_degree_recognition: 'What does the applicable official assessment say about recognition of this exact completed Bachelor, and what is its reference?',
+  sa_reported_subject_assessment: 'What does your applicable ZAB subject assessment conclude, and what is its reference?',
+  jee_school_certificate: 'Which exact completed secondary school certificate category do your documents show?',
+  jee_reported_target_family: 'What does the applicable official classification say about this exact intended programme’s target family, and what is its reference?',
+};
+export function diagnosticFactLabel(key: string): string {
+  return SAUDI_FACT_LABELS[key] ?? IB_FACT_LABELS[key] ?? ({
+    class12_percent: 'reported Class XII overall percentage', pk_grade_percent: 'reported HSSC/Intermediate overall percentage',
+    in_class12_prior_study_kind: 'prior university study', pk_prior_study_kind: 'prior university study',
+    in_class12_successful_bachelor_years: 'successfully completed Bachelor academic years',
+    pk_successful_academic_years: 'successful academic years supported by annual records/reference',
+    intake_index: 'intake product coverage (not source commencement)',
+    gce_min_al_grade: 'minimum grade rank on the same full A-Level trio (C = 3)',
+    gce_distinct_al_count: 'independent full A-Level subjects on the same trio',
+  } as Record<string, string>)[key] ?? key.replaceAll('_', ' ');
+}
+
 export type Result = {
+  /** Additive explanation only; absent in protected historical payloads. */
+  diagnostics?: ResultDiagnostic[];
+  candidateCitations?: Citation[];
   path: z.infer<typeof PathValue>;
   institutionRestriction?: "fachhochschule";
   aps: z.infer<typeof FlagValue>;
@@ -642,6 +713,8 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   const scopedIb = (r: ParsedRule) => r.conditions.ib_evidence === 'v1' && r.conditions.ib_document_status !== undefined && r.conditions.ib_exam_year !== undefined;
   const matched = live.filter(r => isSaudiAdmissionRule(r) && !isScopedSaudiRule(r) ? false : ibPath(r) && !scopedIb(r) ? false : positiveGce(r) ? scopedGce(r) && witnesses.some(w=>ruleMatches(w,r)) : ruleMatches(facts,r));
 
+  const diagnostics: ResultDiagnostic[] = [];
+  const candidateCitations: Citation[] = [];
   const citations: Citation[] = [];
   const unknowns: string[] = [];
   const cite = (rule: ParsedRule, support: ResultSupport, diagnosticClaim?: string) => {
@@ -677,7 +750,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       aps: "aps",
       testas: "testAS",
       dmat: "dMAT",
-    }[key as "path" | "aps" | "testas" | "dmat"]) as ResultSupport;
+    }[key as "path" | "aps" | "testas" | "dmat"]) as ResultDiagnostic["support"];
     let contenders = matched.filter((r) => outcome(r) !== undefined);
     // Independent general undergraduate HZB subsumes the narrower Saudi school
     // entitlements. Those grants coexist; other source conflicts still resolve below.
@@ -691,6 +764,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     // The narrow FH restriction belongs to its path, never a separately merged flag.
     const values = new Set(top.map(r => key === "path" ? JSON.stringify([outcome(r), r.outcomes.institution_restriction ?? null]) : outcome(r)));
     if (values.size > 1) {
+      diagnostics.push({support, status: "source_conflict", reason: "equal_specificity_conflict", ruleIds: top.map(r => r.id), facts: []});
       top.forEach((rule) => cite(rule, support));
       unknowns.push(
         `Conflicting rules for ${key} at equal specificity (${top.map((r) => r.id).join(", ")}) — confirm with the official sources cited.`,
@@ -699,6 +773,8 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     }
     top.forEach((rule) => cite(rule, support));
     const value = outcome(top[0]) as V;
+    const decisiveFacts = key === 'path' && positiveGce(top[0]) ? witnesses.find(w => ruleMatches(w, top[0])) ?? facts : facts;
+    if (value !== "unknown") diagnostics.push({support, status: key === "path" && value === "insufficient" ? "known_unmet_condition" : "known_route", reason: key === "path" && value === "insufficient" ? "condition_unmet" : "route_established", ruleIds: top.map(r => r.id), facts: Object.entries(top[0].conditions).map(([key, expected]) => ({key: key as FactKey, ...(decisiveFacts[key] === undefined ? {} : {actual: decisiveFacts[key]}), expected}))});
     if (value === "unknown") {
       // a rule that explicitly answers "we don't know yet" carries its own
       // confirm-with message
@@ -895,6 +971,61 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     }
   }
 
+  // Candidate explanations reuse the matcher and reviewed scope guards. They
+  // never change the resolved path, flags, documents or tasks.
+  const missing = (value: Fact | undefined) => value === undefined || value === 'unknown' || ['missing_identity', 'missing_session', 'missing_programme'].includes(String(value));
+  const candidates = live.filter(rule => {
+    if (!rule.outcomes.path || ['unknown', 'insufficient'].includes(rule.outcomes.path)) return false;
+    if (isQuarantinedJeeRule(rule) || isQuarantinedPakistanRule(rule) || isSaudiAdmissionRule(rule) && !isScopedSaudiRule(rule)) return false;
+    if (rule.conditions.target_degree !== undefined && !conditionPasses(facts.target_degree, rule.conditions.target_degree)) return false;
+    if (rule.conditions.curriculum !== undefined && !conditionPasses(facts.curriculum, rule.conditions.curriculum)) return false;
+    // Issuer and documentary group keep another country's/stream's candidates
+    // out of this profile's explanation. Missing is never inferred as no study.
+    for (const key of ['aps_issuer_country', 'pk_documentary_group', 'sa_certificate_subtype', 'sa_national_stream', 'target_field'] as const) {
+      if (rule.conditions[key] !== undefined && !missing(facts[key]) && !conditionPasses(facts[key], rule.conditions[key])) return false;
+    }
+    for (const key of ['in_class12_prior_study_kind', 'pk_prior_study_kind'] as const) {
+      if (rule.conditions[key] !== undefined && !missing(facts[key]) && !conditionPasses(facts[key], rule.conditions[key])) return false;
+    }
+    if (isScopedSaudiRule(rule) && rule.conditions.sa_degree_evidence !== undefined && profile.qualificationHistory?.country !== 'sa') return false;
+    if (positiveGce(rule)) return scopedGce(rule);
+    if (ibPath(rule)) return scopedIb(rule);
+    return isScopedPakistanPathRule(rule) || isScopedSaudiRule(rule) || isScopedJeePathRule(rule) || Object.keys(rule.conditions).some(key => key.startsWith('in_class12_'));
+  });
+  for (const rule of candidates) {
+    const comparisons = (positiveGce(rule) && witnesses.length ? witnesses : [facts]).map(witness => ({witness, failed: Object.entries(rule.conditions).filter(([key, condition]) => !conditionPasses(witness[key], condition))})).sort((a, b) => a.failed.length - b.failed.length);
+    const {witness, failed} = comparisons[0];
+    if (!failed.length) continue;
+    const decisive = failed.map(([key, expected]) => ({key: key as FactKey, ...(witness[key] === undefined ? {} : {actual: witness[key]}), expected}));
+    // The positive derivation deliberately withholds negative completed-degree
+    // reports. Retain those literal applicant reports for explanation only.
+    for (const fact of decisive) {
+      const history = profile.qualificationHistory;
+      if (fact.key === 'sa_degree_recognition' && history?.priorStudyRecognition === 'reported_official_rejected' && history.priorStudyRecognitionReference?.trim()) Object.assign(fact, {reported: history.priorStudyRecognition});
+      if (fact.key === 'sa_degree_norms' && history?.saudiBachelorEvidence?.assessment === 'reported_official_unmet' && history.saudiBachelorEvidence.reference?.trim()) Object.assign(fact, {reported: history.saudiBachelorEvidence.assessment});
+    }
+    const reportedNegative = decisive.some(f => 'reported' in f);
+    const conflict = decisive.some(f => f.actual === 'source_conflict' || f.key === 'pk_current_assessment' && f.actual === 'reported_contrary');
+    const unsupported = decisive.some(f => !missing(f.actual) && (['intake_index', 'aps_qualification_context', 'in_class12_prior_study_country', 'in_class12_study_mode', 'pk_prior_study_country', 'pk_prior_study_completion', 'pk_study_mode', 'gce_qualification_context', 'gce_qualification_type', 'gce_evidence', 'gce_awarding_body', 'ib_evidence', 'sa_degree_context', 'sa_degree_mode'].includes(f.key) || ['other', 'outside', 'reported_official_outside', 'completed_qualification', 'discontinued', 'main_exemption', 'preparatory_rank', 'cross_year', 'unclear', 'legacy', 'invalid', 'unlisted', 'not_yet_effective', 'programme_not_covered', 'identity_conflict'].includes(String(f.actual))));
+    const gap = decisive.some(f => missing(f.actual) && !('reported' in f));
+    const status = conflict ? 'source_conflict' : unsupported ? 'unsupported' : reportedNegative ? 'known_unmet_condition' : gap ? 'targeted_missing_fact' : 'known_unmet_condition';
+    diagnostics.push({support: 'path', status, reason: conflict || unsupported ? 'applicability_unsupported' : reportedNegative ? 'condition_unmet' : gap ? 'fact_missing' : 'condition_unmet', ruleIds: [rule.id], facts: decisive, relatedUnknowns: unknowns.filter(message => citations.some(c => c.ruleId === rule.id && c.claim === message) || matched.some(r => r.outcomes.path === 'unknown' && r.source_url === rule.source_url && r.outcomes.note === message && decisive.some(f => f.key.startsWith('in_class12_') && r.conditions[f.key] !== undefined)))});
+    // An unmatched positive note cannot become the claimed route in a citation.
+    if (!citations.some(c => c.ruleId === rule.id)) candidateCitations.push({ruleId: rule.id, sourceUrl: rule.source_url, verifiedAt: rule.last_verified_at ?? null, status: rule.status as 'beta' | 'verified', supports: ['unknowns'], claim: 'Candidate route only: ' + decisive.map(f => diagnosticFactLabel(f.key) + (missing(f.actual) ? ' missing or uncertain' : ' does not satisfy this candidate condition')).join('; ') + '. Other supported routes remain independent.'});
+  }
+  if (!diagnostics.some(d => d.support === 'path')) diagnostics.push({support: 'path', status: 'unsupported', reason: 'no_supported_rule', ruleIds: [], facts: []});
+  if (path === 'unknown' && !diagnostics.some(d => d.support === 'path' && d.status === 'source_conflict')) {
+    const gaps = diagnostics.filter(d => d.support === 'path' && d.status === 'targeted_missing_fact');
+    const prior = profile.qualificationHistory?.hasPriorUniversityStudy === undefined
+      ? gaps.find(d => d.facts.some(f => ['in_class12_prior_study_kind', 'pk_prior_study_kind', 'sa_prior_study_kind'].includes(f.key))) : undefined;
+    const chosen = prior ?? gaps.find(d => d.facts.some(f => missing(f.actual) && DIAGNOSTIC_QUESTIONS[f.key]));
+    const fact = chosen?.facts.find(f => missing(f.actual) && DIAGNOSTIC_QUESTIONS[f.key] && (!prior || ['in_class12_prior_study_kind', 'pk_prior_study_kind', 'sa_prior_study_kind'].includes(f.key)));
+    if (chosen && fact) {
+      chosen.followUp = {key: fact.key, question: DIAGNOSTIC_QUESTIONS[fact.key]!};
+      chosen.relatedUnknowns = unknowns.filter(message => matched.some(r => r.outcomes.path === 'unknown' && r.outcomes.note === message && r.conditions[fact.key] !== undefined) || citations.some(c => chosen.ruleIds.includes(c.ruleId) && c.claim === message));
+    }
+  }
+
   const stepsDetailed = steps.sort((a, b) => a.order - b.order);
 
   return {
@@ -909,6 +1040,8 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     documents,
     stepsDetailed,
     citations,
+    candidateCitations,
     unknowns,
+    diagnostics,
   };
 }

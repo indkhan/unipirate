@@ -133,7 +133,7 @@ export default async function ResultPage({
             <VerdictCard result={history.original.result} profile={profile} profileLine={profileSummary(profile)} />
             <RouteCard result={history.original.result} />
             <DocumentsCard result={history.original.result} viewer={viewer} />
-            <UnknownsCard unknowns={visibleUnknowns(history.original.result, profile)} />
+            <UnknownsCard unknowns={visibleUnknowns(history.original.result, profile, true)} />
             <details><summary>Original immutable rule evidence</summary>
               {[...history.original.selectedVersions, ...history.original.diagnosticVersions].map(version => <div key={version.id}>
                 <p>Rule {version.rule_id} · Version {version.id} · {version.provenance}</p>

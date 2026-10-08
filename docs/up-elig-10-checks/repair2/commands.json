@@ -1,0 +1,72 @@
+[
+  {
+    "executable": "C:/Users/mgsuk/AppData/Roaming/fnm/node-versions/v22.23.2/installation/node.exe",
+    "args": [
+      "node_modules/vitest/vitest.mjs",
+      "run",
+      "lib/engine/__tests__/diagnostics.test.ts",
+      "lib/rules/__tests__/assessment.test.ts",
+      "lib/rules/__tests__/saudi-assessment.test.ts",
+      "lib/rules/__tests__/versioning.test.ts",
+      "app/(public)/result/[id]/__tests__/diagnostic-badge.test.tsx",
+      "app/(public)/result/[id]/__tests__/result-model.test.ts",
+      "--maxWorkers=1",
+      "--no-cache"
+    ],
+    "cwd": "C:/codebases/unipirate-up-elig-10",
+    "shell": false,
+    "exit": 0,
+    "log": "focused.log"
+  },
+  {
+    "executable": "C:/Users/mgsuk/AppData/Roaming/fnm/node-versions/v22.23.2/installation/node.exe",
+    "args": [
+      "node_modules/vitest/vitest.mjs",
+      "run",
+      "--maxWorkers=1",
+      "--no-cache"
+    ],
+    "cwd": "C:/codebases/unipirate-up-elig-10",
+    "shell": false,
+    "exit": 0,
+    "log": "full-unit.log"
+  },
+  {
+    "executable": "C:/Users/mgsuk/AppData/Roaming/fnm/node-versions/v22.23.2/installation/node.exe",
+    "args": [
+      "node_modules/eslint/bin/eslint.js"
+    ],
+    "cwd": "C:/codebases/unipirate-up-elig-10",
+    "shell": false,
+    "exit": 0,
+    "log": "lint.log"
+  },
+  {
+    "executable": "C:/Users/mgsuk/AppData/Roaming/fnm/node-versions/v22.23.2/installation/node.exe",
+    "args": [
+      "node_modules/typescript/bin/tsc",
+      "--noEmit",
+      "--incremental",
+      "false"
+    ],
+    "cwd": "C:/codebases/unipirate-up-elig-10",
+    "shell": false,
+    "exit": 0,
+    "log": "typecheck.log"
+  },
+  {
+    "executable": "git",
+    "args": [
+      "diff",
+      "--check",
+      "--",
+      "lib/rules/current.ts",
+      "lib/rules/__tests__/saudi-assessment.test.ts",
+      "docs/up-elig-10-checks/engine-revision.json"
+    ],
+    "cwd": "C:/codebases/unipirate-up-elig-10",
+    "shell": false,
+    "exit": 0,
+    "log": "diff-check.log"
+  }
+]
