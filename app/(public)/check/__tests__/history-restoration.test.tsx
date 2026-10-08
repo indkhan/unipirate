@@ -256,3 +256,14 @@ it('fresh current Pakistan study flow reaches assessment after first intake and 
  for(let i=0;i<visibleSteps(answers).length;i++){const step=visibleSteps(answers)[i];if(!isAnswered(answers,step))answers=withAnswer(answers,step,currentPakistanAnswers[step as keyof typeof currentPakistanAnswers] as Answers[typeof step]);}
  expect(AnswersSchema.safeParse(answers).success).toBe(true);expect(answers.pkSuccessfulYearsReference).toBe(currentPakistanAnswers.pkSuccessfulYearsReference);expect(buildProfile(AnswersSchema.parse(answers)).qualificationHistory?.pakistanStudy?.assessment).toBe('reported_current_support');
 });
+
+it('new/current Pakistan flow and profile edits show orientation and the official link without blanket denial',()=>{
+ const initialStepIndex=visibleSteps(currentPakistanAnswers).indexOf('pkCurrentAssessment');
+ for(const html of [renderToStaticMarkup(<CheckFlow initialAnswers={currentPakistanAnswers} initialStepIndex={initialStepIndex}/>),renderToStaticMarkup(<ProfileReview initialAnswers={currentPakistanAnswers}/>)]){
+  expect(html).toContain('bounded one-year subject-restricted');
+  expect(html).toContain('regional brochure still says two years');
+  expect(html).toContain('institution makes the final decision');
+  expect(html).toContain('href="https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang"');
+  expect(html).not.toContain('No direct entry is established');
+ }
+});

@@ -92,3 +92,24 @@ it('collects current applicable Pakistan assessment and invalidates references o
 
 it.each([['pkGroup','commerce'],['priorStudyInstitution','Changed institution'],['priorStudyField','Changed programme'],['priorStudyCompletion','discontinued'],['pkRecognition','reported_official_rejected'],['pkAnnualRecords','unknown'],['yearsOfUniversityStudy',2],['targetField','humanities']] as const)('changed %s invalidates applicable current assessment',(field,value)=>{const next=withAnswer(currentPakistanAnswers,field,value as never);expect(next.pkCurrentAssessmentReference).toBeUndefined();expect(next.pkCurrentAssessment).toBeUndefined();});
 it.each(['nationality','visaApplicationCountry'] as const)('%s preserves versioned current academic references',field=>{const next=withAnswer(currentPakistanAnswers,field,'sa');expect(next.pkCurrentAssessmentReference).toBe(currentPakistanAnswers.pkCurrentAssessmentReference);expect(next.pkRecognitionReference).toBe(currentPakistanAnswers.pkRecognitionReference);expect(next.pkTargetRelationReference).toBe(currentPakistanAnswers.pkTargetRelationReference);expect(next.pkSuccessfulYearsReference).toBe(currentPakistanAnswers.pkSuccessfulYearsReference);});
+
+it.each(['science','commerce','humanities'] as const)('current %s evidence prompts disclose orientation without the obsolete blanket denial',pkGroup=>{
+ const answers={...currentPakistanAnswers,pkGroup};
+ expect(answers.pkStudyEvidenceVersion).toBe(2);
+ for(const step of ['pkCurrentAssessment','pkCurrentAssessmentReference','pkStudyMode','pkStudyRegulations','pkAnnualRecords','pkSuccessfulYearsReference','pkRecognition','pkRecognitionReference','pkTargetRelation','pkTargetRelationReference'] as const){
+  expect(visibleSteps(answers)).toContain(step);
+  const copy=QUESTIONS[step];
+  expect(copy.subtitle).toMatch(/Applicant-reported.*does not independently verify/i);
+  expect(copy.subtitle).toMatch(/bounded one-year subject-restricted/i);
+  expect(copy.subtitle).toMatch(/regional brochure.*two years/i);
+  expect(copy.subtitle).toMatch(/Unsupported or historical.*contrary.*individual confirmation/i);
+  expect(copy.subtitle).toMatch(/institution makes the final decision/i);
+  expect(copy.subtitle).not.toMatch(/No direct entry is established|source conflict remains unresolved/i);
+  expect(copy.sourceUrl).toMatch(/^https:/);
+ }
+ for(const step of ['pkCurrentAssessment','pkCurrentAssessmentReference'] as const)expect(QUESTIONS[step].sourceUrl).toBe('https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang');
+ expect(buildOptions('pkCurrentAssessment',answers).map(o=>o.value)).toContain('reported_contrary');
+ const result=evaluate(buildProfile(AnswersSchema.parse(answers)),reviewedPakistanRules());
+ expect(result.path).toBe('subject_restricted');
+ expect(result.citations.map(c=>c.sourceUrl)).toEqual(expect.arrayContaining(['https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang','https://www.daad.pk/files/2022/11/Study-in-Germany-Undergraduate-Degree-Courses_2022.pdf']));
+});

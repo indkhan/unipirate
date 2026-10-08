@@ -19,7 +19,7 @@ export type Option = { value: unknown; label: string; key: string };
 
 /** Prompt (and optional subtitle) shown for each step of the checker. */
 const PK_SOURCE='https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=6&ad-layerId=193';
-const reported='Applicant-reported evidence; UniPirate does not independently verify it. No direct entry is established while the one-/two-year source conflict remains unresolved.';
+const reported='Applicant-reported evidence; UniPirate does not independently verify it. Current nonbinding guidance includes a bounded one-year subject-restricted route; the linked regional brochure still says two years. Unsupported or historical cases and contrary applicable assessments need individual confirmation. The institution makes the final decision.';
 export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; sourceUrl?: string }> = {
  pkCurrentAssessment:{question:'What does the intended institution/uni-assist current assessment say for this exact qualification, study, target and intake?',subtitle:'Current source guidance is nonbinding. Report a specific contrary instruction as a conflict; old or unrelated assessments cannot confirm this basis. '+reported,sourceUrl:'https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang'},
  pkCurrentAssessmentReference:{question:'Which authority, document and conclusion applies to this exact current case and intake?',subtitle:reported,sourceUrl:'https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang'},
