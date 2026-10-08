@@ -160,15 +160,16 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
    `visibleSteps` (branching), `withAnswer` (prunes answers whose step
    disappeared), `isAnswered` (gates Continue), `buildProfile` — is pure in
    `app/(public)/check/steps.ts`. Branches: curriculum type is asked before
-   the board; GCE and IB collect per-subject rows (one shared
-   `SubjectRowsEditor`, one static catalog each carrying the DAAD
-   classification); an IB Certificate short of the full diploma skips the
-   detail questions, since no rule can give it a path; the existing-APS
+   the board; GCE collects per-subject rows through `SubjectRowsEditor`; IB uses its own
+   evidence editor and the pure reviewed catalog in `lib/engine/ib.ts`. New IB
+   answers distinguish Diploma award / official IBO results with paper pending
+   from not awarded, Certificate only and unknown, collecting applicable
+   subject and examination evidence only for the first two; the existing-APS
    answer stays independent of visa filing in new/edited APS-versioned flows;
    pre-scope Saudi checks remain readable without inventing an answer. Steps
    rendered as a number input are listed in `NUMBER_STEPS` with their bounds.
 2. Submit (`submitCheck` server action) zod-validates the answers, evaluates
-   against published rules, and inserts a `checks` row through the dedicated
+   with one server UTC instant against applicable immutable versions, and inserts a `checks` row through the dedicated
    server-only check writer → redirect to
    `/result/[id]`.
 3. Ownership: anonymous submitters get a random token in an HttpOnly cookie;
@@ -178,10 +179,11 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
 4. `/result/[id]` is public to anyone holding the UUID. `get_shared_check`
    returns only that UUID's shareable columns; table collection reads and
    browser writes are forbidden. The page validates stored answers and
-   re-evaluates them against current published rules, rather than trusting
-   stored verdicts (including legacy client-written results). Thus the displayed
-   assessment can change after rule updates; its timestamp is the original
-   check creation time. Sharing still exposes answers to UUID holders; consent,
+   displays the original protected server assessment with exact immutable inputs.
+   A separate current reassessment uses the same validated saved answers and a new
+   server instant. NULL/malformed provenance or missing exact references yields
+   original provenance unavailable; legacy verdict JSON is never promoted. Original
+   answers/result/history are never rewritten. Sharing still exposes answers to UUID holders; consent,
    expiry and revocation remain backlog work. The `result_viewer`
    DB function tells the page whether the request is the anonymous owner,
    the claimed owner, or the public; the page adapts its banners and CTA.
@@ -400,11 +402,14 @@ successful live assistant evaluation; it is not guaranteed by unit tests.
   as verified stamps / unverified chips / "not in our rules" blocks by
   `components/app/assistant-sidebar.tsx`; on finish they are parsed and
   logged to `assistant_messages`.
-- The KB is rebuilt wholesale by `pnpm kb:embed`: published rules are
-  rendered to readable chunks (`lib/ai/kb.ts`) and merged with curated
-  snippets from `scripts/kb.snippets.ts`. Replacement vectors are upserted before
-  stale rows are removed, so a failed write retains the previous corpus.
-  Rerun it after rule changes.
+- The KB indexes date-applicable immutable inputs without guessing intake.
+  Embeddings are hints keyed by logical rule and version UUID. Retrieval resolves
+  stored logical identity in query helpers, selects current applicable versions
+  using the saved profile intake, and renders exact raw sources. Remaining selected
+  rules are included so scoped/new coverage remains discoverable before rebuild.
+  Unversioned snippets are excluded from current rule evidence. Replacement vectors
+  are written before stale hints are removed; failed writes retain the old corpus
+  but cannot authorize its old prose. No provider operation runs during rendering.
 - `pnpm eval:assistant` runs a 20-question adversarial eval (invented-fact
   traps, out-of-scope traps, personal context) and fails on any uncited
   claim.
@@ -450,7 +455,7 @@ Schema lives in `supabase/migrations/` (append-only). Regenerate types with
 | `applications` | user × course with status — THE dashboard link | owner CRUD |
 | `tasks` | rule-generated, admin-defined course-task assignments, and manual tasks; unique `(user_id, task_key)` makes reconciliation work | owner CRUD; admins reach only rows with a `course_task_definition_id`, never a student's manual or rule tasks |
 | `course_task_definitions` | ordered admin definitions for every course submission/requirement/custom task; pending-course definitions publish on approval. Official-source changes are shown as a live diff in the admin tasks view (no stored review queue) and student tasks only change when an admin acts | approved public read, admin write |
-| `checks` | answers + historical stored result; current result re-evaluated on read; ownership columns private | dedicated server writer; UUID-scoped public read through `get_shared_check`, no browser table reads/writes |
+| `checks` | immutable answers/result/protected assessment metadata; distinct current reassessment; ownership columns private | dedicated server writer; UUID-scoped public read through `get_shared_check`, no browser table reads/writes |
 | `kb_chunks` | assistant corpus with pgvector embeddings; `match_kb_chunks()` does exact cosine scan (fine below ~10k rows) | public read, admin write |
 | `assistant_messages` | full Q&A log; today's `role='user'` count is the quota | owner insert/read, admin read |
 | `answer_reports` | assistant-answer feedback | authenticated insert, owner/admin read |
@@ -468,10 +473,11 @@ keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.
   `lib/engine/__tests__/personas.ts` holds the 13 verified student personas
   shared between engine and checker tests.
 - `lib/db/__tests__/rls.integration.test.ts` asserts anon/owner/admin
-  visibility against the real linked Supabase project. It self-skips (with a
-  console warning) when env keys are missing, the schema is behind, or the
-  secret key cannot use the auth admin API — so `pnpm test` is green in any
-  environment.
+  visibility against the explicitly configured disposable/local Supabase
+  service. It self-skips when required env keys are
+  absent. When configured, missing schema/auth/admin/API failures FAIL and must
+  not be claimed green — use loopback/disposable isolation before execution and
+  run the actual required RLS suite before merge.
 - Before merging: `pnpm test && pnpm lint && pnpm typecheck && pnpm build`.
 
 ## Where to make common changes
@@ -481,7 +487,7 @@ keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.
 | Add/edit an eligibility rule | `/admin` UI (data change, no deploy); new *candidates* go in `scripts/rules.bootstrap.ts` and are seeded as drafts |
 | Support a new fact in rules | `FactKeySchema` + `deriveFacts` in `lib/engine/evaluate.ts`, label in `lib/ai/kb.ts`, tests in `lib/engine/__tests__/` |
 | Add a checker question | `StepId`, `AnswersSchema`, `visibleSteps`, `buildProfile` in `app/(public)/check/steps.ts`; copy in `check-questions.ts`; label in `profile-review.tsx`; tests in `steps.test.ts` |
-| Add a GCE/IB subject | `GCE_SUBJECTS` / `IB_SUBJECTS` in `app/(public)/check/steps.ts` — both editors and `buildProfile` read the catalog |
+| Add a GCE/IB subject | `GCE_SUBJECTS` in checker steps / `IB_SUBJECTS` in `lib/engine/ib.ts` — editor and pure profile mapping share reviewed identities |
 | Add a country or school board | `COUNTRIES` / `BOARDS` in `app/(public)/check/steps.ts` — the checker options, admin rule filter, and result labels all read these catalogs |
 | Publish a seeded rule | `/admin?view=rules`. `pnpm db:seed` writes every bootstrap candidate as a **draft** and the engine skips drafts, so a newly seeded rule changes nothing until a human publishes it |
 | Change dashboard task texts/buckets | `lib/tasks/generate.ts` (+ its tests) |
@@ -673,7 +679,7 @@ semester and date policy stays in reviewed data. No seed, publication or embeddi
 runs here; production classification depends on separate admin review/publication.
 Newly rendered KB chunks suppress the obsolete certificate-possession exemption
 and label its quote as historical evidence rather than current applicability.
-Runtime `search_rules` now projects persisted dMAT matches through the pure
+At the UP-ELIG-07 checkpoint, `search_rules` projected persisted dMAT matches through the pure
 `projectDmatKbMatches(matches, publishedRules)` interface in `lib/ai/kb-retrieval.ts`.
 Matches are raw RPC rows; rule rows are caller-visible current published metadata
 from the existing `getPublishedRules` helper, or null if unavailable. Zod validates
@@ -689,8 +695,9 @@ interface has no trusted structured snippet metadata, even after a rebuild.
 Rule matches cannot prove unrelatedness without valid matching current metadata;
 unmatched or invalid rules fail closed even under renamed slugs/other source URLs.
 Valid current unrelated rules and unrelated curated snippets are unchanged.
-RULES01 can reuse this projection boundary;
-broader freshness and snippet-authority policy are explicitly outside its scope.
+The UP-RULES-01 consumer integration below supersedes this checkpoint adapter
+with immutable selection for all rules and excludes unversioned snippets. The
+legacy projection has no current production caller.
 No persisted chunks are rewritten/deleted, and no embedding/publication runs. dMAT
 neither replaces APS nor guarantees recognition/admission; a low score alone is
 not an APS refusal. The current APS clarification permits other complete documents
@@ -780,3 +787,128 @@ The pure reviewed catalogue `lib/engine/gce.ts` supplies List A/B/C identities, 
 Positive GCE records need explicit system/type/evidence/intake scope. Unscoped historical positive records remain available as source-review unknowns rather than silently supplying applicability. Twelve source-reviewed candidates in `scripts/gce.rules.ts` remain drafts, with literal source quotes and null publication metadata. Disposable fixture copies activate the supported GCE acceptance corpus; parent TEST future coverage remains open. Catalogue facts alone cannot establish a path without a published rule.
 
 Science, medicine/pharmacy and arts target groups follow DAAD's named categories. Cambridge's favourable new-formula coverage starts SS2022 and its ordinary transition is SS2024; other bodies are limited to explicit current checker intakes as coverage, not an invented source effective date. National-system, historical, List C programme mapping, Pre-U/AICE/provisional and unclassified-programme variants stay targeted unknowns. See [source verification](up-elig-01-source-verification.md) for applicability, contradictions and authority limits. No migration, publication, seed, KB rebuild, task/application or personal-progress write occurs.
+
+### Immutable rule administration and selection (UP-RULES-01 phase one)
+
+The admin rule workspace reads rule_drafts and immutable rule_versions,
+not the rules compatibility mirror. Saving writes only the full raw draft
+and applicability bounds, guarded by its displayed revision and raw JSON token.
+Database triggers own revision, editor and edit time. Editing keeps draft status;
+it does not approve the snapshot. The complete raw JSON editor retains fields
+that a projected editor could otherwise omit. Malformed domain conditions may
+be saved for repair but cannot be published.
+
+Publication is a separate explicit beta/verified choice and confirmation of the
+saved snapshot, literal evidence, source verification date, diff and bounds.
+last_verified_at is supplied source verification metadata, never stamped by
+save/publication. The protected publish_rule_version RPC receives logical ID,
+exact raw snapshot, expected revision and predecessor, and approval status. The
+app preflights the actual raw object with EngineRuleSchema before any RPC
+mutation. It never replaces the token with a projected rule. Database-owned
+reviewer/publication time, immutable successor, audit event and compatibility
+mirror are atomic. Reverification appends a successor. Stale tokens prompt
+reload and review. Course administration retains its existing helpers.
+
+lib/rules/versioning.ts provides pure boundaries, literal diff, explicit
+UTC assessment-instant conversion, selection and impact preview. Date and
+intake intervals are half-open. Intake index is year × 2 + summer 0 / winter 1.
+Assessment applicability is independent of APS/dMAT applicant event dates.
+Selection resolves the newest applicable version per stable logical UUID before
+condition matching. Replacement condition failure cannot revive a predecessor
+within replacement scope; predecessors remain eligible outside it. Missing
+distinguishing intake yields a diagnostic. Human null bounds mean reviewed
+unbounded scope. Legacy null bounds remain unknown historical scope; legacy
+capture time and stored source dates do not establish human publication.
+Selected rules keep logical IDs for citations/task keys; selected version IDs
+carry immutable provenance. Invalid applicable publications fail closed without
+predecessor fallback. Diffs ignore object key order while retaining array order,
+whitespace, literal text, evidence, conditions, outcomes, status and scope.
+
+listRuleVersions in lib/db/queries.ts is an isolated caller-scoped history
+reader. It intentionally performs no status/applicability selection. Existing
+At this phase-one checkpoint, getPublishedRules behavior was unchanged until phase two moved all consumers
+together. previewRuleImpact evaluates only caller-provided before/after
+profiles and selected rules; it counts changed assessments and new resolved
+outcome coverage, including an assessment with no old match. It performs no
+student-data reads, writes, notifications or task reconciliation.
+
+This bounded milestone does not yet make original checks authoritative. The
+existing result/current-reassessment behavior described above remains until
+phase two wires checker/profile/intake/date paths, server-owned immutable check
+metadata/history lookups, original-vs-current display and assistant/KB projection.
+Legacy check JSON must not be retrospectively attributed to captured versions.
+No publication, embedding, schema application or automatic task/application/
+personal-progress update occurs in this code change. Parent UP-RULES-01 remains
+open; do not merge the schema write freeze without completed application wiring.
+
+### IB evidence and ordinary recognition (UP-ELIG-02)
+
+New and edited IB bachelor answers carry `ibVersion: 1`; historical answers remain readable without manufacturing subject context. Examination year/session is distinct from target intake. Actual ascending full-time schooling, Diploma evidence, exact subject identity, level, grade, language and continued-foreign context, two-year continuity and independence are explicit, including unknown answers. Changing a row identity/level clears affected context. Mathematics course and level come from the actual row; a conflicting historical summary prevents recognition. Caller group/category/recognition flags never establish eligibility.
+
+`lib/engine/ib.ts` performs zero-I/O schema validation and evidence derivation. `lib/engine/ib-annexes.json` is the versioned complete reviewed source index, with literal source rows, programme scope and examination-effective May/November sessions. Exact identity is required; missing identity is different from verified absence. Source conflict 006880 remains unresolved. The index cannot grant access itself: all ordinary science, grade, language, schooling and continuity conditions still match published rule data.
+
+`scripts/ib.rules.ts` contains only draft candidates with null publication metadata. Disposable reviewed fixture copies activate the official acceptance corpus; bootstrap never publishes them. The evaluator quarantines old unscoped IB path shortcuts, including automatic Studienkolleg outcomes. Missing ordinary prerequisites yield targeted unknowns; KMK section 2 alternatives require separate reviewed scope. Current-annex coverage applies to historical examinations as directed by the KMK index. The explicit draft intake coverage starts Winter 2025; earlier intakes and examination years before 2013 remain unknown pending review.
+
+See [IB source verification](ib-source-verification.md) for authority, source versions, effective sessions and unresolved limits. The executable IB corpus is activated in UP-TEST-01; final parent official coverage remains OPEN. No DB, publication, server-shell or version-selection interface was changed.
+
+
+### India JEE ordinary qualifying passage (UP-ELIG-04)
+
+New/edited/restored answers use jeeVersion 2; version 1 and historical Advanced booleans remain readable without invented evidence. Separate reported Main/Advanced qualifying passages are never inferred from scores, percentiles, participation, result possession or the legacy boolean. Actual Indian national school issuer/context is established once before collecting a reported completed twelve-grade national secondary certificate. Foreign, missing or unknown issuer/context cannot expose or map hidden India JEE reports. Tertiary history is independent and cannot prove school completion.
+
+After target selection, both ordinary passages and the completed category permit a reported applicable university/uni-assist classification of this exact intended target as technology/natural sciences, with a trimmed nonblank reference up to 500 characters. Marketing, guessed STEM membership, a broad family sentence or a statement about another target cannot establish that report. The app verifies the rule source, not applicant documents or programme classification. Existing options and text editors render these questions progressively; unfinished draft text survives but complete submissions require applicable evidence. Target and changed intake clear bound family/reference, family edits clear reference, and qualification/category/exam/context changes prune dependent reports. First intake selection retains evidence just collected. Passport/visa edits preserve academic reports. Legacy drafts stop at newly missing evidence, retaining independent university history.
+
+The source-backed candidate requires both passed statuses, ordinary context, bachelor/national curriculum, actual Indian national issuer, completed secondary category, positive reported family with reference, and intake inclusion 4053/4054/4055. The shared pure engine/KB predicate rejects unscoped or exclusion-only metadata and other positive outcomes. No board whitelist, static programme mapping or 70% prerequisite is added. Missing/failed JEE excludes only JEE; independent India03 and scoped process routes remain available. Equal-specificity path conflicts remain unknown with both citations.
+
+Fresh verification 2026-10-08 follows [DAAD India selection](https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=2&ad-layerId=4) through [completed school category](https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=3&ad-layerId=21) to [both-parts result](https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=4&ad-layerId=63), corroborated by [uni-assist India](https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/). The recognition outcome is direct subject-restricted academic access, with institution final decision. Exact current product intake coverage is reviewed 2026-10-08, not a claimed source effective date; source commencement is unstated. Historical, missing and other intakes and Main exemption/preparatory/cross-year/unclear evidence remain targeted unknowns. No Anabin IND-BV02 text was independently verified. See [source contract](up-elig-04-source-verification.md).
+
+The candidate remains DRAFT with null publication date. Official harness positives use disposable published copies of that actual source-backed candidate; artificial matcher fixtures remain specification data. The former ordinary-source hold is superseded only within this reviewed contract. Production publication, real programme verification, exceptional/historical recognition and root full acceptance remain separate holds; no DB, seed or embedding operation occurs.
+
+#### Assistant JEE authority and immutable versions
+
+Engine and KB rendering share the canonical structured quarantine: unsupported historical JEE paths withhold path/note/quote/tasks and render cited unknowns with historical metadata distinguished from verification. Independent process outcomes survive. The approved legacy projectDmatKbMatches adapter remains unchanged and its exact cache-binding regressions remain executable, but it has no production caller. Rule34's current search_rules reads only caller-visible immutable versions through listRuleVersions and matchKbRuleHints; cached prose and unversioned snippets are search hints, never authority. Current-source selection retains reviewer/provenance/publication/applicability/version identity, then renders the selected structured snapshot. Missing/invalid/unreviewed/future sources cannot revive old cache content. Actual-tool JEE legacy, renamed lost-family, current independent and source-backed scoped replacement controls exercise this immutable format without rolling back to mutable published rows.
+
+### Rule assessment consumer integration (UP-RULES-01)
+
+All current evaluation shells load immutable history through paginated
+`listRuleVersions` and reuse `evaluateAssessment` unchanged. The server captures
+one actual UTC instant and explicit `ENGINE_REVISION` before selection; publication
+availability (including same-day microseconds) precedes scope, status and condition
+matching. Assessment day, intake and applicant event dates remain distinct. Bump
+the explicit revision when engine/profile mapping/selection behavior changes.
+
+Submission validates answers/result/protected metadata and server-derived ownership
+in one private service INSERT. Public inputs cannot supply authority. Signed-in
+materialization reuses that assessment; later user-triggered saves/claims use a new
+current assessment. Historical lookup fetches only selected and diagnostic UUIDs;
+no latest replacement supplies missing history. Original result cards and literal
+immutable raw evidence are separate from current result cards and meaningful
+policy/source/new-coverage comparison. Invalid saved answers remain unavailable. Task/assistant profile mapping likewise
+requires complete validated answers; malformed historical raw/partial rows remain
+stored unchanged and cannot establish current rule authority.
+
+Task generation retains logical UUID keys. Existing tasks, completion, student
+text/dates, edit state and applications are untouched by evaluation, impact or
+publication. Materialization inserts missing keys only, with duplicate-ignore
+protection against concurrent insertion; it never reactivates an existing row.
+The existing narrow APS read projection and course/application visibility behavior
+remain unchanged. Dashboard rendering performs no materialization. Its Berlin
+calendar day remains separate from the UTC assessmentEvaluatedAt instant. Personal assistant context is labelled history rather than
+current requirement evidence.
+
+The admin rule workspace previews both explicit beta/verified choices against the
+complete caller-authorized profile population, paginated with exact counts. It
+includes previously unmatched cases and reports invalid profiles, unavailable
+proposals and unresolved scope, alongside policy/explanation/source-only/new-coverage
+counts. This is a hypothetical publication now: a comparison-only draft operand
+uses its draft identity with absent review/publication dates, never an immutable
+version or authoritative assessment. The existing engine evaluates already selected
+policy inputs; no second rule engine, profile RPC, new privilege or personal write
+is introduced. Preview is not publication approval.
+
+Trade-off: unversioned curated snippets cannot prove current applicability and are
+withheld until they gain an explicit reviewed identity/version contract. The current
+small corpus permits structured selected-rule fallback before embedding rebuild;
+large corpora would need bounded structured retrieval preserving scope coverage.
+Actual provider, disposable service/RLS/browser and combined integration gates remain
+root-owned; deterministic unit grounding is not live-provider evidence.

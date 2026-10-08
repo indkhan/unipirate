@@ -12,7 +12,12 @@ import * as personas from "./personas";
 // UP-ELIG-07 corrects only the legacy certificate-only dMAT expectation:
 // same input, honest unknown; source limits exemption to the completed procedure.
 // This remains a milestone corpus; parent TEST coverage remains OPEN.
-export const HARNESS_VERSION = "up-test-01/v1-current-behavior.2" as const;
+// UP-ELIG-02 activates reviewed IB evidence/recognition acceptance separately.
+// UP-ELIG-04 corrects the two unsafe legacy JEE expectations; official
+// acceptance activates source-backed ordinary draft copies with certificate, reported family/reference and exact current product intake coverage.
+export { JEE_ACCEPTANCE } from "./jee.fixture";
+export { IB_ACCEPTANCE } from "./ib.fixture";
+export const HARNESS_VERSION = "up-test-01/v1-current-behavior.5" as const;
 export { INDIA_STUDY_ACCEPTANCE } from "./india-study.fixture";
 export { DMAT_ACCEPTANCE } from "./dmat.fixture";
 export const HARNESS_BASELINE_SHA =
@@ -110,9 +115,9 @@ export const CURRENT: CurrentExpectation[] = [
     assertedIn: "evaluate.test.ts: Part E persona 1",
   },
   {
-    id: "IN-positive-jee-direct", family: "India", kind: "positive",
+    id: "IN-legacy-jee-evidence-unknown", family: "India", kind: "positive",
     routesTo: ["UP-ELIG-04"], profile: personas.p2CbseJeeAdvanced,
-    path: "subject_restricted", aps: "unknown", testAS: "unknown",
+    path: "unknown", unknownsMatch: [/Main.*qualifying passage/], aps: "unknown", testAS: "unknown",
     assertedIn: "evaluate.test.ts: Part E persona 2",
   },
   {
@@ -128,9 +133,9 @@ export const CURRENT: CurrentExpectation[] = [
     assertedIn: "evaluate.test.ts: India 70% cutoff (SS 2026)",
   },
   {
-    id: "IN-boundary-jee-low-score-still-direct", family: "India", kind: "boundary",
+    id: "IN-boundary-legacy-jee-no-low-score-exemption", family: "India", kind: "boundary",
     routesTo: ["UP-ELIG-04"], profile: { ...personas.p2CbseJeeAdvanced, schoolGradePercent: 65 },
-    path: "subject_restricted",
+    path: "unknown", unknownsMatch: [/Main.*qualifying passage/],
     assertedIn: "evaluate.test.ts: JEE Advanced with <70% Class XII",
   },
   {
@@ -203,10 +208,10 @@ export const CURRENT: CurrentExpectation[] = [
     assertedIn: "evaluate.test.ts: Part E persona 12",
   },
   {
-    id: "IB-negative-sl-stem-studienkolleg", family: "IB", kind: "negative",
+    id: "IB-legacy-evidence-alternatives-unknown", family: "IB", kind: "negative",
     routesTo: ["UP-ELIG-02"], profile: ibP13,
-    path: "studienkolleg", aps: "unknown", unknownsMatch: [/APS/],
-    citedUrls: ["https://www.daad.de/en/studying-in-germany/requirements/ib-diploma/"],
+    path: "unknown", aps: "unknown", unknownsMatch: [/APS/],
+    citedUrls: ["https://www.kmk.org/zab/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/aktuell/283_Vereinb_Anerkenn_Int_Baccalaureate_Diploma-2023-06-15_Liste1__2026-03-26_Liste2-2024-11-19.pdf"],
     assertedIn: "evaluate.test.ts: Part E persona 13",
   },
   {
@@ -301,8 +306,7 @@ export const APS_TRANSITION_ACCEPTANCE = [
 ] as const;
 
 export const FUTURE: FutureSpec[] = [
-  { id: "FUTURE-IB-grade3-compensation", family: "IB", issue: "UP-ELIG-02", needsFutureSchema: true, verified: false, note: "One compensated grade 3 passes where KMK rules allow; Math-SL school exceptions with effective sessions." },
-  { id: "FUTURE-India-jee-main-plus-advanced", family: "India", issue: "UP-ELIG-04", needsFutureSchema: true, verified: false, note: "Separate JEE Main + Advanced facts restrict the route to technology/natural-science targets." },
+  { id: "FUTURE-India-jee-publication-applicability", family: "India", issue: "UP-ELIG-04", needsFutureSchema: false, verified: false, note: "Separate qualifying-pass contract is implemented. Ordinary official coverage is executable on source-backed draft copies. German exception/historical-intake treatment and independent programme classification remain unresolved; production publication is a separate review hold." },
   { id: "FUTURE-Pakistan-hssc-streams", family: "Pakistan", issue: "UP-ELIG-08", needsFutureSchema: true, verified: false, note: "HSSC/FSc stream-specific Studienkolleg routes, 49.99/50 boundary, one-year direct routes." },
   { id: "FUTURE-Saudi-certificate-subtypes", family: "Saudi", issue: "UP-ELIG-09", needsFutureSchema: true, verified: false, note: "Exact certificate type/stream drives national, private-school, industrial, and graduate routes." },
 ];

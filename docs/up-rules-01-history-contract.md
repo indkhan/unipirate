@@ -1,0 +1,34 @@
+# Assessment history foundation (UP-RULES-01)
+
+Foundation only: migration 00102 and pure interfaces are prepared for independent root SQL/security review and disposable execution. No schema application or consumer switch is claimed. The parent issue remains OPEN.
+
+## Protected authority
+
+The nullable checks.assessment_metadata column is the sole provenance authority. NULL means original provenance unavailable even if answers/result JSON contains forged metadata. Migration 00102 has no default, backfill or upgrade. Its INSERT validator requires exactly formatVersion (1), evaluatedAt, engineRevision, selectedVersionIds and selectionIssues. UTC evaluatedAt includes seconds and at most six fractional digits; engineRevision is an explicit application evaluation revision, covering profile/fact mapping and merge behavior. UUIDs are lowercase canonical, unique, resolvable immutable inputs; human publication must be no later than evaluatedAt. Zero selected IDs is a valid uncovered result. Diagnostic rule/version references remain explicit and resolvable; legacy captures retain unknown scope rather than acquiring human publication provenance.
+
+The existing private service_role writer remains the trusted creation boundary. SQL checks envelope integrity, existence/publication availability and object payload shape, not educational correctness. Future submit shells must separately validate complete answers/result, derive ownership internally and capture one server instant/revision before selection. Browser roles have neither table nor column access; get_shared_check(uuid) exposes only id, answers, result, created_at and assessment_metadata at exact UUID equality.
+
+All rows freeze every column except claimed_by/claimed_at on UPDATE, including NULL provenance. Authoritative rows cannot be deleted; TRUNCATE is always refused. This deliberately stricter table-wide guard cannot miss newly committed authoritative rows because of RLS or an old transaction snapshot. Destructive deployments must explicitly manage DDL. No application escape or caller-settable authorization flag is introduced. A controlled deployment can change DDL if required; no owner bypass is included in these guards.
+
+## Claim and account deletion
+
+claim_check retains row locking, actor existence/token checking, same-owner idempotence and atomic original-answer copying. First claim requires both claim fields NULL. The invoker trigger accepts only an actor-bound postgres claim transition, transaction timestamp and an already-copied matching profile. This is not general permission for postgres-owned routines: browser table writes remain revoked and claim_check is the only granted ownership-writing interface. service_role cannot update ownership directly.
+
+Account deletion retains claimed_at as the durable tombstone when the claimed_by FK nulls the deleted user. The trigger exception additionally requires a nested trigger, postgres execution, the same original claim timestamp, and absence of the referenced auth.users row. An ordinary app/service/owner UPDATE cannot manufacture or clear this tombstone. result_viewer requires both fields NULL for anonymous ownership; an old token cannot reopen or reclaim a tombstone. Original answers/result/time/hash/metadata remain immutable.
+
+These are source-level contracts pending actual root SQL verification, especially FK execution identity/depth and transactional rollback. The SQL fixture uses sequential claims; it is not concurrency evidence. Root must seed a forged legacy row BEFORE applying 00102 to independently verify migration preservation, then run the supplied post-migration fixture and real concurrent clients.
+
+## Pure interfaces
+
+- evaluateAssessment(profile, versions, { evaluatedAt, engineRevision }) returns result, metadata, selectedVersions and diagnosticVersions. It invokes the unchanged engine with stable logical rule UUIDs. Full selected input IDs include rules whose conditions do not match. Exact publication availability precedes scope/supersession/status/conditions. Microseconds are compared without JavaScript Date truncation. UTC assessment day is independent of intake and APS/dMAT applicant-event dates.
+- AssessmentContextSchema, AssessmentMetadataSchema and AssessmentResultSchema validate boundaries. Result schema mirrors the actual exported engine Result; no existing exported result Zod schema was present on this baseline. AnswersSchema/buildProfile are imported read-only from the existing pure checker module.
+- parseStoredAssessment({ assessment_metadata, result, answers }, exactVersions) returns authoritative/original, legacy/null or invalid/null. Fetch all selectedVersionIds AND selectionIssues[].versionId. Only those exact inputs participate in historical scope validation; extra newer versions are ignored, never substituted. Missing/malformed/ambiguous inputs or inconsistent original scope/citation references yield unavailable history. Original result and answers are preserved after validation; the verdict is never replayed through the current engine. Exact diagnostic snapshots are retained, including legacy unknowns.
+- compareAssessments(before, after) returns policyChanged, explanationChanged, newCoverage and ruleChanges. Logical UUIDs anchor comparisons; version UUIDs/clocks alone do not imply a change. Literal sources, verification metadata and explanatory notes remain distinct from conditions/outcomes/status/scope and verdict changes. Object key order is benign; array order matters. Previously unmatched cases can gain coverage. It performs no population reads, profile/task/application writes or notifications.
+
+Trade-off: old engine revisions are identified but not replayed. The persisted original verdict plus immutable selected/diagnostic snapshots explain the recorded assessment; historical engine binaries are deferred.
+
+## Consumer milestone and root gates
+
+Root independently reviews SQL/security, applies the additive migration on actual clean main plus 00101 in a disposable database, executes fixtures/account-deletion/concurrency checks, and regenerates database types. No manual types or query wiring belongs to foundation.
+
+The next milestone must switch submission/original-result/current-reassessment/profile/task/assistant/KB/impact shells together, enforce current timestamps separately from original time, and update docs/application.md for the integrated architecture. Original display uses persisted validated verdict and exact history; current assessment uses a new explicit instant on the same answers. Impact includes the relevant complete profile population, including previously unmatched cases, with honest unavailable counts. No publication/reassessment/impact path reconciles personal tasks or applications. Full gates, PR review and merge remain pending.

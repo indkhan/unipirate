@@ -4,13 +4,15 @@
 // materialized at event time by materialize.ts, never during render.
 import {
   getProfile,
-  getPublishedRules,
+  listRuleVersions,
   listApplicationsWithCourses,
   listTasks,
   type ApplicationWithCourse,
 } from "@/lib/db/queries";
 import type { Database, Tables } from "@/lib/db/database.types";
-import { evaluate, type Result } from "@/lib/engine/evaluate";
+import type { Result } from "@/lib/engine/evaluate";
+import { evaluateAssessment } from "@/lib/rules/assessment";
+import { currentAssessmentContext } from "@/lib/rules/current";
 import {
   bucketTasks,
   isCurrentApsTask,
@@ -74,6 +76,7 @@ export type DashboardView = {
   empty: boolean;
   hasProfile: boolean;
   checkedAt: string;
+  assessmentEvaluatedAt: string;
   result: Result | null;
 };
 
@@ -177,7 +180,8 @@ export async function buildDashboardView(
   const todayIso = todayIsoBerlin();
   const savedProfile = await getProfile(db, userId);
   const { profile, hasProfile } = profileFromAnswers(savedProfile);
-  const result = profile ? evaluate(profile, await getPublishedRules(db)) : null;
+  const context = currentAssessmentContext();
+  const result = profile ? evaluateAssessment(profile, await listRuleVersions(db), context).result : null;
 
   const [applications, dbTasks] = await Promise.all([
     listApplicationsWithCourses(db, userId),
@@ -236,6 +240,7 @@ export async function buildDashboardView(
     empty: rail.length === 0 && allTasks.length === 0,
     hasProfile,
     checkedAt: todayIso,
+    assessmentEvaluatedAt: context.evaluatedAt,
     result,
   };
 }

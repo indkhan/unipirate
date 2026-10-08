@@ -2,6 +2,9 @@
 // answers looks like, and how answers map onto the engine Profile.
 // No I/O, no React — unit-tested in __tests__/steps.test.ts.
 import { z } from "zod";
+import { JeeStatusSchema, JeeContextSchema, JeeSchoolCertificateSchema, JeeTargetFamilySchema } from "@/lib/engine/jee";
+import { IB_SUBJECTS, ibEntry, IbProfileSchema } from "@/lib/engine/ib";
+export { IB_SUBJECTS } from "@/lib/engine/ib";
 import { CalendarDateSchema, calendarDay } from "@/lib/engine/calendar-day";
 import { DmatProfileSchema, DMAT_FIELD_ENTRIES, DMAT_FIELD_SOURCE, DMAT_FIELD_VERSION } from "@/lib/engine/dmat";
 
@@ -32,34 +35,6 @@ export const IB_GRADES = ["7", "6", "5", "4", "3", "2", "1"] as const;
 export const IB_LEVELS = [
   { value: "HL", label: "Higher Level (HL)" },
   { value: "SL", label: "Standard Level (SL)" },
-] as const;
-
-// Trade-off: static catalog of common IB subjects with their group and DAAD
-// category, mirroring
-// https://www.daad.de/en/studying-in-germany/requirements/ib-diploma/ — the
-// same page the seeded ib-* rules cite. Group 1 is language and literature,
-// group 2 is language acquisition (hence foreignLanguage), groups 3-6 are
-// individuals and societies, sciences, mathematics and the arts.
-// Only subjects DAAD recognizes are listed, so `ib_all_subjects_recognized`
-// cannot currently come back false; add unrecognized entries here rather than
-// guessing a classification. Move into the DB alongside `qualifications` when
-// the list needs to grow.
-export const IB_SUBJECTS = [
-  { id: "language_a", label: "Language A (literature)", group: 1, category: "language" },
-  { id: "language_b", label: "Language B (acquisition)", group: 2, category: "language", foreignLanguage: true },
-  { id: "german_b", label: "German B", group: 2, category: "language", foreignLanguage: true },
-  { id: "history", label: "History", group: 3, category: "other" },
-  { id: "geography", label: "Geography", group: 3, category: "other" },
-  { id: "economics", label: "Economics", group: 3, category: "other" },
-  { id: "psychology", label: "Psychology", group: 3, category: "other" },
-  { id: "business_management", label: "Business Management", group: 3, category: "other" },
-  { id: "biology", label: "Biology", group: 4, category: "biology" },
-  { id: "chemistry", label: "Chemistry", group: 4, category: "chemistry" },
-  { id: "physics", label: "Physics", group: 4, category: "physics" },
-  { id: "computer_science", label: "Computer Science", group: 4, category: "other" },
-  { id: "mathematics", label: "Mathematics", group: 5, category: "math" },
-  { id: "visual_arts", label: "Visual Arts", group: 6, category: "other" },
-  { id: "music", label: "Music", group: 6, category: "other" },
 ] as const;
 
 export type IbSubjectId = (typeof IB_SUBJECTS)[number]["id"];
@@ -128,8 +103,13 @@ export type GceSubjectAnswer = z.infer<typeof GceSubjectAnswerSchema>;
 
 const IbSubjectAnswerSchema = z.object({
   subjectId: z.enum(IB_SUBJECTS.map((s) => s.id) as [IbSubjectId, ...IbSubjectId[]]),
-  level: z.enum(["HL", "SL"]),
-  grade: z.enum(IB_GRADES),
+  level: z.enum(["HL", "SL", "unknown"]),
+  grade: z.enum([...IB_GRADES, "unknown"]),
+  name: z.string().max(200).optional(),
+  language: z.string().trim().max(100).optional(),
+  continuedForeign: z.enum(["yes", "no", "unknown"]).optional(),
+  continuity: z.enum(["two_years", "not_two_years", "unknown"]).optional(),
+  independence: z.enum(["independent", "dependent", "unknown"]).optional(),
 });
 
 export type IbSubjectAnswer = z.infer<typeof IbSubjectAnswerSchema>;
@@ -138,7 +118,10 @@ export type IbSubjectAnswer = z.infer<typeof IbSubjectAnswerSchema>;
  * Steps rendered as a bare number input rather than option cards. `error` is
  * shown when a value is present but fails `isAnswered`.
  */
+export const IB_STEPS = ["ibDocumentStatus", "ibExamSession", "ibSchooling", "ibProgramme", "ibSchoolIdentity", "ibSchoolName", "ibSchoolCountry", "ibSchoolCode"] as const;
+
 export const NUMBER_STEPS = {
+  ibSchoolYears: {label:"Actual ascending school years",min:0,max:50,placeholder:"12",error:"Enter actual whole school years from 0 to 50, or choose Cannot confirm."},
   gceSchoolYears: {label:'Actual ascending school attendance · years',min:0,max:50,placeholder:'12',error:'Enter actual whole school years from 0 to 50. Do not include university study.'},
   dmatCompletedSemesters: { label: "Actually completed semesters", min: 0, max: 100, placeholder: "6", error: "Enter a whole number of completed semesters from 0 to 100." },
   priorDegreeYears: { label: "Qualification duration in years · required", min: 0, max: 50, placeholder: "4", error: "Enter a duration from 0 to 50 years." },
@@ -156,7 +139,7 @@ export const NUMBER_STEPS = {
     min: 1990,
     max: 2035,
     placeholder: "2026",
-    error: "Enter the year you sat your IB exams.",
+    error: "Enter your IB examination session year, or choose Cannot confirm.",
   },
   ibTotalPoints: {
     label: "Total points · required",
@@ -170,6 +153,10 @@ export const NUMBER_STEPS = {
 export type NumberStepId = keyof typeof NUMBER_STEPS;
 
 export const TEXT_STEPS = {
+  jeeTargetFamilyReference: { label: "Reported applicable official target classification reference", maxLength: 500 },
+  ibSchoolName: {label:"Exact school name from the official annex / school documents",maxLength:200},
+  ibSchoolCountry: {label:"School country heading from the official annex",maxLength:100},
+  ibSchoolCode: {label:"Six-digit IB school code, or unknown",maxLength:7},
   priorStudyRecognitionReference: { label: "Reported official recognition assessment", maxLength: 500 },
   priorStudyTargetRelationReference: { label: "Reported official target relationship assessment", maxLength: 500 },
   dmatDegreeTitle: { label: "Official previous-degree title", maxLength: 200 },
@@ -211,6 +198,8 @@ export function isIndiaStudyBranch(a: PartialAnswers): boolean {
 export function isNumberStep(step: StepId): step is NumberStepId {
   return step in NUMBER_STEPS;
 }
+
+export const JEE_STEPS = ["jeeSchoolCertificate", "jeeMainStatus", "jeeAdvancedStatus", "jeeEvidenceContext", "jeeTargetFamily", "jeeTargetFamilyReference"] as const;
 
 const AnswerFieldsSchema = z
   .object({
@@ -268,7 +257,14 @@ const AnswerFieldsSchema = z
     curriculumType: z.enum(["national", "ib", "gce", "other"]).optional(),
     board: z.string().min(1).optional(),
     schoolGradePercent: z.number().min(0).max(100).optional(),
-    jeeAdvanced: z.boolean().optional(),
+    jeeAdvanced: z.boolean().optional(), // Preserved only for legacy reads.
+    jeeVersion: z.union([z.literal(1), z.literal(2)]).optional(),
+    jeeSchoolCertificate: JeeSchoolCertificateSchema.optional(),
+    jeeTargetFamily: JeeTargetFamilySchema.optional(),
+    jeeTargetFamilyReference: z.string().trim().min(1).max(500).optional(),
+    jeeMainStatus: JeeStatusSchema.optional(),
+    jeeAdvancedStatus: JeeStatusSchema.optional(),
+    jeeEvidenceContext: JeeContextSchema.optional(),
     hasExistingApsCertificate: z.boolean().optional(),
     gceVersion: z.literal(1).optional(),
     gceSchoolYears: z.number().int().min(0).max(50).optional(),
@@ -279,10 +275,19 @@ const AnswerFieldsSchema = z
       .enum(AWARDING_BODIES.map((b) => b.id) as [string, ...string[]])
       .optional(),
     gceSubjects: z.array(GceSubjectAnswerSchema).min(1).optional(),
+    ibVersion: z.literal(1).optional(),
+    ibDocumentStatus: z.enum(["awarded","official_results","not_awarded","certificate","unknown"]).optional(),
+    ibExamSession: z.enum(["may","november","unknown"]).optional(),
+    ibSchooling: z.enum(["ascending_full_time","other","unknown"]).optional(),
+    ibProgramme: z.enum(["ib","gib","unknown"]).optional(),
+    ibSchoolIdentity: z.enum(["known","unknown"]).optional(),
+    ibSchoolName: z.string().trim().min(1).max(200).optional(),
+    ibSchoolCountry: z.string().trim().min(1).max(100).optional(),
+    ibSchoolCode: z.string().regex(/^(?:\d{6}|unknown)$/).optional(),
     ibFullDiploma: z.boolean().optional(),
-    ibExamYear: z.number().int().min(1990).max(2035).optional(),
-    ibSchoolYears: z.union([z.literal(12), z.literal(13)]).optional(),
-    ibTotalPoints: z.number().int().min(0).max(45).optional(),
+    ibExamYear: z.number().int().min(1990).max(2035).nullable().optional(),
+    ibSchoolYears: z.number().int().min(0).max(50).nullable().optional(),
+    ibTotalPoints: z.number().int().min(0).max(45).nullable().optional(),
     ibSubjects: z.array(IbSubjectAnswerSchema).min(1).optional(),
     ibMathCourse: z.enum(["AA", "AI", "other"]).optional(),
     targetField: z.string().min(1),
@@ -300,6 +305,13 @@ export type Answers = z.infer<typeof AnswerFieldsSchema>;
 export type PartialAnswers = Partial<Answers>;
 // Draft text/numbers can be unfinished; complete submissions retain strict checks.
 export const PartialAnswersSchema = AnswerFieldsSchema.partial().extend({
+  jeeTargetFamilyReference: z.string().max(500).optional(),
+  ibExamYear: z.number().finite().nullable().optional(),
+  ibSchoolYears: z.number().finite().nullable().optional(),
+  ibTotalPoints: z.number().finite().nullable().optional(),
+  ibSchoolName: z.string().max(200).optional(),
+  ibSchoolCountry: z.string().max(100).optional(),
+  ibSchoolCode: z.string().max(7).optional(),
   gceSchoolYears: z.number().finite().optional(),
   yearsOfUniversityStudy: z.number().finite().nullable().optional(),
   priorStudyRecognitionReference: z.string().trim().max(500).optional(),
@@ -363,6 +375,7 @@ export const AnswersSchema = AnswerFieldsSchema
 // --------------------------------------------------------------------- steps
 
 export type StepId =
+  | (typeof IB_STEPS)[number]
   | (typeof INDIA_STUDY_STEPS)[number]
   | (typeof DMAT_STEPS)[number]
   | "apsProcedureStatus"
@@ -381,6 +394,7 @@ export type StepId =
   | "board"
   | "schoolGradePercent"
   | "jeeAdvanced"
+  | (typeof JEE_STEPS)[number]
   | "hasExistingApsCertificate"
   | "gceSchoolYears" | "gceQualificationContext" | "gceQualificationType" | "gceEvidence"
   | "gceAwardingBody"
@@ -410,27 +424,25 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   if (answers.targetDegree !== "master") steps.push("curriculumType");
   if (bachelor && answers.curriculumType === "national") {
     steps.push("board", "schoolGradePercent");
-    if (answers.certificateCountry === "in") steps.push("jeeAdvanced");
+    if (answers.jeeVersion === undefined && answers.certificateCountry === "in") steps.push("jeeAdvanced");
   }
   if (bachelor && answers.curriculumType === "gce") {
     steps.push('gceQualificationContext','gceQualificationType','gceEvidence','gceAwardingBody','gceSchoolYears','gceSubjects');
   }
   if (bachelor && answers.curriculumType === "ib") {
-    steps.push("ibFullDiploma");
-    // An IB Certificate is never accepted as a Diploma, so the detail questions
-    // cannot change the outcome — don't ask them.
-    if (answers.ibFullDiploma) {
-      steps.push(
-        "ibExamYear",
-        "ibSchoolYears",
-        "ibTotalPoints",
-        "ibSubjects",
-        "ibMathCourse",
-      );
+    if (answers.ibVersion === 1) {
+      steps.push('ibDocumentStatus');
+      if (answers.ibDocumentStatus === 'awarded' || answers.ibDocumentStatus === 'official_results') {
+        steps.push('ibExamYear','ibExamSession','ibSchoolYears','ibSchooling','ibTotalPoints','ibSubjects','ibProgramme','ibSchoolIdentity');
+        if(answers.ibSchoolIdentity==='known')steps.push('ibSchoolName','ibSchoolCountry','ibSchoolCode');
+      }
+    } else {
+      steps.push('ibFullDiploma');
+      if(answers.ibFullDiploma)steps.push('ibExamYear','ibSchoolYears','ibTotalPoints','ibSubjects','ibMathCourse');
     }
   }
   // Establish the actual issuer before successful-year uncertainty is offered.
-  if (answers.indiaStudyRouteVersion === 1 && answers.apsScopeVersion === 1 && bachelor && answers.curriculumType === "national" &&
+  if ((answers.indiaStudyRouteVersion === 1 || answers.jeeVersion === 2) && answers.apsScopeVersion === 1 && bachelor && answers.curriculumType === "national" &&
       (answers.certificateCountry === "in" || answers.schoolQualificationCountry === "in")) {
     steps.push("schoolQualificationCountry", "schoolQualificationContext");
   }
@@ -451,6 +463,13 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   if (answers.apsScopeVersion === 1 && bachelor && !steps.includes("schoolQualificationCountry")) {
     steps.push("schoolQualificationCountry", "schoolQualificationContext");
   }
+  // Only actual Indian national issuer context exposes JEE evidence. No hidden foreign facts.
+  if (answers.jeeVersion !== undefined && bachelor && answers.curriculumType === "national" &&
+      answers.schoolQualificationCountry === "in" && answers.schoolQualificationContext === "national") {
+    if (answers.jeeVersion === 2) steps.push("jeeSchoolCertificate");
+    steps.push("jeeMainStatus", "jeeAdvancedStatus");
+    if ([answers.jeeMainStatus, answers.jeeAdvancedStatus].some(s => s === "passed" || s === "unknown")) steps.push("jeeEvidenceContext");
+  }
   // Certificate fulfilment is independent of visa filing. Existing answers
   // remain reachable when only the visa changes, including legacy records.
   if (
@@ -467,6 +486,13 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
     if (answers.priorStudyRecognition !== undefined && answers.priorStudyRecognition !== "unknown") steps.push("priorStudyRecognitionReference");
   }
   steps.push("targetField");
+  if (answers.jeeVersion === 2 && bachelor && answers.curriculumType === "national" &&
+      answers.schoolQualificationCountry === "in" && answers.schoolQualificationContext === "national" &&
+      answers.jeeSchoolCertificate === "completed_12_year_secondary" && answers.jeeMainStatus === "passed" &&
+      answers.jeeAdvancedStatus === "passed" && answers.jeeEvidenceContext === "ordinary" && answers.targetField !== undefined) {
+    steps.push("jeeTargetFamily");
+    if (answers.jeeTargetFamily !== undefined && answers.jeeTargetFamily !== "unknown") steps.push("jeeTargetFamilyReference");
+  }
   if (isIndiaStudyBranch(answers) && answers.hasPriorUniversityStudy === true && answers.priorQualificationType === "bachelor" && answers.targetField !== undefined) {
     steps.push("priorStudyTargetRelation");
     if (answers.priorStudyTargetRelation !== undefined && answers.priorStudyTargetRelation !== "unknown") steps.push("priorStudyTargetRelationReference");
@@ -523,9 +549,26 @@ export function withAnswer<K extends StepId>(
   field: K,
   value: Answers[K],
 ): PartialAnswers {
-  const next: PartialAnswers = { ...answers, qualificationHistoryVersion: 1, indiaStudyRouteVersion: 1, [field]: value };
+  const next: PartialAnswers = { ...answers, qualificationHistoryVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, [field]: value };
+  if (next.curriculumType === 'ib' && next.targetDegree === 'bachelor') {
+    next.ibVersion=1;
+    if(field==='ibFullDiploma')next.ibDocumentStatus=value?'awarded':'unknown';
+  }
   if (next.curriculumType === 'gce' && next.targetDegree === 'bachelor') next.gceVersion=1;
   if (answers[field] !== value) {
+    if (["targetDegree", "curriculumType", "certificateCountry", "schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent"].includes(field)) {
+      for (const key of JEE_STEPS) delete next[key];
+      delete next.jeeAdvanced;
+    }
+    if (field === "jeeSchoolCertificate") {
+      delete next.jeeMainStatus; delete next.jeeAdvancedStatus; delete next.jeeEvidenceContext;
+    }
+    if (field === "jeeMainStatus" || field === "jeeAdvancedStatus") delete next.jeeEvidenceContext;
+    if (["jeeSchoolCertificate", "jeeMainStatus", "jeeAdvancedStatus", "jeeEvidenceContext", "targetField"].includes(field) ||
+        (field === "intake" && answers.intake !== undefined)) {
+      delete next.jeeTargetFamily; delete next.jeeTargetFamilyReference;
+    }
+    if (field === "jeeTargetFamily") delete next.jeeTargetFamilyReference;
     const academicBasis = (HISTORY_STEPS.some(key => key === field) && field !== "priorStudyField") ||
       ["targetDegree", "curriculumType", "certificateCountry", "schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent", "priorStudyMode"].includes(field);
     if (academicBasis) {
@@ -576,7 +619,7 @@ export function withAnswer<K extends StepId>(
     };
     for (const key of dependents[field] ?? []) delete next[key];
     if (HISTORY_STEPS.some(key => key === field) || INDIA_STUDY_STEPS.some(key => key === field) ||
-        ["targetDegree", "curriculumType", "certificateCountry", "board", "schoolGradePercent", "jeeAdvanced", "schoolQualificationCountry", "schoolQualificationContext", "hasExistingApsCertificate"].includes(field)) {
+        ["targetDegree", "curriculumType", "certificateCountry", "board", "schoolGradePercent", "jeeAdvanced", ...JEE_STEPS, "schoolQualificationCountry", "schoolQualificationContext", "hasExistingApsCertificate"].includes(field)) {
       for (const key of timing) delete next[key];
     }
     if (field === "apsProcedureStatus") {
@@ -598,7 +641,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
     changed = false;
     const visible = new Set<string>(visibleSteps(next));
     for (const key of Object.keys(next)) {
-      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && !visible.has(key)) {
+      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && key !== "jeeVersion" && !visible.has(key)) {
         delete next[key as StepId];
         changed = true;
       }
@@ -608,6 +651,8 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
 }
 
 export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
+  if (answers.ibVersion===1 && ["ibExamYear","ibSchoolYears","ibTotalPoints"].includes(step) && answers[step]===null)return true;
+  if(step==="ibSchoolCode")return /^(?:\d{6}|unknown)$/.test(answers.ibSchoolCode??"");
   if (step === "yearsOfUniversityStudy" && answers[step] === null) return isIndiaStudyBranch(answers);
   if (DATE_STEPS.some(key => key === step)) return calendarDay(answers[step]) !== undefined;
   if (isTextStep(step)) {
@@ -617,6 +662,10 @@ export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
   }
   if (step === "priorStudyCountry") return (answers.priorStudyCountry === "unknown" && isIndiaStudyBranch(answers)) || answers.priorStudyCountry === "other" || /^[a-z]{2}$/i.test(typeof answers.priorStudyCountry === "string" ? answers.priorStudyCountry.trim() : "");
   if (step === "intake") return answers.intake !== undefined;
+  if (step === "ibSubjects" && answers.ibVersion===1) {
+    const subjects=answers.ibSubjects??[];
+    return subjects.length>0 && subjects.every(ibSubjectAnswered) && !hasDuplicateIbSubjects(subjects);
+  }
   if (step === "gceSubjects" || step === "ibSubjects") {
     const subjects = answers[step] ?? [];
     return subjects.length > 0 && !hasDuplicateSubjects(subjects);
@@ -627,7 +676,7 @@ export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
     return (
       typeof value === "number" &&
       Number.isFinite(value) &&
-      (!["dmatCompletedSemesters","gceSchoolYears"].includes(step) || Number.isInteger(value)) &&
+      (!["dmatCompletedSemesters","gceSchoolYears","ibSchoolYears","ibExamYear","ibTotalPoints"].includes(step) || Number.isInteger(value)) &&
       value >= min &&
       value <= max
     );
@@ -745,7 +794,11 @@ export function buildProfile(answers: Answers): Profile {
   if (answers.schoolGradePercent !== undefined) {
     profile.schoolGradePercent = answers.schoolGradePercent;
   }
-  if (answers.jeeAdvanced !== undefined) {
+  if (answers.jeeVersion !== undefined && visibleSteps(answers).includes("jeeMainStatus")) {
+    profile.jee = { main: answers.jeeMainStatus, advanced: answers.jeeAdvancedStatus, context: answers.jeeEvidenceContext,
+      ...(answers.jeeVersion === 2 ? { schoolCertificate: answers.jeeSchoolCertificate, targetFamily: answers.jeeTargetFamily, targetFamilyReference: answers.jeeTargetFamilyReference } : {}) };
+  }
+  if (answers.jeeVersion === undefined && answers.jeeAdvanced !== undefined) {
     profile.jeeAdvanced = answers.jeeAdvanced;
   }
   if (
@@ -772,33 +825,32 @@ export function buildProfile(answers: Answers): Profile {
       }),
     };
   }
-  if (answers.curriculumType === "ib" && answers.ibFullDiploma !== undefined) {
-    const subjects = answers.ibSubjects?.map((s) => {
-      const subject = IB_SUBJECTS.find((c) => c.id === s.subjectId)!;
-      return {
-        group: subject.group,
-        level: s.level,
-        grade: Number(s.grade),
-        category: subject.category,
-        ...("foreignLanguage" in subject
-          ? { foreignLanguage: subject.foreignLanguage }
-          : {}),
-        // The catalog lists only subjects DAAD recognizes — see IB_SUBJECTS.
-        recognizedForGermany: true,
-      };
-    });
-    // Only the diploma question is asked when the answer is "no": nothing below
-    // it can change the outcome, so those facts stay genuinely unknown.
-    profile.ib = {
-      fullDiploma: answers.ibFullDiploma,
-      totalPoints: answers.ibTotalPoints,
-      examYear: answers.ibExamYear,
-      schoolYears: answers.ibSchoolYears,
-      mathCourse: answers.ibMathCourse ?? null,
-      mathLevel:
-        subjects?.find((s) => s.category === "math")?.level ?? null,
-      subjects,
-    };
+  if (answers.curriculumType === 'ib' && (answers.ibVersion===1 || answers.ibFullDiploma!==undefined)) {
+    if(answers.ibVersion===1){
+      const subjects=answers.ibSubjects?.map(s=>({subjectId:s.subjectId,name:s.name,level:s.level,grade:s.grade==='unknown'?null:Number(s.grade),language:s.language,continuedForeign:s.continuedForeign,continuity:s.continuity,independence:s.independence}));
+      const math=subjects?.filter(s=>ibEntry(s.subjectId)?.kind==='math');
+      const row=math?.length===1?math[0]:undefined;
+      const course=ibEntry(row?.subjectId)?.course;
+      profile.ib=IbProfileSchema.parse({version:1,fullDiploma:['awarded','official_results'].includes(answers.ibDocumentStatus??''),documentStatus:answers.ibDocumentStatus,
+        examYear:answers.ibExamYear??undefined,examSession:answers.ibExamSession,schoolYears:answers.ibSchoolYears??undefined,schooling:answers.ibSchooling,totalPoints:answers.ibTotalPoints??undefined,
+        mathLevel:row?.level==='HL'||row?.level==='SL'?row.level:null,mathCourse:course==='AA'||course==='AI'||course==='legacy'?course:null,
+        subjects,programme:answers.ibProgramme,school:answers.ibSchoolIdentity==='known'?{name:answers.ibSchoolName,country:answers.ibSchoolCountry,code:answers.ibSchoolCode==='unknown'?undefined:answers.ibSchoolCode}:undefined});
+    }else{
+      // Preserve old reads without adding decisive evidence that was never asked.
+      const subjects=answers.ibSubjects?.map(s=>({subjectId:s.subjectId,level:s.level,grade:s.grade==='unknown'?null:Number(s.grade)}));
+      profile.ib={fullDiploma:answers.ibFullDiploma!,examYear:answers.ibExamYear??undefined,schoolYears:answers.ibSchoolYears??undefined,totalPoints:answers.ibTotalPoints??undefined,subjects,mathLevel:subjects?.find(s=>ibEntry(s.subjectId)?.kind==='math')?.level==='HL'?'HL':subjects?.find(s=>ibEntry(s.subjectId)?.kind==='math')?.level==='SL'?'SL':null,mathCourse:answers.ibMathCourse??null};
+    }
   }
   return profile;
+}
+
+export function ibSubjectAnswered(s:IbSubjectAnswer):boolean {
+ const entry=ibEntry(s.subjectId);
+ return IbSubjectAnswerSchema.safeParse(s).success && s.continuity!==undefined && s.independence!==undefined &&
+   (entry?.kind!=='language' && entry?.course!=='ab_initio' || (!!s.language?.trim() && s.continuedForeign!==undefined));
+}
+export function hasDuplicateIbSubjects(subjects:IbSubjectAnswer[]):boolean {
+ const keys=subjects.filter(s=>s.subjectId!=='other').map(s=>{
+   const e=ibEntry(s.subjectId);return e?.kind==='language'||e?.course==='ab_initio'?s.subjectId+':'+(s.language??'').trim().toLowerCase():s.subjectId;
+ });return new Set(keys).size!==keys.length;
 }

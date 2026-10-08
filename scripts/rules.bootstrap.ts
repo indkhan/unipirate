@@ -5,6 +5,7 @@
 // /admin; the application and evaluator never import this snapshot.
 import { intakeIndex, type EngineRule } from "../lib/engine/evaluate";
 import { dmatCandidates } from "./dmat.rules";
+import { ibCandidates, ibDocumentCandidates } from "./ib.rules";
 import { gceCandidates } from "./gce.rules";
 import { indiaStudyCandidates } from "./india-study.rules";
 
@@ -28,23 +29,11 @@ const APS_TRANSITION_CONDITIONS = {
   target_degree: "bachelor", curriculum: "national",
   aps_issuer_country: "in", aps_qualification_context: "national",
   board: { op: "in", value: INDIAN_BOARDS },
-  jee_advanced: false,
+  // UP-ELIG-04: the two ordinary Class XII routes are assessed independently of JEE.
   class12_percent: { op: "lt", value: 70 },
   intake_index: { op: "gte", value: WS_2026_27 },
 } as const;
 
-const STEM_FIELDS = [
-  "cs",
-  "it",
-  "engineering",
-  "mechanical_engineering",
-  "electrical_engineering",
-  "civil_engineering",
-  "math",
-  "physics",
-  "chemistry",
-  "biology",
-];
 
 export const ruleData: RuleRecord[] = [
   ...indiaStudyCandidates,
@@ -149,25 +138,20 @@ export const ruleData: RuleRecord[] = [
       "From Winter Semester 2026/27, Class XII plus APS may qualify for subject-restricted admission via Studienkolleg when the certificate shows at least 70%.",
     last_verified_at: SOURCE_CHECKED_AT,
   },
+  // UP-ELIG-04: ordinary current-source coverage reviewed 2026-10-08.
+  // These exact product choices are NOT a source commencement/effective date.
   {
-    id: "in-jee-advanced-direct",
-    country: "in",
-    conditions: {
-      curriculum: "national",
-      board: { op: "in", value: INDIAN_BOARDS },
-      target_degree: "bachelor",
-      jee_advanced: true,
-    },
-    outcomes: {
-      path: "subject_restricted",
-      note: "A valid JEE Advanced result gives direct, subject-specific admission.",
-    },
-    status: "verified",
-    source_url:
-      "https://www.daad.in/en/study-research-in-germany/studying-in-germany/bachelor-studies/",
-    source_quote:
-      "the sole exception is a valid JEE Advanced result (→ direct, subject-specific)",
-    last_verified_at: SOURCE_CHECKED_AT,
+    id: "in-jee-qualifying-pass-review", country: "in", status: "draft", published_at: null,
+    conditions: { target_degree: "bachelor", curriculum: "national",
+      aps_issuer_country: "in", aps_qualification_context: "national",
+      jee_school_certificate: "completed_12_year_secondary",
+      jee_main_status: "passed", jee_advanced_status: "passed", jee_evidence_context: "ordinary",
+      jee_reported_target_family: { op: "in", value: ["reported_official_technology", "reported_official_natural_sciences"] },
+      intake_index: { op: "in", value: [4053, 4054, 4055] } },
+    outcomes: { path: "subject_restricted", note: "Based on your reported completed Indian national 12-year secondary certificate, ordinary successful Main and Advanced passages, and applicable reported official technology/natural-science classification with a reference for this intended target, the ordinary JEE route gives direct subject-restricted academic access in those subject families. UniPirate does not independently verify these applicant reports. Current-source product coverage reviewed 2026-10-08: Winter 2026/27, Summer 2027 and Winter 2027/28 only; source effective intake is not stated. The institution makes the final admission decision. APS/application and visa requirements remain separate." },
+    source_url: "https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=4&ad-layerId=63",
+    source_quote: "direct subject-restricted admission",
+    last_verified_at: "2026-10-08T00:00:00Z",
   },
   {
     id: "in-70pct-insufficient-ws2026",
@@ -440,120 +424,8 @@ export const ruleData: RuleRecord[] = [
   },
   // UP-ELIG-01: source-backed ordinary candidates remain drafts.
   ...gceCandidates,
-  // -------------------------------------------------------------- IB Diploma
-  {
-    id: "ib-math-hl-direct-2025",
-    country: null,
-    conditions: {
-      curriculum: "ib",
-      target_degree: "bachelor",
-      ib_full_diploma: true,
-      ib_exam_year: { op: "gte", value: 2025 },
-      ib_school_years: { op: "gte", value: 12 },
-      ib_total_points: { op: "gte", value: 24 },
-      ib_subject_count: 6,
-      ib_hl_count: { op: "gte", value: 3 },
-      ib_min_subject_grade: { op: "gte", value: 4 },
-      ib_all_subjects_recognized: true,
-      ib_language_count: { op: "gte", value: 2 },
-      ib_has_foreign_language_hl: true,
-      ib_has_social_science: true,
-      ib_has_natural_science: true,
-      ib_has_2025_eligible_hl: true,
-      ib_math_level: "HL",
-      ib_math_course: { op: "in", value: ["AA", "AI"] },
-    },
-    outcomes: {
-      path: "direct",
-      note: "A fully compliant IB Diploma from the 2025 exam year onward with Mathematics AA or AI at HL gives general direct admission.",
-    },
-    status: "verified",
-    source_url:
-      "https://www.daad.de/en/studying-in-germany/requirements/ib-diploma/",
-    source_quote:
-      "A compliant IB Diploma with Mathematics Analysis and Approaches or Applications and Interpretation at HL offers direct admission for all subjects.",
-    last_verified_at: SOURCE_CHECKED_AT,
-  },
-  {
-    id: "ib-math-sl-stem-studienkolleg",
-    country: null,
-    conditions: {
-      curriculum: "ib",
-      target_degree: "bachelor",
-      ib_full_diploma: true,
-      ib_exam_year: { op: "gte", value: 2025 },
-      ib_school_years: { op: "gte", value: 12 },
-      ib_total_points: { op: "gte", value: 24 },
-      ib_subject_count: 6,
-      ib_hl_count: { op: "gte", value: 3 },
-      ib_min_subject_grade: { op: "gte", value: 4 },
-      ib_all_subjects_recognized: true,
-      ib_language_count: { op: "gte", value: 2 },
-      ib_has_foreign_language_hl: true,
-      ib_has_social_science: true,
-      ib_has_natural_science: true,
-      ib_has_2025_eligible_hl: true,
-      ib_math_level: "SL",
-      ib_math_course: { op: "in", value: ["AA", "AI"] },
-      target_field: { op: "in", value: STEM_FIELDS },
-    },
-    outcomes: {
-      path: "studienkolleg",
-      note: "Mathematics at SL gives only subject-specific access EXCLUDING math/natural-science/technical fields — for a STEM target the direct route is closed; the standard route is Studienkolleg + Feststellungsprüfung.",
-    },
-    status: "verified",
-    source_url:
-      "https://www.daad.de/en/studying-in-germany/requirements/ib-diploma/",
-    source_quote:
-      "math at SL → subject-specific access excluding math/natural-science/technical fields … Conditions not met → standard Studienkolleg/FSP route.",
-    last_verified_at: SOURCE_CHECKED_AT,
-  },
-  {
-    id: "ib-no-diploma-unknown",
-    country: null,
-    conditions: { curriculum: "ib", ib_full_diploma: false },
-    outcomes: {
-      path: "unknown",
-      note: "An IB Certificate is not accepted as an IB Diploma. Check the DAAD admission database for whether another qualification or a preparatory route applies to your complete profile.",
-    },
-    status: "verified",
-    source_url:
-      "https://www.daad.de/en/studying-in-germany/requirements/ib-diploma/",
-    source_quote: "German universities do not accept a so-called IB Certificate.",
-    last_verified_at: SOURCE_CHECKED_AT,
-  },
-  {
-    id: "ib-math-sl-non-stem-subject-restricted",
-    country: null,
-    conditions: {
-      curriculum: "ib",
-      target_degree: "bachelor",
-      ib_full_diploma: true,
-      ib_exam_year: { op: "gte", value: 2025 },
-      ib_school_years: { op: "gte", value: 12 },
-      ib_total_points: { op: "gte", value: 24 },
-      ib_subject_count: 6,
-      ib_hl_count: { op: "gte", value: 3 },
-      ib_min_subject_grade: { op: "gte", value: 4 },
-      ib_all_subjects_recognized: true,
-      ib_language_count: { op: "gte", value: 2 },
-      ib_has_foreign_language_hl: true,
-      ib_has_social_science: true,
-      ib_has_natural_science: true,
-      ib_has_2025_eligible_hl: true,
-      ib_math_level: "SL",
-      ib_math_course: { op: "in", value: ["AA", "AI"] },
-      target_field: { op: "nin", value: STEM_FIELDS },
-    },
-    outcomes: {
-      path: "subject_restricted",
-      note: "A fully compliant IB Diploma with Mathematics AA or AI at SL gives subject-restricted access outside mathematics, natural sciences, and technical fields.",
-    },
-    status: "verified",
-    source_url:
-      "https://www.daad.de/en/studying-in-germany/requirements/ib-diploma/",
-    source_quote:
-      "Mathematics AA or AI at SL gives subject-specific access for subjects outside mathematics, natural sciences and technical fields.",
-    last_verified_at: SOURCE_CHECKED_AT,
-  },
+  // UP-ELIG-02 quarantines the old synthetic positive/FSP shortcuts.
+  // Reviewed replacements remain drafts, never production publication.
+  ...ibCandidates,
+  ...ibDocumentCandidates,
 ];

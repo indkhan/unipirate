@@ -90,24 +90,24 @@ function ibAnswers(overrides: {
 }
 
 describe("IB answers reach the seeded IB rules", () => {
-  it("Mathematics at HL gives general direct admission", () => {
+  it("Legacy Mathematics at HL retains reads but lacks decisive continuity/context", () => {
     const profile = buildProfile(ibAnswers({ mathLevel: "HL", targetField: "cs" }));
     expect(profile.ib?.mathLevel).toBe("HL");
-    expect(evaluate(profile, fixtureRules).path).toBe("direct");
+    expect(evaluate(profile, fixtureRules).path).toBe("unknown");
   });
 
   it("Mathematics at SL closes the direct route to a STEM target", () => {
     const profile = buildProfile(
       ibAnswers({ mathLevel: "SL", targetField: "mechanical_engineering" }),
     );
-    expect(evaluate(profile, fixtureRules).path).toBe("studienkolleg");
+    expect(evaluate(profile, fixtureRules).path).toBe("unknown");
   });
 
   it("Mathematics at SL still allows subject-restricted access outside STEM", () => {
     const profile = buildProfile(
       ibAnswers({ mathLevel: "SL", targetField: "humanities" }),
     );
-    expect(evaluate(profile, fixtureRules).path).toBe("subject_restricted");
+    expect(evaluate(profile, fixtureRules).path).toBe("unknown");
   });
 
   it("an IB Certificate short of the diploma is an honest unknown", () => {

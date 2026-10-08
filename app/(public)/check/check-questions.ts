@@ -10,6 +10,9 @@ import {
 } from "./steps";
 import { DMAT_FIELD_ENTRIES, DMAT_FIELD_SOURCE, DMAT_SOURCE } from "@/lib/engine/dmat";
 
+import { JEE_SOURCE, JEE_ADMISSION_SOURCE } from "@/lib/engine/jee";
+import { IB_SOURCE } from "@/lib/engine/ib";
+
 export type Option = { value: unknown; label: string; key: string };
 
 /** Prompt (and optional subtitle) shown for each step of the checker. */
@@ -75,9 +78,15 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; so
     question: "What is your overall Class 12 result?",
     subtitle: "Your overall percentage across subjects.",
   },
+  jeeSchoolCertificate: { question: "Do you hold a completed Indian national secondary school-leaving certificate after 12 grades?", subtitle: "Report the completed certificate itself. A board label, provisional or future results, university study or Class XII percentage alone cannot establish this category. Your report is not independently verified by UniPirate.", sourceUrl: JEE_ADMISSION_SOURCE },
+  jeeTargetFamily: { question: "What does an applicable official classification say about this intended programme?", subtitle: "Report a university or uni-assist statement covering this exact target as technology or natural sciences. Personal guesses, marketing, the broad DAAD family sentence alone, another programme or an unclassified mixed title cannot establish it. This is applicant-reported evidence, not app verification.", sourceUrl: JEE_ADMISSION_SOURCE },
+  jeeTargetFamilyReference: { question: "Which official statement classifies this exact intended target?", subtitle: "Identify the university or uni-assist, document or communication and applicable conclusion for this programme/target. Your report does not guarantee programme admission.", sourceUrl: JEE_ADMISSION_SOURCE },
+  jeeMainStatus: { question: "Have you successfully passed JEE Main?", subtitle: "Report confirmed qualifying passage from official examination evidence. A score, percentile, result sheet or eligibility to sit Advanced alone is not a confirmed pass. Choose Cannot confirm if the wording is unclear. Your report is not independently verified by UniPirate.", sourceUrl: JEE_SOURCE },
+  jeeAdvancedStatus: { question: "Have you successfully qualified in JEE Advanced?", subtitle: "Report official qualifying passage/rank, not merely a result, marks or participation. Preparatory ranks, unclear results or cross-year evidence need individual assessment; use the next evidence question.", sourceUrl: JEE_SOURCE },
+  jeeEvidenceContext: { question: "Does your JEE evidence need an exception or individual assessment?", subtitle: "Choose the relevant uncertainty even if an exam report says qualified. An Indian examination Main exemption or foreign-entry rule does not establish a German recognition exception. Certificate and intake applicability remain separate.", sourceUrl: JEE_SOURCE },
   jeeAdvanced: {
     question: "Do you have a valid JEE Advanced result?",
-    subtitle: "A qualifying JEE Advanced rank changes your admission path.",
+    subtitle: "Historical answer only; new assessments require separate Main and Advanced qualifying passage.",
   },
   hasExistingApsCertificate: {
     question: "Do you already have an APS certificate?",
@@ -91,17 +100,25 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; so
     question: "Which subjects did you take?",
     subtitle: "Add each A-Level (AL) and AS subject with its grade.",
   },
+  ibDocumentStatus: {question:'Which IB Diploma evidence do you have?',subtitle:'Official IBO results must confirm Diploma award. School predictions or a candidate-site screenshot alone do not establish it. A physical Diploma still pending differs from not awarded or Certificate only.',sourceUrl:'https://www.uni-assist.de/en/faqs/assemble-your-documents/'},
+  ibExamSession:{question:'Which IB examination session awarded these results?',subtitle:'May or November, separate from your intended university intake. Recognised COVID substitute sessions do not require invented exam attendance.',sourceUrl:IB_SOURCE},
+  ibSchooling:{question:'Were these ascending school years in full-time schooling?',sourceUrl:IB_SOURCE},
+  ibProgramme:{question:'Was this ordinary IB or gemischtsprachiges IB (GIB)?',subtitle:'School identity alone cannot establish a GIB-only exception.',sourceUrl:IB_SOURCE},
+  ibSchoolIdentity:{question:'Can you identify the exact school for a mathematics exception?',subtitle:'Use the official name, country and six-digit IB code where available. Missing identity is not evidence that your school is unlisted. Other ordinary requirements still apply.',sourceUrl:IB_SOURCE},
+  ibSchoolName:{question:'What is the exact school name?',subtitle:'Copy the name shown in the current KMK annex; aliases require confirmation.',sourceUrl:IB_SOURCE},
+  ibSchoolCountry:{question:'Which country heading covers this school in the KMK annex?',subtitle:'Copy the official heading exactly. This is separate from nationality, visa and certificate-country answers.',sourceUrl:IB_SOURCE},
+  ibSchoolCode:{question:'What is the six-digit IB school code?',subtitle:'Keep leading zeros. Enter unknown if you cannot establish it or the GIB annex provides no code.',sourceUrl:IB_SOURCE},
   ibFullDiploma: {
     question: "Did you complete the full IB Diploma?",
     subtitle:
       "German universities do not accept an IB Certificate in place of the Diploma.",
   },
   ibExamYear: {
-    question: "Which year did you sit your IB exams?",
+    question: "Which year is your IB examination session?",
     subtitle: "The requirements changed from the 2025 exam year onward.",
   },
   ibSchoolYears: {
-    question: "How many school years did you complete in total?",
+    question: "How many ascending school years did you actually complete?",
   },
   ibTotalPoints: {
     question: "What was your total IB score?",
@@ -109,7 +126,8 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; so
   },
   ibSubjects: {
     question: "Which six subjects did you take?",
-    subtitle: "Add each subject with its level (HL or SL) and grade.",
+    subtitle: "Use the exact course, level and grade, language context, independence and continuous two-year study. Computer Science cannot replace required Biology, Chemistry or Physics.",
+    sourceUrl: IB_SOURCE,
   },
   ibMathCourse: {
     question: "Which Mathematics course did you take?",
@@ -130,6 +148,36 @@ const countryOptions = COUNTRIES.map((c) => ({
  * their own bespoke inputs and return []. */
 export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
   switch (stepId) {
+    case "jeeSchoolCertificate": return [
+      {value:"completed_12_year_secondary",key:"completed_12_year_secondary",label:"I hold the completed Indian national secondary school-leaving certificate after 12 grades"},
+      {value:"other",key:"other",label:"Another, incomplete or shorter school qualification"},
+      {value:"unknown",key:"unknown",label:"Cannot confirm this completed certificate category"},
+    ];
+    case "jeeTargetFamily": return [
+      {value:"reported_official_technology",key:"reported_official_technology",label:"Applicable official statement classifies this target as technology"},
+      {value:"reported_official_natural_sciences",key:"reported_official_natural_sciences",label:"Applicable official statement classifies this target as natural sciences"},
+      {value:"reported_official_outside",key:"reported_official_outside",label:"Applicable official statement places this target outside these families"},
+      {value:"unknown",key:"unknown",label:"Cannot confirm an applicable official classification"},
+    ];
+    case "jeeMainStatus":
+    case "jeeAdvancedStatus": return [
+      {value:"passed",key:"passed",label:"Official evidence confirms qualifying passage"},
+      {value:"not_passed",key:"not_passed",label:"Not passed / not qualified"},
+      {value:"no_result",key:"no_result",label:"No result (not taken or pending)"},
+      {value:"unknown",key:"unknown",label:"Cannot confirm qualifying passage"},
+    ];
+    case "jeeEvidenceContext": return [
+      {value:"ordinary",key:"ordinary",label:"Ordinary qualifying evidence; no exception or uncertainty"},
+      {value:"main_exemption",key:"main_exemption",label:"Main exemption / direct foreign-entry exception"},
+      {value:"preparatory_rank",key:"preparatory_rank",label:"Preparatory-course rank only or unclear rank type"},
+      {value:"cross_year",key:"cross_year",label:"Results from different years / year applicability uncertain"},
+      {value:"unclear",key:"unclear",label:"Other unclear examination evidence"},
+    ];
+    case 'ibDocumentStatus':return [{value:'awarded',key:'awarded',label:'Diploma awarded; final IBO document available'},{value:'official_results',key:'official_results',label:'Official IBO results confirm Diploma; physical document pending'},{value:'not_awarded',key:'not_awarded',label:'Diploma not awarded'},{value:'certificate',key:'certificate',label:'IB Certificate / course results only'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
+    case 'ibExamSession':return [{value:'may',key:'may',label:'May'},{value:'november',key:'november',label:'November'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
+    case 'ibSchooling':return [{value:'ascending_full_time',key:'ascending_full_time',label:'Ascending years at schools with full-time instruction'},{value:'other',key:'other',label:'Another schooling pattern'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
+    case 'ibProgramme':return [{value:'ib',key:'ib',label:'Ordinary IB Diploma Programme'},{value:'gib',key:'gib',label:'Gemischtsprachiges IB (GIB)'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
+    case 'ibSchoolIdentity':return [{value:'known',key:'known',label:'I can provide exact identity from the official annex'},{value:'unknown',key:'unknown',label:'Cannot confirm exact identity / membership'}];
     case "priorStudyMode": return [
       { value: "regular", key: "regular", label: "Regular bachelor degree programme" },
       { value: "distance_online", key: "distance_online", label: "Distance or online" },

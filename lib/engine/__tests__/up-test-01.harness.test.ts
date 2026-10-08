@@ -1,6 +1,7 @@
 // UP-TEST-01 harness runner: CURRENT rows are green acceptance on the
 // baseline (no skips/todo); FUTURE rows are data only, never executed.
 // Pure: evaluate() + fixture data. Zero I/O.
+import { reviewedJeeRules } from "./jee.fixture";
 import { GCE_ACCEPTANCE } from "./gce.fixture";
 import { describe, expect, it } from "vitest";
 
@@ -10,6 +11,8 @@ import { reviewedDmatRules } from "./dmat.fixture";
 import { officialApsRules, officialIndianProfile } from "./aps-scopes.fixture";
 import { fixtureRules } from "./rules.fixture";
 import {
+  JEE_ACCEPTANCE,
+  IB_ACCEPTANCE,
   CURRENT,
   DMAT_ACCEPTANCE,
   APS_TRANSITION_ACCEPTANCE,
@@ -52,11 +55,18 @@ export function assertExpected(c: CurrentExpectation, r: Result): void {
 }
 
 describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
-  it.each(GCE_ACCEPTANCE)('UP-ELIG-01 accepted $id',c=>{const r=evaluate(c.profile,fixtureRules);expect(r.path).toBe(c.path);if(c.reason)expect(r.unknowns.some(n=>c.reason!.test(n))).toBe(true)});
+  it.each(JEE_ACCEPTANCE)("UP-ELIG-04 ordinary official contract: $id", c => {
+    const result = evaluate(c.profile, reviewedJeeRules());
+    expect(result.path).toBe(c.path);
+    if ("reason" in c && c.reason) expect(result.unknowns.join(" ")).toMatch(c.reason);
+    if (c.path === "subject_restricted") expect(result.citations[0].sourceUrl).toBe("https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=4&ad-layerId=63");
+  });
+  it.each(IB_ACCEPTANCE)('UP-ELIG-02 official $id',c=>{const r=evaluate(c.profile,fixtureRules);expect(r.path).toBe(c.path);if("reason" in c && c.reason)expect(r.unknowns.join(' ')).toMatch(c.reason)});
+  it.each(GCE_ACCEPTANCE)('UP-ELIG-01 accepted $id',c=>{const r=evaluate(c.profile,fixtureRules);expect(r.path).toBe(c.path);if("reason" in c && c.reason)expect(r.unknowns.some(n=>c.reason!.test(n))).toBe(true)});
   it.each(INDIA_STUDY_ACCEPTANCE)("UP-ELIG-03 accepted $id [$kind]", c => {
     const r = evaluate(c.profile, reviewedIndiaStudyRules());
     expect(r.path).toBe(c.path);
-    if (c.reason) expect(r.unknowns.some(n => c.reason!.test(n))).toBe(true);
+    if ("reason" in c && c.reason) expect(r.unknowns.some(n => c.reason!.test(n))).toBe(true);
   });
   for (const c of APS_TRANSITION_ACCEPTANCE) {
     it(`UP-ELIG-06 official confirmed submission ${c.date}`, () => {
@@ -84,7 +94,7 @@ describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
   });
 
   it("version, cited sources, and future-spec index", () => {
-    expect(HARNESS_VERSION).toBe("up-test-01/v1-current-behavior.2");
+    expect(HARNESS_VERSION).toBe("up-test-01/v1-current-behavior.5");
     expect(HARNESS_BASELINE_SHA).toBe(
       "951ab821920497443cd66dfc7917d044a1f00159",
     );
@@ -97,7 +107,7 @@ describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
       }
     }
     expect(new Set(FUTURE.map((s) => s.family))).toEqual(
-      new Set(["IB", "India", "Pakistan", "Saudi"]),
+      new Set(["India", "Pakistan", "Saudi"]),
     );
     const currentIds = new Set(CURRENT.map((c) => c.id));
     for (const s of FUTURE) {

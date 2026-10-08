@@ -52,7 +52,7 @@ it("upgrades historical Saudi profile edits and requires the missing APS answer"
   const missing = renderToStaticMarkup(React.createElement(ProfileReview, {initialAnswers: saved}));
   expect(missing).toContain("APS certificate");
   expect(missing).toContain('disabled=""');
-  const completed = renderToStaticMarkup(React.createElement(ProfileReview, {initialAnswers: {...saved, hasExistingApsCertificate: false, apsProcedureStatus: "unknown"}}));
+  const completed = renderToStaticMarkup(React.createElement(ProfileReview, {initialAnswers: {...saved, jeeVersion: 2, jeeSchoolCertificate: "unknown", jeeMainStatus: "no_result", jeeAdvancedStatus: "no_result", hasExistingApsCertificate: false, apsProcedureStatus: "unknown"}}));
   expect(completed).not.toContain('disabled=""');
   expect(saved).not.toHaveProperty("apsScopeVersion");
   expect(saved).not.toHaveProperty("hasExistingApsCertificate");
