@@ -1,10 +1,12 @@
 import {
   AWARDING_BODIES,
   BOARDS,
+  nationalSchoolCountry,
   COUNTRIES,
   INTAKE_OPTIONS,
   TARGET_FIELDS,
   isIndiaStudyBranch,
+  isPakistanBranch,
   type PartialAnswers,
   type StepId,
 } from "./steps";
@@ -16,7 +18,24 @@ import { IB_SOURCE } from "@/lib/engine/ib";
 export type Option = { value: unknown; label: string; key: string };
 
 /** Prompt (and optional subtitle) shown for each step of the checker. */
+const PK_SOURCE='https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=6&ad-layerId=193';
+const reported='Applicant-reported evidence; UniPirate does not independently verify it. Current nonbinding guidance includes a bounded one-year subject-restricted route; the linked regional brochure still says two years. Unsupported or historical cases and contrary applicable assessments need individual confirmation. The institution makes the final decision.';
 export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; sourceUrl?: string }> = {
+ pkCurrentAssessment:{question:'What does the intended institution/uni-assist current assessment say for this exact qualification, study, target and intake?',subtitle:'Current source guidance is nonbinding. Report a specific contrary instruction as a conflict; old or unrelated assessments cannot confirm this basis. '+reported,sourceUrl:'https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang'},
+ pkCurrentAssessmentReference:{question:'Which authority, document and conclusion applies to this exact current case and intake?',subtitle:reported,sourceUrl:'https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang'},
+ pkCertificate:{question:'What exact certificate title category appears on your document?',subtitle:'HSSC and Intermediate are separate from FSc, FA, ICom and ICS titles. We do not automatically classify those aliases.',sourceUrl:PK_SOURCE},
+ pkSchoolCompletion:{question:'Does your certificate confirm completion of twelve school grades?',subtitle:'School completion is separate from your marks and documentary group.',sourceUrl:PK_SOURCE},
+ pkGroup:{question:'Which documentary group is stated on your school grade report?',subtitle:'Use the explicit Science/Pre-Engineering/Pre-Medical, Commerce or Humanities group. ICS, mixed or unclassified records need assessment; no subject combination is inferred.',sourceUrl:PK_SOURCE},
+ pkTargetFamily:{question:'Which subject family does the intended programme belong to?',subtitle:'Use the programme or institution assessment. Preparatory access is restricted to the cited families; choosing a family does not guarantee admission to a particular programme.',sourceUrl:PK_SOURCE},
+ pkTargetFamilyReference:{question:'Which programme source or institution assessment identifies this target family?',subtitle:reported,sourceUrl:PK_SOURCE},
+ pkStudyMode:{question:'Was the previous academic study full-time?',subtitle:reported,sourceUrl:PK_SOURCE},
+ pkStudyRegulations:{question:'Was that academic study completed according to the study regulations?',subtitle:reported,sourceUrl:PK_SOURCE},
+ pkAnnualRecords:{question:'Do you have subjects and marks for each academic year of study?',subtitle:'Elapsed time, enrolment and two semesters alone do not establish a successful academic year. '+reported,sourceUrl:PK_SOURCE},
+ pkSuccessfulYearsReference:{question:'Which annual subject/marks records establish the successful academic years you reported?',subtitle:reported,sourceUrl:PK_SOURCE},
+ pkRecognition:{question:'What does an applicable official assessment say about recognition of this institution and academic study?',subtitle:'Names and HEC attestation alone do not establish recognition. '+reported,sourceUrl:'https://www.kmk.org/zab/central-office-for-foreign-education.html'},
+ pkRecognitionReference:{question:'Which authority, document and conclusion covers recognition of this institution and attained study?',subtitle:reported,sourceUrl:PK_SOURCE},
+ pkTargetRelation:{question:'What does an applicable official assessment say about the previous field and intended target?',subtitle:'Equal field names do not establish previous/related subject eligibility. '+reported,sourceUrl:PK_SOURCE},
+ pkTargetRelationReference:{question:'Which authority, document and conclusion covers this previous field and intended target?',subtitle:reported,sourceUrl:PK_SOURCE},
   priorStudyMode: { question: "Was this bachelor study in a regular degree programme?", subtitle: "Distance or online and other modes need separate applicability confirmation.", sourceUrl: "https://aps-india.de/news/" },
   priorStudyRecognition: { question: "What does an official assessment say about this institution, bachelor programme and study?", subtitle: "Report an applicable APS, uni-assist or university assessment. Institution marketing, an accreditation-name guess or an APS certificate covering only Class XII cannot confirm this bachelor study. Choose Cannot confirm for another programme or uncertain basis. UniPirate does not independently verify your report.", sourceUrl: "https://aps-india.de/faqs/" },
   priorStudyRecognitionReference: { question: "Which official assessment establishes that recognition conclusion?", subtitle: "Identify the assessing authority, document or communication and its conclusion for THIS institution, bachelor programme and attained study. This is applicant-reported official assessment, not app verification.", sourceUrl: "https://aps-india.de/news/" },
@@ -147,7 +166,19 @@ const countryOptions = COUNTRIES.map((c) => ({
 /** The selectable options for a single-choice step. Grade/subject steps render
  * their own bespoke inputs and return []. */
 export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
+  const options=(entries:readonly (readonly [string,string])[])=>entries.map(([value,label])=>({value,key:value,label}));
   switch (stepId) {
+    case 'pkCurrentAssessment':return options([['reported_current_support','Applicable current assessment supports this exact case'],['reported_contrary','Specific applicable assessment gives contrary requirements'],['unknown','Cannot confirm an applicable current assessment']]);
+    case 'pkCertificate':return options([['hssc','Higher Secondary (School) Certificate'],['intermediate','Intermediate (Examination) Certificate'],['ssc','SSC / less than twelve grades'],['fsc','FSc title; category requires assessment'],['fa','FA title; category requires assessment'],['icom','ICom title; category requires assessment'],['ics','ICS title; category requires assessment'],['other','Another certificate'],['unknown','Cannot confirm']]);
+    case 'pkGroup':return options([['science','Science / Pre-Engineering / Pre-Medical'],['commerce','Commerce'],['humanities','Humanities'],['mixed','ICS or mixed/unclassified'],['other','Another group'],['unknown','Cannot confirm']]);
+    case 'pkSchoolCompletion':return options([['completed_12_grades','Certificate confirms twelve completed grades'],['incomplete','Incomplete or fewer than twelve grades'],['unknown','Cannot confirm']]);
+    case 'pkTargetFamily':return options([['medicine','Medicine'],['natural_sciences','Natural Sciences'],['technology','Technology'],['social_sciences','Social Sciences'],['economics','Economics'],['humanities','Humanities'],['other','Another or mixed family'],['unknown','Cannot confirm']]);
+    case 'pkStudyMode':return options([['full_time','Full-time academic study'],['part_time','Part-time'],['distance_online','Distance or online'],['other','Another mode'],['unknown','Cannot confirm']]);
+    case 'pkStudyRegulations':return options([['confirmed','Records confirm study according to regulations'],['not_confirmed','Does not meet that basis'],['unknown','Cannot confirm']]);
+    case 'pkAnnualRecords':return options([['confirmed','Annual subjects and marks available'],['not_available','Annual records unavailable'],['unknown','Cannot confirm']]);
+    case 'pkRecognition':return options([['reported_official_confirmed','Official assessment confirms recognition'],['reported_official_rejected','Official assessment rejects recognition'],['unknown','Cannot confirm applicable assessment']]);
+    case 'pkTargetRelation':return options([['reported_official_previous','Official assessment confirms previous subject'],['reported_official_closely_related','Official assessment confirms related subject'],['reported_official_unrelated','Official assessment places target outside scope'],['unknown','Cannot confirm applicable assessment']]);
+
     case "jeeSchoolCertificate": return [
       {value:"completed_12_year_secondary",key:"completed_12_year_secondary",label:"I hold the completed Indian national secondary school-leaving certificate after 12 grades"},
       {value:"other",key:"other",label:"Another, incomplete or shorter school qualification"},
@@ -255,7 +286,7 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
       return [{ value: "saudi_study", label: "Yes, I confirmed this checklist applies", key: "saudi_study" }, { value: "other", label: "Another checklist applies", key: "other" }, { value: "unknown", label: "Unsure", key: "unknown" }];
     case "priorStudyCountry": {
       const options = [...countryOptions, { value: "other", label: "Another country", key: "other" }];
-      if (isIndiaStudyBranch(answers)) options.push({ value: "unknown", label: "Cannot confirm the institution country", key: "unknown" });
+      if (isIndiaStudyBranch(answers)||isPakistanBranch(answers)) options.push({ value: "unknown", label: "Cannot confirm the institution country", key: "unknown" });
       const saved = answers.priorStudyCountry;
       // Preserve stored country codes beyond the small supported-country catalog.
       if (saved && /^[a-z]{2}$/i.test(saved) && !options.some((o) => o.value === saved)) {
@@ -308,7 +339,7 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
       ];
     case "board":
       return BOARDS
-        .filter((b) => b.country === answers.certificateCountry)
+        .filter((b) => b.country === nationalSchoolCountry(answers))
         .map((b) => ({ value: b.id, label: b.label, key: b.id }));
     case "hasPriorUniversityStudy":
     case "jeeAdvanced":
