@@ -13,8 +13,11 @@ import * as personas from "./personas";
 // same input, honest unknown; source limits exemption to the completed procedure.
 // This remains a milestone corpus; parent TEST coverage remains OPEN.
 // UP-ELIG-02 activates reviewed IB evidence/recognition acceptance separately.
+// UP-ELIG-04 corrects the two unsafe legacy JEE expectations; official
+// acceptance activates source-backed ordinary draft copies with certificate, reported family/reference and exact current product intake coverage.
+export { JEE_ACCEPTANCE } from "./jee.fixture";
 export { IB_ACCEPTANCE } from "./ib.fixture";
-export const HARNESS_VERSION = "up-test-01/v1-current-behavior.3" as const;
+export const HARNESS_VERSION = "up-test-01/v1-current-behavior.5" as const;
 export { INDIA_STUDY_ACCEPTANCE } from "./india-study.fixture";
 export { DMAT_ACCEPTANCE } from "./dmat.fixture";
 export const HARNESS_BASELINE_SHA =
@@ -112,9 +115,9 @@ export const CURRENT: CurrentExpectation[] = [
     assertedIn: "evaluate.test.ts: Part E persona 1",
   },
   {
-    id: "IN-positive-jee-direct", family: "India", kind: "positive",
+    id: "IN-legacy-jee-evidence-unknown", family: "India", kind: "positive",
     routesTo: ["UP-ELIG-04"], profile: personas.p2CbseJeeAdvanced,
-    path: "subject_restricted", aps: "unknown", testAS: "unknown",
+    path: "unknown", unknownsMatch: [/Main.*qualifying passage/], aps: "unknown", testAS: "unknown",
     assertedIn: "evaluate.test.ts: Part E persona 2",
   },
   {
@@ -130,9 +133,9 @@ export const CURRENT: CurrentExpectation[] = [
     assertedIn: "evaluate.test.ts: India 70% cutoff (SS 2026)",
   },
   {
-    id: "IN-boundary-jee-low-score-still-direct", family: "India", kind: "boundary",
+    id: "IN-boundary-legacy-jee-no-low-score-exemption", family: "India", kind: "boundary",
     routesTo: ["UP-ELIG-04"], profile: { ...personas.p2CbseJeeAdvanced, schoolGradePercent: 65 },
-    path: "subject_restricted",
+    path: "unknown", unknownsMatch: [/Main.*qualifying passage/],
     assertedIn: "evaluate.test.ts: JEE Advanced with <70% Class XII",
   },
   {
@@ -301,7 +304,7 @@ export const APS_TRANSITION_ACCEPTANCE = [
 ] as const;
 
 export const FUTURE: FutureSpec[] = [
-  { id: "FUTURE-India-jee-main-plus-advanced", family: "India", issue: "UP-ELIG-04", needsFutureSchema: true, verified: false, note: "Separate JEE Main + Advanced facts restrict the route to technology/natural-science targets." },
+  { id: "FUTURE-India-jee-publication-applicability", family: "India", issue: "UP-ELIG-04", needsFutureSchema: false, verified: false, note: "Separate qualifying-pass contract is implemented. Ordinary official coverage is executable on source-backed draft copies. German exception/historical-intake treatment and independent programme classification remain unresolved; production publication is a separate review hold." },
   { id: "FUTURE-Pakistan-hssc-streams", family: "Pakistan", issue: "UP-ELIG-08", needsFutureSchema: true, verified: false, note: "HSSC/FSc stream-specific Studienkolleg routes, 49.99/50 boundary, one-year direct routes." },
   { id: "FUTURE-Saudi-certificate-subtypes", family: "Saudi", issue: "UP-ELIG-09", needsFutureSchema: true, verified: false, note: "National streams/grades, US accreditation-specific exceptions and graduate equivalence remain unverified spec data. Verified private-school and industrial clauses execute separately in SAUDI_ACCEPTANCE." },
 ];

@@ -30,7 +30,7 @@ const APS_TRANSITION_CONDITIONS = {
   target_degree: "bachelor", curriculum: "national",
   aps_issuer_country: "in", aps_qualification_context: "national",
   board: { op: "in", value: INDIAN_BOARDS },
-  jee_advanced: false,
+  // UP-ELIG-04: the two ordinary Class XII routes are assessed independently of JEE.
   class12_percent: { op: "lt", value: 70 },
   intake_index: { op: "gte", value: WS_2026_27 },
 } as const;
@@ -140,25 +140,20 @@ export const ruleData: RuleRecord[] = [
       "From Winter Semester 2026/27, Class XII plus APS may qualify for subject-restricted admission via Studienkolleg when the certificate shows at least 70%.",
     last_verified_at: SOURCE_CHECKED_AT,
   },
+  // UP-ELIG-04: ordinary current-source coverage reviewed 2026-10-08.
+  // These exact product choices are NOT a source commencement/effective date.
   {
-    id: "in-jee-advanced-direct",
-    country: "in",
-    conditions: {
-      curriculum: "national",
-      board: { op: "in", value: INDIAN_BOARDS },
-      target_degree: "bachelor",
-      jee_advanced: true,
-    },
-    outcomes: {
-      path: "subject_restricted",
-      note: "A valid JEE Advanced result gives direct, subject-specific admission.",
-    },
-    status: "verified",
-    source_url:
-      "https://www.daad.in/en/study-research-in-germany/studying-in-germany/bachelor-studies/",
-    source_quote:
-      "the sole exception is a valid JEE Advanced result (→ direct, subject-specific)",
-    last_verified_at: SOURCE_CHECKED_AT,
+    id: "in-jee-qualifying-pass-review", country: "in", status: "draft", published_at: null,
+    conditions: { target_degree: "bachelor", curriculum: "national",
+      aps_issuer_country: "in", aps_qualification_context: "national",
+      jee_school_certificate: "completed_12_year_secondary",
+      jee_main_status: "passed", jee_advanced_status: "passed", jee_evidence_context: "ordinary",
+      jee_reported_target_family: { op: "in", value: ["reported_official_technology", "reported_official_natural_sciences"] },
+      intake_index: { op: "in", value: [4053, 4054, 4055] } },
+    outcomes: { path: "subject_restricted", note: "Based on your reported completed Indian national 12-year secondary certificate, ordinary successful Main and Advanced passages, and applicable reported official technology/natural-science classification with a reference for this intended target, the ordinary JEE route gives direct subject-restricted academic access in those subject families. UniPirate does not independently verify these applicant reports. Current-source product coverage reviewed 2026-10-08: Winter 2026/27, Summer 2027 and Winter 2027/28 only; source effective intake is not stated. The institution makes the final admission decision. APS/application and visa requirements remain separate." },
+    source_url: "https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=4&ad-layerId=63",
+    source_quote: "direct subject-restricted admission",
+    last_verified_at: "2026-10-08T00:00:00Z",
   },
   {
     id: "in-70pct-insufficient-ws2026",

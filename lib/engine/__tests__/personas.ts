@@ -17,7 +17,8 @@ export const p1CbseNoJee: Profile = {
   visaApplicationCountry: "in",
 };
 
-// 2. CBSE 12th + JEE Advanced qualified → direct (subject-specific) access
+// 2. Historical CBSE + JEE boolean: lacks Main/qualifying passage and applicability.
+// Retain the original input; UP-ELIG-04 now expects targeted unknown.
 export const p2CbseJeeAdvanced: Profile = {
   ...p1CbseNoJee,
   jeeAdvanced: true,

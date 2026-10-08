@@ -23,13 +23,14 @@ export const indiaStudyCandidates: (EngineRule & { country: string })[] = [
     in_class12_reported_recognition: "confirmed",
     in_class12_reported_target_relation: { op: "in", value: ["previous", "closely_related"] },
   }, outcomes: { path: "subject_restricted", note: reportedNote } },
-  { ...evidence, id: "india-study-school-only", conditions: { ...scope, jee_advanced: false, in_class12_prior_study_kind: "none" },
+  { ...evidence, id: "india-study-school-only", conditions: { ...scope, in_class12_prior_study_kind: "none" },
     outcomes: { path: "studienkolleg", note: "With explicit no prior university study, the Class XII school route is via Studienkolleg. APS and programme requirements remain separate." } },
 ];
 
+// UP-ELIG-04: JEE absence/failure is not an academic fact for this independent route.
 // A reported study assessment must not disappear behind the less-specific old
 // school fallback. JEE is independent; these review candidates do not defeat it.
-const review = { ...scope, jee_advanced: false, in_class12_prior_study_kind: "bachelor" } as const;
+const review = { ...scope, in_class12_prior_study_kind: "bachelor" } as const;
 const gaps: { id: string; conditions: EngineRule["conditions"]; note: string }[] = [
   { id: "kind", conditions: { in_class12_prior_study_kind: { op: "in", value: ["other", "unknown"] } }, note: "Establish the previous bachelor-study basis; another qualification or missing prior-study answer is not covered by this route." },
   { id: "country", conditions: { in_class12_prior_study_country: { op: "neq", value: "in" } }, note: "Confirm the previous institution country. Foreign or uncertain study is outside this reviewed India-only coverage; it is not a rejection of foreign study." },

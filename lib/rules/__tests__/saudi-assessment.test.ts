@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { AnswersSchema, buildProfile } from "@/app/(public)/check/steps";
 import { saudiAnswers } from "@/app/(public)/check/__tests__/saudi.fixture";
+import { jeeProfile, reviewedJeeRules } from "@/lib/engine/__tests__/jee.fixture";
 import { saudiCandidates } from "@/scripts/saudi.rules";
 import { AssessmentResultSchema, evaluateAssessment, parseStoredAssessment } from "../assessment";
 import { ENGINE_REVISION, currentAssessmentContext } from "../current";
 import { raw, ruleId, version } from "./assessment-fixtures";
 
 const oldRevision = "unipirate/qualification+aps+dmat+india-study+ib+gce@bd836cc/assessment-v1";
-const newRevision = "unipirate/qualification+aps+dmat+india-study+ib+gce+saudi@01dc1f1/assessment-v1";
+const newRevision = "unipirate/jee-ordinary+saudi+assessment-v1@sha256:7e50b0548a4fb03d6b6b5fd72b68071017c26c008dc3dc51c838c536d1287e61";
 const context = { evaluatedAt: "2026-10-08T12:00:00Z", engineRevision: ENGINE_REVISION };
 const industrialAnswers = { ...saudiAnswers, saudiCertificateSubtype: "industrial_certificate", yearsOfUniversityStudy: 0,
   saudiEnrollment: "reported_document", saudiEnrollmentField: "Computing", saudiEnrollmentReference: "Synthetic enrollment document",
@@ -64,7 +65,7 @@ describe("Saudi authoritative assessments", () => {
     const national = { ...saudiAnswers, saudiCertificateSubtype: "national", saudiNationalStream: "Reported science stream" } as const;
     expect(evaluateAssessment(buildProfile(AnswersSchema.parse(national)), [enrollmentVersion()], context).result.path).toBe("unknown");
   });
-  it("captures the explicit Saudi revision while old stored metadata stays exact", () => {
+  it("captures the explicit combined Saudi/JEE revision while old stored metadata stays exact", () => {
     expect(ENGINE_REVISION).toBe(newRevision);
     expect(currentAssessmentContext().engineRevision).toBe(newRevision);
     expect(evaluateAssessment(buildProfile(AnswersSchema.parse(saudiAnswers)), [], context).metadata.engineRevision).toBe(newRevision);
@@ -76,4 +77,22 @@ describe("Saudi authoritative assessments", () => {
     if (read.kind === "authoritative") expect(read.original.metadata).toEqual(legacy.assessment_metadata);
     expect(JSON.stringify(legacy)).toBe(before);
   });
+});
+
+it("the combined authoritative selection isolates ordinary JEE and Saudi FH outcomes", () => {
+  const saudi = enrollmentVersion();
+  const jeeId = "00000000-0000-4000-8000-000000000009";
+  const candidate = reviewedJeeRules()[0];
+  const jee = version(2, { rule_id: jeeId, reviewed_at: context.evaluatedAt, published_at: context.evaluatedAt,
+    raw_snapshot: { ...raw, ...candidate, id: jeeId, slug: candidate.id, country_code: "in" } });
+  const versions = [saudi, jee];
+  const india = evaluateAssessment(jeeProfile, versions, context);
+  expect(india.result.path).toBe("subject_restricted");
+  expect(india.result).not.toHaveProperty("institutionRestriction");
+  expect(india.result.citations.filter(c => c.supports.includes("path")).map(c => c.ruleId)).toEqual([jeeId]);
+  expect(india.metadata.engineRevision).toBe(newRevision);
+  const fh = evaluateAssessment(buildProfile(AnswersSchema.parse(industrialAnswers)), versions, context);
+  expect(fh.result).toMatchObject({ path: "studienkolleg", institutionRestriction: "fachhochschule" });
+  expect(fh.result.citations.filter(c => c.supports.includes("path")).map(c => c.ruleId)).toEqual([ruleId]);
+  expect(fh.metadata.selectedVersionIds).toEqual([saudi.id, jee.id]);
 });

@@ -32,7 +32,7 @@ describe("historical Saudi APS answer compatibility", () => {
     const missing = AnswersSchema.safeParse(edit);
     expect(missing.success).toBe(false);
     if (!missing.success) expect(missing.error.issues.map(i => i.path)).toContainEqual(["hasExistingApsCertificate"]);
-    const completed = withAnswer(edit, "hasExistingApsCertificate", false);
+    const completed = withAnswer({...edit, jeeVersion: 2, jeeSchoolCertificate: "unknown", jeeMainStatus: "no_result", jeeAdvancedStatus: "no_result"}, "hasExistingApsCertificate", false);
     expect(AnswersSchema.safeParse(completed).success).toBe(true);
     expect(buildProfile(AnswersSchema.parse(completed)).hasExistingApsCertificate).toBe(false);
   });

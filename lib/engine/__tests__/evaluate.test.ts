@@ -29,9 +29,10 @@ describe("Part E personas", () => {
     expect(r.documents.some((d) => d.includes("APS"))).toBe(false);
   });
 
-  it("2. CBSE + JEE Advanced → direct subject-specific", () => {
+  it("2. Legacy CBSE + JEE boolean → qualifying-pass/applicability unknown", () => {
     const r = run(p.p2CbseJeeAdvanced);
-    expect(r.path).toBe("subject_restricted");
+    expect(r.path).toBe("unknown");
+    expect(r.unknowns.join(" ")).toMatch(/Main.*qualifying passage/);
     expect(r.aps).toBe("unknown");
     expect(r.testAS).toBe("unknown");
   });
@@ -328,12 +329,12 @@ describe("engine behavior", () => {
     expect(r.dMAT).toBe("unknown");
   });
 
-  it("JEE Advanced with <70% Class XII at WS 2026/27 → still direct subject-restricted", () => {
+  it("Legacy JEE boolean with <70% Class XII → no unsupported exemption", () => {
     const jeeAdvLowScore: Profile = {
       ...p.p2CbseJeeAdvanced,
       schoolGradePercent: 65,
     };
-    expect(run(jeeAdvLowScore).path).toBe("subject_restricted");
+    expect(run(jeeAdvLowScore).path).toBe("unknown");
   });
 
   it("steps merge sorted by order and de-duplicated", () => {

@@ -1,3 +1,6 @@
+import { isQuarantinedJeeRule, isScopedJeePathRule } from "../engine/evaluate";
+import { JEE_SOURCE, JEE_FIELD_SOURCE, JEE_LEGACY_SLUG } from "../engine/jee";
+
 // Pure rendering of rule records into embeddable text chunks. Zero I/O.
 // The assistant's search_rules tool retrieves these chunks; the verbatim
 // source_quote is the semantic payload, the rendered conditions/outcomes make
@@ -96,7 +99,12 @@ const FACT_LABELS: Record<string, string> = {
   curriculum: "curriculum type",
   board: "school board",
   class12_percent: "Class 12 percentage",
-  jee_advanced: "valid JEE Advanced result",
+  jee_advanced: "historical JEE Advanced boolean (not confirmed qualifying passage)",
+  jee_main_status: "reported JEE Main qualifying passage status",
+  jee_advanced_status: "reported JEE Advanced qualifying passage status",
+  jee_school_certificate: "applicant-reported completed Indian national school certificate category (not app verification)",
+  jee_reported_target_family: "applicant-reported applicable official classification of this intended target, with reference (not app verification)",
+  jee_evidence_context: "reported JEE exception or evidence uncertainty",
   certificate_country: "country of the assessed qualification",
   visa_application_country: "country of visa application",
   target_field: "target field of study",
@@ -192,28 +200,38 @@ export function ruleToChunk(rule: KbRule, options: { includeLegacyDmatQuote?: bo
     content: "Saudi admission applicability: unknown. [[unknown]] Stored certificate/stream/degree criteria require official source review; no admission path is established.",
     source_url: rule.source_url, last_verified_at: null, country_code: rule.country_code,
   };
+  // Changing a historical row's outcomes cannot verify its old admission quote.
+  const legacyJee = isQuarantinedJeeRule(rule) ||
+    (rule.slug === JEE_LEGACY_SLUG && !isScopedJeePathRule(rule));
   const legacyDmat = rule.outcomes.dmat !== undefined && rule.conditions.has_existing_aps !== undefined &&
     rule.conditions.dmat_procedure === undefined;
   const conditionLines = Object.entries(rule.conditions).map(([key, cond]) =>
     renderCondition(key, cond),
   );
+  const outcomes = legacyJee ? { ...rule.outcomes, path: undefined, note: undefined,
+    documents: undefined, steps: undefined } : rule.outcomes;
   const content = [
+    ...(legacyJee ? [
+      "JEE admission applicability: unknown. [[unknown]] Historical conditions do not establish qualifying passage or current admission access.",
+      "Stored historical quote and admission note are unverified and withheld from evidence. Confirm Main and Advanced qualifying passage, certificate, target-field and intake applicability with " + JEE_SOURCE + " and " + JEE_FIELD_SOURCE + ".",
+      "Historical metadata date (not verification of the admission claim): " + (rule.last_verified_at ?? "unknown") + ".",
+    ] : []),
     conditionLines.length > 0
-      ? `Applies when: ${conditionLines.join("; ")}.`
+      ? `${legacyJee ? "Historical conditions (applicability unverified)" : "Applies when"}: ${conditionLines.join("; ")}.`
       : "Applies to all profiles.",
-    ...renderOutcomes(legacyDmat ? { ...rule.outcomes,
-      dmat: options.includeLegacyDmatQuote === false ? "unknown" : undefined, note: undefined } : rule.outcomes),
+    ...renderOutcomes(legacyDmat ? { ...outcomes,
+      dmat: options.includeLegacyDmatQuote === false ? "unknown" : undefined, note: undefined } : outcomes),
     ...(legacyDmat ? ["Legacy dMAT procedure applicability unverified: certificate possession alone does not establish an exemption for a new or unknown procedure."] : []),
-    ...((legacyDmat && options.includeLegacyDmatQuote === false) ? [] : [
+    ...((legacyJee || (legacyDmat && options.includeLegacyDmatQuote === false)) ? [] : [
       `${rule.outcomes.aps ? "Stored legacy quote (scoped applicability unverified)" : legacyDmat ? "Stored legacy quote (procedure applicability unverified)" : "Official source says"}: "${rule.source_quote}"`]),
   ].join("\n");
 
   return {
     slug: rule.slug,
-    title: rule.slug,
+    title: legacyJee ? "JEE applicability unresolved" : rule.slug,
     content,
     source_url: rule.source_url,
-    last_verified_at: rule.last_verified_at,
+    last_verified_at: legacyJee ? null : rule.last_verified_at,
     country_code: rule.country_code,
   };
 }
