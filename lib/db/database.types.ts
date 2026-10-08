@@ -102,6 +102,8 @@ export type Database = {
           course_id: string
           created_at: string
           id: string
+          offering_applicant_context: Json | null
+          offering_id: string | null
           status: string
           updated_at: string
           user_id: string
@@ -110,6 +112,8 @@ export type Database = {
           course_id: string
           created_at?: string
           id?: string
+          offering_applicant_context?: Json | null
+          offering_id?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -118,6 +122,8 @@ export type Database = {
           course_id?: string
           created_at?: string
           id?: string
+          offering_applicant_context?: Json | null
+          offering_id?: string | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -128,6 +134,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_offering_id_fkey"
+            columns: ["offering_id"]
+            isOneToOne: false
+            referencedRelation: "course_offerings"
             referencedColumns: ["id"]
           },
         ]
@@ -841,6 +854,10 @@ export type Database = {
       result_viewer: {
         Args: { p_check_id: string; p_token_hash?: string }
         Returns: string
+      }
+      valid_application_offering_context: {
+        Args: { value: Json }
+        Returns: boolean
       }
       valid_check_assessment_metadata: {
         Args: { value: Json }

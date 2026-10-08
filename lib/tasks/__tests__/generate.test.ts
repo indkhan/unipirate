@@ -426,3 +426,14 @@ describe("prepareCourseTaskDefinitionSync", () => {
     expect(sync.personalUpdates[0].taskKey).toBe(desired[0].key);
   });
 });
+
+// PROC01: bootstrap retirement is intent only; historical identity quarantine is independent.
+it("retired uni-assist bootstrap candidate is draft, never published by this implementation",()=>{
+ expect(ruleData.find(rule=>rule.id==="uni-assist-vpd-process")?.status).toBe("draft");
+});
+it.each([undefined,"in","pk","sa"])("no tracked application creates global account/payment for nationality %s",nationality=>{
+ const legacy=ruleData.find(rule=>rule.id==="uni-assist-vpd-process")!;
+ const promoted={...legacy,id:"00000000-0000-4000-8000-000000000077",slug:"uni-assist-vpd-process",status:"verified" as const};
+ const tasks=generateGlobalTasks(evaluate({targetDegree:"bachelor",curriculumType:"other",nationality},[promoted]));
+ expect(tasks).toEqual([]);
+});

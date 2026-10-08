@@ -1,5 +1,5 @@
 import {beforeEach, expect, it, vi} from "vitest";
-const mocks = vi.hoisted(() => ({getProfile: vi.fn(), listRuleVersions: vi.fn(), listGeneratedTasksByPrefix: vi.fn(), upsertGeneratedTasks: vi.fn(), listApplicationsWithCourses: vi.fn()}));
+const mocks = vi.hoisted(() => ({getProfile: vi.fn(), listRuleVersions: vi.fn(), listGeneratedTasksByPrefix: vi.fn(), upsertGeneratedTasks: vi.fn(), listApplicationsWithCourses: vi.fn(), getApplicationOfferingCatalogue:vi.fn(),listActiveCourseTaskDefinitions:vi.fn()}));
 vi.mock("@/lib/db/queries", () => mocks);
 import {materializeAllTasksForUser} from "../materialize";
 import {answers, raw, version, ruleId} from "@/lib/rules/__tests__/assessment-fixtures";
@@ -23,4 +23,15 @@ it("new nonmatching replacement cannot revive predecessor work", async () => {
 it("missing intake does not generate scoped replacement or predecessor work", async () => {
  mocks.getProfile.mockResolvedValue({answers: {...answers, intake: null}}); mocks.listRuleVersions.mockResolvedValue([v1, version(2, {intake_from: 4053, raw_snapshot: {...raw, outcomes: {steps: [step]}}})]);
  await materializeAllTasksForUser({from: vi.fn()}, "student"); expect(mocks.upsertGeneratedTasks).toHaveBeenCalledWith(expect.anything(), []);
+});
+
+import {input as offeringInput,uuid,selection} from "./offering-process.fixtures";
+it('offering materialization uses explicit application selection, suppresses generic submission and preserves requirements',async()=>{
+ const course={id:uuid(2),name:'Course',university_name:'University',source_url:'https://example.invalid/course',created_at:'2000-01-01T00:00:00Z',review_status:'approved'};
+ const application={id:uuid(5),course_id:course.id,status:'planning',offering_id:selection.offering_id,offering_applicant_context:selection.applicant_context,courses:course};
+ mocks.listApplicationsWithCourses.mockResolvedValue([application]);mocks.getApplicationOfferingCatalogue.mockResolvedValue(offeringInput());
+ mocks.listActiveCourseTaskDefinitions.mockResolvedValue([{id:uuid(10),kind:'submission',dueMode:'none',retiredAt:null,titleTemplate:'Legacy submit',sortOrder:30},{id:uuid(11),kind:'requirement',dueMode:'none',retiredAt:null,titleTemplate:'Prepare transcript',sortOrder:28}]);
+ await materializeAllTasksForUser({from:vi.fn()},uuid(7));const rows=mocks.upsertGeneratedTasks.mock.calls.at(-1)![1];
+ expect(rows.map((r:{task_key:string})=>r.task_key)).toEqual(expect.arrayContaining(['app:'+uuid(5)+':offering:'+uuid(3)+':process:vpd_request','app:'+uuid(5)+':offering:'+uuid(3)+':process:university_submission','app:'+uuid(5)+':course-task:'+uuid(11)]));
+ expect(rows.some((r:{title:string})=>r.title==='Legacy submit')).toBe(false);expect(application.status).toBe('planning');
 });

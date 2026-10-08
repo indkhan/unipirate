@@ -1,11 +1,15 @@
 "use server";
 
+import { SetApplicationOfferingSchema } from "@/lib/tasks/offering-process";
+import { materializeCourseTasksForApplication } from "@/lib/tasks/materialize";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireUser, type Session } from "@/lib/auth/session";
 import {
   deleteApplicationForCourse,
+  setApplicationOfferingSelection,
   deleteManualTask as deleteTaskRow,
   insertAnswerReport,
   hasApplication,
@@ -42,6 +46,7 @@ export async function toggleTask(input: unknown): Promise<void> {
   const { db, user } = await requireUser();
 
   await setTaskDone(db, user.id, id, done);
+  revalidatePath("/dashboard");
 }
 
 const moveTaskSchema = z.object({
@@ -176,9 +181,10 @@ const applicationStatusSchema = z.object({
 
 export async function setApplicationStatus(input: unknown): Promise<void> {
   const { id, status } = applicationStatusSchema.parse(input);
-  const { db } = await requireUser();
+  const { db, user } = await requireUser();
 
   await updateApplicationStatus(db, id, status);
+  if (status === "planning") await materializeCourseTasksForApplication(db,user.id,id);
   revalidatePath("/dashboard");
 }
 
@@ -199,4 +205,12 @@ export async function reportAssistantAnswer(input: unknown): Promise<void> {
     message: "Reported assistant answer",
     context: { question, answer, citations },
   });
+}
+
+export async function selectApplicationOffering(input: unknown): Promise<void> {
+  const selection = SetApplicationOfferingSchema.parse(input);
+  const {db,user} = await requireUser();
+  await setApplicationOfferingSelection(db,user.id,selection);
+  await materializeCourseTasksForApplication(db,user.id,selection.id);
+  revalidatePath("/dashboard");
 }
