@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildResearchDraft, prepareResearchReview, officialDomains, ResearchDraftSchema, ResearchOutputSchema, ResearchSeedSchema } from "../research";
+import { buildResearchDraft, prepareResearchReview, officialDomains, ResearchDraftSchema, ResearchOutputSchema, ResearchSeedSchema, patchResearchDraft } from "../research";
 
 export const seed = { url: "https://www.daad.de/example", name: "Synthetic Computing", university: "Synthetic University", text: "Synthetic Computing Synthetic University ".repeat(8) };
 export const observations = [
@@ -197,5 +197,57 @@ describe("research evidence boundary", () => {
     for (const change of [{ url: "http://localhost/foo" }, { url: "https://user:pass@daad.de/foo" }, { name: "" }, { text: "x".repeat(200001) }]) {
       expect(ResearchSeedSchema.safeParse({ ...seed, ...change }).success).toBe(false);
     }
+  });
+});
+
+
+describe("guided field decisions", () => {
+  const reason = "Compared captured official wording and actual applicability.";
+  it("patches precisely one field and retains every unrelated raw sibling", () => {
+    const raw = buildResearchDraft(seed, observations, output, []);
+    raw.identity.name = "  Synthetic Computing  ";
+    const before = structuredClone(raw);
+    const replacement = { ...raw.offerings[0].facts.find(f => f.key === "english")! };
+    const next = patchResearchDraft(raw, { kind: "edit", offering: 0, key: "english", reason, replacement });
+    expect(next.identity).toEqual(before.identity);
+    expect(next.observations).toEqual(before.observations);
+    expect(next.paste).toBe(before.paste);
+    expect(next.conflicts).toEqual(before.conflicts);
+    expect(next.offerings[0].facts.filter(f => f.key !== "english")).toEqual(before.offerings[0].facts.filter(f => f.key !== "english"));
+    expect(next.review?.changes[0]).toMatchObject({ before: replacement, reason, kind: "edit" });
+    expect(next.offerings[0].facts.find(f => f.key === "english")?.status).toBe("pending");
+    expect(raw).toEqual(before);
+  });
+  it("retains rejected originals privately, blocks acceptance and restores only pending", () => {
+    const raw = buildResearchDraft(seed, observations, output, []);
+    const rejected = patchResearchDraft(raw, { kind: "reject", entries: [{ offering: 0, key: "english" }], reason });
+    expect(rejected.offerings).toEqual(raw.offerings);
+    expect(() => prepareResearchReview(rejected, 0, ["english"], "11111111-1111-4111-8111-111111111111", "2026-10-07T13:00:00Z")).toThrow(/rejected/i);
+    expect(prepareResearchReview(rejected, 0, [], "11111111-1111-4111-8111-111111111111", "2026-10-07T13:00:00Z").find(f => f.key === "english")?.verbatim).toBeNull();
+    const restored = patchResearchDraft(rejected, { kind: "restore", offering: 0, key: "english" });
+    expect(restored.review?.rejected).toEqual([]);
+    expect(restored.offerings[0].facts.find(f => f.key === "english")?.status).toBe("pending");
+  });
+  it("requires explicit conflict correction and retains original alternatives", () => {
+    const raw = buildResearchDraft(seed, observations, output, []);
+    const original = raw.offerings[0].facts[0];
+    const replacement = { ...original, status: "pending" as const, verbatim: "Apply by 31 May.", evidence: [original.evidence[0]] };
+    expect(() => patchResearchDraft(raw, { kind: "edit", offering: 0, key: original.key, reason, replacement })).toThrow(/conflict/i);
+    const next = patchResearchDraft(raw, { kind: "resolve_conflict", offering: 0, key: original.key, reason, replacement });
+    expect(next.conflicts).toEqual([]);
+    expect(next.review?.changes[0]).toMatchObject({ before: original, conflict: raw.conflicts[0] });
+    expect(next.offerings[0].facts.slice(1)).toEqual(raw.offerings[0].facts.slice(1));
+  });
+  it.each(["", "x".repeat(19), "x".repeat(2001)])("rejects invalid trimmed reason length", reason => {
+    expect(() => patchResearchDraft(buildResearchDraft(seed, observations, output, []), { kind: "reject", entries: [{ offering: 0, key: "english" }], reason })).toThrow();
+  });
+  it.each([20, 2000])("accepts bounded reason length %s", length => {
+    expect(patchResearchDraft(buildResearchDraft(seed, observations, output, []), { kind: "reject", entries: [{ offering: 0, key: "english" }], reason: "  " + "x".repeat(length) + "  " }).review?.rejected[0].reason).toHaveLength(length);
+  });
+  it("fails missing, duplicate and unknown identities without changing input", () => {
+    const raw = buildResearchDraft(seed, observations, output, []);
+    for (const entries of [[], [{ offering: 7, key: "english" }], [{ offering: 0, key: "missing" }], [{ offering: 0, key: "english" }, { offering: 0, key: "english" }]])
+      expect(() => patchResearchDraft(raw, { kind: "reject", entries, reason })).toThrow();
+    expect(() => patchResearchDraft(raw, { kind: "restore", offering: 0, key: "english" })).toThrow();
   });
 });
