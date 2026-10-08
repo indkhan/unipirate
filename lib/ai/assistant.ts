@@ -13,6 +13,7 @@ import {
   streamText,
   tool,
   type ToolSet,
+  type TextStreamPart,
   type UIMessage,
 } from "ai";
 import { z } from "zod";
@@ -21,6 +22,7 @@ import { EMBEDDING_MODEL } from "@/lib/ai/kb";
 import { projectVersionedKbMatches } from "@/lib/ai/versioned-kb";
 import { currentAssessmentContext } from "@/lib/rules/current";
 import { profileFromAnswers } from "@/lib/tasks/profile";
+import { guardAssistantAnswer, ASSISTANT_FALLBACK, type AssistantEvidence } from "@/lib/ai/response-guard";
 import { parseMarkers } from "@/lib/ai/markers";
 import type { Database } from "@/lib/db/database.types";
 import {
@@ -126,8 +128,9 @@ function assistantTools(options: {
   userId: string;
   openrouter: ReturnType<typeof createOpenRouter>;
   tavilyApiKey?: string;
+  recordEvidence: (toolName: string, output: unknown) => unknown;
 }): ToolSet {
-  const { db, userId, openrouter, tavilyApiKey } = options;
+  const { db, userId, openrouter, tavilyApiKey, recordEvidence } = options;
   const context = currentAssessmentContext();
 
   return {
@@ -147,7 +150,7 @@ function assistantTools(options: {
             matchKbRuleHints(db, JSON.stringify(embedding)), listRuleVersions(db), getProfile(db, userId),
           ]);
           const profile = profileFromAnswers(saved).profile;
-          return projectVersionedKbMatches(hints, versions, {evaluatedAt: context.evaluatedAt, intake: profile?.intake});
+          return recordEvidence("search_rules", projectVersionedKbMatches(hints, versions, {evaluatedAt: context.evaluatedAt, intake: profile?.intake}));
         } catch {
           return {chunks: [], diagnostics: [], note: "Current rule knowledge unavailable. [[unknown]] Check the official source."};
         }
@@ -222,7 +225,7 @@ function assistantTools(options: {
           let results = await tavilySearch(tavilyApiKey, query, OFFICIAL_DOMAINS);
           if (results.length === 0)
             results = await tavilySearch(tavilyApiKey, query);
-          return { unverified: true, results };
+          return recordEvidence("web_search", { unverified: true, results });
         } catch {
           return {
             unverified: true,
@@ -244,21 +247,33 @@ export async function runAssistant(options: {
   messages: UIMessage[];
   openrouterApiKey: string;
   tavilyApiKey?: string;
+  abortSignal?: AbortSignal;
+  // Eval-only observation: never forwards raw text to UI or persistence.
+  onGuardedStep?: (step: { rawText: string; text: string }) => void;
 }) {
   const { db, userId, countryCode, messages, openrouterApiKey, tavilyApiKey } =
     options;
   const openrouter = createOpenRouter({ apiKey: openrouterApiKey });
 
+  const evidence: AssistantEvidence[] = [];
+  const recordEvidence = (toolName: string, output: unknown) => {
+    evidence.push({ toolName, output });
+    return output;
+  };
+
   return streamText({
+    abortSignal: options.abortSignal,
+    experimental_transform: () => assistantResponseTransform(evidence, options),
     model: openrouter(CHAT_MODEL),
     system: buildSystemPrompt(countryCode),
     messages: await convertToModelMessages(messages),
-    tools: assistantTools({ db, userId, openrouter, tavilyApiKey }),
+    tools: assistantTools({ db, userId, openrouter, tavilyApiKey, recordEvidence }),
     stopWhen: stepCountIs(6),
     temperature: 0,
     // Answers are 1-4 sentences per point by design; the cap also bounds cost.
     maxOutputTokens: 1024,
     onFinish: async (event) => {
+      if (options.abortSignal?.aborted || !event.text.trim()) return;
       const { citations } = parseMarkers(event.text);
       await insertAssistantMessage(db, {
         user_id: userId,
@@ -267,5 +282,74 @@ export async function runAssistant(options: {
         citations,
       });
     },
+  });
+}
+
+// Trade-off: prose waits for a completed model step (bounded by the existing
+// token cap). Tools continue immediately. SDK 7 processes this transformed
+// stream before accumulating text for onFinish and continuation history.
+function assistantResponseTransform(evidence: AssistantEvidence[], options: {
+  abortSignal?: AbortSignal;
+  onGuardedStep?: (step: { rawText: string; text: string }) => void;
+}) {
+  type Part = TextStreamPart<ToolSet>;
+  let pending: Part[] = [];
+  let textParts = new Map<string, string>();
+  let active = new Set<string>();
+  let seen = new Set<string>();
+  let inStep = false;
+  let invalid = false;
+  let failed = false;
+  let hasTool = false;
+  let stepNumber = 0;
+  const reset = () => {
+    pending = []; textParts = new Map(); active = new Set(); seen = new Set();
+    invalid = false; hasTool = false;
+  };
+  return new TransformStream<Part, Part>({
+    transform(part, controller) {
+      if (part.type === "start-step") {
+        reset(); inStep = true; stepNumber++;
+      }
+      if (part.type === "error" || part.type === "abort") {
+        reset(); failed = true;
+      }
+      if (part.type === "tool-call") hasTool = true;
+      if (part.type === "text-start" || part.type === "text-delta" || part.type === "text-end") {
+        if (!inStep || failed || options.abortSignal?.aborted) return;
+        if (part.type === "text-start") {
+          if (seen.has(part.id)) invalid = true;
+          seen.add(part.id); active.add(part.id); textParts.set(part.id, "");
+        } else {
+          if (!active.has(part.id)) invalid = true;
+          if (part.type === "text-end") active.delete(part.id);
+          else textParts.set(part.id, (textParts.get(part.id) ?? "") + part.text);
+        }
+        pending.push(part);
+        return;
+      }
+      if (part.type === "finish-step") {
+        const rawText = [...textParts.values()].join("");
+        if (inStep && !failed && !options.abortSignal?.aborted && !invalid && active.size === 0 &&
+          part.finishReason !== "error") {
+          if (rawText.trim() || !hasTool) {
+            const text = guardAssistantAnswer(rawText, evidence);
+            options.onGuardedStep?.({ rawText, text });
+            if (text === rawText) pending.forEach(p => controller.enqueue(p));
+            else {
+              const id = `guarded-answer-${stepNumber}`;
+              controller.enqueue({ type: "text-start", id });
+              controller.enqueue({ type: "text-delta", id, text: ASSISTANT_FALLBACK });
+              controller.enqueue({ type: "text-end", id });
+            }
+          }
+        }
+        reset(); inStep = false;
+      }
+      if (part.type === "finish") { reset(); inStep = false; }
+      controller.enqueue(part);
+    },
+    // Incomplete close/error/abort never releases pending model prose.
+    flush() { reset(); },
   });
 }
