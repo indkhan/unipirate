@@ -1,6 +1,6 @@
 # UP-ELIG-04 source contract
 
-Fresh public verification: **2026-10-07**. Retrieval date is not an effective intake. No live database or Anabin access was used. Public inventory is metadata, not admission proof.
+Initial public verification: **2026-10-07**; ordinary-route DAAD chain and uni-assist freshly rechecked **2026-10-08**. Retrieval date is not an effective intake. No live database or Anabin access was used. Public inventory is metadata, not admission proof.
 
 | Official source | Short literal evidence | Applicability and limits |
 | --- | --- | --- |
@@ -13,14 +13,24 @@ Fresh public verification: **2026-10-07**. Retrieval date is not an effective in
 | [JEE Advanced 2026 foreign guidance](https://jeeadv.ac.in/foreign.html) | “NOT required to write JEE (Main) 2026” | Certain foreign/OCI/PIO entry categories for the Indian examination. No German recognition exemption established. |
 | [JEE Advanced 2026 information brochure](https://jeeadv.ac.in/documents/IBEnglish_2026.pdf) | “minimum prescribed marks in each subject AND also in aggregate” | Section 22 distinguishes qualifying marks from mere results/rank possession. Preparatory lists and subsequent-year entry are distinct; no German equivalence established. Numeric thresholds are not encoded. |
 
-## Narrow correction and pending publication
+## Reviewed ordinary applicability — 2026-10-08
 
-The backlog's unconditional both-passes plus technical direct subject-restricted expectation exceeds verified applicability. Both qualifying passages are necessary for the ordinary contract, but certificate/qualification coverage, reviewed target-field membership and effective intake remain unresolved. The checker asks reported qualifying passage separately: passed/not_passed/no_result/unknown. It never converts scores, percentiles, rank, results or historical jeeAdvanced true into either passage.
+The freshly accessible DAAD admission-database selection follows [India](https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=2&ad-layerId=4) → [school qualification](https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=3&ad-layerId=21) → [both JEE parts](https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=4&ad-layerId=63). Literal branch evidence is “12-year secondary school-leaving certificate”, “both parts”, “Main and Advanced”, “direct subject-restricted admission”, and “technology and natural sciences”. The database is nonbinding orientation; institutions decide admission. The source states no effective intake for this branch. Verification date is not commencement.
 
-Main exemptions, foreign-entry situations, preparatory ranks, cross-year evidence and unclear results require individual assessment; no German exception is invented. A negative/missing JEE answer excludes only JEE. Independent reviewed university-year and school routes retain their own prerequisites; no missing JEE establishes Studienkolleg. There is no JEE-specific 70% threshold or below-70 exemption in code.
+The reviewed product contract covers only its existing Winter 2026/27, Summer 2027 and Winter 2027/28 choices (intake indices 4053/4054/4055). Historical, missing and other intakes remain unknown. This is explicitly reviewed current product coverage, not a claim that the official source began or ends at these dates.
 
-The published inventory's legacy in-jee-advanced-direct route (ID df155c8a-8522-459b-b572-51033b93492d) is runtime-quarantined when its positive path lacks the separate passages and explicit applicability. Its source/date remain review citations with an unknown claim. Other independently supported process outcomes are retained. No live record is changed.
+A completed Indian national 12-year school certificate must be reported explicitly, separately from tertiary history. Main and Advanced each require reported qualifying passage in an ordinary context. An applicant must report an applicable official technology/natural-science classification and nonblank bounded reference tied to the exact intended target. The app does not verify that reference or infer membership from CS, engineering or any broad STEM label. No board list is invented. Actual qualification issuer/context, bachelor scope, category, passages, ordinary context, family and exact covered intake are required by the shared engine/KB rule predicate.
 
-Bootstrap replaces the unsafe automatic route with a draft, note-only review candidate carrying the literal uni-assist quote, verification date and no positive path. Published ordinary India03 alternatives remain independent; draft school candidates no longer use historical JEE false as an admission prerequisite. Publication requires official review of certificate/issuer/context/board, technology/natural-science target inclusion and effective intake. The engine requires explicit inclusion scope, not exclusion-only field/certificate conditions.
+No percentile, score, rank, result possession or legacy Advanced boolean becomes qualifying passage. Main exemptions, foreign entry, preparatory ranks, cross-year and unclear evidence retain individual-assessment unknowns. No German exception, global waiver, APS exemption, visa guarantee, 70% JEE prerequisite or below-70 exemption is inferred. Independent India03 routes remain independent, and failed/missing JEE never establishes Studienkolleg.
 
-Executable official JEE cases assert only verified necessary facts and targeted unknowns. Complete positive matcher coverage is clearly labeled artificial unpublished specification data (example.org), never official passing coverage. Parent official acceptance coverage remains OPEN pending publication review.
+The backlog's unconditional technical-route wording is narrowed to this explicit ordinary applicability. Its historical Anabin claims are not fresh proof. The earlier complete-positive source hold is superseded only for this reviewed ordinary scope; exceptions, historical coverage and independently verified programme classification remain unresolved.
+
+## Draft, quarantine and executable coverage
+
+Bootstrap supplies a source-backed **draft**, null-publication-date candidate carrying the literal DAAD result quote, exact URL and 2026-10-08 verification date. Nothing is published, seeded or embedded by this change. Official positive tests and the ordinary harness use disposable published copies of this draft; artificial exception/matcher fixtures remain labelled specification data, never official evidence.
+
+Legacy unscoped positive JEE rules remain quarantined using the same predicate in engine and KB. Persisted strings are search hints only: immutable caller-visible current rule versions select model-visible authority. Renamed stale snippets, old direct-admission notes and fabricated stored quotes cannot regain authority from cache content or URL recognition. Honest unknowns retain official pointers and distinguish unresolved stored metadata from verified evidence. Rule34 version review, provenance, dates and evidence controls remain intact.
+
+Production publication, root combined review, real RLS/browser/provider gates and institutional assessment remain separate checkpoints. No live database or Anabin access was used.
+
+Engine revision records SHA256 of the JSON-serialized sorted path/SHA256 entries for `app/(public)/check/steps.ts`, `lib/engine/evaluate.ts`, `lib/engine/jee.ts`, `lib/rules/assessment.ts`, `lib/rules/versioning.ts`, and `lib/tasks/profile.ts`. This identifies tested implementation bytes rather than guessing a historical commit.

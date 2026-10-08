@@ -1,17 +1,21 @@
+import {version} from "@/lib/rules/__tests__/assessment-fixtures";
 import { afterEach, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ write: vi.fn(), remove: vi.fn(), exit: vi.fn() }));
+const mocks = vi.hoisted(() => ({ write: vi.fn(), remove: vi.fn(), exit: vi.fn(), versions: vi.fn() }));
+vi.mock("../../lib/db/queries", () => ({listRuleVersions: mocks.versions}));
+
 vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ from: (table: string) => table === "rules"
   ? { select: () => ({ in: async () => ({ data: [], error: null }) }) }
   : { select: async () => ({ data: [{ id: "old", slug: "old" }], error: null }), insert: mocks.write, upsert: mocks.write, delete: () => ({ neq: mocks.remove, in: mocks.remove }) } }) }));
 vi.mock("@openrouter/ai-sdk-provider", () => ({ createOpenRouter: () => ({ textEmbeddingModel: () => ({}) }) }));
-vi.mock("ai", () => ({ embedMany: async () => ({ embeddings: [[]] }) }));
+vi.mock("ai", () => ({ embedMany: async () => ({ embeddings: [[0, 1]] }) }));
 vi.mock("../../lib/env", () => ({ getServerEnv: () => ({ OPENROUTER_API_KEY: "test" }) }));
 vi.mock("../kb.snippets", () => ({ kbSnippets: [{ slug: "new", title: "New", content: "Test" }] }));
 
 afterEach(() => { vi.restoreAllMocks(); });
 
 it("retains the old knowledge base if writing replacement embeddings fails", async () => {
+  mocks.versions.mockResolvedValue([version(1)]);
   mocks.write.mockResolvedValue({ error: { message: "Invalid vector dimension" } });
   mocks.remove.mockResolvedValue({ error: null });
   vi.spyOn(process, "exit").mockImplementation(mocks.exit as never);

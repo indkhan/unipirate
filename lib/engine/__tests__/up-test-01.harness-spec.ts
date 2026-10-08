@@ -14,10 +14,10 @@ import * as personas from "./personas";
 // This remains a milestone corpus; parent TEST coverage remains OPEN.
 // UP-ELIG-02 activates reviewed IB evidence/recognition acceptance separately.
 // UP-ELIG-04 corrects the two unsafe legacy JEE expectations; official
-// acceptance covers necessary facts/unknowns, never unverified positive applicability.
+// acceptance activates source-backed ordinary draft copies with certificate, reported family/reference and exact current product intake coverage.
 export { JEE_ACCEPTANCE } from "./jee.fixture";
 export { IB_ACCEPTANCE } from "./ib.fixture";
-export const HARNESS_VERSION = "up-test-01/v1-current-behavior.4" as const;
+export const HARNESS_VERSION = "up-test-01/v1-current-behavior.5" as const;
 export { INDIA_STUDY_ACCEPTANCE } from "./india-study.fixture";
 export { DMAT_ACCEPTANCE } from "./dmat.fixture";
 export const HARNESS_BASELINE_SHA =
@@ -306,7 +306,7 @@ export const APS_TRANSITION_ACCEPTANCE = [
 ] as const;
 
 export const FUTURE: FutureSpec[] = [
-  { id: "FUTURE-India-jee-publication-applicability", family: "India", issue: "UP-ELIG-04", needsFutureSchema: false, verified: false, note: "Separate qualifying-pass contract is implemented. Exact certificate prerequisites, reviewed target membership and JEE intake applicability still need official publication review; no unconditional passing expectation is verified." },
+  { id: "FUTURE-India-jee-publication-applicability", family: "India", issue: "UP-ELIG-04", needsFutureSchema: false, verified: false, note: "Separate qualifying-pass contract is implemented. Ordinary official coverage is executable on source-backed draft copies. German exception/historical-intake treatment and independent programme classification remain unresolved; production publication is a separate review hold." },
   { id: "FUTURE-Pakistan-hssc-streams", family: "Pakistan", issue: "UP-ELIG-08", needsFutureSchema: true, verified: false, note: "HSSC/FSc stream-specific Studienkolleg routes, 49.99/50 boundary, one-year direct routes." },
   { id: "FUTURE-Saudi-certificate-subtypes", family: "Saudi", issue: "UP-ELIG-09", needsFutureSchema: true, verified: false, note: "Exact certificate type/stream drives national, private-school, industrial, and graduate routes." },
 ];

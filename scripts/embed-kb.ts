@@ -1,16 +1,17 @@
-// Rebuilds the assistant knowledge base: published rules (beta + verified) are
-// rendered to text chunks, curated snippets come from scripts/kb.snippets.ts,
-// everything is embedded via OpenRouter and kb_chunks is replaced wholesale.
-// Rerun after rule changes or snippet edits: pnpm kb:embed
+// Index currently applicable immutable rules without inferring an intake.
+// Stored vectors are search hints; retrieval reselects and renders exact inputs.
+// Unversioned snippets cannot establish current rule authority.
 
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createClient } from "@supabase/supabase-js";
 import { embedMany } from "ai";
 
-import { EMBEDDING_MODEL, ruleToChunk, type KbChunk, type KbRule } from "../lib/ai/kb";
+import { EMBEDDING_MODEL } from "../lib/ai/kb";
 import type { Database } from "../lib/db/database.types";
 import { getServerEnv } from "../lib/env";
-import { kbSnippets } from "./kb.snippets";
+import { versionedEmbeddingChunks } from "../lib/ai/versioned-kb";
+import { listRuleVersions } from "../lib/db/queries";
+import { replaceAdminKbChunks } from "../lib/db/admin-queries";
 
 const env = getServerEnv();
 if (!env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is required");
@@ -23,59 +24,22 @@ const db = createClient<Database>(
 const openrouter = createOpenRouter({ apiKey: env.OPENROUTER_API_KEY });
 
 async function main() {
-  const { data: rules, error } = await db
-    .from("rules")
-    .select(
-      "id, slug, conditions, outcomes, status, source_url, source_quote, last_verified_at, country_code",
-    )
-    .in("status", ["beta", "verified"]);
-  if (error) throw new Error(`load rules: ${error.message}`);
+  const evaluatedAt = new Date().toISOString();
+  const chunks = versionedEmbeddingChunks(await listRuleVersions(db), evaluatedAt);
+  console.log(`Embedding ${chunks.length} applicable immutable rule chunks; unversioned snippets excluded.`);
 
-  const ruleChunks = rules
-    .filter((r) => r.slug !== null)
-    .map((r) => ({
-      chunk: ruleToChunk(r as unknown as KbRule & { slug: string }),
-      ruleId: r.id,
-    }));
-  const chunks: { chunk: KbChunk; ruleId: string | null }[] = [
-    ...ruleChunks,
-    ...kbSnippets.map((chunk) => ({ chunk, ruleId: null })),
-  ];
-  console.log(
-    `Embedding ${ruleChunks.length} rule chunks + ${kbSnippets.length} snippets…`,
-  );
-
-  const { embeddings } = await embedMany({
+  const { embeddings } = chunks.length ? await embedMany({
     model: openrouter.textEmbeddingModel(EMBEDDING_MODEL),
-    values: chunks.map(({ chunk }) => `${chunk.title}\n${chunk.content}`),
-  });
+    values: chunks.map(chunk => `${chunk.title}\n${chunk.content}`),
+  }) : {embeddings: []};
 
-  const { data: existing, error: readError } = await db.from("kb_chunks").select("id, slug");
-  if (readError) throw new Error(`load kb_chunks: ${readError.message}`);
-
-  const rows = chunks.map(({ chunk, ruleId }, i) => ({
-    source_type: ruleId ? ("rule" as const) : ("snippet" as const),
-    rule_id: ruleId,
-    slug: chunk.slug,
-    title: chunk.title,
-    content: chunk.content,
-    source_url: chunk.source_url,
-    last_verified_at: chunk.last_verified_at,
-    country_code: chunk.country_code,
+  await replaceAdminKbChunks(db, chunks.map((chunk, i) => ({
+    source_type: "rule", rule_id: chunk.ruleId,
+    slug: `rule-${chunk.ruleId}-version-${chunk.versionId}`, title: chunk.title, content: chunk.content,
+    source_url: chunk.source_url, last_verified_at: chunk.last_verified_at, country_code: chunk.country_code,
     embedding: JSON.stringify(embeddings[i]),
-  }));
-  const { error: insertError } = await db.from("kb_chunks").upsert(rows, { onConflict: "slug" });
-  if (insertError) throw new Error(`insert kb_chunks: ${insertError.message}`);
-
-  // Keep the previous corpus if replacement vectors are rejected by Postgres.
-  const slugs = new Set(rows.map((row) => row.slug));
-  const staleIds = existing.filter((row) => !slugs.has(row.slug)).map((row) => row.id);
-  if (staleIds.length) {
-    const { error: deleteError } = await db.from("kb_chunks").delete().in("id", staleIds);
-    if (deleteError) throw new Error(`clear stale kb_chunks: ${deleteError.message}`);
-  }
-
-  console.log(`✓ kb_chunks rebuilt: ${rows.length} rows`);
+  })));
+  console.log(`✓ kb_chunks rebuilt: ${chunks.length} rows`);
 }
 
 main().catch((error) => {

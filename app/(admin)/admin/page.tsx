@@ -5,7 +5,7 @@ import { COUNTRIES } from "@/app/(public)/check/steps";
 import {
   getAdminCourse, getAdminRule, listAdminCourses, listAdminCourseTaskDefinitions,
   listAdminRules, listConflictCourses, listPendingCourses,
-  listRecentAdminAuditEvents,
+  listRecentAdminAuditEvents, listAdminImpactProfiles,
 } from "@/lib/db/admin-queries";
 
 import { AdminShell } from "./admin-shell";
@@ -13,6 +13,9 @@ import { adminHref, parseAdminState } from "./admin-state";
 import { AuditLog } from "./audit-log";
 import { ConflictQueue, CourseQueue, CourseTaskLibrary } from "./course-queue";
 import { OverviewPanel } from "./overview-panel";
+import { listRuleVersions } from "@/lib/db/queries";
+import { previewDraftImpact } from "@/lib/rules/consumer-impact";
+import { currentAssessmentContext } from "@/lib/rules/current";
 import { RuleEditor, RulesTable } from "./rules-panel";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +35,7 @@ export default async function AdminPage({ searchParams }: Props) {
 
   if (state.view === "overview") {
     const events = await listRecentAdminAuditEvents(db, 5);
-    content = <OverviewPanel counts={{ pending: pending.length, conflicts: conflicts.length, stale: staleRules.length, drafts: allRules.filter(r => r.status === "draft").length, beta: allRules.filter(r => r.status === "beta").length }} events={events} />;
+    content = <OverviewPanel counts={{ pending: pending.length, conflicts: conflicts.length, stale: staleRules.length, drafts: allRules.filter(r => r.status === "draft").length, beta: allRules.filter(r => r.versions[0]?.status === "beta").length }} events={events} />;
   } else if (state.view === "reviews") {
     const tabs = [["pending", "Pending courses", pending.length], ["conflicts", "Conflicts", conflicts.length]] as const;
     let panel: React.ReactNode;
@@ -46,9 +49,13 @@ export default async function AdminPage({ searchParams }: Props) {
   } else if (state.view === "rules") {
     const countries = COUNTRIES;
     const needle = state.q?.toLowerCase();
-    const filtered = allRules.filter(r => (!state.status || r.status === state.status) && (!state.country || r.country_code === state.country) && (state.attention !== "stale" || stale(r.last_verified_at)) && (!needle || `${r.slug} ${r.country_code} ${r.source_url}`.toLowerCase().includes(needle)));
+    const filtered = allRules.filter(r => (!state.status || (state.status === "draft" ? r.status === "draft" : r.versions[0]?.status === state.status)) && (!state.country || r.country_code === state.country) && (state.attention !== "stale" || stale(r.last_verified_at)) && (!needle || `${r.slug} ${r.country_code} ${r.source_url}`.toLowerCase().includes(needle)));
     const selected = state.rule ? await getAdminRule(db, state.rule) : undefined;
-    content = <Workspace title="Eligibility rules" description="Find, edit, and verify deterministic eligibility rules."><form className="mb-4 grid gap-2 rounded-xl border bg-card p-3 md:grid-cols-[1fr_180px_150px_120px_auto]"><input type="hidden" name="view" value="rules" /><input name="q" defaultValue={state.q} placeholder="Search slug or source" className="h-10 rounded-md border bg-background px-3" /><select name="country" defaultValue={state.country ?? ""} className="h-10 rounded-md border bg-background px-2"><option value="">All countries</option>{countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}</select><select name="status" defaultValue={state.status ?? ""} className="h-10 rounded-md border bg-background px-2"><option value="">All statuses</option><option>draft</option><option>beta</option><option>verified</option></select><select name="attention" defaultValue={state.attention ?? "all"} className="h-10 rounded-md border bg-background px-2"><option value="all">All</option><option value="stale">Stale</option></select><Button type="submit">Filter</Button></form><div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_520px]"><RulesTable rules={filtered} selectedRuleId={state.rule} /><RuleEditor rule={selected} countries={countries} /></div></Workspace>;
+    const impactContext = currentAssessmentContext();
+    const population = selected ? await listAdminImpactProfiles(db) : [];
+    const history = selected ? await listRuleVersions(db) : [];
+    const impacts = selected ? (["beta", "verified"] as const).map(status => ({status, ...previewDraftImpact(population, history, selected.draft, status, impactContext)})) : [];
+    content = <Workspace title="Eligibility rules" description="Edit draft workspaces, review changes, and append immutable publications."><form className="mb-4 grid gap-2 rounded-xl border bg-card p-3 md:grid-cols-[1fr_180px_150px_120px_auto]"><input type="hidden" name="view" value="rules" /><input name="q" defaultValue={state.q} placeholder="Search slug or source" className="h-10 rounded-md border bg-background px-3" /><select name="country" defaultValue={state.country ?? ""} className="h-10 rounded-md border bg-background px-2"><option value="">All countries</option>{countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}</select><select name="status" defaultValue={state.status ?? ""} className="h-10 rounded-md border bg-background px-2"><option value="">All statuses</option><option>draft</option><option>beta</option><option>verified</option></select><select name="attention" defaultValue={state.attention ?? "all"} className="h-10 rounded-md border bg-background px-2"><option value="all">All</option><option value="stale">Stale</option></select><Button type="submit">Filter</Button></form><div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_520px]"><RulesTable rules={filtered} selectedRuleId={state.rule} /><RuleEditor rule={selected} countries={countries} impacts={impacts} /></div></Workspace>;
   } else if (state.view === "tasks") {
     const approved = courses.filter(c => c.review_status === "approved" && (!state.q || `${c.name} ${c.university_name}`.toLowerCase().includes(state.q.toLowerCase())));
     const selected = state.course ? await getAdminCourse(db, state.course) : approved[0];

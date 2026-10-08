@@ -98,6 +98,8 @@ const FACT_LABELS: Record<string, string> = {
   jee_advanced: "historical JEE Advanced boolean (not confirmed qualifying passage)",
   jee_main_status: "reported JEE Main qualifying passage status",
   jee_advanced_status: "reported JEE Advanced qualifying passage status",
+  jee_school_certificate: "applicant-reported completed Indian national school certificate category (not app verification)",
+  jee_reported_target_family: "applicant-reported applicable official classification of this intended target, with reference (not app verification)",
   jee_evidence_context: "reported JEE exception or evidence uncertainty",
   certificate_country: "country of the assessed qualification",
   visa_application_country: "country of visa application",

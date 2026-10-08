@@ -49,8 +49,8 @@ const specification = { ...row, id: "UNPUBLISHED-SPECIFICATION-JEE-KB", slug: "s
   source_url: "https://example.org/unpublished-specification", source_quote: "Artificial specification; not official admission evidence.",
   last_verified_at: "2026-10-07T00:00:00Z",
   conditions: { target_degree: "bachelor", curriculum: "national", aps_issuer_country: "in", aps_qualification_context: "national",
-    board: "cbse", jee_main_status: "passed", jee_advanced_status: "passed", jee_evidence_context: "ordinary",
-    target_field: { op: "in" as const, value: ["mechanical_engineering"] }, intake_index: { op: "in" as const, value: [4053] } },
+    jee_school_certificate: "completed_12_year_secondary", jee_main_status: "passed", jee_advanced_status: "passed", jee_evidence_context: "ordinary",
+    jee_reported_target_family: { op: "in" as const, value: ["reported_official_technology", "reported_official_natural_sciences"] }, intake_index: { op: "in" as const, value: [4053] } },
   outcomes: { path: "subject_restricted", note: "Artificial scoped specification; programme admission remains separate." } };
 const current = { ...specification, status: "verified" };
 it("uses a complete current scoped specification instead of old persisted evidence", () => {

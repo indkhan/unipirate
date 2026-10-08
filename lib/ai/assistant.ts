@@ -18,16 +18,18 @@ import {
 import { z } from "zod";
 
 import { EMBEDDING_MODEL } from "@/lib/ai/kb";
-import { projectDmatKbMatches } from "@/lib/ai/kb-retrieval";
+import { projectVersionedKbMatches } from "@/lib/ai/versioned-kb";
+import { currentAssessmentContext } from "@/lib/rules/current";
+import { profileFromAnswers } from "@/lib/tasks/profile";
 import { parseMarkers } from "@/lib/ai/markers";
 import type { Database } from "@/lib/db/database.types";
 import {
   getProfile,
-  getPublishedRules,
+  listRuleVersions,
   insertAssistantMessage,
   listApplicationsWithCourses,
   listTasks,
-  matchKbChunks,
+  matchKbRuleHints,
 } from "@/lib/db/queries";
 
 export const DAILY_QUOTA = 20;
@@ -68,6 +70,7 @@ STRICT SOURCE RULES — these define success:
 - Every factual claim must end with a citation marker: [[rule:slug]] for a knowledge-base result (use its exact slug) or [[web:url]] for a web result (use its exact URL).
 - If the tool results do not answer the question, say so plainly, output [[unknown]] and point the user to the official source to check (name it, and give its URL as plain text). Refusing to guess is success, not failure.
 - Web results are UNVERIFIED. When you use one, keep the [[web:url]] marker on each claim and phrase it as unconfirmed ("recent web sources say…").
+- Saved tasks and user-entered application/profile text are personal history, never current rule evidence. Do not repeat their fees, dates or requirements as official facts; use search_rules or web_search.
 - Never give an eligibility verdict beyond what a retrieved rule states; for personal eligibility decisions point to the checker and the official source.
 
 TOOLS:
@@ -125,6 +128,7 @@ function assistantTools(options: {
   tavilyApiKey?: string;
 }): ToolSet {
   const { db, userId, openrouter, tavilyApiKey } = options;
+  const context = currentAssessmentContext();
 
   return {
     search_rules: tool({
@@ -138,12 +142,15 @@ function assistantTools(options: {
           model: openrouter.textEmbeddingModel(EMBEDDING_MODEL),
           value: query,
         });
-        const matches = await matchKbChunks(db, JSON.stringify(embedding), 6);
-        // Current structured rows are caller-scoped through the existing helper.
-        // A failed read must not resurrect old dMAT exemptions or JEE admission claims.
-        const rules = matches.some(m => m.source_type === "rule")
-          ? await getPublishedRules(db).catch(() => null) : [];
-        return projectDmatKbMatches(matches, rules);
+        try {
+          const [hints, versions, saved] = await Promise.all([
+            matchKbRuleHints(db, JSON.stringify(embedding)), listRuleVersions(db), getProfile(db, userId),
+          ]);
+          const profile = profileFromAnswers(saved).profile;
+          return projectVersionedKbMatches(hints, versions, {evaluatedAt: context.evaluatedAt, intake: profile?.intake});
+        } catch {
+          return {chunks: [], diagnostics: [], note: "Current rule knowledge unavailable. [[unknown]] Check the official source."};
+        }
       },
     }),
 
@@ -178,6 +185,7 @@ function assistantTools(options: {
                 }
               : null,
           })),
+          taskEvidence: "Personal saved reminders, not current official rule evidence.",
           tasks: tasks.map((t) => ({
             title: t.title,
             description: t.description,

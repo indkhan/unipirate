@@ -43,7 +43,7 @@ describe('UP-ELIG-04 checker',()=>{
  it('legacy stored/draft answers stay readable but never become Main/qualifying passage',()=>{
  const saved=PartialAnswersSchema.parse(JSON.parse(JSON.stringify(legacy)));expect(saved.jeeAdvanced).toBe(true);expect(AnswersSchema.safeParse(saved).success).toBe(true);
  const p=buildProfile(AnswersSchema.parse(saved));expect(p.jeeAdvanced).toBe(true);expect(p.jee).toBeUndefined();expect(evaluate(p,fixtureRules).path).toBe('unknown');
- const edited=withAnswer(saved,'board','cisce');expect(edited.jeeVersion).toBe(1);expect(edited.jeeMainStatus).toBeUndefined();
+ const edited=withAnswer(saved,'board','cisce');expect(edited.jeeVersion).toBe(2);expect(edited.jeeMainStatus).toBeUndefined();
  });
  it('normalization keeps partial explicit uncertainty and prunes hidden evidence without mutating input',()=>{
  const input={...jeeAnswers,jeeMainStatus:'unknown',jeeAdvancedStatus:undefined,jeeEvidenceContext:undefined} as const;

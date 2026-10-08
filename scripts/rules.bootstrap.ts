@@ -138,17 +138,20 @@ export const ruleData: RuleRecord[] = [
       "From Winter Semester 2026/27, Class XII plus APS may qualify for subject-restricted admission via Studienkolleg when the certificate shows at least 70%.",
     last_verified_at: SOURCE_CHECKED_AT,
   },
-  // UP-ELIG-04: source-backed contract, not a publishable positive route.
-  // Certificate prerequisites, reviewed field membership and intake coverage
-  // are still unresolved; retrieval date is not an effective-intake date.
+  // UP-ELIG-04: ordinary current-source coverage reviewed 2026-10-08.
+  // These exact product choices are NOT a source commencement/effective date.
   {
-    id: "in-jee-qualifying-pass-review", country: "in", status: "draft",
+    id: "in-jee-qualifying-pass-review", country: "in", status: "draft", published_at: null,
     conditions: { target_degree: "bachelor", curriculum: "national",
-      jee_main_status: "passed", jee_advanced_status: "passed", jee_evidence_context: "ordinary" },
-    outcomes: { note: "Both reported qualifying passages do not alone establish JEE access. Confirm qualification/certificate, technology/natural-science target membership and applicable intake with uni-assist/the university. Programme admission is separate; neither a 70% JEE threshold nor a below-70 exemption is verified here." },
-    source_url: "https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/",
-    source_quote: "JEE results are only relevant if you have successfuly passed the JEE Main AND Advanced.",
-    last_verified_at: "2026-10-07T00:00:00Z",
+      aps_issuer_country: "in", aps_qualification_context: "national",
+      jee_school_certificate: "completed_12_year_secondary",
+      jee_main_status: "passed", jee_advanced_status: "passed", jee_evidence_context: "ordinary",
+      jee_reported_target_family: { op: "in", value: ["reported_official_technology", "reported_official_natural_sciences"] },
+      intake_index: { op: "in", value: [4053, 4054, 4055] } },
+    outcomes: { path: "subject_restricted", note: "Based on your reported completed Indian national 12-year secondary certificate, ordinary successful Main and Advanced passages, and applicable reported official technology/natural-science classification with a reference for this intended target, the ordinary JEE route gives direct subject-restricted academic access in those subject families. UniPirate does not independently verify these applicant reports. Current-source product coverage reviewed 2026-10-08: Winter 2026/27, Summer 2027 and Winter 2027/28 only; source effective intake is not stated. The institution makes the final admission decision. APS/application and visa requirements remain separate." },
+    source_url: "https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=4&ad-layerId=63",
+    source_quote: "direct subject-restricted admission",
+    last_verified_at: "2026-10-08T00:00:00Z",
   },
   {
     id: "in-70pct-insufficient-ws2026",

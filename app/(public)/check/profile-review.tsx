@@ -70,6 +70,9 @@ const QUESTIONS: Record<StepId, string> = {
   curriculumType: "Curriculum",
   board: "Board",
   schoolGradePercent: "Class 12 result",
+  jeeSchoolCertificate: "Reported completed school certificate category",
+  jeeTargetFamily: "Reported official intended-target family",
+  jeeTargetFamilyReference: "Applicable official classification reference",
   jeeAdvanced: "Historical JEE Advanced answer",
   jeeMainStatus: "Reported JEE Main qualifying passage",
   jeeAdvancedStatus: "Reported JEE Advanced qualifying passage",
@@ -92,7 +95,7 @@ const QUESTIONS: Record<StepId, string> = {
 export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1, jeeVersion: 1 }));
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1, jeeVersion: 2 }));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const steps = visibleSteps(answers);

@@ -1,16 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { deriveFacts, EngineRuleSchema, evaluate, type EngineRule } from '../evaluate';
-import { jeeProfile, JEE_ACCEPTANCE } from './jee.fixture';
+import { jeeProfile, JEE_ACCEPTANCE, reviewedJeeRules } from './jee.fixture';
 import legacy from './jee-legacy.fixture.json';
 import { indianStudyProfile, reviewedIndiaStudyRules } from './india-study.fixture';
-import { ruleData } from '@/scripts/rules.bootstrap';
 
 // Artificial UNPUBLISHED specification fixture, NOT official admission proof.
 // The example certificate/field/intakes below deliberately test the matcher contract only.
 const specification: EngineRule = {
  id:'UNPUBLISHED-SPECIFICATION-JEE',status:'draft',
- conditions:{target_degree:'bachelor',curriculum:'national',aps_issuer_country:'in',aps_qualification_context:'national',board:'cbse',
- jee_main_status:'passed',jee_advanced_status:'passed',jee_evidence_context:'ordinary',target_field:{op:'in',value:['mechanical_engineering','physics']},intake_index:{op:'in',value:[4053,4054]}},
+ conditions:{target_degree:'bachelor',curriculum:'national',aps_issuer_country:'in',aps_qualification_context:'national',jee_school_certificate:'completed_12_year_secondary',
+ jee_main_status:'passed',jee_advanced_status:'passed',jee_evidence_context:'ordinary',jee_reported_target_family:{op:'in',value:['reported_official_technology','reported_official_natural_sciences']},target_field:{op:'in',value:['mechanical_engineering','physics']},intake_index:{op:'in',value:[4053,4054]}},
  outcomes:{path:'subject_restricted'},source_url:'https://example.org/unpublished-specification',source_quote:'Artificial matcher specification; not an official eligibility claim.',last_verified_at:null,
 };
 const disposable = {...specification,status:'verified',last_verified_at:'2026-10-07T00:00:00Z'};
@@ -26,11 +25,11 @@ describe('UP-ELIG-04 ordinary qualifying-pass contract',()=>{
   const r=evaluate(jeeProfile,[disposable]);expect(r.path).toBe('subject_restricted');
   expect(r.citations[0]).toMatchObject({ruleId:specification.id,sourceUrl:specification.source_url,verifiedAt:disposable.last_verified_at,supports:['path']});
  });
- it.each(['jee_main_status','jee_advanced_status','jee_evidence_context','aps_issuer_country','aps_qualification_context','board','target_field','intake_index'])('quarantines positive rule missing %s',key=>{
+ it.each(['jee_main_status','jee_advanced_status','jee_evidence_context','aps_issuer_country','aps_qualification_context','jee_school_certificate','jee_reported_target_family','intake_index'])('quarantines positive rule missing %s',key=>{
   const conditions={...disposable.conditions};delete conditions[key as keyof typeof conditions];
   expect(evaluate(jeeProfile,[{...disposable,conditions}]).path).toBe('unknown');
  });
- it.each(['board','target_field','intake_index'] as const)('rejects exclusion-only applicability for %s',key=>{
+ it.each(['jee_school_certificate','jee_reported_target_family','intake_index'] as const)('rejects exclusion-only applicability for %s',key=>{
   const conditions={...disposable.conditions,[key]:{op:'neq' as const,value:'unspecified'}};
   expect(evaluate(jeeProfile,[{...disposable,conditions}]).path).toBe('unknown');
  });
@@ -39,7 +38,7 @@ describe('UP-ELIG-04 ordinary qualifying-pass contract',()=>{
   expect(deriveFacts(profile)).not.toHaveProperty('jee_advanced');
  });
  it.each(JEE_ACCEPTANCE)('official expected facts: $id',c=>{
-  const r=evaluate(c.profile,[...legacy,...ruleData]);expect(r.path).toBe('unknown');expect(r.unknowns.join(' ')).toMatch(c.reason);
+  const r=evaluate(c.profile,reviewedJeeRules());expect(r.path).toBe(c.path);if("reason" in c && c.reason)expect(r.unknowns.join(' ')).toMatch(c.reason);
  });
  it.each(['not_passed','no_result','unknown',undefined] as const)('Advanced %s cannot match ordinary JEE or invent Studienkolleg',advanced=>{
   const r=evaluate({...jeeProfile,jee:{...jeeProfile.jee!,advanced}},[disposable]);expect(r.path).toBe('unknown');
@@ -51,7 +50,7 @@ describe('UP-ELIG-04 ordinary qualifying-pass contract',()=>{
   expect(evaluate({...jeeProfile,jee:{...jeeProfile.jee!,context}},[disposable]).path).toBe('unknown');
  });
  it.each(['law','medicine','pharmacy','biology','other',undefined])('unmapped target %s is never classified by code',targetField=>{
-  const r=evaluate({...jeeProfile,targetField},[disposable]);expect(r.path).toBe('unknown');expect(r.unknowns.join(' ')).toMatch(/target.*field/i);
+  const r=evaluate({...jeeProfile,targetField,jee:{...jeeProfile.jee!,targetFamily:undefined}},[disposable]);expect(r.path).toBe('unknown');expect(r.unknowns.join(' ')).toMatch(/target.*field/i);
  });
  it.each([{term:'summer',year:2026},{term:'winter',year:2027},undefined] as const)('intake outside specification stays unresolved: %s',intake=>{
   expect(evaluate({...jeeProfile,intake},[disposable]).path).toBe('unknown');
