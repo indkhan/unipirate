@@ -17,13 +17,21 @@ export const ObservationSchema = z.object({
 }).strict();
 export type Observation = z.infer<typeof ObservationSchema>;
 const ref = z.object({ source_url: ResearchUrlSchema, source_quote: z.string().min(1).max(4000) }).strict();
-const fact = z.object({
-  key: label, kind: z.enum(["route", "deadline", "language", "prerequisite", "fee", "document", "description"]),
-  verbatim: z.string().min(1).max(4000), applicability: label,
-  route: z.enum(["direct", "uni_assist", "vpd_then_university", "unresolved"]).nullable(),
-  deadline_kind: z.enum(["application_opening", "application_closing", "document_supplement", "enrolment", "vpd_preparation_target"]).nullable(),
+const commonFact = z.object({
+  key: label, verbatim: z.string().min(1).max(4000), applicability: label,
   evidence: z.array(ref).min(1).max(4),
 }).strict();
+// Represent these invariants in tool JSON Schema as well as runtime validation.
+// Review/provenance/planning fields remain exclusively in OfferingFactSchema.
+const fact = z.discriminatedUnion("kind", [
+  commonFact.extend({ kind: z.literal("route"), route: OfferingFactSchema.innerType().shape.route.unwrap(), deadline_kind: z.null() }),
+  commonFact.extend({ kind: z.literal("deadline"), route: z.null(), deadline_kind: OfferingFactSchema.innerType().shape.deadline_kind.unwrap() }),
+  commonFact.extend({ kind: z.literal("language"), route: z.null(), deadline_kind: z.null() }),
+  commonFact.extend({ kind: z.literal("prerequisite"), route: z.null(), deadline_kind: z.null() }),
+  commonFact.extend({ kind: z.literal("fee"), route: z.null(), deadline_kind: z.null() }),
+  commonFact.extend({ kind: z.literal("document"), route: z.null(), deadline_kind: z.null() }),
+  commonFact.extend({ kind: z.literal("description"), route: z.null(), deadline_kind: z.null() }),
+]);
 export const ResearchOutputSchema = z.object({ offerings: z.array(z.object({
   intake_term: z.enum(["summer", "winter"]).nullable(), intake_year: z.number().int().min(1).max(9999).nullable(),
   applicant_group: label.nullable(), scope: ref.nullable(), facts: z.array(fact).max(40),

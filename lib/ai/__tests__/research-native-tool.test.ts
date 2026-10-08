@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { researchCourse, COURSE_EXTRACTION_MODEL } from "../research-course";
+import { ResearchOutputSchema, ResearchDraftSchema, prepareResearchReview } from "@/lib/courses/research";
+import { OfferingFactSchema } from "@/lib/courses/offerings";
 
 vi.mock("@/lib/env", () => ({ getServerEnv: () => ({ OPENROUTER_API_KEY: "synthetic-test-only" }) }));
 const seed = { url: "https://www.daad.de/synthetic", name: "Synthetic Computing", university: "Synthetic University", text: "Manual paste ".repeat(30) };
@@ -35,6 +37,8 @@ describe("native research tool through installed SDK (synthetic HTTP only)", () 
     expect(instruction).toContain("Preserve every explicitly supported distinct intake/applicant scope");
     expect(instruction).toContain("never choose a winner to shorten output");
     expect(instruction).toContain("removing a consequential condition or exception");
+    expect(instruction).toContain("Only route facts carry a non-null route; all other kinds use route null.");
+    expect(instruction).toContain("Only deadline facts carry a non-null deadline_kind; all other kinds use deadline_kind null.");
     expect(body).not.toHaveProperty("response_format");
     const prompt = JSON.parse(body.messages.at(-1).content);
     expect(prompt.sources).toHaveLength(1);
@@ -123,5 +127,78 @@ describe("native research tool through installed SDK (synthetic HTTP only)", () 
     const draft = await pending;
     expect(fetcher).toHaveBeenCalledOnce(); expect(draft.issues.join(" ")).toContain("timeout");
     expect(draft.paste).toBe(seed.text); expect(draft.offerings).toEqual([]);
+  });
+
+  it.each(["route", "deadline", "language", "prerequisite", "fee", "document", "description"] as const)("aligns %s metadata with the offering fact contract", kind => {
+    const candidate = { ...output.offerings[0].facts[0], kind, route: kind === "route" ? "direct" : null, deadline_kind: kind === "deadline" ? "application_closing" : null };
+    const submission = (fact: unknown) => ({ offerings: [{ ...output.offerings[0], facts: [fact] }] });
+    const pending = (fact: typeof candidate) => ({ ...fact, status: "pending", date: null, time: null, timezone: null, evidence: fact.evidence.map(e => ({ ...e, retrieved_at: "2026-10-08T12:00:00Z", last_verified_at: null, verified_by: null, source_hash: null })) });
+    expect(ResearchOutputSchema.safeParse(submission(candidate)).success).toBe(true);
+    expect(OfferingFactSchema.safeParse(pending(candidate)).success).toBe(true);
+    for (const invalid of [{ ...candidate, route: kind === "route" ? null : "direct" }, { ...candidate, deadline_kind: kind === "deadline" ? null : "application_closing" }]) {
+      expect(OfferingFactSchema.safeParse(pending(invalid)).success).toBe(false);
+      expect(ResearchOutputSchema.safeParse(submission(invalid)).success).toBe(false);
+    }
+  });
+  it("advertises seven strict kind-specific metadata branches in actual SDK/provider tool parameters", async () => {
+    const fetcher = vi.fn<typeof fetch>(async () => response());
+    vi.stubGlobal("fetch", fetcher);
+    await researchCourse(seed, { tavilyKey: "synthetic", fetcher: web });
+    const body = JSON.parse(String(fetcher.mock.calls[0][1]?.body));
+    const schema = body.tools[0].function.parameters;
+    const branches = schema.properties.offerings.items.properties.facts.items.anyOf;
+    expect(branches).toHaveLength(7);
+    expect(branches.map((branch: { properties: { kind: { const: string } } }) => branch.properties.kind.const)).toEqual(["route", "deadline", "language", "prerequisite", "fee", "document", "description"]);
+    for (const branch of branches) {
+      const kind = branch.properties.kind.const;
+      expect(branch.additionalProperties).toBe(false);
+      expect(branch.required).toEqual(expect.arrayContaining(["key", "kind", "verbatim", "applicability", "route", "deadline_kind", "evidence"]));
+      expect(branch.properties.route).toEqual(kind === "route" ? { type: "string", enum: ["direct", "uni_assist", "vpd_then_university", "unresolved"] } : { type: "null" });
+      expect(branch.properties.deadline_kind).toEqual(kind === "deadline" ? { type: "string", enum: ["application_opening", "application_closing", "document_supplement", "enrolment", "vpd_preparation_target"] } : { type: "null" });
+      expect(branch.properties.verbatim).toMatchObject({ type: "string", minLength: 1, maxLength: 4000 });
+      expect(branch.properties.evidence).toMatchObject({ minItems: 1, maxItems: 4 });
+    }
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+  it.each(["fee", "deadline", "language", "description"])("rejects synthetic attempt13-shaped %s metadata through the SDK without losing captures or retrying", async kind => {
+    // Synthetic metadata reproduction from the adopted audit; no private actual capture.
+    const invalid = structuredClone(output);
+    Object.assign(invalid.offerings[0], { intake_year: 2027, applicant_group: null, scope: null });
+    Object.assign(invalid.offerings[0].facts[0], { kind, route: "direct", deadline_kind: kind === "fee" || kind === "deadline" ? "application_closing" : null });
+    const fetcher = vi.fn(async () => response("submit_research", JSON.stringify(invalid)));
+    vi.stubGlobal("fetch", fetcher);
+    const draft = await researchCourse(seed, { tavilyKey: "synthetic", fetcher: web });
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(draft).toMatchObject({ status: "incomplete", paste: seed.text, offerings: [], unscoped: [] });
+    expect(draft.observations).toEqual([expect.objectContaining({ origin: "paste", url: seed.url, content: seed.text }), expect.objectContaining({ origin: "web", url: seed.url, content })]);
+    expect(draft.issues.join(" ")).toContain("AI research invalid response or unavailable");
+  });
+  it("retains rich multi-source pending facts with wholly unknown scope through the actual SDK and unchanged builder", async () => {
+    const second = "https://uni-example.de/regulations";
+    const assertions = [
+      { kind: "route", key: "route", verbatim: "Apply directly to the university.", route: "direct", deadline_kind: null },
+      { kind: "deadline", key: "deadline:university:application_closing", verbatim: "University application closes 31 May.", route: null, deadline_kind: "application_closing" },
+      { kind: "language", key: "language_exemption", verbatim: "IELTS 6.5 unless native English speaker.", route: null, deadline_kind: null },
+      { kind: "prerequisite", key: "prerequisite", verbatim: "Degree required unless provisional admission applies.", route: null, deadline_kind: null },
+      { kind: "fee", key: "tuition", verbatim: "Tuition EUR 100.", route: null, deadline_kind: null },
+      { kind: "document", key: "document", verbatim: "Transcript required.", route: null, deadline_kind: null },
+      { kind: "description", key: "application_link:university", verbatim: "https://uni-example.de/portal", route: null, deadline_kind: null },
+    ];
+    const facts = assertions.map((f, i) => ({ ...f, applicability: "Unknown scope", evidence: [{ source_url: i % 2 ? second : seed.url, source_quote: f.verbatim }] }));
+    const page = seed.name + " " + seed.university + " [University](" + second + ") " + assertions.map(f => f.verbatim).join(" ");
+    const fetcher = vi.fn(async () => response("submit_research", JSON.stringify({ offerings: [{ intake_term: null, intake_year: null, applicant_group: null, scope: null, facts }] })));
+    vi.stubGlobal("fetch", fetcher);
+    const draft = await researchCourse(seed, { tavilyKey: "synthetic", fetcher: async (url, init) => {
+      const body = JSON.parse(String(init?.body));
+      return Response.json(String(url).endsWith("search") ? { results: [] } : { results: body.urls.map((url: string) => ({ url, raw_content: page })) });
+    } });
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(draft.status).toBe("incomplete");
+    expect(draft.offerings).toEqual([]);
+    expect(draft.unscoped?.map(f => f.verbatim)).toEqual(assertions.map(f => f.verbatim));
+    expect(new Set(draft.unscoped?.flatMap(f => f.evidence.map(e => e.source_url)))).toEqual(new Set([seed.url, second]));
+    expect(draft.unscoped?.every(f => f.status === "pending" && f.applicability === "Unresolved effective intake/applicant scope" && f.date === null && f.time === null && f.timezone === null && f.evidence.every(e => e.last_verified_at === null && e.verified_by === null))).toBe(true);
+    expect(ResearchDraftSchema.safeParse(draft).success).toBe(true);
+    expect(() => prepareResearchReview(draft, 0, [draft.unscoped![0].key], "11111111-1111-4111-8111-111111111111", "2026-10-08T13:00:00Z")).toThrow();
   });
 });

@@ -344,6 +344,10 @@ There is no migration, DB publication, seed or KB rebuild in this change.
    (deadline, route, prerequisites, language/exemptions, tuition/semester fee,
    documents/application link). Competing assertions remain unresolved with all
    alternatives. Shape/literal checks establish fidelity, not semantic correctness.
+   The model-facing fact schema uses seven strict kind branches: only route facts
+   carry non-null route metadata, and only deadline facts carry non-null deadline
+   kind metadata. These constraints are present in the SDK tool JSON Schema;
+   invalid combinations retain incomplete manual recovery rather than being repaired.
    Model reviewer/status/date metadata is rejected. Web/AI failure retains manual
    values and a visible incomplete status; no error bodies or credentials are logged.
 5. The draft lives under `courses.field_extraction.research` with format

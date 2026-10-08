@@ -36,6 +36,8 @@ Quote values and evidence literally. Do not convert dates. Separate explicit eff
 and applicant groups; retrieval time is NEVER an effective intake. Use null for unknown intake,
 applicant group or scope. Keep sourced captures even when scope is unknown; omit unsupported facts.
 Preserve different source assertions under the same field key so conflicts remain visible.
+Only route facts carry a non-null route; all other kinds use route null.
+Only deadline facts carry a non-null deadline_kind; all other kinds use deadline_kind null.
 Route values require explicit source wording; never equate VPD with a completed university application.
 For complete scope, quote the actual intake year, winter/summer term and literal applicant group.
 References must use exact retrieved URLs, not search snippets or model knowledge. PDF observations
