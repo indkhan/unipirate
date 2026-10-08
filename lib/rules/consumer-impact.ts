@@ -1,8 +1,10 @@
 // Pure, hypothetical publication preview. Never creates authoritative metadata.
 import {z} from "zod";
+import {projectMatchedProcess} from "./process-assessment";
+import {legacyProcessRuleIds,processHistoryRuleIds} from "@/lib/engine/process-identity";
 import {AnswersSchema, buildProfile} from "@/app/(public)/check/steps";
 import {EngineRuleSchema, evaluate, intakeIndex} from "@/lib/engine/evaluate";
-import {AssessmentContextSchema, compareAssessments, evaluateAssessment} from "./assessment";
+import {AssessmentContextSchema, compareAssessments, evaluateAssessment, withAcademicIntakeDiagnostic} from "./assessment";
 import {RuleDraftSchema, RuleVersionSchema, assessmentDateUtc, type RuleVersion} from "./versioning";
 
 export function previewDraftImpact(population: readonly {answers: unknown}[], versions: unknown, input: unknown, approval: unknown, inputContext: unknown) {
@@ -12,7 +14,7 @@ export function previewDraftImpact(population: readonly {answers: unknown}[], ve
  const status = z.enum(["beta", "verified"]).parse(approval);
  const raw = z.record(z.unknown()).parse(draft.raw_snapshot);
  const policy = EngineRuleSchema.safeParse({...raw, status});
- const result = {total: population.length, assessed: 0, invalidProfiles: 0, invalidProposal: !policy.success || raw.id !== draft.rule_id, policyChanged: 0, explanationChanged: 0, sourceOnly: 0, newCoverage: 0, unresolvedBefore: 0, unresolvedAfter: 0};
+ const result = {total: population.length, assessed: 0, invalidProfiles: 0, invalidProposal: !policy.success || raw.id !== draft.rule_id || !!(policy.success&&policy.data.outcomes.process&&Object.keys(policy.data.outcomes).some(k=>k!=="process")), processChanged:0, processExplanationChanged:0, policyChanged: 0, explanationChanged: 0, sourceOnly: 0, newCoverage: 0, unresolvedBefore: 0, unresolvedAfter: 0};
  const date = assessmentDateUtc(context.evaluatedAt);
  for (const row of population) {
   const answers = AnswersSchema.safeParse(row.answers);
@@ -31,9 +33,12 @@ export function previewDraftImpact(population: readonly {answers: unknown}[], ve
   // Match the selector's canonical logical UUID order, including the replacement.
   const selectedVersions = (applies ? [...retained, proposed] : retained).sort((a, b) => a.rule_id.localeCompare(b.rule_id));
   const rules = selectedVersions.map(v => EngineRuleSchema.parse(v.raw_snapshot));
-  const after = {...before, result: evaluate(profile, rules), selectedVersions};
+  const legacy=legacyProcessRuleIds(available);
+  const processIds=processHistoryRuleIds([...available,proposed]);
+  const academicMissingIntake=(missingIntake&&!processIds.has(draft.rule_id)) || before.metadata.selectionIssues.some(issue=>(!applies||issue.ruleId!==draft.rule_id)&&issue.reason==="missing_intake"&&!processIds.has(issue.ruleId));
+  const after = {...before, process:projectMatchedProcess(profile,rules,context.evaluatedAt), result: withAcademicIntakeDiagnostic(evaluate(profile, rules.filter(r=>!legacy.has(r.id))),academicMissingIntake), selectedVersions};
   const diff = compareAssessments(before, after);
-  result.assessed++;
+  result.assessed++;result.processChanged+=Number(diff.processChanged);result.processExplanationChanged+=Number(diff.processExplanationChanged);
   result.policyChanged += Number(diff.policyChanged); result.explanationChanged += Number(diff.explanationChanged);
   result.sourceOnly += Number(diff.explanationChanged && !diff.policyChanged); result.newCoverage += Number(diff.newCoverage);
   result.unresolvedBefore += Number(before.metadata.selectionIssues.length > 0);

@@ -7,6 +7,7 @@ import { intakeIndex, type EngineRule } from "../lib/engine/evaluate";
 import { dmatCandidates } from "./dmat.rules";
 import { ibCandidates, ibDocumentCandidates } from "./ib.rules";
 import { gceCandidates } from "./gce.rules";
+import {processCandidates} from "./process.rules";
 import { saudiCandidates } from "./saudi.rules";
 import { pakistanCandidates } from "./pakistan.rules";
 import { indiaStudyCandidates } from "./india-study.rules";
@@ -39,6 +40,7 @@ const APS_TRANSITION_CONDITIONS = {
 
 export const ruleData: RuleRecord[] = [
   ...indiaStudyCandidates,
+  ...processCandidates,
   ...saudiCandidates,
   ...pakistanCandidates,
   {

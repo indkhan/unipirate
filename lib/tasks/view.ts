@@ -10,6 +10,8 @@ import {
   type ApplicationWithCourse,
 } from "@/lib/db/queries";
 import type { Database, Tables } from "@/lib/db/database.types";
+import {processHistoryRuleIds,isProcessTaskKey} from "@/lib/engine/process-identity";
+import type {ProcessAssessment} from "@/lib/rules/process-assessment";
 import type { Result } from "@/lib/engine/evaluate";
 import { evaluateAssessment } from "@/lib/rules/assessment";
 import { currentAssessmentContext } from "@/lib/rules/current";
@@ -40,6 +42,7 @@ export type DashboardTask = {
   preferredBucket: "now" | "next" | "later" | null;
   applicationId: string | null;
   source: { url: string; verifiedAt: string | null } | null;
+  processEvidence?: "personal_history";
   scope: "global" | "university";
   adminChangeState: "current" | "update_pending" | "removal_pending";
   adminSnapshot: Record<string, unknown> | null;
@@ -78,6 +81,7 @@ export type DashboardView = {
   checkedAt: string;
   assessmentEvaluatedAt: string;
   result: Result | null;
+  process?: ProcessAssessment;
 };
 
 function preferredBucket(
@@ -86,7 +90,7 @@ function preferredBucket(
   return value === "now" || value === "next" || value === "later" ? value : null;
 }
 
-function displayTasks(dbTasks: Tables<"tasks">[]): DashboardTask[] {
+function displayTasks(dbTasks: Tables<"tasks">[],processIds:Set<string>): DashboardTask[] {
   return dbTasks.map((task) => {
     const generated = task.task_key !== null;
     const courseTask = task.course_task_definition_id !== null;
@@ -103,6 +107,7 @@ function displayTasks(dbTasks: Tables<"tasks">[]): DashboardTask[] {
       order: generated ? task.sort_order : 25,
       preferredBucket: preferredBucket(task.preferred_bucket),
       applicationId: task.application_id,
+      processEvidence: isProcessTaskKey(task.task_key,processIds)?"personal_history":undefined,
       source: task.source_url
         ? { url: task.source_url, verifiedAt: task.source_verified_at }
         : null,
@@ -181,7 +186,10 @@ export async function buildDashboardView(
   const savedProfile = await getProfile(db, userId);
   const { profile, hasProfile } = profileFromAnswers(savedProfile);
   const context = currentAssessmentContext();
-  const result = profile ? evaluateAssessment(profile, await listRuleVersions(db), context).result : null;
+  const versions=await listRuleVersions(db);
+  const assessment=profile?evaluateAssessment(profile,versions,context):null;
+  const result=assessment?.result??null;
+  const processIds=processHistoryRuleIds(versions);
 
   const [applications, dbTasks] = await Promise.all([
     listApplicationsWithCourses(db, userId),
@@ -191,7 +199,7 @@ export async function buildDashboardView(
   const planningIds = new Set(applications.filter((application) => application.status === "planning").map((application) => application.id));
   // Keep stored edits/completed work; pending preparation tasks resume if the
   // application returns to planning. Personal reminders are always visible.
-  const allTasks = displayTasks(dbTasks.filter(task => isCurrentApsTask(task, result))).filter((task) =>
+  const allTasks = displayTasks(dbTasks.filter(task => isCurrentApsTask(task, result)),processIds).filter((task) =>
     task.done || task.kind !== "course_task" || planningIds.has(task.applicationId ?? ""),
   );
   const pendingTasks = allTasks.filter((task) => !task.done);
@@ -242,5 +250,6 @@ export async function buildDashboardView(
     checkedAt: todayIso,
     assessmentEvaluatedAt: context.evaluatedAt,
     result,
+    process:assessment?.process,
   };
 }

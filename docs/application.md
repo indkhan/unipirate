@@ -451,7 +451,11 @@ successful live assistant evaluation; it is not guaranteed by unit tests.
 - The pure completed-answer guard (`lib/ai/response-guard.ts`) requires markers
   and authorizes every rule/web citation against exact successful server tool
   outputs in this request only. Shared source-envelope validation rejects malformed
-  records and conflicting versions/URLs. History, personal context and provider
+  records and conflicting versions/URLs. The single pure contract lives in
+  `lib/ai/assistant-sources.ts`; the client module re-exports it. Optional strict
+  `processUnknowns` accompanies profile/freshness-filtered process chunks. Search
+  records those exact projected outputs in the request-local allowlist; context
+  and personal reminders cannot authorize rule citations. History, personal context and provider
   source events authorize nothing; unknown cannot override an unauthorized citation.
   Rejected prose is replaced entirely with a constant `[[unknown]]` refusal and
   DAAD's general URL as a place to check, never as proof of the requested answer.
@@ -1209,6 +1213,23 @@ Actual provider, disposable service/RLS/browser and combined integration gates r
 root-owned; deterministic unit grounding is not live-provider evidence.
 
 
+### Separate process guidance (UP-PROC-02)
+
+Visa fees, financing and appointments use optional strict `outcomes.process` JSON on existing immutable rule snapshots. There is no new table or migration. New publication preflight rejects rows mixing process and academic outcomes; old snapshots remain available for exact historical result/source reads. Current academic evaluation quarantines process rows and known legacy static financial/appointment identities, including renamed logical IDs discovered in immutable history. Independently scoped APS fee/courier rows remain academic/application evidence.
+
+`assessProcess` reuses `selectRuleVersions`, validation, `deriveFacts` and the exported ordinary `ruleMatches`; missing facts fail even `neq`. Only selected human immutable versions receive the adapter's `matched:true` attestation. Cached content, applicant flags, citations and saved prose cannot supply authority. `Assessment.process` is a current optional sibling; academic `Result` and strict stored result metadata do not acquire process decisions. Historical reads never replay today's process policy as originally saved. Academic and process policy/source comparison flags and draft impact counts are separate.
+
+One injected instant governs source review and process applicability. Publication availability/supersession still compares microseconds without rounding, with existing half-open version boundaries and invalid replacement no-fallback behavior. Process explicit effective endpoints are inclusive and independently scoped. Verification must be valid, present and no later than assessment; review_due must be valid, not earlier than verification and not overdue. Equality is current; +1ms is overdue. UTC-offset source timestamps retain exact order. Validation requires a finite original offset instant as well as the existing real-calendar check; malformed numeric offsets enter review attention or unknown guidance before exact ordering. Missing/invalid review policy and unresolved observations trigger independent admin attention even when a generic 183-day check would consider the row recent.
+
+Optional version-1 process reports live inside answers/profile JSON. Checker and profile review ask the needed guide kind, purpose, named mission, reported mission applicability, age bracket, funding method and fee/funding exception uncertainty. They are applicant reports, never app-certified responsibility, qualification or waiver. Unknown/other remain valid. Editing process scope prunes dependent process reports without upgrading academic versions or erasing academic/history/APS/visa evidence. Appointment context has no financial prerequisite. Reviewed programme route/payer authority remains the separate UP-PROC-01/Course dependency; there is no applicant-controlled production uni-assist payment authorization.
+
+Result and dashboard display current process evidence separately from academic decisions and personal reminders. Only current guidance displays literal amounts, currency, period, source annotation, quote, alternatives, additional documents and steps. Noncurrent observations retain official pointers and review reasons without actionable amounts or raw quote/advice rendering. No amounts are parsed, converted, summed or inferred from article dates. `processRuleIds` is inventory including wrong-jurisdiction/stale/conflicting records, never task authorization.
+
+`generateProcessTasks` consumes only current steps and uses logical `rule:<id>:step:<order>` keys. Event-time materialization reuses existing missing-key insertion guards. Reads do not write, regenerate, rewrite or reactivate rows. Retained inactive keys suppress new process duplicates on IN→SA→IN. Edited/done/manual/course history and applications are preserved. Saved process reminders receive a personal-history source label instead of a verified payable badge. Existing course-assignment Remove regeneration is outside this deletion contract; no universal deletion suppression is claimed.
+
+Assistant search reconstructs process chunks from selected immutable sources through the same profile/context/freshness/conflict projection before rendering. search_rules and get_user_context share one captured instant and cached profile/version read within a tool session. Raw hints, fallback chunks and unversioned curated snippets cannot leak noncurrent process quotes or numbers. Saved reminders are explicitly untrusted personal history; recognized keyed process reminders withhold stored title/quote prose from model tools while preserving database and dashboard history. Provider/model configuration is unchanged; deterministic mock tool tests are not real provider integration evidence.
+
+Source-reviewed additions in `scripts/process.rules.ts` remain draft bootstrap candidates. No seed, embedding, publication or live data operation is implied. See [source verification](up-proc-02-source-verification.md) and [acceptance matrix](up-proc-02-acceptance.md). Root owns independent review, exact combined gates, disposable RLS, browser/clean CI and separately authorized operational provider evaluation before any merge.
 ### Saudi certificate evidence (UP-ELIG-09)
 
 New/edited/restored Saudi forms use certificate version2. Exact documentary category/stream and completed secondary evidence remain separate from curriculum, actual issuer/context, school location, nationality and visa residence. Version1/legacy answers and protected original results remain readable without retrospective certification. Missing school subtype asks that question before collecting school-dependent history; saved independent history is retained. Explicit other/unknown school subtype can collect a separate completed Saudi Bachelor. Actual Indian issuers on Saudi landings retain core history and JEE v2 questions once; GCE/IB and other issuer branches remain distinct.
@@ -1258,6 +1279,9 @@ At most one answerable follow-up is selected for an unresolved academic case.
 Missing prior study asks whether study exists; successful academic years stay
 separate from nominal duration. Missing intake withheld by immutable selection
 can ask intake without claiming that a withheld version supplies a route.
+Process-only selection gaps never create an academic follow-up. Current assessment
+and hypothetical draft impact reuse the same intake explanation helper, preserving
+academic explanations when only process evidence changes.
 Unsupported applicability and source conflicts retain official confirmation;
 independent source caveats and process uncertainty remain visible.
 
@@ -1277,7 +1301,11 @@ Current semantic identity uses SHA256(JSON.stringify(sorted path/SHA256 entries)
 for the combined checker, result, engine, immutable selection/assessment, KB and
 task-profile union, including the result components/page now displaying diagnostics.
 The exact literal entries and formula are recorded in
-[UP-ELIG-10 revision evidence](up-elig-10-checks/engine-revision.json).
+[UP-ELIG-10 revision evidence](up-elig-10-checks/engine-revision.json) records the
+historical diagnostic checkpoint. The combined process/diagnostics/assistant guard
+union additionally includes the shared source boundary, response guard, actual chat
+route and process/task adapters; frozen integration receipts record its current
+literal inputs under the same formula. Historical revision tokens stay exact.
 No criteria, source quotes, verification dates, publication, migrations,
 dependencies, providers or database/query/auth boundaries change. Draft candidate
 fixtures remain test-only; final UP-TEST-01 parent coverage and root integration

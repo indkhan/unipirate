@@ -201,21 +201,21 @@ describe("generateCourseTasks", () => {
     expect(
       tasks.some((task) => /Obtain your APS certificate for your uni-assist application/.test(task.title)),
     ).toBe(true);
-    expect(tasks.some((task) => /My assist account/.test(task.title))).toBe(true);
+    expect(tasks.some((task) => /My assist account/.test(task.title))).toBe(false);
     expect(tasks.filter((task) => task.title.startsWith("Submit application")))
       .toHaveLength(3);
-    expect(tasks.some((task) => /blocked account/.test(task.title))).toBe(true);
+    expect(tasks.some((task) => /blocked account/.test(task.title))).toBe(false);
     expect(
       tasks.some((task) => /Consular Services Portal/.test(task.title)),
-    ).toBe(true);
+    ).toBe(false);
 
     const orders = tasks.map((task) => task.order).sort((a, b) => a - b);
     expect(orders[0]).toBe(10);
-    expect(orders).toContain(20);
+    expect(orders).not.toContain(20);
     expect(orders).toContain(28);
     expect(orders).toContain(30);
-    expect(orders).toContain(41);
-    expect(orders).toContain(44);
+    expect(orders).not.toContain(41);
+    expect(orders).not.toContain(44);
   });
 
   it("is deterministic for unchanged inputs", () => {

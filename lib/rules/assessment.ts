@@ -1,5 +1,7 @@
 // Pure assessment envelopes and historical explanations. No clock, reads or writes.
 import { z } from "zod";
+import {legacyProcessRuleIds,processHistoryRuleIds} from "@/lib/engine/process-identity";
+import {assessProcess, type ProcessAssessment} from "./process-assessment";
 import { evaluate, ResultDiagnosticSchema, EngineRuleSchema, type Profile, type Result } from "@/lib/engine/evaluate";
 import { CalendarDateSchema } from "@/lib/engine/calendar-day";
 import { AnswersSchema, buildProfile } from "@/app/(public)/check/steps";
@@ -32,19 +34,28 @@ export const AssessmentResultSchema:z.ZodType<Result>=z.object({
  unknowns:z.array(z.string()),
  diagnostics:z.array(ResultDiagnosticSchema.extend({ruleIds:z.array(canonicalId).refine(ids=>new Set(ids).size===ids.length)})).refine(ds=>ds.filter(d=>d.followUp).length<=1,'Only one overall follow-up.').optional(),
 }).strict();
-export type Assessment={result:Result;metadata:AssessmentMetadata;selectedVersions:RuleVersion[];diagnosticVersions:RuleVersion[]};
+export type Assessment={process?:ProcessAssessment;result:Result;metadata:AssessmentMetadata;selectedVersions:RuleVersion[];diagnosticVersions:RuleVersion[]};
+
+/** Shared current/preview explanation; process scope never asks an academic question. */
+export function withAcademicIntakeDiagnostic(result:Result,missingAcademicIntake:boolean):Result {
+ if(result.path==='unknown' && missingAcademicIntake && !result.diagnostics?.some(d=>d.support==='path' && d.status==='source_conflict')) {
+  const existing=result.diagnostics?.find(d=>d.followUp);if(existing)delete existing.followUp;
+  result.diagnostics?.unshift({support:'path',status:'targeted_missing_fact',reason:'fact_missing',ruleIds:[],facts:[],followUp:{key:'intake_index',question:'Which intake are you applying for?'}});
+ }
+ return result;
+}
 
 export function evaluateAssessment(profile:Profile,versions:unknown,context:unknown):Assessment {
  const {evaluatedAt,engineRevision}=AssessmentContextSchema.parse(context);
  const available=z.array(RuleVersionSchema).parse(versions);
  const selection=selectRuleVersions(available,{evaluatedAt,assessmentDate:assessmentDateUtc(evaluatedAt),intake:profile.intake});
+ const legacy=legacyProcessRuleIds(available);
+ const processIds=processHistoryRuleIds(available);
  const metadata=AssessmentMetadataSchema.parse({formatVersion:1,evaluatedAt,engineRevision,selectedVersionIds:selection.selected.map(x=>x.version.id),selectionIssues:selection.diagnostics});
- const result=evaluate(profile,selection.selected.map(x=>x.rule));
- if(result.path==='unknown' && selection.diagnostics.some(d=>d.reason==='missing_intake') && !result.diagnostics?.some(d=>d.support==='path' && d.status==='source_conflict')) {
-  const existing=result.diagnostics?.find(d=>d.followUp);if(existing)delete existing.followUp;
-  result.diagnostics?.unshift({support:'path',status:'targeted_missing_fact',reason:'fact_missing',ruleIds:[],facts:[],followUp:{key:'intake_index',question:'Which intake are you applying for?'}});
- }
- return {result:AssessmentResultSchema.parse(result),metadata,selectedVersions:selection.selected.map(x=>x.version),diagnosticVersions:selection.diagnostics.map(x=>available.find(v=>v.id===x.versionId)!)};
+ const result=evaluate(profile,selection.selected.filter(x=>!legacy.has(x.version.rule_id)).map(x=>x.rule));
+ withAcademicIntakeDiagnostic(result,selection.diagnostics.some(d=>d.reason==='missing_intake' && !processIds.has(d.ruleId)));
+ return {process:assessProcess(profile,available,evaluatedAt),result:AssessmentResultSchema.parse(result),metadata,selectedVersions:selection.selected.map(x=>x.version),diagnosticVersions:selection.diagnostics.map(x=>available.find(v=>v.id===x.versionId)!)};
+
 }
 export type StoredAssessment={kind:'authoritative';original:Assessment & {answers:unknown}}|{kind:'legacy'|'invalid';original:null};
 /** Protected DB column is the only authority. Never replay or substitute latest inputs. */
@@ -80,11 +91,21 @@ export function compareAssessments(before:Assessment,after:Assessment) {
  const withoutSources=({citations,candidateCitations,diagnostics,unknowns,...result}:Result)=>{void candidateCitations;void diagnostics;void unknowns;return ({...result,citations:citations.map(c=>({ruleId:c.ruleId,status:c.status,supports:c.supports}))});};
  const ruleIds=[...new Set([...before.selectedVersions,...after.selectedVersions].map(v=>v.rule_id))].sort();
  const changes=ruleIds.flatMap(ruleId=>meaningfulRuleDiff(before.selectedVersions.find(v=>v.rule_id===ruleId),after.selectedVersions.find(v=>v.rule_id===ruleId)).map(diff=>({ruleId,...diff})));
+ const allVersions=[...before.selectedVersions,...after.selectedVersions,...before.diagnosticVersions,...after.diagnosticVersions];
+ const processIds=legacyProcessRuleIds(allVersions);
+ for(const v of allVersions){const raw=z.object({outcomes:z.record(z.unknown())}).safeParse(v.raw_snapshot);if(raw.success&&Object.hasOwn(raw.data.outcomes,"process"))processIds.add(v.rule_id);}
+ const academicVersions=(assessment:Assessment)=>assessment.selectedVersions.filter(v=>!processIds.has(v.rule_id));
+ const academicIds=[...new Set([...academicVersions(before),...academicVersions(after)].map(v=>v.rule_id))];
+ const academicChanges=academicIds.flatMap(id=>meaningfulRuleDiff(academicVersions(before).find(v=>v.rule_id===id),academicVersions(after).find(v=>v.rule_id===id)));
+ const processBody=(p:ProcessAssessment|undefined)=>p?{guidance:p.guidance,unknowns:p.unknowns,processRuleIds:p.processRuleIds}:undefined;
  const sourceFields=new Set(['source_url','source_quote','last_verified_at','notes']);
  return {
-  policyChanged:!jsonEqual(withoutSources(before.result),withoutSources(after.result)) || changes.some(c=>!sourceFields.has(c.field)),
-  explanationChanged:!jsonEqual(before.result.candidateCitations,after.result.candidateCitations) || !jsonEqual(before.result.unknowns,after.result.unknowns) || !jsonEqual(before.result.diagnostics,after.result.diagnostics) || !jsonEqual(before.result.citations,after.result.citations) || changes.some(c=>sourceFields.has(c.field)) || !jsonEqual(before.metadata.selectionIssues,after.metadata.selectionIssues),
+  policyChanged:!jsonEqual(withoutSources(before.result),withoutSources(after.result)) || academicChanges.some(c=>!sourceFields.has(c.field)),
+  explanationChanged:!jsonEqual(before.result.candidateCitations,after.result.candidateCitations) || !jsonEqual(before.result.unknowns,after.result.unknowns) || !jsonEqual(before.result.diagnostics,after.result.diagnostics) || !jsonEqual(before.result.citations,after.result.citations) || academicChanges.some(c=>sourceFields.has(c.field)) || !jsonEqual(before.metadata.selectionIssues.filter(i=>!processIds.has(i.ruleId)),after.metadata.selectionIssues.filter(i=>!processIds.has(i.ruleId))),
   newCoverage:(['path','aps','testAS','dMAT'] as const).some(key=>before.result[key]==='unknown'&&after.result[key]!=='unknown'),
+  processDecisionComparisonAvailable:before.process!==undefined && after.process!==undefined,
+  processExplanationChanged:changes.some(c=>processIds.has(c.ruleId)&&sourceFields.has(c.field)) || !jsonEqual(before.metadata.selectionIssues.filter(i=>processIds.has(i.ruleId)),after.metadata.selectionIssues.filter(i=>processIds.has(i.ruleId))),
+  processChanged:!jsonEqual(processBody(before.process),processBody(after.process)) || changes.some(change=>!academicIds.includes(change.ruleId)),
   ruleChanges:changes,
  };
 }

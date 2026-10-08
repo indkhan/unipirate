@@ -20,6 +20,7 @@ import { currentAssessmentContext } from "@/lib/rules/current";
 import {
   generateCourseTasks,
   generateGlobalTasks,
+  generateProcessTasks,
   newGeneratedTaskRows,
   type ApplicationForTaskGeneration,
   type TargetIntake,
@@ -122,12 +123,13 @@ export async function materializeAllTasksForUser(
   assessment?: Assessment,
 ): Promise<void> {
   const profile = await currentProfile(db, userId);
-  const result = assessment?.result ?? (profile ? evaluateAssessment(profile, await listRuleVersions(db), currentAssessmentContext()).result : null);
+  const current=assessment ?? (profile ? evaluateAssessment(profile, await listRuleVersions(db), currentAssessmentContext()) : null);
+  const result=current?.result??null;
   await materializeGeneratedPrefix(
     db,
     userId,
     "rule:",
-    generateGlobalTasks(result),
+    [...generateGlobalTasks(result),...generateProcessTasks(current?.process)],
   );
 
   const applications = await listApplicationsWithCourses(db, userId);

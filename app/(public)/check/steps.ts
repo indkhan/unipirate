@@ -2,6 +2,7 @@
 // answers looks like, and how answers map onto the engine Profile.
 // No I/O, no React — unit-tested in __tests__/steps.test.ts.
 import { z } from "zod";
+import {ProcessContextSchema} from "@/lib/engine/process";
 import { SAUDI_CERTIFICATES, SCIENCE_STREAMS, isIndustrialCertificate } from "@/lib/engine/saudi";
 import { PK_CERTIFICATES, PK_GROUPS, PK_FAMILIES } from "@/lib/engine/pakistan";
 import { JeeStatusSchema, JeeContextSchema, JeeSchoolCertificateSchema, JeeTargetFamilySchema } from "@/lib/engine/jee";
@@ -250,6 +251,7 @@ export const JEE_STEPS = ["jeeSchoolCertificate", "jeeMainStatus", "jeeAdvancedS
 
 const AnswerFieldsSchema = z
   .object({
+    processContext: ProcessContextSchema.optional(),
     saudiBachelorVersion: z.literal(2).optional(),
     saudiCertificateVersion: z.union([z.literal(1), z.literal(2)]).optional(),
     saudiNationalCategory: z.enum(["general_certificate", "general_transcript", "graduation_certificate", "unknown"]).optional(),
@@ -691,6 +693,7 @@ export function withAnswer<K extends StepId>(
   }
   if (next.curriculumType === 'gce' && next.targetDegree === 'bachelor') next.gceVersion=1;
   if (answers[field] !== value) {
+    if(field==="visaApplicationCountry")delete next.processContext;
     if (["targetDegree", "curriculumType", "certificateCountry", "schoolQualificationCountry", "schoolQualificationContext"].includes(field)) {
       for (const key of SAUDI_STEPS) delete next[key];
     }
@@ -822,7 +825,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
       for (const key of [...HISTORY_STEPS, ...INDIA_STUDY_STEPS, ...SAUDI_DEGREE_STEPS]) visible.add(key);
     }
     for (const key of Object.keys(next)) {
-      if (key !== "pkStudyEvidenceVersion" && key !== "pakistanVersion" && key !== "saudiBachelorVersion" && key !== "saudiCertificateVersion" && key !== "jeeVersion" && key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && !visible.has(key)) {
+      if (key !== "processContext" && key !== "pkStudyEvidenceVersion" && key !== "pakistanVersion" && key !== "saudiBachelorVersion" && key !== "saudiCertificateVersion" && key !== "jeeVersion" && key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && !visible.has(key)) {
         delete next[key as StepId];
         changed = true;
       }
@@ -898,6 +901,7 @@ export function buildProfile(answers: Answers): Profile {
     curriculumType: tertiary ? "other" : answers.curriculumType ?? "other",
     targetField: answers.targetField,
   };
+  if(answers.processContext)profile.processContext=answers.processContext;
   if (visibleSteps(answers).includes("apsProcedureStatus") && answers.apsProcedureStatus !== undefined) {
     profile.apsProcedure = {
       status: answers.apsProcedureStatus,
@@ -1046,4 +1050,15 @@ export function hasDuplicateIbSubjects(subjects:IbSubjectAnswer[]):boolean {
  const keys=subjects.filter(s=>s.subjectId!=='other').map(s=>{
    const e=ibEntry(s.subjectId);return e?.kind==='language'||e?.course==='ab_initio'?s.subjectId+':'+(s.language??'').trim().toLowerCase():s.subjectId;
  });return new Set(keys).size!==keys.length;
+}
+
+/** Process reports never upgrade, prune or establish academic evidence. */
+export function withProcessContext<K extends keyof z.infer<typeof ProcessContextSchema>>(answers:PartialAnswers,field:K,value:z.infer<typeof ProcessContextSchema>[K]):PartialAnswers {
+ const report={...answers.processContext,version:1 as const,[field]:value};
+ if(answers.processContext?.[field]!==value){
+  if(field==="purpose" || field==="mission"){delete report.missionConfirmed;delete report.exception;delete report.ageBracket;delete report.fundingMethod;}
+  if(field==="kind"){delete report.ageBracket;delete report.exception;delete report.fundingMethod;}
+  if(field==="missionConfirmed")delete report.exception;
+ }
+ return {...answers,processContext:ProcessContextSchema.parse(report)};
 }
