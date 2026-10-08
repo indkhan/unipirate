@@ -713,10 +713,10 @@ university domain through the same retrieved programme identity boundary. The mo
 receives retrieved web observations and identity, without duplicating the full paste;
 paste remains available in manual recovery. The existing 20,000-character source
 capture cap now reports any omitted text explicitly as unresolved rather than hiding
-the truncation. Shared 90-second budget, provider/model and SDK remain unchanged.
+the truncation. Shared 90-second budget, provider and SDK remain unchanged.
 Sanitized failure categories report timeout or invalid/unavailable response, never
 provider bodies or keys. Real provider acceptance still requires root's clean smoke.
-The configured `nvidia/nemotron-3.5-lightning:free` import uses the existing SDK's
+The configured `nvidia/nemotron-3-super-120b-a12b:free` import uses the existing SDK's
 `generateText` with one forced native `submit_research` tool, strict
 `ResearchOutputSchema` input and no execute handler or agent loop. Its supported
 OpenRouter setting disables reasoning through `extraBody.reasoning.enabled: false`;
