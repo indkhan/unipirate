@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { researchCourse, COURSE_EXTRACTION_MODEL } from "../research-course";
-import { ResearchOutputSchema, ResearchDraftSchema, prepareResearchReview } from "@/lib/courses/research";
+import { ResearchOutputSchema, ResearchDraftSchema, prepareResearchReview, buildResearchDraft } from "@/lib/courses/research";
 import smoke14 from "@/lib/courses/__tests__/fixtures/smoke14-context.json";
 import { OfferingFactSchema } from "@/lib/courses/offerings";
 
@@ -251,4 +251,68 @@ it.each(["literal-mismatch", "daad-identity-mismatch"])("keeps actual-14 %s subm
   expect(provider).toHaveBeenCalledOnce();
   expect(draft).toMatchObject({status: "incomplete", offerings: [], unscoped: [], paste: smoke14.seed.text});
   expect(draft.issues.join(" ")).toContain(mode === "daad-identity-mismatch" ? "did not match the programme identity" : "No factual capture");
+});
+
+it("serializes an executable synthetic literal-copy/null-scope example through the native SDK", async () => {
+  const fee = "Semester contribution **123.45 EUR**, including a semester ticket.";
+  const examplePage = seed.name + " " + seed.university + "\n\nFuture intake requirements are not yet published.\n\n" + fee;
+  // Echoing a prompt example tests its wire/schema contract, not model compliance.
+  let instruction = "";
+  let wireExample: unknown;
+  const provider = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body));
+    instruction = body.messages[0].content.map((p: {text: string}) => p.text).join("\n");
+    const block = /Synthetic source-copy example \(NOT evidence\):[\s\S]*?Submission shape:\n([^\n]+)\nEnd synthetic example\./.exec(instruction);
+    if (!block) return response();
+    wireExample = JSON.parse(block[1].replaceAll("SOURCE_URL", seed.url));
+    return response("submit_research", JSON.stringify(wireExample));
+  });
+  vi.stubGlobal("fetch", provider);
+  const draft = await researchCourse(seed, {tavilyKey: "synthetic", fetcher: async (url, init) => {
+    const body = JSON.parse(String(init?.body));
+    return Response.json(String(url).endsWith("search") ? {results: []} : {results: body.urls.map((url: string) => ({url, raw_content: examplePage}))});
+  }});
+  expect(provider).toHaveBeenCalledOnce();
+  expect(instruction).toContain("Preserve Markdown characters exactly in verbatim and source_quote; copy source text, not rendered text.");
+  expect(instruction).toContain("Use semester_fee for semester-contribution or semester-ticket charges, not tuition.");
+  expect(instruction).toContain("A fee amount or charge description alone does not establish intake/applicant scope; use a fee quote as scope only when it explicitly proves term, year and literal applicant group.");
+  expect(instruction).toContain("Missing scope is not a reason to drop supported current facts.");
+  expect(instruction).toContain("SOURCE_URL is a placeholder for an actual retrieved URL; never submit the placeholder or treat this example as evidence.");
+  expect(ResearchOutputSchema.parse(wireExample)).toEqual({offerings: [{intake_term: null, intake_year: null, applicant_group: null, scope: null, facts: [{key: "semester_fee", kind: "fee", verbatim: fee, applicability: "Unknown scope", route: null, deadline_kind: null, evidence: [{source_url: seed.url, source_quote: fee}]}]}]});
+  expect(draft).toMatchObject({status: "incomplete", offerings: [], unscoped: [expect.objectContaining({kind: "fee", verbatim: fee, status: "pending", applicability: "Unresolved effective intake/applicant scope", evidence: [expect.objectContaining({source_url: seed.url, source_quote: fee, last_verified_at: null, verified_by: null})]})]});
+  expect(() => prepareResearchReview(draft, 0, [draft.unscoped![0].key], "11111111-1111-4111-8111-111111111111", "2026-10-08T13:00:00Z")).toThrow();
+});
+
+it("never promotes the synthetic system example into actual-14 source evidence", async () => {
+  const provider = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body));
+    const instruction = body.messages[0].content.map((p: {text: string}) => p.text).join("\n");
+    const block = /Submission shape:\n([^\n]+)\nEnd synthetic example\./.exec(instruction)!;
+    return response("submit_research", block[1].replaceAll("SOURCE_URL", smoke14.seed.url));
+  });
+  vi.stubGlobal("fetch", provider);
+  const draft = await researchCourse(smoke14.seed, {tavilyKey: "offline", fetcher: async (url, init) => {
+    const body = JSON.parse(String(init?.body));
+    return Response.json(String(url).endsWith("search") ? {results: []} : {results: body.urls.flatMap((url: string) => {
+      const o = smoke14.observations.find(o => o.url === url);
+      return o ? [{url, raw_content: o.content}] : [];
+    })});
+  }});
+  expect(provider).toHaveBeenCalledOnce();
+  const body = JSON.parse(String(provider.mock.calls[0][1]?.body));
+  const context = JSON.parse(body.messages.at(-1).content);
+  expect(JSON.stringify(context)).not.toContain("123.45 EUR");
+  expect(JSON.stringify(context)).not.toContain("SOURCE_URL");
+  expect(draft).toMatchObject({status: "incomplete", offerings: [], unscoped: [], paste: smoke14.seed.text});
+  expect(draft.issues.join(" ")).toContain("No factual capture");
+});
+
+it("retains a literal fee quote that explicitly proves complete intake and applicant scope", () => {
+  const fee = "Winter 2027 Non-EU applicants: semester fee **100 EUR**.";
+  const reference = {source_url: seed.url, source_quote: fee};
+  const draft = buildResearchDraft(seed, [{url: seed.url, content: seed.name + " " + seed.university + "\n\n" + fee, retrieved_at: "2026-10-08T12:00:00Z", origin: "web"}], {offerings: [{intake_term: "winter", intake_year: 2027, applicant_group: "Non-EU applicants", scope: reference, facts: [{key: "semester_fee", kind: "fee", verbatim: fee, applicability: "Non-EU applicants", route: null, deadline_kind: null, evidence: [reference]}]}]}, []);
+  expect(draft.offerings).toHaveLength(1);
+  expect(draft.offerings[0]).toMatchObject({intake_term: "winter", intake_year: 2027, applicant_group: "Non-EU applicants", scope: reference});
+  expect(draft.offerings[0].facts.find(f => f.key === "semester_fee")).toMatchObject({verbatim: fee, status: "pending", evidence: expect.arrayContaining([expect.objectContaining({...reference, verified_by: null, last_verified_at: null})])});
+  expect(draft.unscoped).toEqual([]);
 });
