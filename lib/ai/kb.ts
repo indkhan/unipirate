@@ -1,4 +1,4 @@
-import { isQuarantinedJeeRule, isScopedJeePathRule } from "../engine/evaluate";
+import { isQuarantinedPakistanRule, isQuarantinedJeeRule, isScopedJeePathRule } from "../engine/evaluate";
 import { JEE_SOURCE, JEE_FIELD_SOURCE, JEE_LEGACY_SLUG } from "../engine/jee";
 
 // Pure rendering of rule records into embeddable text chunks. Zero I/O.
@@ -12,6 +12,8 @@ import { JEE_SOURCE, JEE_FIELD_SOURCE, JEE_LEGACY_SLUG } from "../engine/jee";
  * models are not comparable, and a mismatch returns plausible-looking but
  * wrong neighbours with no error.
  */
+import { isSaudiAdmissionRule, isScopedSaudiRule, SAUDI_FACT_LABELS } from "@/lib/engine/saudi";
+
 export const EMBEDDING_MODEL = "nvidia/nemotron-3-embed-1b:free";
 export const EMBEDDING_DIMENSIONS = 2048;
 
@@ -27,6 +29,7 @@ export type KbRule = {
   conditions: Record<string, Condition>;
   outcomes: {
     path?: string;
+    institution_restriction?: "fachhochschule";
     aps?: string;
     aps_scopes?: Partial<Record<"qualification" | "application" | "visa", {
       value: string; documents?: string[]; steps?: { order: number; text: string; acquisition?: boolean }[];
@@ -56,6 +59,7 @@ export type KbChunk = {
 // (see FactKeySchema in lib/engine/evaluate.ts). Unlisted keys fall back to
 // the key with underscores replaced by spaces.
 const FACT_LABELS: Record<string, string> = {
+  ...SAUDI_FACT_LABELS,
   in_class12_prior_study_kind: "reported prior-study kind for Indian Class XII",
   in_class12_prior_study_country: "reported bachelor institution country for Indian Class XII",
   in_class12_successful_bachelor_years: "reported successfully completed bachelor academic years (not programme duration)",
@@ -162,6 +166,7 @@ function renderOutcomes(outcomes: KbRule["outcomes"]): string[] {
   const lines: string[] = [];
   if (outcomes.path)
     lines.push(`Admission path: ${PATH_LABELS[outcomes.path] ?? outcomes.path}.`);
+  if (outcomes.institution_restriction === "fachhochschule") lines.push("Institution restriction: Fachhochschule (university of applied sciences) only for this admission path.");
   const flag = (name: string, value?: string) => {
     if (value) lines.push(`${name}: ${value.replace(/_/g, " ")}.`);
   };
@@ -190,17 +195,24 @@ function renderOutcomes(outcomes: KbRule["outcomes"]): string[] {
 }
 
 export function ruleToChunk(rule: KbRule, options: { includeLegacyDmatQuote?: boolean } = {}): KbChunk {
+  if (isSaudiAdmissionRule(rule) && !isScopedSaudiRule(rule)) return {
+    slug: rule.slug, title: "Saudi admission applicability unverified",
+    content: "Saudi admission applicability: unknown. [[unknown]] Stored certificate/stream/degree criteria require official source review; no admission path is established.",
+    source_url: rule.source_url, last_verified_at: null, country_code: rule.country_code,
+  };
   // Changing a historical row's outcomes cannot verify its old admission quote.
   const legacyJee = isQuarantinedJeeRule(rule) ||
     (rule.slug === JEE_LEGACY_SLUG && !isScopedJeePathRule(rule));
+  const legacyPakistan = isQuarantinedPakistanRule(rule);
   const legacyDmat = rule.outcomes.dmat !== undefined && rule.conditions.has_existing_aps !== undefined &&
     rule.conditions.dmat_procedure === undefined;
   const conditionLines = Object.entries(rule.conditions).map(([key, cond]) =>
     renderCondition(key, cond),
   );
-  const outcomes = legacyJee ? { ...rule.outcomes, path: undefined, note: undefined,
+  const outcomes = legacyJee || legacyPakistan ? { ...rule.outcomes, path: undefined, note: undefined,
     documents: undefined, steps: undefined } : rule.outcomes;
   const content = [
+    ...(legacyPakistan ? ["Pakistan admission applicability: unknown. [[unknown]] Historical path, quote, note and admission tasks are withheld pending exact school/study/target/intake scope review; confirm current anabin and the intended institution."] : []),
     ...(legacyJee ? [
       "JEE admission applicability: unknown. [[unknown]] Historical conditions do not establish qualifying passage or current admission access.",
       "Stored historical quote and admission note are unverified and withheld from evidence. Confirm Main and Advanced qualifying passage, certificate, target-field and intake applicability with " + JEE_SOURCE + " and " + JEE_FIELD_SOURCE + ".",
@@ -212,7 +224,7 @@ export function ruleToChunk(rule: KbRule, options: { includeLegacyDmatQuote?: bo
     ...renderOutcomes(legacyDmat ? { ...outcomes,
       dmat: options.includeLegacyDmatQuote === false ? "unknown" : undefined, note: undefined } : outcomes),
     ...(legacyDmat ? ["Legacy dMAT procedure applicability unverified: certificate possession alone does not establish an exemption for a new or unknown procedure."] : []),
-    ...((legacyJee || (legacyDmat && options.includeLegacyDmatQuote === false)) ? [] : [
+    ...((legacyJee || legacyPakistan || (legacyDmat && options.includeLegacyDmatQuote === false)) ? [] : [
       `${rule.outcomes.aps ? "Stored legacy quote (scoped applicability unverified)" : legacyDmat ? "Stored legacy quote (procedure applicability unverified)" : "Official source says"}: "${rule.source_quote}"`]),
   ].join("\n");
 
@@ -221,7 +233,7 @@ export function ruleToChunk(rule: KbRule, options: { includeLegacyDmatQuote?: bo
     title: legacyJee ? "JEE applicability unresolved" : rule.slug,
     content,
     source_url: rule.source_url,
-    last_verified_at: legacyJee ? null : rule.last_verified_at,
+    last_verified_at: legacyJee || legacyPakistan ? null : rule.last_verified_at,
     country_code: rule.country_code,
   };
 }

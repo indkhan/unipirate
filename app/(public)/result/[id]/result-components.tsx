@@ -1,10 +1,12 @@
 import Link from "next/link";
 
-import type { Citation, Profile, Result } from "@/lib/engine/evaluate";
+import { diagnosticFactLabel, type Citation, type Profile, type Result } from "@/lib/engine/evaluate";
 
 import { SignupResultLink } from "./result-client";
 import styles from "./result.module.css";
 import {
+  diagnosticRequirement,
+  primaryDiagnostic,
   buildRoute,
   buildVerdicts,
   countryLabel,
@@ -54,6 +56,7 @@ export function VerdictCard({
   profileLine: string;
 }) {
   const verdicts = buildVerdicts(result, profile);
+  const diagnostic = primaryDiagnostic(result);
   return (
     <section className={`${styles.card} ${styles.verdictCard}`}>
       <div className={styles.cardHeading}>
@@ -65,7 +68,14 @@ export function VerdictCard({
         {verdicts[0].citations.map((citation) => (
           <SourceStamp key={citation.ruleId} citation={citation} />
         ))}
-        {verdicts[0].citations.length === 0 && (
+        {diagnostic && diagnostic.status !== 'known_route' && <div>
+          {diagnostic.facts.length > 0 && <ul>{diagnostic.facts.map(fact => <li key={fact.key}>
+            {diagnosticFactLabel(fact.key)}: reported {fact.reported !== undefined ? String(fact.reported) : fact.actual === undefined || fact.actual === 'unknown' ? 'missing or uncertain' : String(fact.actual)}; candidate requires {diagnosticRequirement(fact.expected)}.
+          </li>)}</ul>}
+          {diagnostic.followUp && <p><strong>{diagnostic.followUp.question}</strong> Other missing conditions may still need answers.</p>}
+          {[...result.citations,...result.candidateCitations ?? []].filter(c => diagnostic.ruleIds.includes(c.ruleId) && !verdicts[0].citations.some(v => v.ruleId === c.ruleId)).map(c => <SourceStamp key={c.ruleId} citation={c} />)}
+        </div>}
+        {verdicts[0].citations.length === 0 && !diagnostic?.followUp && diagnostic?.status !== 'known_unmet_condition' && (
           <span className={styles.unverified}>Official confirmation needed</span>
         )}
       </div>

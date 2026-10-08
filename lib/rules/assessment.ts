@@ -1,6 +1,6 @@
 // Pure assessment envelopes and historical explanations. No clock, reads or writes.
 import { z } from "zod";
-import { evaluate, EngineRuleSchema, type Profile, type Result } from "@/lib/engine/evaluate";
+import { evaluate, ResultDiagnosticSchema, EngineRuleSchema, type Profile, type Result } from "@/lib/engine/evaluate";
 import { CalendarDateSchema } from "@/lib/engine/calendar-day";
 import { AnswersSchema, buildProfile } from "@/app/(public)/check/steps";
 import { RuleIdSchema, RuleVersionSchema, selectRuleVersions, assessmentDateUtc, jsonEqual, meaningfulRuleDiff, type RuleVersion } from "./versioning";
@@ -22,12 +22,15 @@ const support=z.enum(['aps:qualification','aps:application','aps:visa','path','a
 /** Mirrors the actual exported engine Result, including optional legacy APS fields. */
 export const AssessmentResultSchema:z.ZodType<Result>=z.object({
  path:z.enum(['direct','subject_restricted','studienkolleg','insufficient','unknown']),aps:flag,
+ institutionRestriction:z.literal('fachhochschule').optional(),
  apsScopes:z.object({qualification:flag,application:flag,visa:z.enum(['required','not_required','unknown','not_listed'])}).strict().optional(),
  apsCertificate:z.enum(['held','missing','unknown']).optional(),apsRuleIds:z.array(canonicalId).optional(),
  testAS:flag,dMAT:flag,documents:z.array(z.string()),
  stepsDetailed:z.array(z.object({order:z.number().int().nonnegative(),text:z.string(),ruleId:canonicalId,apsScope:scope.optional(),acquisition:z.boolean().optional()}).strict()),
  citations:z.array(z.object({ruleId:canonicalId,sourceUrl:z.string().url(),verifiedAt:z.string().datetime({offset:true}).nullable(),claim:z.string(),status:z.enum(['beta','verified']),supports:z.array(support)}).strict()),
+ candidateCitations:z.array(z.object({ruleId:canonicalId,sourceUrl:z.string().url(),verifiedAt:z.string().datetime({offset:true}).nullable(),claim:z.string(),status:z.enum(['beta','verified']),supports:z.array(support)}).strict()).optional(),
  unknowns:z.array(z.string()),
+ diagnostics:z.array(ResultDiagnosticSchema.extend({ruleIds:z.array(canonicalId).refine(ids=>new Set(ids).size===ids.length)})).refine(ds=>ds.filter(d=>d.followUp).length<=1,'Only one overall follow-up.').optional(),
 }).strict();
 export type Assessment={result:Result;metadata:AssessmentMetadata;selectedVersions:RuleVersion[];diagnosticVersions:RuleVersion[]};
 
@@ -36,7 +39,12 @@ export function evaluateAssessment(profile:Profile,versions:unknown,context:unkn
  const available=z.array(RuleVersionSchema).parse(versions);
  const selection=selectRuleVersions(available,{evaluatedAt,assessmentDate:assessmentDateUtc(evaluatedAt),intake:profile.intake});
  const metadata=AssessmentMetadataSchema.parse({formatVersion:1,evaluatedAt,engineRevision,selectedVersionIds:selection.selected.map(x=>x.version.id),selectionIssues:selection.diagnostics});
- return {result:AssessmentResultSchema.parse(evaluate(profile,selection.selected.map(x=>x.rule))),metadata,selectedVersions:selection.selected.map(x=>x.version),diagnosticVersions:selection.diagnostics.map(x=>available.find(v=>v.id===x.versionId)!)};
+ const result=evaluate(profile,selection.selected.map(x=>x.rule));
+ if(result.path==='unknown' && selection.diagnostics.some(d=>d.reason==='missing_intake') && !result.diagnostics?.some(d=>d.support==='path' && d.status==='source_conflict')) {
+  const existing=result.diagnostics?.find(d=>d.followUp);if(existing)delete existing.followUp;
+  result.diagnostics?.unshift({support:'path',status:'targeted_missing_fact',reason:'fact_missing',ruleIds:[],facts:[],followUp:{key:'intake_index',question:'Which intake are you applying for?'}});
+ }
+ return {result:AssessmentResultSchema.parse(result),metadata,selectedVersions:selection.selected.map(x=>x.version),diagnosticVersions:selection.diagnostics.map(x=>available.find(v=>v.id===x.versionId)!)};
 }
 export type StoredAssessment={kind:'authoritative';original:Assessment & {answers:unknown}}|{kind:'legacy'|'invalid';original:null};
 /** Protected DB column is the only authority. Never replay or substitute latest inputs. */
@@ -58,8 +66,8 @@ export function parseStoredAssessment(row:unknown,versions:unknown):StoredAssess
   const selectedVersions=metadata.selectedVersionIds.map(id=>exact.find(v=>v.id===id)!);
   if(new Set(selectedVersions.map(v=>v.rule_id)).size!==selectedVersions.length)throw new Error('Duplicate logical rule.');
   const ids=new Set(selectedVersions.map(v=>v.rule_id));
-  if(result.citations.some(c=>!ids.has(c.ruleId)) || result.stepsDetailed.some(s=>!ids.has(s.ruleId)) || result.apsRuleIds?.some(id=>!ids.has(id)))throw new Error('Unresolved result support.');
-  for(const citation of result.citations){
+  if(result.diagnostics?.some(d=>d.ruleIds.some(id=>!ids.has(id))) || [...result.citations,...result.candidateCitations??[]].some(c=>!ids.has(c.ruleId)) || result.stepsDetailed.some(s=>!ids.has(s.ruleId)) || result.apsRuleIds?.some(id=>!ids.has(id)))throw new Error('Unresolved result support.');
+  for(const citation of [...result.citations,...result.candidateCitations??[]]){
    const rule=EngineRuleSchema.parse(selectedVersions.find(v=>v.rule_id===citation.ruleId)!.raw_snapshot);
    if(citation.sourceUrl!==rule.source_url || citation.verifiedAt!==(rule.last_verified_at??null) || citation.status!==rule.status)throw new Error('Historical citation does not identify its source.');
   }
@@ -69,13 +77,13 @@ export function parseStoredAssessment(row:unknown,versions:unknown):StoredAssess
 }
 /** Stable logical identity; policy and literal explanation changes are independent. */
 export function compareAssessments(before:Assessment,after:Assessment) {
- const withoutSources=({citations,...result}:Result)=>({...result,citations:citations.map(c=>({ruleId:c.ruleId,status:c.status,supports:c.supports}))});
+ const withoutSources=({citations,candidateCitations,diagnostics,unknowns,...result}:Result)=>{void candidateCitations;void diagnostics;void unknowns;return ({...result,citations:citations.map(c=>({ruleId:c.ruleId,status:c.status,supports:c.supports}))});};
  const ruleIds=[...new Set([...before.selectedVersions,...after.selectedVersions].map(v=>v.rule_id))].sort();
  const changes=ruleIds.flatMap(ruleId=>meaningfulRuleDiff(before.selectedVersions.find(v=>v.rule_id===ruleId),after.selectedVersions.find(v=>v.rule_id===ruleId)).map(diff=>({ruleId,...diff})));
  const sourceFields=new Set(['source_url','source_quote','last_verified_at','notes']);
  return {
   policyChanged:!jsonEqual(withoutSources(before.result),withoutSources(after.result)) || changes.some(c=>!sourceFields.has(c.field)),
-  explanationChanged:!jsonEqual(before.result.citations,after.result.citations) || changes.some(c=>sourceFields.has(c.field)) || !jsonEqual(before.metadata.selectionIssues,after.metadata.selectionIssues),
+  explanationChanged:!jsonEqual(before.result.candidateCitations,after.result.candidateCitations) || !jsonEqual(before.result.unknowns,after.result.unknowns) || !jsonEqual(before.result.diagnostics,after.result.diagnostics) || !jsonEqual(before.result.citations,after.result.citations) || changes.some(c=>sourceFields.has(c.field)) || !jsonEqual(before.metadata.selectionIssues,after.metadata.selectionIssues),
   newCoverage:(['path','aps','testAS','dMAT'] as const).some(key=>before.result[key]==='unknown'&&after.result[key]!=='unknown'),
   ruleChanges:changes,
  };

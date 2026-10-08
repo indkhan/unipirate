@@ -4,6 +4,8 @@
 // and merges outcomes. Missing rules produce explicit `unknown` outcomes with
 // confirm-with-the-official-source messages; the engine never guesses.
 import { z } from "zod";
+import { type SaudiReport, deriveSaudiFacts, isSaudiAdmissionRule, isScopedSaudiRule, isSaudiSchoolProfile, SAUDI_SOURCE, SAUDI_FACT_LABELS } from "./saudi";
+import { derivePakistanFacts, PK_FACT_KEYS, type PakistanProfile, type PakistanStudy } from "./pakistan";
 import { JeeProfileSchema, type JeeProfile, JEE_SOURCE, JEE_FIELD_SOURCE, JEE_ADMISSION_SOURCE } from "./jee";
 import { type IbProfile, deriveIbFacts, IB_FACT_LABELS, IB_SOURCE } from "./ib";
 import { gceEntry, gceIndependent, triples } from "./gce";
@@ -15,6 +17,7 @@ import { DmatProfileSchema, type DmatProfile } from "./dmat";
 export type Term = "winter" | "summer";
 
 export type Profile = {
+  pakistan?: PakistanProfile;
   targetDegree: "bachelor" | "master";
   intake?: { term: Term; year: number };
   nationality?: string; // 'in' | 'pk' | 'sa' | ...
@@ -31,6 +34,7 @@ export type Profile = {
   apsApplicationContext?: "uni_assist" | "unknown";
   hasExistingApsCertificate?: boolean;
   dmat?: DmatProfile;
+  saudiCertificate?: SaudiReport;
   // Reported APS confirmation for this Class XII(/one-bachelor-year) procedure;
   // another/uncertain academic basis cannot confirm it. Never a courier alias.
   apsProcedure?: {
@@ -55,6 +59,8 @@ export type Profile = {
     degreeYears?: number;
     completedYears?: number;
     completion?: "completed" | "in_progress" | "discontinued";
+    saudiBachelorEvidence?: { version: 2; context?: "national" | "other" | "unknown"; assessment?: "reported_official_norms_full_time" | "reported_official_unmet" | "unknown"; reference?: string };
+    pakistanStudy?: PakistanStudy;
     indiaStudyRouteVersion?: 1;
     priorStudyMode?: "regular" | "distance_online" | "other" | "unknown";
     priorStudyRecognition?: "reported_official_confirmed" | "reported_official_rejected" | "unknown";
@@ -133,6 +139,12 @@ const ConditionSchema = z.union([
 type Condition = z.infer<typeof ConditionSchema>;
 
 const FactKeySchema = z.enum([
+  "sa_secondary_completion", "sa_national_category", "sa_national_stream", "sa_reported_target_family", "sa_private_assessment_coverage",
+  "sa_degree_evidence", "sa_degree_issuer", "sa_degree_context", "sa_degree_kind", "sa_degree_completion", "sa_degree_nominal_years", "sa_degree_mode", "sa_degree_norms", "sa_degree_recognition", "sa_degree_institution", "sa_degree_field",
+  "sa_certificate_evidence", "sa_certificate_subtype", "sa_reported_subject_assessment", "sa_prior_study_kind",
+  "sa_successful_bachelor_years", "sa_reported_recognition", "sa_reported_target_relation",
+  "sa_reported_enrollment", "sa_reported_enrollment_relation",
+  ...PK_FACT_KEYS,
   "in_class12_prior_study_kind", "in_class12_prior_study_country", "in_class12_successful_bachelor_years",
   "in_class12_study_mode", "in_class12_reported_recognition", "in_class12_reported_target_relation",
   "dmat_qualification_scope", "dmat_procedure", "dmat_field_basis",
@@ -219,6 +231,7 @@ const ApsScopesSchema = z.object({
 const RuleOutcomesSchema = z
   .object({
     path: PathValue.optional(),
+    institution_restriction: z.literal("fachhochschule").optional(),
     aps: FlagValue.optional(),
     aps_scopes: ApsScopesSchema.optional(),
     testas: FlagValue.optional(),
@@ -258,6 +271,7 @@ export const EngineRuleSchema = z
   })
   .passthrough()
   .superRefine((rule, context) => {
+    if (rule.outcomes.institution_restriction && rule.outcomes.path !== "studienkolleg" && !(rule.outcomes.path === "subject_restricted" && isScopedSaudiRule(rule) && rule.conditions.sa_certificate_subtype !== "national" && rule.conditions.sa_certificate_subtype !== "private_school" && rule.conditions.sa_degree_evidence === undefined)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["outcomes", "institution_restriction"], message: "FH restriction is supported only on preparation or scoped industrial subject-restricted access." });
     if (rule.status !== "draft" && !rule.last_verified_at) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -291,8 +305,80 @@ export type ResultSupport =
   | "steps"
   | "unknowns";
 
+export const ResultDiagnosticSchema = z.object({
+  support: z.enum(['path', 'aps', 'aps:qualification', 'aps:application', 'aps:visa', 'testAS', 'dMAT']),
+  status: z.enum(['known_route', 'known_unmet_condition', 'targeted_missing_fact', 'source_conflict', 'unsupported']),
+  reason: z.enum(['route_established', 'condition_unmet', 'fact_missing', 'equal_specificity_conflict', 'applicability_unsupported', 'no_supported_rule']),
+  ruleIds: z.array(z.string()).refine(ids => new Set(ids).size === ids.length),
+  facts: z.array(z.object({key: FactKeySchema, actual: Primitive.optional(), reported: Primitive.optional(), expected: ConditionSchema}).strict()),
+  relatedUnknowns: z.array(z.string()).optional(),
+  followUp: z.object({key: FactKeySchema, question: z.string().min(1)}).strict().optional(),
+}).strict();
+export type ResultDiagnostic = z.infer<typeof ResultDiagnosticSchema>;
+
+const DIAGNOSTIC_QUESTIONS: Partial<Record<FactKey, string>> = {
+  in_class12_prior_study_kind: 'Have you previously studied at a university?',
+  pk_prior_study_kind: 'Have you previously studied at a university?',
+  sa_prior_study_kind: 'Have you previously studied at a university?',
+  in_class12_successful_bachelor_years: 'How many Bachelor academic years have you successfully completed, according to your attained study records?',
+  pk_successful_academic_years: 'How many academic years have you successfully completed, supported by annual subject/mark records and the applicable reference?',
+  sa_successful_bachelor_years: 'How many Bachelor academic years have you successfully completed?',
+  class12_percent: 'What is your reported Class XII overall percentage?',
+  pk_grade_percent: 'What is your reported HSSC/Intermediate overall percentage?',
+  intake_index: 'Which intake are you applying for?',
+  in_class12_reported_recognition: 'What does the applicable official assessment say about this institution, Bachelor programme and attained study, and what is its reference?',
+  in_class12_reported_target_relation: 'What does the applicable official assessment say about your previous field and this intended target, and what is its reference?',
+  pk_reported_recognition: 'What does the applicable official recognition assessment say about your institution and academic Bachelor study, and what is its reference?',
+  pk_reported_target_relation: 'What does the applicable official assessment say about the relationship between your previous field and this intended target, and what is its reference?',
+  pk_current_assessment: 'What does the current applicable institutional assessment say about this qualification, study, target and intake, and what is its reference?',
+  sa_reported_recognition: 'What does the applicable official recognition assessment say about your institution and Bachelor study, and what is its reference?',
+  sa_reported_target_relation: 'What does the applicable official assessment say about your previous field and this intended target, and what is its reference?',
+  sa_certificate_subtype: 'Which exact Saudi school certificate subtype do your documents show?',
+  sa_private_assessment_coverage: 'What does your applicable ZAB diploma/subject assessment report about accreditation, subject breadth and all passing minima, and what is its reference?',
+  jee_main_status: 'Do your official results report qualifying passage in JEE Main?',
+  jee_advanced_status: 'Do your official results report qualifying passage in JEE Advanced?',
+  ib_exam_year: 'In which year did you take your IB examinations?',
+  ib_exam_session: 'Did you take your IB examinations in May or November?',
+  gce_school_years: 'How many ascending school years did you complete?',
+  gce_awarding_body: 'Which awarding body issued your A-Level qualifications?',
+  gce_qualification_context: 'Under which qualification system were your A-Levels awarded?',
+  gce_qualification_type: 'Which exact A-Level qualification type do your documents show?',
+  gce_evidence: 'Do you have final awarding-body certificates, provisional results or school-issued documents?',
+  aps_issuer_country: 'Which country issued the qualification being assessed?',
+  aps_qualification_context: 'Is this qualification from the issuing country’s national system or an international system?',
+  pk_certificate: 'Which exact school certificate category do your documents show?',
+  pk_documentary_group: 'Which documentary Science, Commerce or Humanities group do your school records show?',
+  pk_school_completion: 'Do your records show completed twelve-grade secondary schooling?',
+  pk_target_family: 'What does the applicable official classification say about this exact intended target family, and what is its reference?',
+  pk_annual_records: 'Do you have annual subject and mark records for your prior study?',
+  pk_study_mode: 'Was your prior academic Bachelor study full time?',
+  in_class12_prior_study_country: 'In which country did you undertake your prior university study?',
+  in_class12_study_mode: 'Was your prior Bachelor programme regular, distance/online or another mode?',
+  sa_degree_nominal_years: 'What is the full nominal duration of your completed Bachelor qualification?',
+  sa_degree_norms: 'What does the applicable exact Bachelor assessment say about prescribed study norms and generally full-time study, and what is its reference?',
+  sa_degree_recognition: 'What does the applicable official assessment say about recognition of this exact completed Bachelor, and what is its reference?',
+  sa_reported_subject_assessment: 'What does your applicable ZAB subject assessment conclude, and what is its reference?',
+  jee_school_certificate: 'Which exact completed secondary school certificate category do your documents show?',
+  jee_reported_target_family: 'What does the applicable official classification say about this exact intended programme’s target family, and what is its reference?',
+};
+export function diagnosticFactLabel(key: string): string {
+  return SAUDI_FACT_LABELS[key] ?? IB_FACT_LABELS[key] ?? ({
+    class12_percent: 'reported Class XII overall percentage', pk_grade_percent: 'reported HSSC/Intermediate overall percentage',
+    in_class12_prior_study_kind: 'prior university study', pk_prior_study_kind: 'prior university study',
+    in_class12_successful_bachelor_years: 'successfully completed Bachelor academic years',
+    pk_successful_academic_years: 'successful academic years supported by annual records/reference',
+    intake_index: 'intake product coverage (not source commencement)',
+    gce_min_al_grade: 'minimum grade rank on the same full A-Level trio (C = 3)',
+    gce_distinct_al_count: 'independent full A-Level subjects on the same trio',
+  } as Record<string, string>)[key] ?? key.replaceAll('_', ' ');
+}
+
 export type Result = {
+  /** Additive explanation only; absent in protected historical payloads. */
+  diagnostics?: ResultDiagnostic[];
+  candidateCitations?: Citation[];
   path: z.infer<typeof PathValue>;
+  institutionRestriction?: "fachhochschule";
   aps: z.infer<typeof FlagValue>;
   /** Optional only for legacy serialized results; evaluate always supplies it. */
   apsScopes?: { qualification: z.infer<typeof FlagValue>; application: z.infer<typeof FlagValue>; visa: z.infer<typeof FlagValue> | "not_listed" };
@@ -442,6 +528,7 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
   // FactKeySchema yet. Supporting old published conditions would activate
   // unreviewed routes. Recognition, field equivalence and certificate criteria
   // remain missing until the dependent source-review issues define them.
+  Object.assign(raw, deriveSaudiFacts(p));
   if (p.ib) Object.assign(raw, deriveIbFacts(p.ib));
   if (p.gce) {
     const subjects = p.gce.subjects.map(s => {
@@ -512,6 +599,7 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
       "computer_science",
     );
   }
+  Object.assign(raw, derivePakistanFacts(p));
   const facts: Record<string, Fact> = {};
   for (const [k, v] of Object.entries(raw)) if (v !== undefined) facts[k] = v;
   return facts;
@@ -577,6 +665,22 @@ export const isScopedJeePathRule = (r: JeeRule) => r.outcomes.path === "subject_
   includedJeeValues(r.conditions.intake_index, [4053, 4054, 4055]);
 export const isQuarantinedJeeRule = (r: JeeRule) => jeePath(r) && r.outcomes.path !== "unknown" && !isScopedJeePathRule(r);
 
+// Pakistan admission rules share the same structured scope guard with KB rendering.
+type PakistanRule = JeeRule & {source_url?: string};
+export const isPakistanRule = (r: PakistanRule) => !['gce','ib'].includes(String(r.conditions.curriculum)) && (Object.keys(r.conditions).some(k=>k.startsWith('pk_')) ||
+  ['certificate_country','aps_issuer_country'].some(k=>r.conditions[k]!==undefined && conditionPasses('pk',r.conditions[k])) ||
+  /daad\.pk|ad-layerId=(193|195|197|199|204|206)(?:&|$)/.test(r.source_url??'') ||
+  /anabin\.kmk\.org\/db\/schulabschluesse-mit-hochschulzugang/.test(r.source_url??'') && !isScopedSaudiRule(r));
+export const isScopedPakistanPathRule = (r: PakistanRule) => {
+ const c=r.conditions;
+ const scope=c.target_degree==='bachelor' && c.curriculum==='national' && c.aps_issuer_country==='pk' && c.aps_qualification_context==='national';
+ const school=scope && includedJeeValues(c.pk_certificate,['hssc','intermediate']) && includedJeeValues(c.pk_documentary_group,['science','commerce','humanities']) && c.pk_school_completion==='completed_12_grades' && typeof c.pk_grade_percent==='object' && c.pk_grade_percent.op==='gte';
+ if(r.outcomes.path==='studienkolleg')return school && c.pk_prior_study_kind==='none' && includedJeeValues(c.pk_target_family,['medicine','natural_sciences','technology','social_sciences','economics','humanities']);
+ return r.outcomes.path==='subject_restricted' && school && c.pk_prior_study_kind==='bachelor' && c.pk_prior_study_country==='pk' && c.pk_prior_study_completion==='in_progress' && typeof c.pk_successful_academic_years==='object' && c.pk_successful_academic_years.op==='gte' && c.pk_study_mode==='full_time' && c.pk_study_regulations==='confirmed' && c.pk_annual_records==='confirmed' && c.pk_reported_recognition==='reported_official_confirmed' && includedJeeValues(c.pk_reported_target_relation,['reported_official_previous','reported_official_closely_related']) && c.pk_current_assessment==='reported_current_support' && includedJeeValues(c.intake_index,[4053,4054,4055]);
+};
+export const isQuarantinedPakistanRule = (r: PakistanRule) => isPakistanRule(r) && r.outcomes.path!==undefined &&
+ !(r.outcomes.path==='unknown' && (r.conditions.aps_issuer_country==='pk' && r.conditions.aps_qualification_context==='national' && Object.keys(r.conditions).some(k=>k.startsWith('pk_')) || r.conditions.target_degree==='master' && r.conditions.certificate_country==='pk')) && !isScopedPakistanPathRule(r);
+
 // --------------------------------------------------------------- evaluate
 
 export const NO_RULE_MESSAGES = {
@@ -603,8 +707,10 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   // Only reviewed evidence-scoped path conditions can establish ordinary recognition.
   const ibPath = (r: ParsedRule) => r.conditions.curriculum === 'ib' && r.outcomes.path !== undefined;
   const scopedIb = (r: ParsedRule) => r.conditions.ib_evidence === 'v1' && r.conditions.ib_document_status !== undefined && r.conditions.ib_exam_year !== undefined;
-  const matched = live.filter(r => ibPath(r) && !scopedIb(r) ? false : positiveGce(r) ? scopedGce(r) && witnesses.some(w=>ruleMatches(w,r)) : ruleMatches(facts,r));
+  const matched = live.filter(r => isSaudiAdmissionRule(r) && !isScopedSaudiRule(r) ? false : ibPath(r) && !scopedIb(r) ? false : positiveGce(r) ? scopedGce(r) && witnesses.some(w=>ruleMatches(w,r)) : ruleMatches(facts,r));
 
+  const diagnostics: ResultDiagnostic[] = [];
+  const candidateCitations: Citation[] = [];
   const citations: Citation[] = [];
   const unknowns: string[] = [];
   const cite = (rule: ParsedRule, support: ResultSupport, diagnosticClaim?: string) => {
@@ -617,7 +723,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       ruleId: rule.id,
       sourceUrl: rule.source_url,
       verifiedAt: rule.last_verified_at ?? null,
-      claim: diagnosticClaim ?? (isQuarantinedJeeRule(rule) ? "Stored JEE route requires qualifying-pass and applicability review." : rule.outcomes.note ?? rule.source_quote),
+      claim: diagnosticClaim ?? (isQuarantinedPakistanRule(rule) ? "Stored Pakistan route requires exact qualification, study, target and current scope review." : isQuarantinedJeeRule(rule) ? "Stored JEE route requires qualifying-pass and applicability review." : rule.outcomes.note ?? rule.source_quote),
       status: rule.status === "beta" ? "beta" : "verified",
       supports: [support],
     });
@@ -628,7 +734,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   function resolve<V>(key: "path" | "aps" | "testas" | "dmat" | `aps:${ApsScope}`): V | undefined {
     const scope = key.startsWith("aps:") ? key.slice(4) as ApsScope : undefined;
     const outcome = (r: ParsedRule) => {
-      if (key === "path" && isQuarantinedJeeRule(r)) return undefined;
+      if (key === "path" && (isQuarantinedJeeRule(r) || isQuarantinedPakistanRule(r))) return undefined;
       // Possession is not applicability to the relevant completed procedure.
       // Keep other outcomes on the same historical row available.
       if (key === "dmat" && r.outcomes.dmat === "not_required" &&
@@ -640,14 +746,21 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       aps: "aps",
       testas: "testAS",
       dmat: "dMAT",
-    }[key as "path" | "aps" | "testas" | "dmat"]) as ResultSupport;
-    const contenders = matched.filter((r) => outcome(r) !== undefined);
+    }[key as "path" | "aps" | "testas" | "dmat"]) as ResultDiagnostic["support"];
+    let contenders = matched.filter((r) => outcome(r) !== undefined);
+    // Independent general undergraduate HZB subsumes the narrower Saudi school
+    // entitlements. Those grants coexist; other source conflicts still resolve below.
+    if (key === "path" && contenders.some(r => r.conditions.sa_degree_evidence === "v2" && isScopedSaudiRule(r) && r.outcomes.path === "direct")) {
+      contenders = contenders.filter(r => !isScopedSaudiRule(r) || r.conditions.sa_degree_evidence !== undefined);
+    }
     if (contenders.length === 0) return undefined;
     const specificity = (r: ParsedRule) => Object.keys(r.conditions).length;
     const max = Math.max(...contenders.map(specificity));
     const top = contenders.filter((r) => specificity(r) === max);
-    const values = new Set(top.map(outcome));
+    // The narrow FH restriction belongs to its path, never a separately merged flag.
+    const values = new Set(top.map(r => key === "path" ? JSON.stringify([outcome(r), r.outcomes.institution_restriction ?? null]) : outcome(r)));
     if (values.size > 1) {
+      diagnostics.push({support, status: "source_conflict", reason: "equal_specificity_conflict", ruleIds: top.map(r => r.id), facts: []});
       top.forEach((rule) => cite(rule, support));
       unknowns.push(
         `Conflicting rules for ${key} at equal specificity (${top.map((r) => r.id).join(", ")}) — confirm with the official sources cited.`,
@@ -656,6 +769,8 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     }
     top.forEach((rule) => cite(rule, support));
     const value = outcome(top[0]) as V;
+    const decisiveFacts = key === 'path' && positiveGce(top[0]) ? witnesses.find(w => ruleMatches(w, top[0])) ?? facts : facts;
+    if (value !== "unknown") diagnostics.push({support, status: key === "path" && value === "insufficient" ? "known_unmet_condition" : "known_route", reason: key === "path" && value === "insufficient" ? "condition_unmet" : "route_established", ruleIds: top.map(r => r.id), facts: Object.entries(top[0].conditions).map(([key, expected]) => ({key: key as FactKey, ...(decisiveFacts[key] === undefined ? {} : {actual: decisiveFacts[key]}), expected}))});
     if (value === "unknown") {
       // a rule that explicitly answers "we don't know yet" carries its own
       // confirm-with message
@@ -665,6 +780,24 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   }
 
   const path = resolve<Result["path"]>("path") ?? "unknown";
+  if (path === 'unknown' && profile.targetDegree === 'bachelor' && profile.curriculumType === 'national' && (profile.certificateCountry === 'pk' || profile.schoolQualification?.country === 'pk' || profile.pakistan?.version === 1)) {
+    // Explain failed reviewed conditions; thresholds and family mappings stay in data.
+    const study = facts.pk_prior_study_kind === 'bachelor';
+    const candidates = live.filter(r => isScopedPakistanPathRule(r) && (study ? r.outcomes.path === 'subject_restricted' : r.outcomes.path === 'studienkolleg'));
+    const applicableGroup = candidates.filter(r=>r.conditions.pk_documentary_group===facts.pk_documentary_group);
+    const comparisons = (applicableGroup.length ? applicableGroup : candidates).map(rule => ({rule,failed:Object.entries(rule.conditions).filter(([key,cond])=>!conditionPasses(facts[key],cond))})).sort((a,b)=>a.failed.length-b.failed.length);
+    const nearest = comparisons[0];
+    if(nearest) {
+      const labels:Record<string,string>={aps_issuer_country:'actual qualification issuer',aps_qualification_context:'national qualification context',pk_certificate:'exact HSSC/Intermediate certificate category (FSc/FA/ICom/ICS aliases are not classified)',pk_documentary_group:'documentary Science/Commerce/Humanities group (mixed/unclassified needs assessment)',pk_school_completion:'completed twelve grades',pk_grade_percent:'overall percentage',pk_prior_study_kind:'explicit prior-study answer',pk_successful_academic_years:'successful academic years established by annual records and a separate reference',pk_prior_study_country:'Pakistan study country',pk_prior_study_completion:'ongoing Bachelor product subset',pk_study_mode:'full-time academic study',pk_study_regulations:'study under regulations',pk_annual_records:'annual subjects/marks records',pk_reported_recognition:'applicant-reported recognition and applicable reference',pk_reported_target_relation:'applicant-reported previous/neighbouring target relationship and applicable reference',pk_current_assessment:'current applicable institutional assessment/reference (contrary assessment requires individual confirmation conflict)',intake_index:'reviewed current intake coverage (not source commencement)',pk_target_family:'reported intended target family and applicable reference (outside the preparatory subject scope needs assessment)'};
+      const detail=nearest.failed.map(([key,cond])=>{
+        if(facts[key]===undefined || facts[key]==='unknown')return (labels[key]??key)+' missing or uncertain';
+        if(key==='pk_grade_percent' && typeof cond==='object' && cond.op==='gte')return String(cond.value)+'% condition unmet for this formula; other qualifications require separate assessment';
+        return (labels[key]??key)+' does not meet this bounded formula';
+      }).join('; ');
+      const diagnostic='Pakistan '+(study?'current one-year':'preparatory')+' route unresolved: '+detail+'. Confirm with '+nearest.rule.source_url;
+      unknowns.push(diagnostic);cite(nearest.rule,'unknowns',diagnostic);
+    }
+  }
   if (profile.targetDegree === "bachelor" && profile.curriculumType === "national" &&
       (profile.schoolQualification?.country === "in" || (!profile.schoolQualification && profile.certificateCountry === "in")) && (profile.jee !== undefined || profile.jeeAdvanced === true)) {
     const report = JeeProfileSchema.safeParse(profile.jee);
@@ -746,6 +879,29 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     if(!nearest)unknowns.push('IB subject identity, two-year continuity, language context and applicable examination evidence require a reviewed rule: '+IB_SOURCE);
     unknowns.push('Ordinary recognition gaps do not establish Studienkolleg admission. KMK section 2 describes an additional examination/Feststellungsprüfung or qualifying successful prior study; confirm your applicable alternative and subject scope with the recognition authority: '+IB_SOURCE);
   }
+  if (path === "unknown" && (isSaudiSchoolProfile(profile) || profile.targetDegree === "bachelor" && profile.qualificationHistory?.country === "sa")) {
+    const candidates = live.filter(r => isScopedSaudiRule(r) && r.outcomes.path !== undefined && r.outcomes.path !== "unknown" && (r.conditions.sa_degree_evidence !== undefined || conditionPasses(facts.sa_certificate_subtype, r.conditions.sa_certificate_subtype!)));
+    const comparisons = candidates.map(rule => ({ rule, failed: Object.entries(rule.conditions).filter(([key, cond]) => !conditionPasses(facts[key], cond)) }));
+    if (comparisons.some(c => c.failed.length)) {
+      for (const nearest of comparisons.filter(c => c.failed.length)) {
+      const diagnostic = "Saudi route not established: " + nearest.failed.map(([key]) => {
+        const label = key === "intake_index" ? "intake applicability (current product coverage 4053/4054/4055; industrial source regime starts Winter 2026/27)" : SAUDI_FACT_LABELS[key] ?? key;
+        return label + (facts[key] === "unmet" || facts[key] === "rejected" || facts[key] === "unrelated" ? " condition unmet by the reported assessment" : " not established");
+      }).join("; ") + ". Confirm with " + nearest.rule.source_url;
+      unknowns.push(diagnostic); cite(nearest.rule, "unknowns", diagnostic);
+      }
+    } else if (!profile.saudiCertificate?.subtype || profile.saudiCertificate.subtype === "unknown") {
+      unknowns.push("Select the explicit Saudi certificate subtype; no subtype is inferred from a legacy board. Confirm with " + SAUDI_SOURCE);
+    } else {
+      unknowns.push("Saudi certificate/issuer applicability is unresolved. Confirm the applicable documentary category, reports and covered intake; confirm the exact qualification with " + SAUDI_SOURCE);
+    }
+    for (const legacy of live.filter(r => isSaudiAdmissionRule(r) && !isScopedSaudiRule(r))) {
+      cite(legacy, "unknowns", "Stored Saudi admission applicability is unverified; no admission path is established.");
+    }
+  }
+  if (path === "unknown" && profile.targetDegree === "master" && (profile.qualificationHistory?.country === "sa" || profile.certificateCountry === "sa")) {
+    unknowns.push("Saudi completed-degree equivalence for Master's admission remains source-held; duration or a completed Bachelor alone cannot establish eligibility. Ask the admitting university for its exact qualification criteria: " + SAUDI_SOURCE);
+  }
   if (!matched.some((r) => r.outcomes.path !== undefined))
     unknowns.push(NO_RULE_MESSAGES.path);
   const flag = (key: "aps" | "testas" | "dmat"): Result["aps"] => {
@@ -771,14 +927,17 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   const documents: string[] = [];
   const steps: Result["stepsDetailed"] = [];
   for (const rule of matched) {
-    for (const doc of isQuarantinedJeeRule(rule) ? [] : rule.outcomes.documents ?? []) {
+    // Saudi path-specific tasks/documents follow the winning clause, not a superseded or conflicting preparation route.
+    if (isScopedSaudiRule(rule) && rule.outcomes.path !== undefined && (path === "unknown" || !citations.some(c => c.ruleId === rule.id && c.supports.includes("path")))) continue;
+    const blockedPakistanTasks = isPakistanRule(rule) && rule.outcomes.path !== undefined && (rule.outcomes.path !== path || !citations.some(c => c.ruleId === rule.id && c.supports.includes("path")));
+    for (const doc of (isQuarantinedJeeRule(rule) || isQuarantinedPakistanRule(rule) || blockedPakistanTasks) ? [] : rule.outcomes.documents ?? []) {
       // Trade-off: old free-text APS entries lack machine-readable scope.
       // Suppress them pending admin review; never infer scope from their prose.
       if (/\bAPS\b/i.test(doc)) continue;
       if (!documents.includes(doc)) documents.push(doc);
       cite(rule, "documents");
     }
-    for (const step of isQuarantinedJeeRule(rule) ? [] : rule.outcomes.steps ?? []) {
+    for (const step of (isQuarantinedJeeRule(rule) || isQuarantinedPakistanRule(rule) || blockedPakistanTasks) ? [] : rule.outcomes.steps ?? []) {
       if (/\bAPS\b/i.test(step.text)) continue;
       if (!steps.some((s) => s.text === step.text)) {
         steps.push({ ...step, ruleId: rule.id });
@@ -801,10 +960,65 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
         cite(rule, "steps");
       }
     }
-    const { path, aps, aps_scopes, testas, dmat, documents: d, steps: s, note } = rule.outcomes;
-    if (note && [path, aps, aps_scopes, testas, dmat, d, s].every((v) => v === undefined)) {
+    const { path: rulePath, aps, aps_scopes, testas, dmat, documents: d, steps: s, note } = rule.outcomes;
+    if (note && [rulePath, aps, aps_scopes, testas, dmat, d, s].every((v) => v === undefined)) {
       unknowns.push(note);
       cite(rule, "unknowns");
+    }
+  }
+
+  // Candidate explanations reuse the matcher and reviewed scope guards. They
+  // never change the resolved path, flags, documents or tasks.
+  const missing = (value: Fact | undefined) => value === undefined || value === 'unknown' || ['missing_identity', 'missing_session', 'missing_programme'].includes(String(value));
+  const candidates = live.filter(rule => {
+    if (!rule.outcomes.path || ['unknown', 'insufficient'].includes(rule.outcomes.path)) return false;
+    if (isQuarantinedJeeRule(rule) || isQuarantinedPakistanRule(rule) || isSaudiAdmissionRule(rule) && !isScopedSaudiRule(rule)) return false;
+    if (rule.conditions.target_degree !== undefined && !conditionPasses(facts.target_degree, rule.conditions.target_degree)) return false;
+    if (rule.conditions.curriculum !== undefined && !conditionPasses(facts.curriculum, rule.conditions.curriculum)) return false;
+    // Issuer and documentary group keep another country's/stream's candidates
+    // out of this profile's explanation. Missing is never inferred as no study.
+    for (const key of ['aps_issuer_country', 'pk_documentary_group', 'sa_certificate_subtype', 'sa_national_stream', 'target_field'] as const) {
+      if (rule.conditions[key] !== undefined && !missing(facts[key]) && !conditionPasses(facts[key], rule.conditions[key])) return false;
+    }
+    for (const key of ['in_class12_prior_study_kind', 'pk_prior_study_kind'] as const) {
+      if (rule.conditions[key] !== undefined && !missing(facts[key]) && !conditionPasses(facts[key], rule.conditions[key])) return false;
+    }
+    if (isScopedSaudiRule(rule) && rule.conditions.sa_degree_evidence !== undefined && profile.qualificationHistory?.country !== 'sa') return false;
+    if (positiveGce(rule)) return scopedGce(rule);
+    if (ibPath(rule)) return scopedIb(rule);
+    return isScopedPakistanPathRule(rule) || isScopedSaudiRule(rule) || isScopedJeePathRule(rule) || Object.keys(rule.conditions).some(key => key.startsWith('in_class12_'));
+  });
+  for (const rule of candidates) {
+    const comparisons = (positiveGce(rule) && witnesses.length ? witnesses : [facts]).map(witness => ({witness, failed: Object.entries(rule.conditions).filter(([key, condition]) => !conditionPasses(witness[key], condition))})).sort((a, b) => a.failed.length - b.failed.length);
+    const {witness, failed} = comparisons[0];
+    if (!failed.length) continue;
+    const decisive = failed.map(([key, expected]) => ({key: key as FactKey, ...(witness[key] === undefined ? {} : {actual: witness[key]}), expected}));
+    // The positive derivation deliberately withholds negative completed-degree
+    // reports. Retain those literal applicant reports for explanation only.
+    for (const fact of decisive) {
+      const history = profile.qualificationHistory;
+      if (fact.key === 'sa_degree_recognition' && history?.priorStudyRecognition === 'reported_official_rejected' && history.priorStudyRecognitionReference?.trim()) Object.assign(fact, {reported: history.priorStudyRecognition});
+      if (fact.key === 'sa_degree_norms' && history?.saudiBachelorEvidence?.assessment === 'reported_official_unmet' && history.saudiBachelorEvidence.reference?.trim()) Object.assign(fact, {reported: history.saudiBachelorEvidence.assessment});
+    }
+    const reportedNegative = decisive.some(f => 'reported' in f);
+    const conflict = decisive.some(f => f.actual === 'source_conflict' || f.key === 'pk_current_assessment' && f.actual === 'reported_contrary');
+    const unsupported = decisive.some(f => !missing(f.actual) && (['intake_index', 'aps_qualification_context', 'in_class12_prior_study_country', 'in_class12_study_mode', 'pk_prior_study_country', 'pk_prior_study_completion', 'pk_study_mode', 'gce_qualification_context', 'gce_qualification_type', 'gce_evidence', 'gce_awarding_body', 'ib_evidence', 'sa_degree_context', 'sa_degree_mode'].includes(f.key) || ['other', 'outside', 'reported_official_outside', 'completed_qualification', 'discontinued', 'main_exemption', 'preparatory_rank', 'cross_year', 'unclear', 'legacy', 'invalid', 'unlisted', 'not_yet_effective', 'programme_not_covered', 'identity_conflict'].includes(String(f.actual))));
+    const gap = decisive.some(f => missing(f.actual) && !('reported' in f));
+    const status = conflict ? 'source_conflict' : unsupported ? 'unsupported' : reportedNegative ? 'known_unmet_condition' : gap ? 'targeted_missing_fact' : 'known_unmet_condition';
+    diagnostics.push({support: 'path', status, reason: conflict || unsupported ? 'applicability_unsupported' : reportedNegative ? 'condition_unmet' : gap ? 'fact_missing' : 'condition_unmet', ruleIds: [rule.id], facts: decisive, relatedUnknowns: unknowns.filter(message => citations.some(c => c.ruleId === rule.id && c.claim === message) || matched.some(r => r.outcomes.path === 'unknown' && r.source_url === rule.source_url && r.outcomes.note === message && decisive.some(f => f.key.startsWith('in_class12_') && r.conditions[f.key] !== undefined)))});
+    // An unmatched positive note cannot become the claimed route in a citation.
+    if (!citations.some(c => c.ruleId === rule.id)) candidateCitations.push({ruleId: rule.id, sourceUrl: rule.source_url, verifiedAt: rule.last_verified_at ?? null, status: rule.status as 'beta' | 'verified', supports: ['unknowns'], claim: 'Candidate route only: ' + decisive.map(f => diagnosticFactLabel(f.key) + (missing(f.actual) ? ' missing or uncertain' : ' does not satisfy this candidate condition')).join('; ') + '. Other supported routes remain independent.'});
+  }
+  if (!diagnostics.some(d => d.support === 'path')) diagnostics.push({support: 'path', status: 'unsupported', reason: 'no_supported_rule', ruleIds: [], facts: []});
+  if (path === 'unknown' && !diagnostics.some(d => d.support === 'path' && d.status === 'source_conflict')) {
+    const gaps = diagnostics.filter(d => d.support === 'path' && d.status === 'targeted_missing_fact');
+    const prior = profile.qualificationHistory?.hasPriorUniversityStudy === undefined
+      ? gaps.find(d => d.facts.some(f => ['in_class12_prior_study_kind', 'pk_prior_study_kind', 'sa_prior_study_kind'].includes(f.key))) : undefined;
+    const chosen = prior ?? gaps.find(d => d.facts.some(f => missing(f.actual) && DIAGNOSTIC_QUESTIONS[f.key]));
+    const fact = chosen?.facts.find(f => missing(f.actual) && DIAGNOSTIC_QUESTIONS[f.key] && (!prior || ['in_class12_prior_study_kind', 'pk_prior_study_kind', 'sa_prior_study_kind'].includes(f.key)));
+    if (chosen && fact) {
+      chosen.followUp = {key: fact.key, question: DIAGNOSTIC_QUESTIONS[fact.key]!};
+      chosen.relatedUnknowns = unknowns.filter(message => matched.some(r => r.outcomes.path === 'unknown' && r.outcomes.note === message && r.conditions[fact.key] !== undefined) || citations.some(c => chosen.ruleIds.includes(c.ruleId) && c.claim === message));
     }
   }
 
@@ -812,6 +1026,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
 
   return {
     path,
+    ...(path !== "unknown" && matched.some(r => r.outcomes.institution_restriction === "fachhochschule" && citations.some(c => c.ruleId === r.id && c.supports.includes("path"))) ? { institutionRestriction: "fachhochschule" as const } : {}),
     aps,
     apsScopes,
     apsCertificate: profile.hasExistingApsCertificate === true ? "held" : profile.hasExistingApsCertificate === false ? "missing" : "unknown",
@@ -821,6 +1036,8 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     documents,
     stepsDetailed,
     citations,
+    candidateCitations,
     unknowns,
+    diagnostics,
   };
 }
