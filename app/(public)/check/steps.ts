@@ -3,6 +3,7 @@
 // No I/O, no React — unit-tested in __tests__/steps.test.ts.
 import { z } from "zod";
 import {ProcessContextSchema} from "@/lib/engine/process";
+import { PK_CERTIFICATES, PK_GROUPS, PK_FAMILIES } from "@/lib/engine/pakistan";
 import { JeeStatusSchema, JeeContextSchema, JeeSchoolCertificateSchema, JeeTargetFamilySchema } from "@/lib/engine/jee";
 import { IB_SUBJECTS, ibEntry, IbProfileSchema } from "@/lib/engine/ib";
 export { IB_SUBJECTS } from "@/lib/engine/ib";
@@ -154,6 +155,9 @@ export const NUMBER_STEPS = {
 export type NumberStepId = keyof typeof NUMBER_STEPS;
 
 export const TEXT_STEPS = {
+  pkCurrentAssessmentReference:{label:'Reported applicable current institution/uni-assist assessment',maxLength:500},
+  pkTargetFamilyReference:{label:'Reported target subject-family source',maxLength:500},pkSuccessfulYearsReference:{label:'Annual records establishing successful academic years',maxLength:500},
+  pkRecognitionReference:{label:'Reported official recognition assessment',maxLength:500},pkTargetRelationReference:{label:'Reported official target relationship assessment',maxLength:500},
   jeeTargetFamilyReference: { label: "Reported applicable official target classification reference", maxLength: 500 },
   ibSchoolName: {label:"Exact school name from the official annex / school documents",maxLength:200},
   ibSchoolCountry: {label:"School country heading from the official annex",maxLength:100},
@@ -188,6 +192,23 @@ export const HISTORY_STEPS = [
   "yearsOfUniversityStudy", "priorStudyCompletion", "priorQualificationContext", "priorStudyCountryOther",
 ] as const;
 
+export const PAKISTAN_STEPS = ['pkCurrentAssessment','pkCurrentAssessmentReference','pkCertificate','pkGroup','pkSchoolCompletion','pkTargetFamily','pkTargetFamilyReference','pkStudyMode','pkStudyRegulations','pkAnnualRecords','pkSuccessfulYearsReference','pkRecognition','pkRecognitionReference','pkTargetRelation','pkTargetRelationReference'] as const;
+export function isPakistanBranch(a:PartialAnswers):boolean {return a.pakistanVersion===1 && a.targetDegree==='bachelor' && a.curriculumType==='national' && a.schoolQualificationCountry==='pk' && a.schoolQualificationContext==='national';}
+/** Editing/restoring an actual Pakistan issuer must collect its own evidence. */
+export function pakistanAnswerVersion(a: PartialAnswers): PartialAnswers {
+  return a.pakistanVersion === 1 || a.certificateCountry === 'pk' || a.schoolQualificationCountry === 'pk'
+    ? { pakistanVersion: 1, pkStudyEvidenceVersion: 2, qualificationHistoryVersion: 1 } : {};
+}
+export function usesNationalIssuerQuestions(a: PartialAnswers): boolean {
+  return a.targetDegree === 'bachelor' && a.curriculumType === 'national' &&
+    (a.apsScopeVersion === 1 || a.pakistanVersion === 1);
+}
+/** An explicit context replaces the landing hint; uncertainty never aliases it. */
+export function nationalSchoolCountry(a: PartialAnswers): string | undefined {
+  return usesNationalIssuerQuestions(a)
+    ? a.schoolQualificationContext === 'national' ? a.schoolQualificationCountry : undefined
+    : a.certificateCountry;
+}
 export const INDIA_STUDY_STEPS = ["priorStudyMode", "priorStudyRecognition", "priorStudyRecognitionReference", "priorStudyTargetRelation", "priorStudyTargetRelationReference"] as const;
 
 /** Explicit qualification issuer/context, never citizenship or school location. */
@@ -205,6 +226,17 @@ export const JEE_STEPS = ["jeeSchoolCertificate", "jeeMainStatus", "jeeAdvancedS
 const AnswerFieldsSchema = z
   .object({
     processContext: ProcessContextSchema.optional(),
+    pakistanVersion:z.literal(1).optional(),
+    pkStudyEvidenceVersion:z.literal(2).optional(),
+    pkCurrentAssessment:z.enum(['reported_current_support','reported_contrary','unknown']).optional(),pkCurrentAssessmentReference:z.string().trim().min(1).max(500).optional(),
+    pkCertificate:z.enum(PK_CERTIFICATES).optional(),pkGroup:z.enum(PK_GROUPS).optional(),
+    pkSchoolCompletion:z.enum(['completed_12_grades','incomplete','unknown']).optional(),
+    pkTargetFamily:z.enum(PK_FAMILIES).optional(),pkTargetFamilyReference:z.string().trim().min(1).max(500).optional(),
+    pkStudyMode:z.enum(['full_time','part_time','distance_online','other','unknown']).optional(),
+    pkStudyRegulations:z.enum(['confirmed','not_confirmed','unknown']).optional(),pkAnnualRecords:z.enum(['confirmed','not_available','unknown']).optional(),
+    pkSuccessfulYearsReference:z.string().trim().min(1).max(500).optional(),
+    pkRecognition:z.enum(['reported_official_confirmed','reported_official_rejected','unknown']).optional(),pkRecognitionReference:z.string().trim().min(1).max(500).optional(),
+    pkTargetRelation:z.enum(['reported_official_previous','reported_official_closely_related','reported_official_unrelated','unknown']).optional(),pkTargetRelationReference:z.string().trim().min(1).max(500).optional(),
     indiaStudyRouteVersion: z.literal(1).optional(),
     priorStudyMode: z.enum(["regular", "distance_online", "other", "unknown"]).optional(),
     priorStudyRecognition: z.enum(["reported_official_confirmed", "reported_official_rejected", "unknown"]).optional(),
@@ -258,8 +290,8 @@ const AnswerFieldsSchema = z
     visaApplicationCountry: z.string().min(2).optional(),
     curriculumType: z.enum(["national", "ib", "gce", "other"]).optional(),
     board: z.string().min(1).optional(),
-    schoolGradePercent: z.number().min(0).max(100).optional(),
-    jeeAdvanced: z.boolean().optional(), // Preserved only for legacy reads.
+    schoolGradePercent: z.number().finite().min(0).max(100).nullable().optional(),
+    jeeAdvanced: z.boolean().optional(),
     jeeVersion: z.union([z.literal(1), z.literal(2)]).optional(),
     jeeSchoolCertificate: JeeSchoolCertificateSchema.optional(),
     jeeTargetFamily: JeeTargetFamilySchema.optional(),
@@ -307,6 +339,9 @@ export type Answers = z.infer<typeof AnswerFieldsSchema>;
 export type PartialAnswers = Partial<Answers>;
 // Draft text/numbers can be unfinished; complete submissions retain strict checks.
 export const PartialAnswersSchema = AnswerFieldsSchema.partial().extend({
+  pkCurrentAssessmentReference:z.string().max(500).optional(),
+  pkTargetFamilyReference:z.string().max(500).optional(),pkSuccessfulYearsReference:z.string().max(500).optional(),pkRecognitionReference:z.string().max(500).optional(),pkTargetRelationReference:z.string().max(500).optional(),
+  schoolGradePercent:z.number().finite().nullable().optional(),
   jeeTargetFamilyReference: z.string().max(500).optional(),
   ibExamYear: z.number().finite().nullable().optional(),
   ibSchoolYears: z.number().finite().nullable().optional(),
@@ -336,10 +371,11 @@ export const PartialAnswersSchema = AnswerFieldsSchema.partial().extend({
 export const AnswersSchema = AnswerFieldsSchema
   .transform((answers) => normalizeAnswers(answers))
   .superRefine((answers, ctx) => {
-    if (answers.yearsOfUniversityStudy === null && !isIndiaStudyBranch(answers)) {
+    if (answers.schoolGradePercent === null && !isPakistanBranch(answers)) ctx.addIssue({code:z.ZodIssueCode.custom,path:["schoolGradePercent"],message:"Grade uncertainty is limited to Pakistan assessment."});
+    if (answers.yearsOfUniversityStudy === null && !isIndiaStudyBranch(answers) && !isPakistanBranch(answers)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["yearsOfUniversityStudy"], message: "Successful years uncertainty is available only for the versioned India branch." });
     }
-    if (answers.priorStudyCountry === "unknown" && !isIndiaStudyBranch(answers)) {
+    if (answers.priorStudyCountry === "unknown" && !isIndiaStudyBranch(answers) && !isPakistanBranch(answers)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["priorStudyCountry"], message: "Country uncertainty is available only for the versioned India branch." });
     }
     // Legacy records retain their original required school-country boundary.
@@ -377,6 +413,7 @@ export const AnswersSchema = AnswerFieldsSchema
 // --------------------------------------------------------------------- steps
 
 export type StepId =
+  | (typeof PAKISTAN_STEPS)[number]
   | (typeof IB_STEPS)[number]
   | (typeof INDIA_STUDY_STEPS)[number]
   | (typeof DMAT_STEPS)[number]
@@ -425,8 +462,17 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   const bachelor = answers.targetDegree === "bachelor";
   if (answers.targetDegree !== "master") steps.push("curriculumType");
   if (bachelor && answers.curriculumType === "national") {
-    steps.push("board", "schoolGradePercent");
-    if (answers.jeeVersion === undefined && answers.certificateCountry === "in") steps.push("jeeAdvanced");
+    if (usesNationalIssuerQuestions(answers)) steps.push('schoolQualificationCountry', 'schoolQualificationContext');
+    if (isPakistanBranch(answers)) {
+      steps.push('pkCertificate');
+      if (answers.pkCertificate !== undefined) {
+        steps.push('pkSchoolCompletion');
+        if (answers.pkSchoolCompletion !== undefined) steps.push('pkGroup', 'schoolGradePercent');
+      }
+    } else if (nationalSchoolCountry(answers) && !['other', 'unknown'].includes(nationalSchoolCountry(answers)!)) {
+      steps.push('board', 'schoolGradePercent');
+    }
+    if (answers.jeeVersion === undefined && nationalSchoolCountry(answers) === 'in') steps.push('jeeAdvanced');
   }
   if (bachelor && answers.curriculumType === "gce") {
     steps.push('gceQualificationContext','gceQualificationType','gceEvidence','gceAwardingBody','gceSchoolYears','gceSubjects');
@@ -442,11 +488,6 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
       steps.push('ibFullDiploma');
       if(answers.ibFullDiploma)steps.push('ibExamYear','ibSchoolYears','ibTotalPoints','ibSubjects','ibMathCourse');
     }
-  }
-  // Establish the actual issuer before successful-year uncertainty is offered.
-  if ((answers.indiaStudyRouteVersion === 1 || answers.jeeVersion === 2) && answers.apsScopeVersion === 1 && bachelor && answers.curriculumType === "national" &&
-      (answers.certificateCountry === "in" || answers.schoolQualificationCountry === "in")) {
-    steps.push("schoolQualificationCountry", "schoolQualificationContext");
   }
   // National bachelor routes can depend on previous university study. GCE/IB
   // history is reserved for their route issues; no eligibility is inferred here.
@@ -475,7 +516,8 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   // Certificate fulfilment is independent of visa filing. Existing answers
   // remain reachable when only the visa changes, including legacy records.
   if (
-    qualificationCountry(answers) === "in" || answers.schoolQualificationCountry === "in"
+    qualificationCountry(answers) === "in" || answers.schoolQualificationCountry === "in" ||
+    (answers.schoolQualificationCountry === undefined && answers.certificateCountry === "in")
   ) {
     steps.push("hasExistingApsCertificate");
   }
@@ -487,7 +529,16 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
     steps.push("priorStudyMode", "priorStudyRecognition");
     if (answers.priorStudyRecognition !== undefined && answers.priorStudyRecognition !== "unknown") steps.push("priorStudyRecognitionReference");
   }
+  if(isPakistanBranch(answers)&&answers.hasPriorUniversityStudy===true&&answers.priorQualificationType!==undefined){
+    steps.push('pkStudyMode','pkStudyRegulations','pkAnnualRecords');
+    if(answers.pkAnnualRecords==='confirmed'&&answers.yearsOfUniversityStudy!==null)steps.push('pkSuccessfulYearsReference');
+    steps.push('pkRecognition');if(answers.pkRecognition!==undefined&&answers.pkRecognition!=='unknown')steps.push('pkRecognitionReference');
+  }
   steps.push("targetField");
+  if(isPakistanBranch(answers)&&answers.targetField!==undefined){
+    if(answers.hasPriorUniversityStudy===false)steps.push('pkTargetFamily');if(answers.hasPriorUniversityStudy===false&&answers.pkTargetFamily!==undefined&&!['other','unknown'].includes(answers.pkTargetFamily))steps.push('pkTargetFamilyReference');
+    if(answers.hasPriorUniversityStudy===true&&answers.priorQualificationType!==undefined){steps.push('pkTargetRelation');if(answers.pkTargetRelation!==undefined&&answers.pkTargetRelation!=='unknown')steps.push('pkTargetRelationReference');}
+  }
   if (answers.jeeVersion === 2 && bachelor && answers.curriculumType === "national" &&
       answers.schoolQualificationCountry === "in" && answers.schoolQualificationContext === "national" &&
       answers.jeeSchoolCertificate === "completed_12_year_secondary" && answers.jeeMainStatus === "passed" &&
@@ -509,6 +560,7 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
     }
   }
   steps.push("intake");
+  if(isPakistanBranch(answers) && answers.pkStudyEvidenceVersion===2 && answers.hasPriorUniversityStudy===true){steps.push('pkCurrentAssessment');if(answers.pkCurrentAssessment!==undefined&&answers.pkCurrentAssessment!=='unknown')steps.push('pkCurrentAssessmentReference');}
   if (answers.dmatVersion === 1 && answers.targetDegree === "master" && answers.hasPriorUniversityStudy === true &&
       answers.priorStudyInstitution?.trim() && answers.priorStudyCountry === "in" && answers.priorQualificationContext === "national") {
     steps.push("dmatQualificationScope");
@@ -551,7 +603,7 @@ export function withAnswer<K extends StepId>(
   field: K,
   value: Answers[K],
 ): PartialAnswers {
-  const next: PartialAnswers = { ...answers, qualificationHistoryVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, [field]: value };
+  const next: PartialAnswers = { ...answers, qualificationHistoryVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, ...pakistanAnswerVersion({ ...answers, [field]: value }), [field]: value };
   if (next.curriculumType === 'ib' && next.targetDegree === 'bachelor') {
     next.ibVersion=1;
     if(field==='ibFullDiploma')next.ibDocumentStatus=value?'awarded':'unknown';
@@ -559,6 +611,20 @@ export function withAnswer<K extends StepId>(
   if (next.curriculumType === 'gce' && next.targetDegree === 'bachelor') next.gceVersion=1;
   if (answers[field] !== value) {
     if(field==="visaApplicationCountry")delete next.processContext;
+    const pkIntakeEdit=field==='intake' && answers.intake!==undefined && JSON.stringify(answers.intake)!==JSON.stringify(value);
+    if (pkIntakeEdit){delete next.pkSuccessfulYearsReference;delete next.pkRecognitionReference;delete next.pkTargetRelationReference;delete next.pkTargetFamilyReference;}
+    if(pkIntakeEdit || HISTORY_STEPS.some(k=>k===field) || ['pkCertificate','pkGroup','pkSchoolCompletion','schoolGradePercent','pkStudyMode','pkStudyRegulations','pkAnnualRecords','pkSuccessfulYearsReference','pkRecognition','pkRecognitionReference','pkTargetRelation','pkTargetRelationReference','targetField','pkCurrentAssessment'].includes(field)){delete next.pkCurrentAssessmentReference;if(field!=='pkCurrentAssessment')delete next.pkCurrentAssessment;}
+    if(['priorStudyInstitution','priorStudyCountry','priorQualificationType','hasPriorUniversityStudy'].includes(field))for(const key of ['pkStudyMode','pkStudyRegulations','pkAnnualRecords','pkSuccessfulYearsReference','pkRecognition','pkRecognitionReference','pkTargetRelation','pkTargetRelationReference'] as const)delete next[key];
+    if(['targetDegree','curriculumType','certificateCountry','schoolQualificationCountry','schoolQualificationContext','pkCertificate'].includes(field))for(const key of PAKISTAN_STEPS)if(key!==field)delete next[key];
+    if(field==='pkGroup'||field==='pkSchoolCompletion'){delete next.pkTargetFamily;delete next.pkTargetFamilyReference;}
+    if(field==='targetField'){delete next.pkTargetFamily;delete next.pkTargetFamilyReference;delete next.pkTargetRelation;delete next.pkTargetRelationReference;}
+    if(field==='pkTargetFamily')delete next.pkTargetFamilyReference;
+    if(field==='pkRecognition'){delete next.pkRecognitionReference;delete next.pkTargetRelation;delete next.pkTargetRelationReference;}
+    if(field==='pkTargetRelation')delete next.pkTargetRelationReference;
+    if(HISTORY_STEPS.some(k=>k===field)||['pkCertificate','pkGroup','pkSchoolCompletion','schoolGradePercent','pkStudyMode','pkStudyRegulations','pkAnnualRecords'].includes(field)){
+      delete next.pkRecognition;delete next.pkRecognitionReference;delete next.pkTargetRelation;delete next.pkTargetRelationReference;delete next.pkSuccessfulYearsReference;
+    }
+    if(field==='priorStudyField'){delete next.pkTargetRelation;delete next.pkTargetRelationReference;}
     if (["targetDegree", "curriculumType", "certificateCountry", "schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent"].includes(field)) {
       for (const key of JEE_STEPS) delete next[key];
       delete next.jeeAdvanced;
@@ -617,8 +683,8 @@ export function withAnswer<K extends StepId>(
       priorStudyCountry: ["priorStudyCountryOther", "priorQualificationContext", "hasExistingApsCertificate"],
       priorQualificationContext: ["hasExistingApsCertificate"],
       priorStudyInstitution: ["priorStudyCountry", "priorStudyCountryOther", "priorQualificationContext", "hasExistingApsCertificate"],
-      schoolQualificationCountry: ["schoolQualificationContext", "hasExistingApsCertificate"],
-      schoolQualificationContext: ["hasExistingApsCertificate"],
+      schoolQualificationCountry: ["schoolQualificationContext", "board", "schoolGradePercent", "jeeAdvanced", "hasExistingApsCertificate"],
+      schoolQualificationContext: ["board", "schoolGradePercent", "jeeAdvanced", "hasExistingApsCertificate"],
     };
     for (const key of dependents[field] ?? []) delete next[key];
     if (HISTORY_STEPS.some(key => key === field) || INDIA_STUDY_STEPS.some(key => key === field) ||
@@ -644,7 +710,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
     changed = false;
     const visible = new Set<string>(visibleSteps(next));
     for (const key of Object.keys(next)) {
-      if (key !== "processContext" && key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && key !== "jeeVersion" && !visible.has(key)) {
+      if (key !== "processContext" && key !== "pkStudyEvidenceVersion" && key !== "pakistanVersion" && key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && key !== "jeeVersion" && !visible.has(key)) {
         delete next[key as StepId];
         changed = true;
       }
@@ -656,14 +722,15 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
 export function isAnswered(answers: PartialAnswers, step: StepId): boolean {
   if (answers.ibVersion===1 && ["ibExamYear","ibSchoolYears","ibTotalPoints"].includes(step) && answers[step]===null)return true;
   if(step==="ibSchoolCode")return /^(?:\d{6}|unknown)$/.test(answers.ibSchoolCode??"");
-  if (step === "yearsOfUniversityStudy" && answers[step] === null) return isIndiaStudyBranch(answers);
+  if (step === 'schoolGradePercent' && answers[step]===null)return isPakistanBranch(answers);
+  if (step === "yearsOfUniversityStudy" && answers[step] === null) return isIndiaStudyBranch(answers)||isPakistanBranch(answers);
   if (DATE_STEPS.some(key => key === step)) return calendarDay(answers[step]) !== undefined;
   if (isTextStep(step)) {
     const value = answers[step];
     return typeof value === "string" && value.trim().length > 0 &&
       value.trim().length <= TEXT_STEPS[step].maxLength;
   }
-  if (step === "priorStudyCountry") return (answers.priorStudyCountry === "unknown" && isIndiaStudyBranch(answers)) || answers.priorStudyCountry === "other" || /^[a-z]{2}$/i.test(typeof answers.priorStudyCountry === "string" ? answers.priorStudyCountry.trim() : "");
+  if (step === "priorStudyCountry") return (answers.priorStudyCountry === "unknown" && (isIndiaStudyBranch(answers)||isPakistanBranch(answers))) || answers.priorStudyCountry === "other" || /^[a-z]{2}$/i.test(typeof answers.priorStudyCountry === "string" ? answers.priorStudyCountry.trim() : "");
   if (step === "intake") return answers.intake !== undefined;
   if (step === "ibSubjects" && answers.ibVersion===1) {
     const subjects=answers.ibSubjects??[];
@@ -704,7 +771,8 @@ export function hasDuplicateSubjects(
 export function qualificationCountry(answers: PartialAnswers): string | undefined {
   return answers.targetDegree === "master" && answers.qualificationHistoryVersion === 1
     ? answers.hasPriorUniversityStudy ? answers.priorStudyCountry : undefined
-    : answers.certificateCountry;
+    : answers.targetDegree === 'bachelor' && answers.curriculumType === 'national'
+      ? nationalSchoolCountry(answers) : answers.certificateCountry;
 }
 
 /** Maps completed answers onto the engine Profile shape. */
@@ -726,6 +794,8 @@ export function buildProfile(answers: Answers): Profile {
       submissionDate: answers.apsSubmissionDate,
     };
   }
+  if (answers.pakistanVersion === 1 && answers.targetDegree === 'bachelor' && answers.curriculumType === 'national' && answers.schoolQualificationCountry !== 'in') profile.pakistan = {version: 1};
+  if(isPakistanBranch(answers))profile.pakistan={version:1,certificate:answers.pkCertificate,group:answers.pkGroup,completion:answers.pkSchoolCompletion,targetFamily:answers.pkTargetFamily,targetFamilyReference:answers.pkTargetFamilyReference};
   if (answers.schoolQualificationCountry !== undefined || answers.schoolQualificationContext !== undefined) {
     profile.schoolQualification = { country: answers.schoolQualificationCountry, context: answers.schoolQualificationContext };
   }
@@ -734,6 +804,7 @@ export function buildProfile(answers: Answers): Profile {
   if (answers.hasPriorUniversityStudy !== undefined) {
     profile.qualificationHistory = answers.hasPriorUniversityStudy ? {
       hasPriorUniversityStudy: true,
+      ...(isPakistanBranch(answers)?{pakistanStudy:{evidenceVersion:answers.pkStudyEvidenceVersion,assessment:answers.pkCurrentAssessment,assessmentReference:answers.pkCurrentAssessmentReference,mode:answers.pkStudyMode,regulations:answers.pkStudyRegulations,annualRecords:answers.pkAnnualRecords,successfulYearsReference:answers.pkSuccessfulYearsReference,recognition:answers.pkRecognition,recognitionReference:answers.pkRecognitionReference,relation:answers.pkTargetRelation,relationReference:answers.pkTargetRelationReference}}:{}),
       qualificationType: answers.priorQualificationType,
       institution: answers.priorStudyInstitution,
       country: answers.priorStudyCountry,
@@ -795,7 +866,7 @@ export function buildProfile(answers: Answers): Profile {
     return profile;
   }
   if (answers.board !== undefined) profile.board = answers.board;
-  if (answers.schoolGradePercent !== undefined) {
+  if (answers.schoolGradePercent !== undefined && answers.schoolGradePercent !== null) {
     profile.schoolGradePercent = answers.schoolGradePercent;
   }
   if (answers.jeeVersion !== undefined && visibleSteps(answers).includes("jeeMainStatus")) {

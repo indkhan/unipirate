@@ -8,6 +8,7 @@ import { dmatCandidates } from "./dmat.rules";
 import { ibCandidates, ibDocumentCandidates } from "./ib.rules";
 import { gceCandidates } from "./gce.rules";
 import {processCandidates} from "./process.rules";
+import { pakistanCandidates } from "./pakistan.rules";
 import { indiaStudyCandidates } from "./india-study.rules";
 
 type RuleRecord = EngineRule & { country: string | null };
@@ -39,6 +40,7 @@ const APS_TRANSITION_CONDITIONS = {
 export const ruleData: RuleRecord[] = [
   ...indiaStudyCandidates,
   ...processCandidates,
+  ...pakistanCandidates,
   {
     id: "aps-transition-before", country: "in", status: "draft",
     conditions: { ...APS_TRANSITION_CONDITIONS, aps_confirmed_submission_day: { op: "lt", value: 20260315 } },

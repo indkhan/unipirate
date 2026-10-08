@@ -1,0 +1,150 @@
+{
+  "status": "future_specification_data",
+  "executable_coverage": false,
+  "reviewed_on": "2026-10-08",
+  "source_url": "https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang",
+  "source_quote": "bei Nachweis von 1 erfolgreichen Studienjahr(en)",
+  "covered_intakes": [4053, 4054, 4055],
+  "evidence_contract": "Original German public Anabin PAK-BV01/02/03 observations, independently corroborated; source rule verified, applicant reports not independently verified. Current ZAB guidance is nonbinding orientation; institution decides. Product choices are reviewed current coverage, not source commencement or historical entitlement.",
+  "discrepancy_url": "https://www.daad.pk/files/2022/11/Study-in-Germany-Undergraduate-Degree-Courses_2022.pdf",
+  "discrepancy_note": "The still-linked regional DAAD brochure describes two successful years. Current ZAB/anabin guidance describes one. No formal withdrawal or historical commencement is asserted; contrary applicable institutional assessments require individual confirmation.",
+  "common_conditions": {
+    "target_degree": "bachelor",
+    "curriculum": "national",
+    "aps_issuer_country": "pk",
+    "aps_qualification_context": "national",
+    "pk_certificate": { "op": "in", "value": ["hssc", "intermediate"] },
+    "pk_school_completion": "completed_12_grades",
+    "pk_grade_percent": { "op": "gte", "value": 50 },
+    "pk_prior_study_kind": "bachelor",
+    "pk_prior_study_country": "pk",
+    "pk_prior_study_completion": "in_progress",
+    "pk_successful_academic_years": { "op": "gte", "value": 1 },
+    "pk_study_mode": "full_time",
+    "pk_study_regulations": "confirmed",
+    "pk_annual_records": "confirmed",
+    "pk_reported_recognition": "reported_official_confirmed",
+    "pk_reported_target_relation": { "op": "in", "value": ["reported_official_previous", "reported_official_closely_related"] },
+    "intake_index": { "op": "in", "value": [4053, 4054, 4055] }
+  },
+  "routes": [
+    {
+      "entry_id": "PAK-BV03",
+      "documentary_group": "science",
+      "condition_overrides": { "pk_documentary_group": "science" },
+      "expected_path": "subject_restricted",
+      "expected_institution_restriction": null
+    },
+    {
+      "entry_id": "PAK-BV02",
+      "documentary_group": "commerce",
+      "condition_overrides": { "pk_documentary_group": "commerce" },
+      "expected_path": "subject_restricted",
+      "expected_institution_restriction": null
+    },
+    {
+      "entry_id": "PAK-BV01",
+      "documentary_group": "humanities",
+      "condition_overrides": { "pk_documentary_group": "humanities" },
+      "expected_path": "subject_restricted",
+      "expected_institution_restriction": null
+    }
+  ],
+  "acceptance_cases_note": "FUTURE specification only — unexecuted official expectations, not a merge-gate pass. Reason strings are specification descriptions, not engine codes. This data does not prove future execution.",
+  "acceptance_cases": [
+    {
+      "id": "science-positive-4053",
+      "documentary_group": "science",
+      "overrides": { "pk_grade_percent": 50, "pk_successful_academic_years": 1, "intake_index": 4053 },
+      "expected_path": "subject_restricted"
+    },
+    {
+      "id": "commerce-positive-4053",
+      "documentary_group": "commerce",
+      "overrides": { "pk_grade_percent": 50, "pk_successful_academic_years": 1, "intake_index": 4053 },
+      "expected_path": "subject_restricted"
+    },
+    {
+      "id": "humanities-positive-4053",
+      "documentary_group": "humanities",
+      "overrides": { "pk_grade_percent": 50, "pk_successful_academic_years": 1, "intake_index": 4053 },
+      "expected_path": "subject_restricted"
+    },
+    {
+      "id": "science-threshold-49-99",
+      "documentary_group": "science",
+      "overrides": { "pk_grade_percent": 49.99, "pk_successful_academic_years": 1, "intake_index": 4053 },
+      "expected_path": "unknown",
+      "expected_reason": "threshold_unmet_for_this_route_only"
+    },
+    {
+      "id": "commerce-threshold-49-99",
+      "documentary_group": "commerce",
+      "overrides": { "pk_grade_percent": 49.99, "pk_successful_academic_years": 1, "intake_index": 4053 },
+      "expected_path": "unknown",
+      "expected_reason": "threshold_unmet_for_this_route_only"
+    },
+    {
+      "id": "humanities-threshold-49-99",
+      "documentary_group": "humanities",
+      "overrides": { "pk_grade_percent": 49.99, "pk_successful_academic_years": 1, "intake_index": 4053 },
+      "expected_path": "unknown",
+      "expected_reason": "threshold_unmet_for_this_route_only"
+    },
+    {
+      "id": "science-missing-grade",
+      "documentary_group": "science",
+      "overrides": { "pk_successful_academic_years": 1, "intake_index": 4053 },
+      "omit": ["pk_grade_percent"],
+      "expected_path": "unknown",
+      "expected_reason": "missing_grade"
+    },
+    {
+      "id": "science-fractional-year",
+      "documentary_group": "science",
+      "overrides": { "pk_grade_percent": 50, "pk_successful_academic_years": 0.5, "intake_index": 4053 },
+      "expected_path": "unknown",
+      "expected_reason": "insufficient_successful_years"
+    },
+    {
+      "id": "science-unrelated-target",
+      "documentary_group": "science",
+      "overrides": { "pk_grade_percent": 50, "pk_successful_academic_years": 1, "intake_index": 4053, "pk_reported_target_relation": "reported_official_unrelated" },
+      "expected_path": "unknown",
+      "expected_reason": "unrelated_target"
+    },
+    {
+      "id": "science-historic-4052",
+      "documentary_group": "science",
+      "overrides": { "pk_grade_percent": 50, "pk_successful_academic_years": 1, "intake_index": 4052 },
+      "expected_path": "unknown",
+      "expected_reason": "unreviewed_historical_coverage"
+    },
+    {
+      "id": "science-future-4054",
+      "documentary_group": "science",
+      "overrides": { "pk_grade_percent": 50, "pk_successful_academic_years": 1, "intake_index": 4054 },
+      "expected_path": "subject_restricted"
+    },
+    {
+      "id": "science-future-4055",
+      "documentary_group": "science",
+      "overrides": { "pk_grade_percent": 50, "pk_successful_academic_years": 1, "intake_index": 4055 },
+      "expected_path": "subject_restricted"
+    },
+    {
+      "id": "science-part-time",
+      "documentary_group": "science",
+      "overrides": { "pk_grade_percent": 50, "pk_successful_academic_years": 1, "intake_index": 4053, "pk_study_mode": "part_time" },
+      "expected_path": "unknown",
+      "expected_reason": "outside_conservative_coverage"
+    },
+    {
+      "id": "science-completed-qualification",
+      "documentary_group": "science",
+      "overrides": { "pk_grade_percent": 50, "pk_successful_academic_years": 1, "intake_index": 4053, "pk_prior_study_kind": "completed_qualification" },
+      "expected_path": "unknown",
+      "expected_reason": "separate_qualification_assessment"
+    }
+  ]
+}

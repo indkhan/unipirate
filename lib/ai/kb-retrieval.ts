@@ -1,6 +1,6 @@
 // Pure retrieval projection. Persisted text is never parsed to infer policy.
 import { z } from "zod";
-import { EngineRuleSchema, isJeeRule } from "@/lib/engine/evaluate";
+import { EngineRuleSchema, isJeeRule, isPakistanRule } from "@/lib/engine/evaluate";
 import { JEE_SOURCE, JEE_FIELD_SOURCE, JEE_LEGACY_SLUG } from "@/lib/engine/jee";
 import { DMAT_SOURCE, DMAT_FIELD_SOURCE } from "@/lib/engine/dmat";
 import { ruleToChunk, type KbChunk } from "./kb";
@@ -33,6 +33,7 @@ export function projectDmatKbMatches(matches: readonly unknown[], publishedRules
     // Stable legacy identity/source links identify old JEE matches without
     // deriving policy from arbitrary stored prose. Current structured rows govern.
     const rule = rows.length === 1 ? PublishedKbRuleSchema.safeParse(rows[0].row) : undefined;
+    const pakistan = /daad\.pk|anabin\.kmk\.org\/db\/schulabschluesse-mit-hochschulzugang|ad-layerId=(193|195|197|199|204|206)(?:&|$)/.test(match.source_url) || (rule?.success===true && isPakistanRule(rule.data));
     const jee = match.slug === JEE_LEGACY_SLUG ||
       match.source_url === JEE_SOURCE || match.source_url === JEE_FIELD_SOURCE ||
       (rule?.success === true && isJeeRule(rule.data));
@@ -42,7 +43,7 @@ export function projectDmatKbMatches(matches: readonly unknown[], publishedRules
       last_verified_at: null });
     // No trusted structured snippet metadata exists in this interface. Even a
     // rebuilt snippet must not silently acquire authority from its stored text.
-    if (source_type !== "rule") return dmat || jee ? unresolved() : match;
+    if (source_type !== "rule") return dmat || jee || pakistan ? unresolved() : match;
     // Without valid current metadata a renamed rule cannot prove unrelatedness.
     if (match.slug === "snippet-dmat-details" || rows.length !== 1) return unresolved();
     if (!rule?.success) return unresolved();

@@ -1,5 +1,7 @@
 # UP-PROC-02 integration source verification
 
+Offset-review repair: the original numeric offset must parse to a finite instant before exact microsecond ordering. Invalid offsets produce review attention/unknown guidance and cannot authorize amounts, steps or KB quotes. This repair and verified Pakistan-main integration change no source assertion, candidate source capture or publication; no additional official-source retrieval is claimed. The observations below retain their original retrieval provenance.
+
 Fresh owner retrieval on **2026-10-08**, during 02:17–02:31 UTC, used the CURRENT official pages linked below. This is independent retrieval, not automatic adoption of the supplied earlier report. Source-reviewed candidates are DRAFT and unpublished; candidate verification records 2026-10-08T02:24:14Z for the India/Saudi/Pakistan pages retrieved before that instant. Editorial review_due is a review policy, never a claimed law/effective date.
 
 - [India national visa](https://india.diplo.de/in-en/service/2755482-2755482): retrieved adult local observation 8300 inr; supplied earlier INR 8400 was not reproduced. Preserve both as unresolved observations, with the supplied one having no independent verification timestamp. Exactly 18 remains outside the page's under/over wording; FFO EUR scope cannot repair that local gap. No payment winner or currency arithmetic.

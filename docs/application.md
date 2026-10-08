@@ -852,6 +852,60 @@ New and edited IB bachelor answers carry `ibVersion: 1`; historical answers rema
 See [IB source verification](ib-source-verification.md) for authority, source versions, effective sessions and unresolved limits. The executable IB corpus is activated in UP-TEST-01; final parent official coverage remains OPEN. No DB, publication, server-shell or version-selection interface was changed.
 
 
+### Pakistan bounded current assessment (UP-ELIG-08)
+
+Actual national school issuer/context is collected once before country-specific
+questions. Pakistan new/edit/restored drafts carry pakistanVersion 1; current
+study evidence separately carries pkStudyEvidenceVersion 2. Legacy reports remain
+readable without inventing a current applicable assessment. Actual India questions
+and prior history remain reachable regardless of the landing country. GCE/IB are
+independent. Passport/visa edits preserve academic reports.
+
+Pure lib/engine/pakistan.ts validates applicant reports and derives fifteen scoped
+pk_* facts. Generic legacy recognition/history facts stay inactive. Exact completed
+twelve-grade HSSC/Intermediate category is separate from documentary Science,
+Commerce or Humanities group; FSc/FA/ICom/ICS titles never infer groups. Missing
+grade differs from 49.99; the literal >=50 condition applies only to this formula.
+Existing qualificationHistory preserves institution, programme, country, completion
+and actual successful years. Names, HEC attestation, elapsed attendance, two semesters
+or field strings establish neither success, recognition nor target relationship.
+
+Three source-backed preparatory candidates restrict no-study applicants to their
+stated Medicine/Natural Sciences/Technology, Social Sciences/Economics or Humanities
+family. Six executable acceptance examples cover these families. Three current
+one-year candidates require the actual Pakistani national qualification, >=50%,
+recognized full-time academic Bachelor study in Pakistan under regulations, annual
+subject/mark records, at least one successful year and separate applicable success,
+recognition and previous/neighbouring-target report references. A current applicable
+assessment report/reference is required; a contrary assessment remains an individual
+confirmation conflict. Direct subject scope follows prior university study, not the
+school group. Ongoing Bachelor is conservative product coverage, not a new official
+qualification requirement. Covered product intakes are exactly 4053/4054/4055;
+missing, historical and other intakes remain targeted unknown. First intake selection
+preserves fresh evidence; subsequent relevant intake/target/school/history edits
+invalidate dependent references. Restored old drafts stop at missing current evidence.
+
+Original anabin PAK-BV01/02/03 German wording was supplied in root's firsthand source
+review and independently adjudicated. DAAD195/199 corroborate one successful year;
+Humanities206 retrieval failure is not contrary evidence. The linked 2022 regional
+PDF still says two years. Three evidence-only candidates disclose that discrepancy
+in result citations and immutable current KB, without executing it as a competing
+current path. No formal withdrawal, legal precedence or historical commencement is
+asserted. Source verification date is not effective intake. Applicant reports are
+labelled separately from verified source rules; university/uni-assist makes the
+individual final decision. Completed two-year-degree discrepancy remains review-only;
+completed four-year Bachelor, Master's, aliases and irregular cases remain unknown.
+
+All fourteen candidates remain draft/unpublished with null publication/effective
+intake. Runtime tests consume actual candidate clones with disposable published
+metadata; Muse's JSON remains its original future-data delivery record and alone
+proves no route. Renamed, exclusion-only, source-only and unscoped legacy Pakistan
+paths are quarantined consistently in engine, legacy retrieval and immutable current
+KB. Selected immutable human versions and captured context remain the sole current
+authority; cached prose, IDs and URLs are hints. Only resolved winning Pakistan
+paths project admission tasks. No DB, seed, embedding, migration or provider operation
+occurs. See [source verification](up-elig-08-source-verification.md).
+
 ### India JEE ordinary qualifying passage (UP-ELIG-04)
 
 New/edited/restored answers use jeeVersion 2; version 1 and historical Advanced booleans remain readable without invented evidence. Separate reported Main/Advanced qualifying passages are never inferred from scores, percentiles, participation, result possession or the legacy boolean. Actual Indian national school issuer/context is established once before collecting a reported completed twelve-grade national secondary certificate. Foreign, missing or unknown issuer/context cannot expose or map hidden India JEE reports. Tertiary history is independent and cannot prove school completion.
@@ -920,7 +974,7 @@ Visa fees, financing and appointments use optional strict `outcomes.process` JSO
 
 `assessProcess` reuses `selectRuleVersions`, validation, `deriveFacts` and the exported ordinary `ruleMatches`; missing facts fail even `neq`. Only selected human immutable versions receive the adapter's `matched:true` attestation. Cached content, applicant flags, citations and saved prose cannot supply authority. `Assessment.process` is a current optional sibling; academic `Result` and strict stored result metadata do not acquire process decisions. Historical reads never replay today's process policy as originally saved. Academic and process policy/source comparison flags and draft impact counts are separate.
 
-One injected instant governs source review and process applicability. Publication availability/supersession still compares microseconds without rounding, with existing half-open version boundaries and invalid replacement no-fallback behavior. Process explicit effective endpoints are inclusive and independently scoped. Verification must be valid, present and no later than assessment; review_due must be valid, not earlier than verification and not overdue. Equality is current; +1ms is overdue. UTC-offset source timestamps retain exact order. Missing/invalid review policy and unresolved observations trigger independent admin attention even when a generic 183-day check would consider the row recent.
+One injected instant governs source review and process applicability. Publication availability/supersession still compares microseconds without rounding, with existing half-open version boundaries and invalid replacement no-fallback behavior. Process explicit effective endpoints are inclusive and independently scoped. Verification must be valid, present and no later than assessment; review_due must be valid, not earlier than verification and not overdue. Equality is current; +1ms is overdue. UTC-offset source timestamps retain exact order. Validation requires a finite original offset instant as well as the existing real-calendar check; malformed numeric offsets enter review attention or unknown guidance before exact ordering. Missing/invalid review policy and unresolved observations trigger independent admin attention even when a generic 183-day check would consider the row recent.
 
 Optional version-1 process reports live inside answers/profile JSON. Checker and profile review ask the needed guide kind, purpose, named mission, reported mission applicability, age bracket, funding method and fee/funding exception uncertainty. They are applicant reports, never app-certified responsibility, qualification or waiver. Unknown/other remain valid. Editing process scope prunes dependent process reports without upgrading academic versions or erasing academic/history/APS/visa evidence. Appointment context has no financial prerequisite. Reviewed programme route/payer authority remains the separate UP-PROC-01/Course dependency; there is no applicant-controlled production uni-assist payment authorization.
 
@@ -931,3 +985,17 @@ Result and dashboard display current process evidence separately from academic d
 Assistant search reconstructs process chunks from selected immutable sources through the same profile/context/freshness/conflict projection before rendering. search_rules and get_user_context share one captured instant and cached profile/version read within a tool session. Raw hints, fallback chunks and unversioned curated snippets cannot leak noncurrent process quotes or numbers. Saved reminders are explicitly untrusted personal history; recognized keyed process reminders withhold stored title/quote prose from model tools while preserving database and dashboard history. Provider/model configuration is unchanged; deterministic mock tool tests are not real provider integration evidence.
 
 Source-reviewed additions in `scripts/process.rules.ts` remain draft bootstrap candidates. No seed, embedding, publication or live data operation is implied. See [source verification](up-proc-02-source-verification.md) and [acceptance matrix](up-proc-02-acceptance.md). Root owns independent review, exact combined gates, disposable RLS, browser/clean CI and separately authorized operational provider evaluation before any merge.
+### Cross-issuer national checker routing (UP-ELIG-08 repair)
+
+Versioned national flows collect the actual school issuer/context pair once before
+school evidence. The explicit national issuer supplies the assessed qualification
+country and board catalogue; a landing-country hint never hides available Indian
+board, percentage or prior-study assessment questions. Actual Pakistan issuers
+activate Pakistan evidence on fresh, edited and restored flows regardless of the
+landing country. Issuer/context edits recollect school evidence and clear dependent
+recognition/relationship reports while retaining the core prior-study history.
+Uncovered/uncertain contexts prune hidden evidence and retain only a Pakistan
+source-review marker; that marker derives no Pakistan facts or positive outcome.
+Legacy reads remain unchanged. Passport/visa edits preserve academic reports.
+The explicit current revision adds pakistan-current-v2; protected old assessment
+revisions, immutable source versions and captured UTC instants are never rewritten.

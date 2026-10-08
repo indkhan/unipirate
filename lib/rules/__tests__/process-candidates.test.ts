@@ -31,3 +31,10 @@ it("invalid process replacement has no fallback and retains an official pointer"
 });
 
 it("appointment context requires no unrelated funding or fee-exception report",()=>{const p:Profile={targetDegree:"bachelor",curriculumType:"other",visaApplicationCountry:"pk",processContext:{version:1,kind:"appointment",purpose:"study",mission:"islamabad",missionConfirmed:true}};expect(generateProcessTasks(assess(p,[versions[5]]).process)).toHaveLength(1);});
+
+it("invalid numeric verification offset cannot authorize actual candidate projection, immutable assessment, tasks or KB",()=>{
+ const bad={...versions[0],raw_snapshot:{...versions[0].raw_snapshot,last_verified_at:"2026-10-07T00:00:00+99:99"}};
+ expect(ruleReviewReasons(bad.raw_snapshot,now).length).toBeGreaterThan(0);
+ const a=assess(profile,[bad]);expect(a.process?.guidance.every(g=>g.status!=="current" && !g.amounts.length && !g.steps.length)).toBe(true);expect(a.process?.unknowns.length).toBeGreaterThan(0);expect(generateProcessTasks(a.process)).toEqual([]);
+ const kb=JSON.stringify(selectedKnowledge([bad],{evaluatedAt:now,profile}));expect(kb).not.toContain("11,904");expect(kb).not.toContain(processCandidates[0].source_quote);expect(kb).toContain(processCandidates[0].source_url);
+});

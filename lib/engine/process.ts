@@ -4,7 +4,7 @@ import {instantOrder} from "./instant";
 
 const Text = z.string().refine(s => s.trim().length > 0);
 const Utc = z.string().datetime().refine(s => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/.test(s) && Number.isFinite(Date.parse(s)) && new Date(s).toISOString().slice(0,19) === s.slice(0,19), "Expected a real UTC timestamp with at most microsecond precision");
-const ObservationInstant=z.string().datetime({offset:true}).refine(s=>Utc.safeParse(s.replace(/[+-]\d{2}:\d{2}$/, "Z")).success);
+const ObservationInstant=z.string().datetime({offset:true}).refine(s=>Number.isFinite(Date.parse(s)) && Utc.safeParse(s.replace(/[+-]\d{2}:\d{2}$/, "Z")).success);
 const Amount = z.object({ amount: Text, currency: Text, period: Text }).strict();
 const Age = z.object({ min: z.number().int().nonnegative().nullable(), max: z.number().int().nonnegative().nullable() }).strict().refine(a => a.min === null || a.max === null || a.min <= a.max);
 /** Add to existing outcomes JSON as process; does not validate academic outcomes. */

@@ -1,3 +1,4 @@
+import { PAKISTAN_CURRENT_ACCEPTANCE, PAKISTAN_PREP_ACCEPTANCE, reviewedPakistanRules } from "./pakistan.fixture";
 // UP-TEST-01 harness runner: CURRENT rows are green acceptance on the
 // baseline (no skips/todo); FUTURE rows are data only, never executed.
 // Pure: evaluate() + fixture data. Zero I/O.
@@ -55,6 +56,8 @@ export function assertExpected(c: CurrentExpectation, r: Result): void {
 }
 
 describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
+  it.each(PAKISTAN_CURRENT_ACCEPTANCE)('UP-ELIG-08 current official $id',c=>{const r=evaluate(c.profile,reviewedPakistanRules());expect(r.path).toBe(c.path);expect(r.citations.map(s=>s.sourceUrl)).toContain('https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang');expect(r.citations.map(s=>s.sourceUrl)).toContain('https://www.daad.pk/files/2022/11/Study-in-Germany-Undergraduate-Degree-Courses_2022.pdf');});
+  it.each(PAKISTAN_PREP_ACCEPTANCE)('UP-ELIG-08 bounded official $id',c=>{const r=evaluate(c.profile,reviewedPakistanRules());expect(r.path).toBe(c.path);expect(r.citations.map(s=>s.sourceUrl)).toContain('https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=6&ad-layerId='+c.sourceId);});
   it.each(JEE_ACCEPTANCE)("UP-ELIG-04 ordinary official contract: $id", c => {
     const result = evaluate(c.profile, reviewedJeeRules());
     expect(result.path).toBe(c.path);
@@ -94,7 +97,7 @@ describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
   });
 
   it("version, cited sources, and future-spec index", () => {
-    expect(HARNESS_VERSION).toBe("up-test-01/v1-current-behavior.5");
+    expect(HARNESS_VERSION).toBe("up-test-01/v1-current-behavior.6-pk-current");
     expect(HARNESS_BASELINE_SHA).toBe(
       "951ab821920497443cd66dfc7917d044a1f00159",
     );
