@@ -126,7 +126,9 @@ const assignments: Record<string, string> = {
   "c29d930a-87c9-49ba-8e30-b764e42760ca": "000000000073",
   "1cb0cf24-8f39-44b4-b692-b9cb164e47fd": "000000000074",
   "0e872b82-e7fb-41bb-9a35-53ecbe200df4": "000000000075",
-  "dmat-bachelor-not-required": "000000000076"
+  "dmat-bachelor-not-required": "000000000076",
+  // Synthetic APS resolver control only; never an official candidate.
+  "up-test-01-synthetic-aps-application-conflict": "000000000077"
 };
 export const publicationIdentity = (id: string) => {
   const suffix = assignments[id];

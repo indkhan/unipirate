@@ -624,3 +624,249 @@ export const LEGACY_SOURCES: Record<string, {url: string; quote: string; verifie
     "verifiedAt": "2026-07-04T00:00:00+00:00"
   }
 };
+
+// Fixed candidate-only academic universes, separate from selected/document/process sources.
+export const IB_ACADEMIC_CANDIDATES = [
+ 'ib-reviewed-2025-math-hl-ordinary-grades','ib-reviewed-2025-math-sl-annex-ordinary-grades','ib-reviewed-2025-math-sl-subject-scope-ordinary-grades',
+ 'ib-reviewed-2025-math-hl-compensated-grade3','ib-reviewed-2025-math-sl-annex-compensated-grade3','ib-reviewed-2025-math-sl-subject-scope-compensated-grade3',
+ 'ib-reviewed-2021-2024-math-hl-ordinary-grades','ib-reviewed-2021-2024-math-sl-annex-ordinary-grades','ib-reviewed-2021-2024-math-sl-subject-scope-ordinary-grades',
+ 'ib-reviewed-2021-2024-math-hl-compensated-grade3','ib-reviewed-2021-2024-math-sl-annex-compensated-grade3','ib-reviewed-2021-2024-math-sl-subject-scope-compensated-grade3',
+ 'ib-reviewed-through2020-legacy-mathematics-ordinary-grades','ib-reviewed-through2020-legacy-mathematics-compensated-grade3',
+];
+// Matched unknown review notes are sourced holds, never established academic winners.
+export const UNKNOWN_REVIEW_PATH_IDS = [
+ 'india-study-review-kind','india-study-review-country','india-study-review-years-unmet','india-study-review-years-missing','india-study-review-mode',
+ 'india-study-review-recognition-rejected','india-study-review-recognition-missing','india-study-review-relation-unrelated','india-study-review-relation-missing',
+ 'india-study-review-missing-class12_percent','india-study-review-missing-intake_index','india-study-review-missing-aps_issuer_country','india-study-review-missing-aps_qualification_context',
+ 'pakistan-review-completed_qualification','pakistan-review-other','pakistan-review-unknown','pakistan-master-review','pakistan-study-evidence-review',
+ 'ib-reviewed-document-not_awarded','ib-reviewed-document-certificate','ib-reviewed-document-unknown',
+ 'aps-transition-before','aps-transition-unconfirmed',
+];
+
+// Root/expert adjudication2: exact matched unknown review IDs for each applicable row.
+// Other unknown rows have no matched path review source; this is not a matcher.
+export const UNKNOWN_REVIEW_PATH_SOURCES: Record<string, Record<string, string[]>> = {
+  "India": {
+    "unmet-years-0": [
+      "india-study-review-years-unmet"
+    ],
+    "unmet-years-0.5": [
+      "india-study-review-years-unmet"
+    ],
+    "unmet-years-0.99": [
+      "india-study-review-years-unmet"
+    ],
+    "completed-degree-years-missing": [
+      "india-study-review-years-missing"
+    ],
+    "recognition-rejected": [
+      "india-study-review-recognition-rejected"
+    ],
+    "recognition-unknown": [
+      "india-study-review-recognition-missing"
+    ],
+    "recognition-reference-missing": [
+      "india-study-review-recognition-missing"
+    ],
+    "recognition-reference-blank": [
+      "india-study-review-recognition-missing"
+    ],
+    "same-name-no-assessment": [
+      "india-study-review-recognition-missing"
+    ],
+    "unrelated-target": [
+      "india-study-review-relation-unrelated"
+    ],
+    "target-unknown": [
+      "india-study-review-relation-missing"
+    ],
+    "target-reference-missing": [
+      "india-study-review-relation-missing"
+    ],
+    "same-field-no-assessment": [
+      "india-study-review-relation-missing"
+    ],
+    "mode-distance_online": [
+      "india-study-review-mode"
+    ],
+    "mode-other": [
+      "india-study-review-mode"
+    ],
+    "mode-unknown": [
+      "india-study-review-mode"
+    ],
+    "qualification-diploma": [
+      "india-study-review-kind"
+    ],
+    "qualification-master": [
+      "india-study-review-kind"
+    ],
+    "qualification-other": [
+      "india-study-review-kind"
+    ],
+    "country-pk": [
+      "india-study-review-country"
+    ],
+    "country-undefined": [
+      "india-study-review-country"
+    ],
+    "country-other": [
+      "india-study-review-country"
+    ],
+    "prior-study-missing": [
+      "india-study-review-kind"
+    ],
+    "India-school-only-missing": [],
+    "India-school-timing-hold": [
+      "aps-transition-before"
+    ]
+  },
+  "Pakistan": {
+    "PK-current-part-time": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-distance": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-regulations-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-records-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-success-reference-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-success-reference-blank": [
+      "pakistan-review-unknown"
+    ],
+    "PK-current-recognition-rejected": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-recognition-reference-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-unrelated": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-relation-reference-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-contrary-assessment": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-assessment-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-assessment-reference-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-old-evidence": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-years-0": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-current-years-0.5": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-history-completed": [
+      "pakistan-review-completed_qualification"
+    ],
+    "PK-history-discontinued": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-history-foreign": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-history-country-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-history-years-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-history-master": [
+      "pakistan-review-other"
+    ],
+    "PK-history-institution-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-history-field-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-intake-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-intake-historical": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-intake-outside": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-school-alias-fsc": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-school-alias-fa": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-school-alias-icom": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-school-alias-ics": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-school-alias-ssc": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-school-group-mixed": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-school-incomplete": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-science-grade-below": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-science-grade-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-commerce-grade-below": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-commerce-grade-missing": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-humanities-grade-below": [
+      "pakistan-study-evidence-review"
+    ],
+    "PK-humanities-grade-missing": [
+      "pakistan-study-evidence-review"
+    ]
+  },
+  "IB": {
+    "not_awarded": [
+      "ib-reviewed-document-not_awarded"
+    ],
+    "certificate": [
+      "ib-reviewed-document-certificate"
+    ],
+    "unknown": [
+      "ib-reviewed-document-unknown"
+    ]
+  },
+  "transition": {
+    "APS-submission-2026-03-14": [
+      "aps-transition-before"
+    ],
+    "APS-confirmation-missing": [
+      "aps-transition-unconfirmed"
+    ],
+    "APS-date-missing": [
+      "aps-transition-unconfirmed"
+    ],
+    "APS-intake-missing": [],
+    "APS-other-qualification": [],
+    "APS-grade-70": [],
+    "APS-grade-70.01": []
+  }
+};
