@@ -1,0 +1,31 @@
+[
+  {
+    "id": "df155c8a-8522-459b-b572-51033b93492d",
+    "conditions": {
+      "board": {
+        "op": "in",
+        "value": [
+          "cbse",
+          "cisce",
+          "state_board"
+        ]
+      },
+      "curriculum": "national",
+      "jee_advanced": true,
+      "target_degree": "bachelor"
+    },
+    "outcomes": {
+      "note": "A valid JEE Advanced result gives direct, subject-specific admission.",
+      "path": "subject_restricted"
+    },
+    "status": "verified",
+    "source_url": "https://www.daad.in/en/study-research-in-germany/studying-in-germany/bachelor-studies/",
+    "source_quote": "the sole exception is a valid JEE Advanced result (→ direct, subject-specific)",
+    "last_verified_at": "2026-07-04T00:00:00+00:00",
+    "notes": "Bootstrap candidate: in-jee-advanced-direct. Review in /admin before publishing.",
+    "created_at": "2026-07-05T09:06:19.617351+00:00",
+    "updated_at": "2026-07-05T10:49:27.942964+00:00",
+    "slug": "in-jee-advanced-direct",
+    "country_code": "in"
+  }
+]

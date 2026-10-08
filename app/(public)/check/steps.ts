@@ -2,6 +2,7 @@
 // answers looks like, and how answers map onto the engine Profile.
 // No I/O, no React — unit-tested in __tests__/steps.test.ts.
 import { z } from "zod";
+import { JeeStatusSchema, JeeContextSchema, JeeSchoolCertificateSchema, JeeTargetFamilySchema } from "@/lib/engine/jee";
 import { IB_SUBJECTS, ibEntry, IbProfileSchema } from "@/lib/engine/ib";
 export { IB_SUBJECTS } from "@/lib/engine/ib";
 import { CalendarDateSchema, calendarDay } from "@/lib/engine/calendar-day";
@@ -152,6 +153,7 @@ export const NUMBER_STEPS = {
 export type NumberStepId = keyof typeof NUMBER_STEPS;
 
 export const TEXT_STEPS = {
+  jeeTargetFamilyReference: { label: "Reported applicable official target classification reference", maxLength: 500 },
   ibSchoolName: {label:"Exact school name from the official annex / school documents",maxLength:200},
   ibSchoolCountry: {label:"School country heading from the official annex",maxLength:100},
   ibSchoolCode: {label:"Six-digit IB school code, or unknown",maxLength:7},
@@ -196,6 +198,8 @@ export function isIndiaStudyBranch(a: PartialAnswers): boolean {
 export function isNumberStep(step: StepId): step is NumberStepId {
   return step in NUMBER_STEPS;
 }
+
+export const JEE_STEPS = ["jeeSchoolCertificate", "jeeMainStatus", "jeeAdvancedStatus", "jeeEvidenceContext", "jeeTargetFamily", "jeeTargetFamilyReference"] as const;
 
 const AnswerFieldsSchema = z
   .object({
@@ -253,7 +257,14 @@ const AnswerFieldsSchema = z
     curriculumType: z.enum(["national", "ib", "gce", "other"]).optional(),
     board: z.string().min(1).optional(),
     schoolGradePercent: z.number().min(0).max(100).optional(),
-    jeeAdvanced: z.boolean().optional(),
+    jeeAdvanced: z.boolean().optional(), // Preserved only for legacy reads.
+    jeeVersion: z.union([z.literal(1), z.literal(2)]).optional(),
+    jeeSchoolCertificate: JeeSchoolCertificateSchema.optional(),
+    jeeTargetFamily: JeeTargetFamilySchema.optional(),
+    jeeTargetFamilyReference: z.string().trim().min(1).max(500).optional(),
+    jeeMainStatus: JeeStatusSchema.optional(),
+    jeeAdvancedStatus: JeeStatusSchema.optional(),
+    jeeEvidenceContext: JeeContextSchema.optional(),
     hasExistingApsCertificate: z.boolean().optional(),
     gceVersion: z.literal(1).optional(),
     gceSchoolYears: z.number().int().min(0).max(50).optional(),
@@ -294,6 +305,7 @@ export type Answers = z.infer<typeof AnswerFieldsSchema>;
 export type PartialAnswers = Partial<Answers>;
 // Draft text/numbers can be unfinished; complete submissions retain strict checks.
 export const PartialAnswersSchema = AnswerFieldsSchema.partial().extend({
+  jeeTargetFamilyReference: z.string().max(500).optional(),
   ibExamYear: z.number().finite().nullable().optional(),
   ibSchoolYears: z.number().finite().nullable().optional(),
   ibTotalPoints: z.number().finite().nullable().optional(),
@@ -382,6 +394,7 @@ export type StepId =
   | "board"
   | "schoolGradePercent"
   | "jeeAdvanced"
+  | (typeof JEE_STEPS)[number]
   | "hasExistingApsCertificate"
   | "gceSchoolYears" | "gceQualificationContext" | "gceQualificationType" | "gceEvidence"
   | "gceAwardingBody"
@@ -411,7 +424,7 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   if (answers.targetDegree !== "master") steps.push("curriculumType");
   if (bachelor && answers.curriculumType === "national") {
     steps.push("board", "schoolGradePercent");
-    if (answers.certificateCountry === "in") steps.push("jeeAdvanced");
+    if (answers.jeeVersion === undefined && answers.certificateCountry === "in") steps.push("jeeAdvanced");
   }
   if (bachelor && answers.curriculumType === "gce") {
     steps.push('gceQualificationContext','gceQualificationType','gceEvidence','gceAwardingBody','gceSchoolYears','gceSubjects');
@@ -429,7 +442,7 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
     }
   }
   // Establish the actual issuer before successful-year uncertainty is offered.
-  if (answers.indiaStudyRouteVersion === 1 && answers.apsScopeVersion === 1 && bachelor && answers.curriculumType === "national" &&
+  if ((answers.indiaStudyRouteVersion === 1 || answers.jeeVersion === 2) && answers.apsScopeVersion === 1 && bachelor && answers.curriculumType === "national" &&
       (answers.certificateCountry === "in" || answers.schoolQualificationCountry === "in")) {
     steps.push("schoolQualificationCountry", "schoolQualificationContext");
   }
@@ -450,6 +463,13 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   if (answers.apsScopeVersion === 1 && bachelor && !steps.includes("schoolQualificationCountry")) {
     steps.push("schoolQualificationCountry", "schoolQualificationContext");
   }
+  // Only actual Indian national issuer context exposes JEE evidence. No hidden foreign facts.
+  if (answers.jeeVersion !== undefined && bachelor && answers.curriculumType === "national" &&
+      answers.schoolQualificationCountry === "in" && answers.schoolQualificationContext === "national") {
+    if (answers.jeeVersion === 2) steps.push("jeeSchoolCertificate");
+    steps.push("jeeMainStatus", "jeeAdvancedStatus");
+    if ([answers.jeeMainStatus, answers.jeeAdvancedStatus].some(s => s === "passed" || s === "unknown")) steps.push("jeeEvidenceContext");
+  }
   // Certificate fulfilment is independent of visa filing. Existing answers
   // remain reachable when only the visa changes, including legacy records.
   if (
@@ -466,6 +486,13 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
     if (answers.priorStudyRecognition !== undefined && answers.priorStudyRecognition !== "unknown") steps.push("priorStudyRecognitionReference");
   }
   steps.push("targetField");
+  if (answers.jeeVersion === 2 && bachelor && answers.curriculumType === "national" &&
+      answers.schoolQualificationCountry === "in" && answers.schoolQualificationContext === "national" &&
+      answers.jeeSchoolCertificate === "completed_12_year_secondary" && answers.jeeMainStatus === "passed" &&
+      answers.jeeAdvancedStatus === "passed" && answers.jeeEvidenceContext === "ordinary" && answers.targetField !== undefined) {
+    steps.push("jeeTargetFamily");
+    if (answers.jeeTargetFamily !== undefined && answers.jeeTargetFamily !== "unknown") steps.push("jeeTargetFamilyReference");
+  }
   if (isIndiaStudyBranch(answers) && answers.hasPriorUniversityStudy === true && answers.priorQualificationType === "bachelor" && answers.targetField !== undefined) {
     steps.push("priorStudyTargetRelation");
     if (answers.priorStudyTargetRelation !== undefined && answers.priorStudyTargetRelation !== "unknown") steps.push("priorStudyTargetRelationReference");
@@ -522,13 +549,26 @@ export function withAnswer<K extends StepId>(
   field: K,
   value: Answers[K],
 ): PartialAnswers {
-  const next: PartialAnswers = { ...answers, qualificationHistoryVersion: 1, indiaStudyRouteVersion: 1, [field]: value };
+  const next: PartialAnswers = { ...answers, qualificationHistoryVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, [field]: value };
   if (next.curriculumType === 'ib' && next.targetDegree === 'bachelor') {
     next.ibVersion=1;
     if(field==='ibFullDiploma')next.ibDocumentStatus=value?'awarded':'unknown';
   }
   if (next.curriculumType === 'gce' && next.targetDegree === 'bachelor') next.gceVersion=1;
   if (answers[field] !== value) {
+    if (["targetDegree", "curriculumType", "certificateCountry", "schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent"].includes(field)) {
+      for (const key of JEE_STEPS) delete next[key];
+      delete next.jeeAdvanced;
+    }
+    if (field === "jeeSchoolCertificate") {
+      delete next.jeeMainStatus; delete next.jeeAdvancedStatus; delete next.jeeEvidenceContext;
+    }
+    if (field === "jeeMainStatus" || field === "jeeAdvancedStatus") delete next.jeeEvidenceContext;
+    if (["jeeSchoolCertificate", "jeeMainStatus", "jeeAdvancedStatus", "jeeEvidenceContext", "targetField"].includes(field) ||
+        (field === "intake" && answers.intake !== undefined)) {
+      delete next.jeeTargetFamily; delete next.jeeTargetFamilyReference;
+    }
+    if (field === "jeeTargetFamily") delete next.jeeTargetFamilyReference;
     const academicBasis = (HISTORY_STEPS.some(key => key === field) && field !== "priorStudyField") ||
       ["targetDegree", "curriculumType", "certificateCountry", "schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent", "priorStudyMode"].includes(field);
     if (academicBasis) {
@@ -579,7 +619,7 @@ export function withAnswer<K extends StepId>(
     };
     for (const key of dependents[field] ?? []) delete next[key];
     if (HISTORY_STEPS.some(key => key === field) || INDIA_STUDY_STEPS.some(key => key === field) ||
-        ["targetDegree", "curriculumType", "certificateCountry", "board", "schoolGradePercent", "jeeAdvanced", "schoolQualificationCountry", "schoolQualificationContext", "hasExistingApsCertificate"].includes(field)) {
+        ["targetDegree", "curriculumType", "certificateCountry", "board", "schoolGradePercent", "jeeAdvanced", ...JEE_STEPS, "schoolQualificationCountry", "schoolQualificationContext", "hasExistingApsCertificate"].includes(field)) {
       for (const key of timing) delete next[key];
     }
     if (field === "apsProcedureStatus") {
@@ -601,7 +641,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
     changed = false;
     const visible = new Set<string>(visibleSteps(next));
     for (const key of Object.keys(next)) {
-      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && !visible.has(key)) {
+      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && key !== "jeeVersion" && !visible.has(key)) {
         delete next[key as StepId];
         changed = true;
       }
@@ -754,7 +794,11 @@ export function buildProfile(answers: Answers): Profile {
   if (answers.schoolGradePercent !== undefined) {
     profile.schoolGradePercent = answers.schoolGradePercent;
   }
-  if (answers.jeeAdvanced !== undefined) {
+  if (answers.jeeVersion !== undefined && visibleSteps(answers).includes("jeeMainStatus")) {
+    profile.jee = { main: answers.jeeMainStatus, advanced: answers.jeeAdvancedStatus, context: answers.jeeEvidenceContext,
+      ...(answers.jeeVersion === 2 ? { schoolCertificate: answers.jeeSchoolCertificate, targetFamily: answers.jeeTargetFamily, targetFamilyReference: answers.jeeTargetFamilyReference } : {}) };
+  }
+  if (answers.jeeVersion === undefined && answers.jeeAdvanced !== undefined) {
     profile.jeeAdvanced = answers.jeeAdvanced;
   }
   if (

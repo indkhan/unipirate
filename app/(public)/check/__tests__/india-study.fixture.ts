@@ -1,4 +1,5 @@
 export const indiaAnswers = {
+  jeeVersion: 2, jeeSchoolCertificate: "unknown", jeeMainStatus: "no_result", jeeAdvancedStatus: "no_result",
   qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, indiaStudyRouteVersion: 1,
   targetDegree: "bachelor", nationality: "in", certificateCountry: "in", visaApplicationCountry: "in",
   curriculumType: "national", board: "cbse", schoolGradePercent: 70, jeeAdvanced: false,
