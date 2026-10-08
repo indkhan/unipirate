@@ -6,9 +6,7 @@ import { isAdminRole } from "@/lib/auth/roles";
 import { requireUser } from "@/lib/auth/session";
 import {
   countTodayAssistantQuestions,
-  hasGeneratedTasksMissingMetadata,
 } from "@/lib/db/queries";
-import { materializeAllTasksForUser } from "@/lib/tasks/materialize";
 import { buildDashboardView } from "@/lib/tasks/view";
 
 import { DashboardViews } from "./dashboard-views";
@@ -55,10 +53,6 @@ function routeDots(stations: DashboardRouteStation[]) {
 
 export default async function DashboardPage() {
   const { db, user } = await requireUser();
-
-  if (await hasGeneratedTasksMissingMetadata(db, user.id)) {
-    await materializeAllTasksForUser(db, user.id);
-  }
 
   const view = await buildDashboardView(db, user.id);
   const route = dashboardRouteStations({

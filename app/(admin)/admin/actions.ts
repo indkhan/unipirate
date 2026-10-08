@@ -5,12 +5,11 @@ import { z } from "zod";
 
 import { requireAdmin } from "@/lib/auth/session";
 import {
-  getAdminRule,
   getAdminCourse,
   insertAdminCourseTaskDefinition,
   listAdminCourseTaskDefinitions,
   resolveCourseConflict,
-  reverifyAdminRule,
+  publishAdminRuleVersion,
   updateAdminCourse,
   updateAdminCourseTaskDefinition,
   updateAdminRule,
@@ -22,29 +21,28 @@ import {
 import { hasResearch, ResearchDraftSchema } from "@/lib/courses/research";
 import { normalizeUrl } from "@/lib/courses/import";
 import type { Json } from "@/lib/db/database.types";
-import { EngineRuleSchema } from "@/lib/engine/evaluate";
+import { CalendarDateSchema } from "@/lib/engine/calendar-day";
+import { DraftSaveSchema, JsonSchema, preflightPublication } from "@/lib/rules/versioning";
 import { deriveCourseTaskCandidates } from "@/lib/tasks/course-tasks";
 
-const ruleStatusSchema = z.enum(["draft", "beta", "verified"]);
-
-const ruleUpdateSchema = z.object({
-  id: z.string().uuid(),
-  country_code: z
-    .string()
-    .trim()
-    .regex(/^[a-z]{2}$/)
-    .or(z.literal("")),
-  conditions: z.string().min(2),
-  outcomes: z.string().min(2),
-  source_url: z.string().url(),
-  source_quote: z.string().min(1),
-  notes: z.string(),
-  status: ruleStatusSchema,
+const ruleReviewFormSchema=z.object({
+ id:z.string().uuid(),expected_revision:z.coerce.number().int().positive().safe(),
+ expected_raw_snapshot:z.string().min(2),expected_predecessor_id:z.string().uuid().or(z.literal("")),
 });
-
-const idSchema = z.object({
-  id: z.string().uuid(),
+const optionalScopeDate=CalendarDateSchema.or(z.literal("")).transform(value=>value===""?null:value);
+const optionalScopeIntake=z.string().regex(/^([0-9]+)?$/).transform(value=>value===""?null:Number(value));
+const ruleSaveFormSchema=ruleReviewFormSchema.omit({expected_predecessor_id:true}).extend({
+ raw_snapshot:z.string().min(2),effective_from:optionalScopeDate,effective_until:optionalScopeDate,intake_from:optionalScopeIntake,intake_until:optionalScopeIntake,
 });
+function ruleFeedback(id:unknown,message:string):never {
+ const parsed=z.string().uuid().safeParse(id);
+ redirect('/admin?view=rules'+(parsed.success?'&rule='+parsed.data:'')+'&message='+encodeURIComponent(message));
+}
+function ruleError(error:unknown):string {
+ if(error instanceof z.ZodError)return "Review validation failed: "+error.issues.map(issue=>issue.path.join(".")+": "+issue.message).join("; ");
+ if(error instanceof SyntaxError)return "Rule JSON must be valid. Reload the saved draft and review again.";
+ return error instanceof Error?error.message:"Rule change failed; reload and review again.";
+}
 
 const courseReviewSchema = z.object({
   id: z.string().uuid(),
@@ -86,8 +84,6 @@ function parseJson<T>(
   return result.data;
 }
 
-// zod cannot express the recursive Json type; parsing proves it is an object.
-const jsonObject = z.record(z.string(), z.unknown()).transform((value) => value as Json);
 const jsonStringArray = z.array(z.string().min(1));
 const nullableJsonString = z.string().min(1).nullable();
 
@@ -96,58 +92,25 @@ function nullableText(value: string): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
-export async function updateRuleAction(formData: FormData) {
-  const { db } = await requireAdmin();
-  const values = ruleUpdateSchema.parse({
-    id: formData.get("id"),
-    country_code: formData.get("country_code") ?? "",
-    conditions: formData.get("conditions"),
-    outcomes: formData.get("outcomes"),
-    source_url: formData.get("source_url"),
-    source_quote: formData.get("source_quote"),
-    notes: formData.get("notes") ?? "",
-    status: formData.get("status"),
-  });
-
-  const conditions = parseJson(values.conditions, "conditions", jsonObject, "a JSON object");
-  const outcomes = parseJson(values.outcomes, "outcomes", jsonObject, "a JSON object");
-  const existing = await getAdminRule(db, values.id);
-  const publishing =
-    values.status !== "draft" && values.status !== existing.status;
-  const lastVerifiedAt = publishing
-    ? new Date().toISOString()
-    : existing.last_verified_at;
-  EngineRuleSchema.parse({
-    id: values.id,
-    conditions,
-    outcomes,
-    source_url: values.source_url,
-    source_quote: values.source_quote,
-    status: values.status,
-    last_verified_at: lastVerifiedAt,
-  });
-
-  await updateAdminRule(db, values.id, {
-    country_code: values.country_code || null,
-    last_verified_at: lastVerifiedAt,
-    conditions,
-    outcomes,
-    source_url: values.source_url,
-    source_quote: values.source_quote,
-    notes: values.notes.trim() === "" ? null : values.notes,
-    status: values.status,
-  });
-
-  redirect(`/admin?view=rules&rule=${values.id}&message=${encodeURIComponent("Rule changes saved.")}`);
+export async function updateRuleAction(formData:FormData) {
+ const {db}=await requireAdmin();
+ let message="Draft saved. Review the saved snapshot separately before publication.";
+ try{
+  const values=ruleSaveFormSchema.parse(Object.fromEntries(["id","expected_revision","expected_raw_snapshot","raw_snapshot","effective_from","effective_until","intake_from","intake_until"].map(key=>[key,formData.get(key)])));
+  const input=DraftSaveSchema.parse({rule_id:values.id,revision:values.expected_revision,raw_snapshot:JsonSchema.parse(JSON.parse(values.expected_raw_snapshot)),next_snapshot:JsonSchema.parse(JSON.parse(values.raw_snapshot)),effective_from:values.effective_from,effective_until:values.effective_until,intake_from:values.intake_from,intake_until:values.intake_until});
+  await updateAdminRule(db,input);
+ }catch(error){message=ruleError(error);}
+ ruleFeedback(formData.get("id"),message);
 }
-
-export async function reverifyRuleAction(formData: FormData) {
-  const { db } = await requireAdmin();
-  const values = idSchema.parse({ id: formData.get("id") });
-
-  await reverifyAdminRule(db, values.id);
-
-  redirect(`/admin?view=rules&rule=${values.id}&message=${encodeURIComponent("Rule verified and published.")}`);
+export async function reverifyRuleAction(formData:FormData) {
+ const {db}=await requireAdmin();
+ let message="New immutable rule version published. Source verification date preserved.";
+ try{
+  const values=ruleReviewFormSchema.extend({approval_status:z.enum(["beta","verified"]),confirmed:z.literal("on")}).parse(Object.fromEntries(["id","expected_revision","expected_raw_snapshot","expected_predecessor_id","approval_status","confirmed"].map(key=>[key,formData.get(key)])));
+  const approval=preflightPublication({rule_id:values.id,revision:values.expected_revision,raw_snapshot:JsonSchema.parse(JSON.parse(values.expected_raw_snapshot)),predecessor_id:values.expected_predecessor_id||null,approval_status:values.approval_status,confirmed:true});
+  await publishAdminRuleVersion(db,approval);
+ }catch(error){message=ruleError(error);}
+ ruleFeedback(formData.get("id"),message);
 }
 
 export async function reviewCourseAction(formData: FormData) {

@@ -8,9 +8,10 @@ import {
   ownerCookieName,
 } from "@/lib/checks/ownership";
 import type { Json } from "@/lib/db/database.types";
-import { getPublishedRules, insertCheck, upsertProfile } from "@/lib/db/queries";
+import { listRuleVersions, insertCheck, upsertProfile } from "@/lib/db/queries";
 import { createCheckWriter, createClient } from "@/lib/db/server";
-import { evaluate } from "@/lib/engine/evaluate";
+import { evaluateAssessment } from "@/lib/rules/assessment";
+import { currentAssessmentContext } from "@/lib/rules/current";
 import { materializeAllTasksForUser } from "@/lib/tasks/materialize";
 
 import { AnswersSchema, buildProfile } from "./steps";
@@ -28,14 +29,16 @@ export async function submitCheck(
     const {
       data: { user },
     } = await db.auth.getUser();
-    const rules = await getPublishedRules(db);
-    const result = evaluate(profile, rules);
+    const context = currentAssessmentContext();
+    const assessment = evaluateAssessment(profile, await listRuleVersions(db), context);
+    const result = assessment.result;
     const ownerToken = user ? null : createOwnerToken();
     const id = await insertCheck(createCheckWriter(), {
       answers: parsed.data as unknown as Json,
       owner_token_hash: ownerToken ? hashOwnerToken(ownerToken) : null,
       claimed_by: user?.id,
-      claimed_at: user ? new Date().toISOString() : null,
+      claimed_at: user ? context.evaluatedAt : null,
+      assessment_metadata: assessment.metadata as unknown as Json,
       result: result as unknown as Json,
     });
     if (user) {
@@ -43,7 +46,7 @@ export async function submitCheck(
         user_id: user.id,
         answers: parsed.data as unknown as Json,
       });
-      await materializeAllTasksForUser(db, user.id);
+      await materializeAllTasksForUser(db, user.id, assessment);
     } else {
       if (!ownerToken) {
         return { error: "Could not create a secure owner token. Please try again." };

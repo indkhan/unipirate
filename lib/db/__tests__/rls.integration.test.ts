@@ -1,9 +1,7 @@
-// RLS integration test: anon vs owner vs admin against the real Supabase
-// project. Skips entirely when .env.local / env keys are absent, when the
-// linked remote schema has not applied current migrations, or when the secret
-// key cannot use the auth admin API (needed to create test users), so plain
-// `pnpm test` stays green anywhere. Creates only rls-test-* users and its own
-// rows; deletes them in cleanup.
+// Actual disposable-service RLS gate. Missing keys self-skip; configured failures
+// must fail. Only ephemeral rls-test fixtures are created. Immutable rule/version/
+// publication history is retained deliberately; mutable fixtures and auth users
+// are cleaned up. Root executes this suite; pure/unit workers never load it.
 
 import { randomUUID } from "node:crypto";
 
@@ -15,6 +13,12 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Database } from "@/lib/db/database.types";
+import { getAdminRuleDraft, listAdminRuleVersions, publishAdminRuleVersion, updateAdminRule } from "@/lib/db/admin-queries";
+import { AnswersSchema, buildProfile } from "@/app/(public)/check/steps";
+import { evaluateAssessment } from "@/lib/rules/assessment";
+import { currentAssessmentContext } from "@/lib/rules/current";
+import { answers as fixtureAnswers } from "@/lib/rules/__tests__/assessment-fixtures";
+import { RawRuleSchema, type RuleDraft, type RuleVersion } from "@/lib/rules/versioning";
 import { getCourseByNormalizedUrl } from "@/lib/db/queries";
 
 try {
@@ -38,48 +42,6 @@ function anonClient(): Db {
   });
 }
 
-/**
- * The suite needs two capabilities beyond the presence of keys: the current
- * schema on the linked project, and a secret key that can manage users via
- * the auth admin API. Missing either is an environment limitation, not a
- * regression — warn and skip.
- */
-async function canRunSuite(): Promise<boolean> {
-  if (!configured) return false;
-
-  const service = createClient<Database>(url!, secretKey!, {
-    auth: { persistSession: false },
-  });
-
-  const { error } = await service
-    .from("admin_audit_events")
-    .select("id")
-    .limit(1);
-  if (
-    error &&
-    (error.code === "PGRST205" ||
-      error.message.includes("Could not find the table"))
-  ) {
-    console.warn(
-      "Skipping RLS integration tests: admin_audit_events migration is not applied.",
-    );
-    return false;
-  }
-
-  const { error: adminError } = await service.auth.admin.listUsers({
-    page: 1,
-    perPage: 1,
-  });
-  if (adminError) {
-    console.warn(
-      `Skipping RLS integration tests: the secret key cannot use the auth admin API (${adminError.message}).`,
-    );
-    return false;
-  }
-
-  return true;
-}
-
 async function signedInClient(email: string): Promise<Db> {
   const client = anonClient();
   const { error } = await client.auth.signInWithPassword({
@@ -90,7 +52,7 @@ async function signedInClient(email: string): Promise<Db> {
   return client;
 }
 
-const suiteReady = await canRunSuite();
+const suiteReady = configured;
 
 describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
   let service: Db;
@@ -104,12 +66,14 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
   let draftRuleId: string;
   let betaRuleId: string;
   let auditRuleId: string;
+  let betaVersion: RuleVersion;
   let pendingCourseId: string;
   let rejectCourseId: string;
   let anonymousCheckId: string | undefined;
   let claimCheckId: string | undefined;
   const createdUserIds: string[] = [];
   const createdRuleIds: string[] = [];
+  const fixtureVerifiedAt = new Date().toISOString();
   const createdCourseIds: string[] = [];
   const createdDefinitionIds: string[] = [];
 
@@ -125,6 +89,23 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     return data.user;
   }
 
+  function reviewToken(draft: RuleDraft, predecessor: string | null) {
+    return { rule_id: draft.rule_id, revision: draft.revision, raw_snapshot: draft.raw_snapshot, predecessor_id: predecessor };
+  }
+  function rpcApproval(draft: RuleDraft, predecessor: string | null) {
+    return { p_rule_id: draft.rule_id, p_expected_draft_revision: draft.revision,
+      p_expected_raw_snapshot: draft.raw_snapshot,
+      // Trade-off: generated types spell nullable SQL UUID as string; preserve
+      // the actual NULL first-publication token, as the production helper does.
+      p_expected_predecessor_id: predecessor as string, p_approval_status: "verified" as const };
+  }
+
+  function authoritativeCheck() {
+    const answers = AnswersSchema.parse(fixtureAnswers);
+    const assessment = evaluateAssessment(buildProfile(answers), [betaVersion], currentAssessmentContext());
+    return { answers, result: assessment.result, assessment_metadata: assessment.metadata };
+  }
+
   beforeAll(async () => {
     service = createClient<Database>(url!, secretKey!, {
       auth: { persistSession: false },
@@ -138,30 +119,37 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     other = await signedInClient(otherUser.email!);
     admin = await signedInClient(adminUser.email!);
 
-    // fixtures via service role: one draft + one beta rule, one pending course
+    // Every logical rule starts as a draft. The trigger initializes its workspace;
+    // only the authenticated admin publication RPC can create beta/verified history.
     const { data: rules, error: rulesError } = await service
       .from("rules")
       .insert([
         {
-          conditions: { test: "draft" },
-          outcomes: {},
+          conditions: { target_degree: "bachelor", certificate_country: "zz" },
+          outcomes: { path: "unknown" },
           status: "draft",
           source_url: `https://example.com/rls-test/${randomUUID()}`,
           source_quote: "rls test draft",
+          last_verified_at: fixtureVerifiedAt,
+          slug: `rls-test-${randomUUID()}`,
         },
         {
-          conditions: { test: "beta" },
-          outcomes: {},
-          status: "beta",
+          conditions: { target_degree: "bachelor", certificate_country: "zz" },
+          outcomes: { path: "unknown" },
+          status: "draft",
           source_url: `https://example.com/rls-test/${randomUUID()}`,
           source_quote: "rls test beta",
+          last_verified_at: fixtureVerifiedAt,
+          slug: `rls-test-${randomUUID()}`,
         },
         {
-          conditions: { test: "audit" },
-          outcomes: {},
+          conditions: { target_degree: "bachelor", certificate_country: "zz" },
+          outcomes: { path: "unknown" },
           status: "draft",
           source_url: `https://example.com/rls-test/${randomUUID()}`,
           source_quote: "rls test audit",
+          last_verified_at: fixtureVerifiedAt,
+          slug: `rls-test-${randomUUID()}`,
         },
       ])
       .select("id, status, source_quote");
@@ -170,6 +158,10 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     betaRuleId = rules.find((r) => r.source_quote === "rls test beta")!.id;
     auditRuleId = rules.find((r) => r.source_quote === "rls test audit")!.id;
     createdRuleIds.push(...rules.map((r) => r.id));
+    const betaDraft = await getAdminRuleDraft(admin, betaRuleId);
+    const beta = await publishAdminRuleVersion(admin, { ...reviewToken(betaDraft, null), approval_status: "beta", confirmed: true });
+    betaVersion = beta;
+    expect(beta).toMatchObject({ rule_id: betaRuleId, status: "beta", version_number: 1, supersedes_version_id: null, reviewed_by: adminUser.id });
 
     const { data: course, error: courseError } = await owner
       .from("courses")
@@ -197,32 +189,38 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     rejectCourseId = rejectCourse.id;
     createdCourseIds.push(rejectCourse.id);
 
-    const { error: auditFixtureError } = await service
-      .from("admin_audit_events")
-      .insert({
-        table_name: "rules",
-        row_id: draftRuleId,
-        action: "update",
-        old_status: "draft",
-        new_status: "draft",
-      });
-    if (auditFixtureError) throw new Error(auditFixtureError.message);
   }, 60_000);
 
   afterAll(async () => {
     if (!service) return;
-    const auditedRowIds = [...createdRuleIds, ...createdCourseIds, ...createdDefinitionIds];
-    if (auditedRowIds.length > 0)
-      await service.from("admin_audit_events").delete().in("row_id", auditedRowIds);
-    if (createdCourseIds.length > 0)
-      await service.from("courses").delete().in("id", createdCourseIds);
-    if (anonymousCheckId)
-      await service.from("checks").delete().eq("id", anonymousCheckId);
-    if (claimCheckId)
-      await service.from("checks").delete().eq("id", claimCheckId);
-    if (createdRuleIds.length > 0)
-      await service.from("rules").delete().in("id", createdRuleIds);
-    for (const id of createdUserIds) await service.auth.admin.deleteUser(id);
+    // Do not delete logical rules, workspaces, immutable versions/publication
+    // journals or authoritative checks. Their historical UUIDs survive auth deletion.
+    // Non-publication course audit rows and NULL-authority check fixtures are mutable.
+    const mutableAuditIds = [...createdCourseIds, ...createdDefinitionIds];
+    if (mutableAuditIds.length > 0) {
+      const { error } = await service.from("admin_audit_events").delete().in("row_id", mutableAuditIds).is("rule_publication", null);
+      expect(error).toBeNull();
+    }
+    if (createdCourseIds.length > 0) {
+      const { error } = await service.from("courses").delete().in("id", createdCourseIds);
+      expect(error).toBeNull();
+    }
+    for (const id of [anonymousCheckId, claimCheckId].filter((id): id is string => Boolean(id))) {
+      const { error } = await service.from("checks").delete().eq("id", id).is("assessment_metadata", null);
+      expect(error).toBeNull();
+    }
+    for (const id of createdUserIds) {
+      const { error } = await service.auth.admin.deleteUser(id);
+      expect(error).toBeNull();
+    }
+    console.info("Retained ephemeral immutable RLS artifacts:", { ruleIds: createdRuleIds, checkIds: [anonymousCheckId, claimCheckId].filter(Boolean) });
+    if (claimCheckId) {
+      const retained = await service.from("checks").select("claimed_by,claimed_at,assessment_metadata").eq("id", claimCheckId).single();
+      expect(retained.error).toBeNull();
+      expect(retained.data?.claimed_by).toBeNull();
+      expect(retained.data?.claimed_at).not.toBeNull();
+      expect(retained.data?.assessment_metadata).not.toBeNull();
+    }
   }, 60_000);
 
   // ------------------------------------------------------------------ anon
@@ -323,18 +321,11 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     const { data: check, error: insertError } = await service
       .from("checks")
       .insert({
-        answers: { targetDegree: "bachelor" },
+        ...authoritativeCheck(),
         owner_token_hash: "a".repeat(64),
-        result: { path: "unknown" },
       })
       .select("id")
       .single();
-    if (insertError?.code === "PGRST204") {
-      console.warn(
-        "Skipping check-ownership RLS assertion: migration is not applied.",
-      );
-      return;
-    }
     expect(insertError).toBeNull();
     anonymousCheckId = check!.id;
 
@@ -345,8 +336,9 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     });
     expect(response.status).toBe(200);
     const [publicCheck] = await response.json();
-    expect(Object.keys(publicCheck).sort()).toEqual(["answers", "created_at", "id", "result"]);
+    expect(Object.keys(publicCheck).sort()).toEqual(["answers", "assessment_metadata", "created_at", "id", "result"]);
     expect(publicCheck.id).toBe(anonymousCheckId);
+    expect(publicCheck.assessment_metadata).toMatchObject({ formatVersion: 1, selectedVersionIds: [betaVersion.id] });
 
     const { error: privateError } = await anon
       .from("checks")
@@ -375,10 +367,6 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
       content: "rls test content",
       source_url: "https://example.com/rls-test/chunk",
     });
-    if (fixtureError?.code === "PGRST205") {
-      console.warn("Skipping kb_chunks RLS assertions: migration not applied.");
-      return;
-    }
     expect(fixtureError).toBeNull();
 
     const { data, error } = await anon
@@ -428,17 +416,11 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     const { data: check, error: insertError } = await service
       .from("checks")
       .insert({
-        answers: {
-          targetDegree: "bachelor",
-          nationality: "in",
-          certificateCountry: "in",
-        },
+        ...authoritativeCheck(),
         owner_token_hash: tokenHash,
-        result: { path: "unknown" },
       })
       .select("id")
       .single();
-    if (insertError?.code === "PGRST204") return;
     expect(insertError).toBeNull();
     claimCheckId = check!.id;
 
@@ -446,7 +428,6 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
       p_check_id: claimCheckId,
       p_token_hash: "c".repeat(64),
     });
-    if (missing.error?.code === "PGRST202") return;
     expect(missing.error).toBeNull();
     expect(missing.data).toBe(false);
 
@@ -586,12 +567,6 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     const { error: crossUserError } = await other.rpc("remove_my_course", {
       course_id: course!.id,
     });
-    if (crossUserError?.code === "PGRST202") {
-      console.warn(
-        "Skipping course removal RLS assertions: remove_my_course migration is not applied.",
-      );
-      return;
-    }
     expect(crossUserError).toBeNull();
 
     const { data: stillOwned } = await service
@@ -646,12 +621,6 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
       role: "user",
       content: "rls test question",
     });
-    if (error?.code === "PGRST205") {
-      console.warn(
-        "Skipping assistant_messages RLS assertions: migration not applied.",
-      );
-      return;
-    }
     expect(error).toBeNull();
 
     const { error: crossError } = await owner.from("assistant_messages").insert({
@@ -680,14 +649,12 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
       .eq("user_id", ownerUser.id);
   });
 
-  it("owner cannot update rules", async () => {
-    const { data, error } = await owner
-      .from("rules")
-      .update({ status: "verified" })
-      .eq("id", betaRuleId)
-      .select("id");
-    expect(error).toBeNull();
-    expect(data).toHaveLength(0);
+  it("owner cannot update protected compatibility rules", async () => {
+    const { error } = await owner.from("rules").update({ status: "verified" }).eq("id", betaRuleId);
+    expect(error).not.toBeNull();
+    const mirror = await anon.from("rules").select("status").eq("id", betaRuleId).single();
+    expect(mirror.error).toBeNull();
+    expect(mirror.data?.status).toBe("beta");
   });
 
   it("owner cannot read admin audit events", async () => {
@@ -712,33 +679,29 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     expect(profiles).toHaveLength(1);
   });
 
-  it("admin updates a rule", async () => {
-    const { data, error } = await admin
-      .from("rules")
-      .update({ notes: "checked by admin" })
-      .eq("id", draftRuleId)
-      .select("notes")
-      .single();
-    expect(error).toBeNull();
-    expect(data!.notes).toBe("checked by admin");
+  it("admin direct compatibility writes are denied", async () => {
+    const response = await admin.from("rules").update({ notes: "checked by admin" }).eq("id", draftRuleId);
+    expect(response.error).not.toBeNull();
   });
 
-  it("admin rule status updates create audit rows", async () => {
-    const { error } = await admin
-      .from("rules")
-      .update({ status: "verified" })
-      .eq("id", auditRuleId);
-    expect(error).toBeNull();
-
-    const { data: auditRows, error: auditError } = await admin
-      .from("admin_audit_events")
-      .select("old_status, new_status")
-      .eq("table_name", "rules")
-      .eq("row_id", auditRuleId)
-      .eq("old_status", "draft")
-      .eq("new_status", "verified");
-    expect(auditError).toBeNull();
-    expect(auditRows).toHaveLength(1);
+  it("admin guarded publication creates the verified version and immutable audit row", async () => {
+    const draft = await getAdminRuleDraft(admin, auditRuleId);
+    const published = await publishAdminRuleVersion(admin, { ...reviewToken(draft, null), approval_status: "verified", confirmed: true });
+    expect(published).toMatchObject({ rule_id: auditRuleId, status: "verified", version_number: 1,
+      supersedes_version_id: null, draft_revision: draft.revision, reviewed_by: adminUser.id, provenance: "human_publication" });
+    expect(published.published_at).toBe(published.reviewed_at);
+    expect(published.raw_snapshot).toEqual({ ...RawRuleSchema.parse(draft.raw_snapshot), status: "verified" });
+    const auditRows = await admin.from("admin_audit_events").select("id,old_status,new_status,rule_publication,actor_user_id")
+      .eq("table_name", "rules").eq("row_id", auditRuleId).eq("old_status", "draft").eq("new_status", "verified");
+    expect(auditRows.error).toBeNull();
+    expect(auditRows.data).toHaveLength(1);
+    expect(auditRows.data![0]).toMatchObject({ actor_user_id: adminUser.id, rule_publication: {
+      rule_id: auditRuleId, version_id: published.id, reviewed_by: adminUser.id, draft_revision: draft.revision,
+      version_number: 1, supersedes_version_id: null, status: "verified" } });
+    const auditId = auditRows.data![0].id;
+    expect((await service.from("admin_audit_events").delete().eq("id", auditId)).error).not.toBeNull();
+    expect((await service.from("admin_audit_events").update({ new_status: "beta" }).eq("id", auditId)).error).not.toBeNull();
+    expect((await admin.from("admin_audit_events").select("id").eq("id", auditId)).data).toHaveLength(1);
   });
 
   it("admin approves a course; anon can then read it", async () => {
@@ -788,4 +751,79 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
       .eq("id", rejectCourseId);
     expect(data).toHaveLength(0);
   });
+  it("only authenticated admins can edit drafts or invoke protected publication", async () => {
+    const draft = await getAdminRuleDraft(admin, draftRuleId);
+    for (const client of [anon, owner, other, service]) {
+      const result = await client.rpc("publish_rule_version", rpcApproval(draft, null));
+      expect(result.error).not.toBeNull();
+    }
+    for (const client of [owner, other]) {
+      const read = await client.from("rule_drafts").select("rule_id").eq("rule_id", draftRuleId);
+      expect(read.error).toBeNull(); expect(read.data).toHaveLength(0);
+      const edit = await client.from("rule_drafts").update({ raw_snapshot: draft.raw_snapshot }).eq("rule_id", draftRuleId).select();
+      expect(edit.error).toBeNull(); expect(edit.data).toHaveLength(0);
+    }
+    expect(await listAdminRuleVersions(admin, draftRuleId)).toHaveLength(0);
+  });
+
+  it("admin draft CAS and exact publication revision/raw/predecessor tokens reject stale approvals", async () => {
+    const original = await getAdminRuleDraft(admin, draftRuleId);
+    const exact = rpcApproval(original, null);
+    const beforeAudit = await admin.from("admin_audit_events").select("id").eq("row_id", draftRuleId);
+    expect(beforeAudit.error).toBeNull();
+    for (const args of [
+      { ...exact, p_expected_draft_revision: original.revision + 1 },
+      { ...exact, p_expected_raw_snapshot: { ...RawRuleSchema.parse(original.raw_snapshot), notes: "unreviewed token" } },
+      { ...exact, p_expected_predecessor_id: randomUUID() },
+    ]) expect((await admin.rpc("publish_rule_version", args)).error).not.toBeNull();
+    expect(await listAdminRuleVersions(admin, draftRuleId)).toHaveLength(0);
+    expect((await admin.from("admin_audit_events").select("id").eq("row_id", draftRuleId)).data).toEqual(beforeAudit.data);
+    const saved = await updateAdminRule(admin, { rule_id: original.rule_id, revision: original.revision, raw_snapshot: original.raw_snapshot,
+      next_snapshot: { ...RawRuleSchema.parse(original.raw_snapshot), notes: "synthetic reviewed draft edit" },
+      effective_from: original.effective_from, effective_until: original.effective_until,
+      intake_from: original.intake_from, intake_until: original.intake_until });
+    expect(saved.revision).toBe(original.revision + 1);
+    expect(saved.edited_by).toBe(adminUser.id);
+    const mirror = await admin.from("rules").select("status,notes").eq("id", draftRuleId).single();
+    expect(mirror.error).toBeNull(); expect(mirror.data).toEqual({ status: "draft", notes: null });
+    await expect(updateAdminRule(admin, { rule_id: original.rule_id, revision: original.revision, raw_snapshot: original.raw_snapshot,
+      next_snapshot: original.raw_snapshot, effective_from: null, effective_until: null, intake_from: null, intake_until: null })).rejects.toThrow("changed");
+    expect((await admin.rpc("publish_rule_version", exact)).error).not.toBeNull();
+    const first = await publishAdminRuleVersion(admin, { ...reviewToken(saved, null), approval_status: "verified", confirmed: true });
+    expect(first.raw_snapshot).toEqual({ ...RawRuleSchema.parse(saved.raw_snapshot), status: "verified" });
+    expect((await admin.rpc("publish_rule_version", rpcApproval(saved, null))).error).not.toBeNull();
+    const second = await publishAdminRuleVersion(admin, { ...reviewToken(saved, first.id), approval_status: "verified", confirmed: true });
+    expect(second).toMatchObject({ version_number: 2, supersedes_version_id: first.id, draft_revision: saved.revision, reviewed_by: adminUser.id });
+    expect(await listAdminRuleVersions(admin, draftRuleId)).toHaveLength(2);
+    expect((await admin.rpc("publish_rule_version", rpcApproval(saved, first.id))).error).not.toBeNull();
+    const events = await admin.from("admin_audit_events").select("id").eq("row_id", draftRuleId).not("rule_publication", "is", null);
+    expect(events.error).toBeNull(); expect(events.data).toHaveLength(2);
+    for (const client of [admin, service]) {
+      expect((await client.from("rule_versions").update({ status: "beta" }).eq("id", first.id)).error).not.toBeNull();
+      expect((await client.from("rule_versions").delete().eq("id", first.id)).error).not.toBeNull();
+      expect((await client.from("rule_versions").insert({ rule_id: draftRuleId, version_number: 3, raw_snapshot: second.raw_snapshot, status: "verified", provenance: "human_publication" })).error).not.toBeNull();
+    }
+    expect((await listAdminRuleVersions(admin, draftRuleId)).find(v => v.id === first.id)).toEqual(first);
+  });
+
+  it("genuine reviewer account deletion retains immutable reviewer attribution and denies its old JWT", async () => {
+    const reviewerUser = await createUser({ role: "admin" });
+    const reviewer = await signedInClient(reviewerUser.email!);
+    const draft = await getAdminRuleDraft(reviewer, betaRuleId);
+    const [predecessor] = await listAdminRuleVersions(reviewer, betaRuleId);
+    const published = await publishAdminRuleVersion(reviewer, { ...reviewToken(draft, predecessor.id), approval_status: "beta", confirmed: true });
+    const audit = await admin.from("admin_audit_events").select().eq("row_id", betaRuleId).eq("actor_user_id", reviewerUser.id).single();
+    expect(audit.error).toBeNull();
+    const removed = await service.auth.admin.deleteUser(reviewerUser.id);
+    expect(removed.error).toBeNull();
+    createdUserIds.splice(createdUserIds.indexOf(reviewerUser.id), 1);
+    const retained = (await listAdminRuleVersions(admin, betaRuleId)).find(v => v.id === published.id);
+    expect(retained).toEqual(published);
+    expect(retained?.reviewed_by).toBe(reviewerUser.id);
+    const journal = await admin.from("admin_audit_events").select().eq("id", audit.data!.id).single();
+    expect(journal.error).toBeNull();
+    expect(journal.data).toEqual({ ...audit.data, actor_user_id: null });
+    expect((await reviewer.rpc("publish_rule_version", rpcApproval(draft, published.id))).error).not.toBeNull();
+  });
+
 });

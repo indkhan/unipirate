@@ -169,7 +169,7 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
    pre-scope Saudi checks remain readable without inventing an answer. Steps
    rendered as a number input are listed in `NUMBER_STEPS` with their bounds.
 2. Submit (`submitCheck` server action) zod-validates the answers, evaluates
-   against published rules, and inserts a `checks` row through the dedicated
+   with one server UTC instant against applicable immutable versions, and inserts a `checks` row through the dedicated
    server-only check writer → redirect to
    `/result/[id]`.
 3. Ownership: anonymous submitters get a random token in an HttpOnly cookie;
@@ -179,10 +179,11 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
 4. `/result/[id]` is public to anyone holding the UUID. `get_shared_check`
    returns only that UUID's shareable columns; table collection reads and
    browser writes are forbidden. The page validates stored answers and
-   re-evaluates them against current published rules, rather than trusting
-   stored verdicts (including legacy client-written results). Thus the displayed
-   assessment can change after rule updates; its timestamp is the original
-   check creation time. Sharing still exposes answers to UUID holders; consent,
+   displays the original protected server assessment with exact immutable inputs.
+   A separate current reassessment uses the same validated saved answers and a new
+   server instant. NULL/malformed provenance or missing exact references yields
+   original provenance unavailable; legacy verdict JSON is never promoted. Original
+   answers/result/history are never rewritten. Sharing still exposes answers to UUID holders; consent,
    expiry and revocation remain backlog work. The `result_viewer`
    DB function tells the page whether the request is the anonymous owner,
    the claimed owner, or the public; the page adapts its banners and CTA.
@@ -447,11 +448,14 @@ successful live assistant evaluation; it is not guaranteed by unit tests.
   as verified stamps / unverified chips / "not in our rules" blocks by
   `components/app/assistant-sidebar.tsx`; on finish they are parsed and
   logged to `assistant_messages`.
-- The KB is rebuilt wholesale by `pnpm kb:embed`: published rules are
-  rendered to readable chunks (`lib/ai/kb.ts`) and merged with curated
-  snippets from `scripts/kb.snippets.ts`. Replacement vectors are upserted before
-  stale rows are removed, so a failed write retains the previous corpus.
-  Rerun it after rule changes.
+- The KB indexes date-applicable immutable inputs without guessing intake.
+  Embeddings are hints keyed by logical rule and version UUID. Retrieval resolves
+  stored logical identity in query helpers, selects current applicable versions
+  using the saved profile intake, and renders exact raw sources. Remaining selected
+  rules are included so scoped/new coverage remains discoverable before rebuild.
+  Unversioned snippets are excluded from current rule evidence. Replacement vectors
+  are written before stale hints are removed; failed writes retain the old corpus
+  but cannot authorize its old prose. No provider operation runs during rendering.
 - `pnpm eval:assistant` runs a 20-question adversarial eval (invented-fact
   traps, out-of-scope traps, personal context) and fails on any uncited
   claim.
@@ -497,7 +501,7 @@ Schema lives in `supabase/migrations/` (append-only). Regenerate types with
 | `applications` | user × course with status — THE dashboard link | owner CRUD |
 | `tasks` | rule-generated, admin-defined course-task assignments, and manual tasks; unique `(user_id, task_key)` makes reconciliation work | owner CRUD; admins reach only rows with a `course_task_definition_id`, never a student's manual or rule tasks |
 | `course_task_definitions` | ordered admin definitions for every course submission/requirement/custom task; pending-course definitions publish on approval. Official-source changes are shown as a live diff in the admin tasks view (no stored review queue) and student tasks only change when an admin acts | approved public read, admin write |
-| `checks` | answers + historical stored result; current result re-evaluated on read; ownership columns private | dedicated server writer; UUID-scoped public read through `get_shared_check`, no browser table reads/writes |
+| `checks` | immutable answers/result/protected assessment metadata; distinct current reassessment; ownership columns private | dedicated server writer; UUID-scoped public read through `get_shared_check`, no browser table reads/writes |
 | `kb_chunks` | assistant corpus with pgvector embeddings; `match_kb_chunks()` does exact cosine scan (fine below ~10k rows) | public read, admin write |
 | `assistant_messages` | full Q&A log; today's `role='user'` count is the quota | owner insert/read, admin read |
 | `answer_reports` | assistant-answer feedback | authenticated insert, owner/admin read |
@@ -515,10 +519,11 @@ keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.
   `lib/engine/__tests__/personas.ts` holds the 13 verified student personas
   shared between engine and checker tests.
 - `lib/db/__tests__/rls.integration.test.ts` asserts anon/owner/admin
-  visibility against the real linked Supabase project. It self-skips (with a
-  console warning) when env keys are missing, the schema is behind, or the
-  secret key cannot use the auth admin API — so `pnpm test` is green in any
-  environment.
+  visibility against the explicitly configured disposable/local Supabase
+  service. It self-skips when required env keys are
+  absent. When configured, missing schema/auth/admin/API failures FAIL and must
+  not be claimed green — use loopback/disposable isolation before execution and
+  run the actual required RLS suite before merge.
 - Before merging: `pnpm test && pnpm lint && pnpm typecheck && pnpm build`.
 
 ## Where to make common changes
@@ -801,7 +806,7 @@ semester and date policy stays in reviewed data. No seed, publication or embeddi
 runs here; production classification depends on separate admin review/publication.
 Newly rendered KB chunks suppress the obsolete certificate-possession exemption
 and label its quote as historical evidence rather than current applicability.
-Runtime `search_rules` now projects persisted dMAT matches through the pure
+At the UP-ELIG-07 checkpoint, `search_rules` projected persisted dMAT matches through the pure
 `projectDmatKbMatches(matches, publishedRules)` interface in `lib/ai/kb-retrieval.ts`.
 Matches are raw RPC rows; rule rows are caller-visible current published metadata
 from the existing `getPublishedRules` helper, or null if unavailable. Zod validates
@@ -817,8 +822,9 @@ interface has no trusted structured snippet metadata, even after a rebuild.
 Rule matches cannot prove unrelatedness without valid matching current metadata;
 unmatched or invalid rules fail closed even under renamed slugs/other source URLs.
 Valid current unrelated rules and unrelated curated snippets are unchanged.
-RULES01 can reuse this projection boundary;
-broader freshness and snippet-authority policy are explicitly outside its scope.
+The UP-RULES-01 consumer integration below supersedes this checkpoint adapter
+with immutable selection for all rules and excludes unversioned snippets. The
+legacy projection has no current production caller.
 No persisted chunks are rewritten/deleted, and no embedding/publication runs. dMAT
 neither replaces APS nor guarantees recognition/admission; a low score alone is
 not an APS refusal. The current APS clarification permits other complete documents
@@ -994,6 +1000,58 @@ Positive GCE records need explicit system/type/evidence/intake scope. Unscoped h
 
 Science, medicine/pharmacy and arts target groups follow DAAD's named categories. Cambridge's favourable new-formula coverage starts SS2022 and its ordinary transition is SS2024; other bodies are limited to explicit current checker intakes as coverage, not an invented source effective date. National-system, historical, List C programme mapping, Pre-U/AICE/provisional and unclassified-programme variants stay targeted unknowns. See [source verification](up-elig-01-source-verification.md) for applicability, contradictions and authority limits. No migration, publication, seed, KB rebuild, task/application or personal-progress write occurs.
 
+### Immutable rule administration and selection (UP-RULES-01 phase one)
+
+The admin rule workspace reads rule_drafts and immutable rule_versions,
+not the rules compatibility mirror. Saving writes only the full raw draft
+and applicability bounds, guarded by its displayed revision and raw JSON token.
+Database triggers own revision, editor and edit time. Editing keeps draft status;
+it does not approve the snapshot. The complete raw JSON editor retains fields
+that a projected editor could otherwise omit. Malformed domain conditions may
+be saved for repair but cannot be published.
+
+Publication is a separate explicit beta/verified choice and confirmation of the
+saved snapshot, literal evidence, source verification date, diff and bounds.
+last_verified_at is supplied source verification metadata, never stamped by
+save/publication. The protected publish_rule_version RPC receives logical ID,
+exact raw snapshot, expected revision and predecessor, and approval status. The
+app preflights the actual raw object with EngineRuleSchema before any RPC
+mutation. It never replaces the token with a projected rule. Database-owned
+reviewer/publication time, immutable successor, audit event and compatibility
+mirror are atomic. Reverification appends a successor. Stale tokens prompt
+reload and review. Course administration retains its existing helpers.
+
+lib/rules/versioning.ts provides pure boundaries, literal diff, explicit
+UTC assessment-instant conversion, selection and impact preview. Date and
+intake intervals are half-open. Intake index is year × 2 + summer 0 / winter 1.
+Assessment applicability is independent of APS/dMAT applicant event dates.
+Selection resolves the newest applicable version per stable logical UUID before
+condition matching. Replacement condition failure cannot revive a predecessor
+within replacement scope; predecessors remain eligible outside it. Missing
+distinguishing intake yields a diagnostic. Human null bounds mean reviewed
+unbounded scope. Legacy null bounds remain unknown historical scope; legacy
+capture time and stored source dates do not establish human publication.
+Selected rules keep logical IDs for citations/task keys; selected version IDs
+carry immutable provenance. Invalid applicable publications fail closed without
+predecessor fallback. Diffs ignore object key order while retaining array order,
+whitespace, literal text, evidence, conditions, outcomes, status and scope.
+
+listRuleVersions in lib/db/queries.ts is an isolated caller-scoped history
+reader. It intentionally performs no status/applicability selection. Existing
+At this phase-one checkpoint, getPublishedRules behavior was unchanged until phase two moved all consumers
+together. previewRuleImpact evaluates only caller-provided before/after
+profiles and selected rules; it counts changed assessments and new resolved
+outcome coverage, including an assessment with no old match. It performs no
+student-data reads, writes, notifications or task reconciliation.
+
+This bounded milestone does not yet make original checks authoritative. The
+existing result/current-reassessment behavior described above remains until
+phase two wires checker/profile/intake/date paths, server-owned immutable check
+metadata/history lookups, original-vs-current display and assistant/KB projection.
+Legacy check JSON must not be retrospectively attributed to captured versions.
+No publication, embedding, schema application or automatic task/application/
+personal-progress update occurs in this code change. Parent UP-RULES-01 remains
+open; do not merge the schema write freeze without completed application wiring.
 
 ### IB evidence and ordinary recognition (UP-ELIG-02)
 
@@ -1004,3 +1062,48 @@ New and edited IB bachelor answers carry `ibVersion: 1`; historical answers rema
 `scripts/ib.rules.ts` contains only draft candidates with null publication metadata. Disposable reviewed fixture copies activate the official acceptance corpus; bootstrap never publishes them. The evaluator quarantines old unscoped IB path shortcuts, including automatic Studienkolleg outcomes. Missing ordinary prerequisites yield targeted unknowns; KMK section 2 alternatives require separate reviewed scope. Current-annex coverage applies to historical examinations as directed by the KMK index. The explicit draft intake coverage starts Winter 2025; earlier intakes and examination years before 2013 remain unknown pending review.
 
 See [IB source verification](ib-source-verification.md) for authority, source versions, effective sessions and unresolved limits. The executable IB corpus is activated in UP-TEST-01; final parent official coverage remains OPEN. No DB, publication, server-shell or version-selection interface was changed.
+
+### Rule assessment consumer integration (UP-RULES-01)
+
+All current evaluation shells load immutable history through paginated
+`listRuleVersions` and reuse `evaluateAssessment` unchanged. The server captures
+one actual UTC instant and explicit `ENGINE_REVISION` before selection; publication
+availability (including same-day microseconds) precedes scope, status and condition
+matching. Assessment day, intake and applicant event dates remain distinct. Bump
+the explicit revision when engine/profile mapping/selection behavior changes.
+
+Submission validates answers/result/protected metadata and server-derived ownership
+in one private service INSERT. Public inputs cannot supply authority. Signed-in
+materialization reuses that assessment; later user-triggered saves/claims use a new
+current assessment. Historical lookup fetches only selected and diagnostic UUIDs;
+no latest replacement supplies missing history. Original result cards and literal
+immutable raw evidence are separate from current result cards and meaningful
+policy/source/new-coverage comparison. Invalid saved answers remain unavailable. Task/assistant profile mapping likewise
+requires complete validated answers; malformed historical raw/partial rows remain
+stored unchanged and cannot establish current rule authority.
+
+Task generation retains logical UUID keys. Existing tasks, completion, student
+text/dates, edit state and applications are untouched by evaluation, impact or
+publication. Materialization inserts missing keys only, with duplicate-ignore
+protection against concurrent insertion; it never reactivates an existing row.
+The existing narrow APS read projection and course/application visibility behavior
+remain unchanged. Dashboard rendering performs no materialization. Its Berlin
+calendar day remains separate from the UTC assessmentEvaluatedAt instant. Personal assistant context is labelled history rather than
+current requirement evidence.
+
+The admin rule workspace previews both explicit beta/verified choices against the
+complete caller-authorized profile population, paginated with exact counts. It
+includes previously unmatched cases and reports invalid profiles, unavailable
+proposals and unresolved scope, alongside policy/explanation/source-only/new-coverage
+counts. This is a hypothetical publication now: a comparison-only draft operand
+uses its draft identity with absent review/publication dates, never an immutable
+version or authoritative assessment. The existing engine evaluates already selected
+policy inputs; no second rule engine, profile RPC, new privilege or personal write
+is introduced. Preview is not publication approval.
+
+Trade-off: unversioned curated snippets cannot prove current applicability and are
+withheld until they gain an explicit reviewed identity/version contract. The current
+small corpus permits structured selected-rule fallback before embedding rebuild;
+large corpora would need bounded structured retrieval preserving scope coverage.
+Actual provider, disposable service/RLS/browser and combined integration gates remain
+root-owned; deterministic unit grounding is not live-provider evidence.
