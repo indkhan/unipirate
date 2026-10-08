@@ -1,0 +1,41 @@
+// Pure completed-answer boundary. Presence/authorization is not entailment.
+import { z } from "zod";
+import { responseRuleSources } from "./assistant-sources";
+import { parseMarkers } from "./markers";
+
+export const ASSISTANT_FALLBACK = "I cannot provide a source-backed answer to this question. [[unknown]] Check DAAD as a place to find official guidance: https://www.daad.de/";
+export type AssistantEvidence = { toolName: string; output: unknown };
+const WebEnvelope = z.object({
+  unverified: z.literal(true), results: z.array(z.object({
+    title: z.string(), url: z.string().url().refine(url => /^https?:\/\//.test(url)), content: z.string(),
+  }).strict()), note: z.string().optional(),
+}).strict();
+
+/** Only successful executed server tool outputs from this request belong here.
+ * History, personal context and provider source events never authorize citations. */
+export function guardAssistantAnswer(text: string, evidence: readonly AssistantEvidence[]): string {
+  const parsed = parseMarkers(text);
+  const tokens = text.match(/\[\[[\s\S]*?\]\]/g) ?? [];
+  const malformed = tokens.some(token => {
+    const marker = parseMarkers(token);
+    return token !== "[[unknown]]" && !marker.citations.some(c => token === `[[${c.type}:${c.ref}]]`);
+  }) || text.replace(/\[\[[\s\S]*?\]\]/g, "").includes("[[");
+  if (!text.trim() || malformed || (!parsed.unknown && !parsed.citations.length)) return ASSISTANT_FALLBACK;
+  const rules = responseRuleSources(evidence.filter(e => e.toolName === "search_rules").map(e => ({
+    type: "tool-search_rules", state: "output-available", output: e.output,
+  })));
+  const web = new Map<string, string>();
+  const ambiguous = new Set<string>();
+  for (const item of evidence.filter(e => e.toolName === "web_search")) {
+    const result = WebEnvelope.safeParse(item.output);
+    if (!result.success) { web.clear(); break; }
+    for (const source of result.data.results) {
+      const exact = JSON.stringify(source);
+      if (web.has(source.url) && web.get(source.url) !== exact) ambiguous.add(source.url);
+      web.set(source.url, exact);
+    }
+  }
+  for (const url of ambiguous) web.delete(url);
+  return parsed.citations.every(c => c.type === "rule" ? rules.has(c.ref) : web.has(c.ref))
+    ? text : ASSISTANT_FALLBACK;
+}

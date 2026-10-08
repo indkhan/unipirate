@@ -1,3 +1,5 @@
+Verified main40 assistant-guard integration preserves the existing source captures and process applicability/review policy. The shared pure source envelope retains optional strict processUnknowns; request-local citation authorization records the same profile-filtered immutable search projection. No new factual assertion or fresh official retrieval is claimed, and no candidate is published.
+
 Verified Saudi/Pakistan integration: the working candidate now includes verified main 813182a33d65566950d6851205c9d47fb5f37386. Academic current-source scopes and strict historical provenance are retained alongside separate process guidance. No source assertion, quote, date, applicability or candidate publication is changed by this merge resolution; no fresh official retrieval is claimed.
 
 # UP-PROC-02 integration source verification
