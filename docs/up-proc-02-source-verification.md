@@ -1,4 +1,21 @@
-# UP-PROC-02 pure milestone source verification
+# UP-PROC-02 integration source verification
+
+Fresh owner retrieval on **2026-10-08**, during 02:17–02:31 UTC, used the CURRENT official pages linked below. This is independent retrieval, not automatic adoption of the supplied earlier report. Source-reviewed candidates are DRAFT and unpublished; candidate verification records 2026-10-08T02:24:14Z for the India/Saudi/Pakistan pages retrieved before that instant. Editorial review_due is a review policy, never a claimed law/effective date.
+
+- [India national visa](https://india.diplo.de/in-en/service/2755482-2755482): retrieved adult local observation 8300 inr; supplied earlier INR 8400 was not reproduced. Preserve both as unresolved observations, with the supplied one having no independent verification timestamp. Exactly 18 remains outside the page's under/over wording; FFO EUR scope cannot repair that local gap. No payment winner or currency arithmetic.
+- [India study checklist](https://india.diplo.de/in-en/service/2756350-2756350): first-year and monthly blocked-account figures match the retained literal observations. Commitment and German/EU scholarship remain alternatives; education-loan proof is additional. Draft scope is study; other questionnaire purposes remain unavailable unless a human reviews their precise scope. No source-effective date/intake inferred.
+- [Saudi study checklist](https://saudiarabien.diplo.de/ksa-en/visa-service/study-preparatory-courses-2195208): retained 2024 annotation is not commencement. Account branch includes employment/bank documentation and separate obligation/scholarship alternatives. EUR fee does not supply a SAR amount or age bracket; candidate fee guidance stays noncurrent without supported age coverage. No conversion.
+- [Pakistan study procedure](https://pakistan.diplo.de/pk-en/service/2-study-visa-seite-1676104): current page explicitly covers CSP in Karachi as well as Islamabad. This is a narrow correction to the earlier integration review's missing Karachi evidence, not a claim that a country code identifies a mission. Drafts remain separately scoped to named missions. Questionnaire/document/capacity guidance supplies no numeric funding requirement or APS exemption.
+- [FFO national fees](https://www.auswaertiges-amt.de/en/visa-service/215870-215870?isLocal=false&isPreview=false): separate EUR standard/minor scope and conditional scholarship coverage remain evidence, not local fee-gap repair or a certified waiver.
+- [FFO blocked account](https://www.auswaertiges-amt.de/en/sperrkonto-388600): purpose and competent mission/CSP determine the amount; an account is one possible method.
+- [Make it in Germany study visa](https://www.make-it-in-germany.com/en/visa-residence/types/studying): study and seeking-a-place funding scopes differ. No global amount or cross-purpose substitution is introduced.
+- [uni-assist handling fees](https://www.uni-assist.de/en/how-to-apply/pay-all-fees/handling-fees/): first/additional course per semester and VPD charging system remain separate from university-paid exceptions. Production reviewed programme route/payer integration remains a UP-PROC-01/Course dependency; no student financial or APS proxy authorizes a payment.
+
+The strict schema is now integrated with ordinary matching and immutable selection. Current process evidence is a separate Assessment sibling; historical saved academic results never gain replayed process decisions. Review equality is current, +1ms overdue, microsecond ordering is preserved, process effective endpoints are inclusive and publication bounds remain half-open. Missing/invalid policy yields official pointers and review attention without raw quote leaks. Unresolved supplied observations remain available in admin/historical evidence only.
+
+The earlier pure-milestone notes below are retained as historical implementation/report evidence. Statements describing future integration, a private matcher or 1–3 digit precision are superseded by the integration contract above. Parent acceptance remains OPEN pending independent/root gates; neither the old 29-test milestone nor current deterministic mocks proves operational completion.
+
+# Historical pure milestone source verification
 
 Verification/assessment: **2026-10-07**. These observations are review evidence, never automatically published rules. Effective scope/date is **unknown** unless separately supported. Review deadlines are editorial freshness policy, not law.
 

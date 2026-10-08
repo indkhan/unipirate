@@ -1,5 +1,7 @@
 // Pure assessment envelopes and historical explanations. No clock, reads or writes.
 import { z } from "zod";
+import {legacyProcessRuleIds} from "@/lib/engine/process-identity";
+import {assessProcess, type ProcessAssessment} from "./process-assessment";
 import { evaluate, EngineRuleSchema, type Profile, type Result } from "@/lib/engine/evaluate";
 import { CalendarDateSchema } from "@/lib/engine/calendar-day";
 import { AnswersSchema, buildProfile } from "@/app/(public)/check/steps";
@@ -29,14 +31,15 @@ export const AssessmentResultSchema:z.ZodType<Result>=z.object({
  citations:z.array(z.object({ruleId:canonicalId,sourceUrl:z.string().url(),verifiedAt:z.string().datetime({offset:true}).nullable(),claim:z.string(),status:z.enum(['beta','verified']),supports:z.array(support)}).strict()),
  unknowns:z.array(z.string()),
 }).strict();
-export type Assessment={result:Result;metadata:AssessmentMetadata;selectedVersions:RuleVersion[];diagnosticVersions:RuleVersion[]};
+export type Assessment={process?:ProcessAssessment;result:Result;metadata:AssessmentMetadata;selectedVersions:RuleVersion[];diagnosticVersions:RuleVersion[]};
 
 export function evaluateAssessment(profile:Profile,versions:unknown,context:unknown):Assessment {
  const {evaluatedAt,engineRevision}=AssessmentContextSchema.parse(context);
  const available=z.array(RuleVersionSchema).parse(versions);
  const selection=selectRuleVersions(available,{evaluatedAt,assessmentDate:assessmentDateUtc(evaluatedAt),intake:profile.intake});
+ const legacy=legacyProcessRuleIds(available);
  const metadata=AssessmentMetadataSchema.parse({formatVersion:1,evaluatedAt,engineRevision,selectedVersionIds:selection.selected.map(x=>x.version.id),selectionIssues:selection.diagnostics});
- return {result:AssessmentResultSchema.parse(evaluate(profile,selection.selected.map(x=>x.rule))),metadata,selectedVersions:selection.selected.map(x=>x.version),diagnosticVersions:selection.diagnostics.map(x=>available.find(v=>v.id===x.versionId)!)};
+ return {process:assessProcess(profile,available,evaluatedAt),result:AssessmentResultSchema.parse(evaluate(profile,selection.selected.filter(x=>!legacy.has(x.version.rule_id)).map(x=>x.rule))),metadata,selectedVersions:selection.selected.map(x=>x.version),diagnosticVersions:selection.diagnostics.map(x=>available.find(v=>v.id===x.versionId)!)};
 }
 export type StoredAssessment={kind:'authoritative';original:Assessment & {answers:unknown}}|{kind:'legacy'|'invalid';original:null};
 /** Protected DB column is the only authority. Never replay or substitute latest inputs. */
@@ -72,11 +75,21 @@ export function compareAssessments(before:Assessment,after:Assessment) {
  const withoutSources=({citations,...result}:Result)=>({...result,citations:citations.map(c=>({ruleId:c.ruleId,status:c.status,supports:c.supports}))});
  const ruleIds=[...new Set([...before.selectedVersions,...after.selectedVersions].map(v=>v.rule_id))].sort();
  const changes=ruleIds.flatMap(ruleId=>meaningfulRuleDiff(before.selectedVersions.find(v=>v.rule_id===ruleId),after.selectedVersions.find(v=>v.rule_id===ruleId)).map(diff=>({ruleId,...diff})));
+ const allVersions=[...before.selectedVersions,...after.selectedVersions,...before.diagnosticVersions,...after.diagnosticVersions];
+ const processIds=legacyProcessRuleIds(allVersions);
+ for(const v of allVersions){const raw=z.object({outcomes:z.record(z.unknown())}).safeParse(v.raw_snapshot);if(raw.success&&Object.hasOwn(raw.data.outcomes,"process"))processIds.add(v.rule_id);}
+ const academicVersions=(assessment:Assessment)=>assessment.selectedVersions.filter(v=>!processIds.has(v.rule_id));
+ const academicIds=[...new Set([...academicVersions(before),...academicVersions(after)].map(v=>v.rule_id))];
+ const academicChanges=academicIds.flatMap(id=>meaningfulRuleDiff(academicVersions(before).find(v=>v.rule_id===id),academicVersions(after).find(v=>v.rule_id===id)));
+ const processBody=(p:ProcessAssessment|undefined)=>p?{guidance:p.guidance,unknowns:p.unknowns,processRuleIds:p.processRuleIds}:undefined;
  const sourceFields=new Set(['source_url','source_quote','last_verified_at','notes']);
  return {
-  policyChanged:!jsonEqual(withoutSources(before.result),withoutSources(after.result)) || changes.some(c=>!sourceFields.has(c.field)),
-  explanationChanged:!jsonEqual(before.result.citations,after.result.citations) || changes.some(c=>sourceFields.has(c.field)) || !jsonEqual(before.metadata.selectionIssues,after.metadata.selectionIssues),
+  policyChanged:!jsonEqual(withoutSources(before.result),withoutSources(after.result)) || academicChanges.some(c=>!sourceFields.has(c.field)),
+  explanationChanged:!jsonEqual(before.result.citations,after.result.citations) || academicChanges.some(c=>sourceFields.has(c.field)) || !jsonEqual(before.metadata.selectionIssues.filter(i=>!processIds.has(i.ruleId)),after.metadata.selectionIssues.filter(i=>!processIds.has(i.ruleId))),
   newCoverage:(['path','aps','testAS','dMAT'] as const).some(key=>before.result[key]==='unknown'&&after.result[key]!=='unknown'),
+  processDecisionComparisonAvailable:before.process!==undefined && after.process!==undefined,
+  processExplanationChanged:changes.some(c=>processIds.has(c.ruleId)&&sourceFields.has(c.field)) || !jsonEqual(before.metadata.selectionIssues.filter(i=>processIds.has(i.ruleId)),after.metadata.selectionIssues.filter(i=>processIds.has(i.ruleId))),
+  processChanged:!jsonEqual(processBody(before.process),processBody(after.process)) || changes.some(change=>!academicIds.includes(change.ruleId)),
   ruleChanges:changes,
  };
 }

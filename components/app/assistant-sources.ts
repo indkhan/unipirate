@@ -17,6 +17,7 @@ const EnvelopeSchema = z.object({
     reason: z.enum(["missing_intake", "legacy_scope_unknown", "invalid_publication"]),
   }).strict()),
   note: z.string().optional(),
+  processUnknowns:z.array(z.string()).optional(),
 }).strict();
 export type RuleSource = z.infer<typeof SourceSchema>;
 

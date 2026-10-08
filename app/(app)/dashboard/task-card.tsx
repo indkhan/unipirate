@@ -153,7 +153,7 @@ export function NowTask({
           </span>
           <span className={styles.taskDue}>{taskDetail}</span>
         </div>
-        <Stamp source={task.source} />
+        {task.processEvidence?<p>Saved personal reminder; its text and amounts are not current evidence. Review current process guidance separately.</p>:<Stamp source={task.source} />}
         <TaskActions task={task} applications={applications} />
         <CourseTaskChange task={task} />
       </div>

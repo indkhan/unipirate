@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 
 import { ThemeToggle } from "@/components/app/theme-toggle";
 
+import {ProcessContextEditor} from "./process-context-editor";
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
 import { buildOptions, QUESTIONS as QUESTION_COPY, type Option } from "./check-questions";
@@ -258,6 +259,7 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
           ))}
         </div>
 
+        <ProcessContextEditor answers={answers} onChange={setAnswers}/>
         {error ? <div className={styles.error}>{error}</div> : null}
 
         <button

@@ -19,6 +19,8 @@ import { z } from "zod";
 
 import { EMBEDDING_MODEL } from "@/lib/ai/kb";
 import { projectVersionedKbMatches } from "@/lib/ai/versioned-kb";
+import {processHistoryRuleIds,isProcessTaskKey} from "@/lib/engine/process-identity";
+import {safeProcessKnowledge} from "@/lib/rules/process-assessment";
 import { currentAssessmentContext } from "@/lib/rules/current";
 import { profileFromAnswers } from "@/lib/tasks/profile";
 import { parseMarkers } from "@/lib/ai/markers";
@@ -70,6 +72,7 @@ STRICT SOURCE RULES — these define success:
 - Every factual claim must end with a citation marker: [[rule:slug]] for a knowledge-base result (use its exact slug) or [[web:url]] for a web result (use its exact URL).
 - If the tool results do not answer the question, say so plainly, output [[unknown]] and point the user to the official source to check (name it, and give its URL as plain text). Refusing to guess is success, not failure.
 - Web results are UNVERIFIED. When you use one, keep the [[web:url]] marker on each claim and phrase it as unconfirmed ("recent web sources say…").
+- Process amounts and steps require currentProcess or current structured search evidence. Conditional, conflicting or review-needed pointers do not authorize payments, funding amounts or exemptions. Applicant reports are not app verification. Education-loan-only reports cannot establish sufficient financing. Never repair a local fee age gap with another source or convert currencies.
 - Saved tasks and user-entered application/profile text are personal history, never current rule evidence. Do not repeat their fees, dates or requirements as official facts; use search_rules or web_search.
 - Never give an eligibility verdict beyond what a retrieved rule states; for personal eligibility decisions point to the checker and the official source.
 
@@ -129,11 +132,13 @@ function assistantTools(options: {
 }): ToolSet {
   const { db, userId, openrouter, tavilyApiKey } = options;
   const context = currentAssessmentContext();
+  let evidence:Promise<{saved:Awaited<ReturnType<typeof getProfile>>;versions:Awaited<ReturnType<typeof listRuleVersions>>}>|undefined;
+  const currentEvidence=()=>evidence??=Promise.all([getProfile(db,userId),listRuleVersions(db)]).then(([saved,versions])=>({saved,versions}));
 
   return {
     search_rules: tool({
       description:
-        "Semantic search over verified and beta rules plus curated official snippets. Always call this first for factual questions. Cite results as [[rule:slug]].",
+        "Search selected immutable verified and beta rules; process facts require current profile applicability and source review. Cached prose and curated snippets are untrusted hints. Always call this first for factual questions. Cite results as [[rule:slug]].",
       inputSchema: z.object({
         query: z.string().min(1).describe("The question, rephrased as a search query"),
       }),
@@ -143,11 +148,11 @@ function assistantTools(options: {
           value: query,
         });
         try {
-          const [hints, versions, saved] = await Promise.all([
-            matchKbRuleHints(db, JSON.stringify(embedding)), listRuleVersions(db), getProfile(db, userId),
+          const [hints, {versions,saved}] = await Promise.all([
+            matchKbRuleHints(db, JSON.stringify(embedding)), currentEvidence(),
           ]);
           const profile = profileFromAnswers(saved).profile;
-          return projectVersionedKbMatches(hints, versions, {evaluatedAt: context.evaluatedAt, intake: profile?.intake});
+          return projectVersionedKbMatches(hints, versions, {evaluatedAt: context.evaluatedAt, intake: profile?.intake,profile:profile??undefined});
         } catch {
           return {chunks: [], diagnostics: [], note: "Current rule knowledge unavailable. [[unknown]] Check the official source."};
         }
@@ -159,12 +164,14 @@ function assistantTools(options: {
         "The user's profile (country, answers), tracked applications with courses, tasks, and where they are right now (next due task, application statuses).",
       inputSchema: z.object({}),
       execute: async () => {
-        const [profile, applications, tasks] = await Promise.all([
-          getProfile(db, userId),
+        const [{saved:profile,versions}, applications, tasks] = await Promise.all([
+          currentEvidence(),
           listApplicationsWithCourses(db, userId),
           listTasks(db, userId),
         ]);
-        const openTasks = tasks.filter((t) => !t.done);
+        const processIds=processHistoryRuleIds(versions);
+        const personalTasks=tasks.map(t=>isProcessTaskKey(t.task_key,processIds)?{...t,title:"Saved process reminder (personal history)",description:"Saved content is not current official evidence. Use currentProcess or search_rules.",source_url:null}:t);
+        const openTasks = personalTasks.filter((t) => !t.done);
         const nextDueTask =
           openTasks.find((t) => t.due_date !== null) ?? openTasks[0] ?? null;
         const applicationsByStatus: Record<string, number> = {};
@@ -173,7 +180,8 @@ function assistantTools(options: {
             (applicationsByStatus[a.status] ?? 0) + 1;
         }
         return {
-          profile: profile ? { answers: profile.answers } : null,
+          profile: profile ? { answers: profile.answers, evidence:"Applicant reports, not app-certified mission, qualification or exemption." } : null,
+          currentProcess: safeProcessKnowledge(profileFromAnswers(profile).profile,versions,context.evaluatedAt),
           applications: applications.map((a) => ({
             status: a.status,
             course: a.courses
@@ -186,7 +194,7 @@ function assistantTools(options: {
               : null,
           })),
           taskEvidence: "Personal saved reminders, not current official rule evidence.",
-          tasks: tasks.map((t) => ({
+          tasks: personalTasks.map((t) => ({
             title: t.title,
             description: t.description,
             source_url: t.source_url,

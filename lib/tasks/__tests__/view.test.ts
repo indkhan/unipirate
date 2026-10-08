@@ -21,6 +21,7 @@ const task = {
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.getProfile.mockResolvedValue(null);
+  mocks.listRuleVersions.mockResolvedValue([]);
   mocks.listTasks.mockResolvedValue([task]);
 });
 

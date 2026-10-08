@@ -48,3 +48,16 @@ describe("academic isolation", () => {
   expect(evaluate(p9CbseInRiyadh, fixtureRules)).toEqual(before);
  });
 });
+
+describe("integration scope safety",()=>{
+ it("requires exact reported mission for mission-specific observations",()=>{const r=rule({outcomes:{process:{...outcome,mission:"islamabad"}}});expect(run(profile,[r]).guidance[0].status).toBe("conditional");expect(run({...profile,processContext:{...profile.processContext,mission:"islamabad"}},[r]).guidance[0].status).toBe("current");});
+ it("preserves microsecond clock around an inclusive review endpoint",()=>{expect(run(profile,[rule()],"2026-10-07T00:00:00.000001Z").guidance[0].status).toBe("review_needed");});
+});
+
+it("preserves PostgreSQL UTC offsets and rejects reversed microsecond effective endpoints",()=>{
+ const row={...rule(),last_verified_at:"2026-10-07T00:00:00+00:00"};
+ expect(projectProcess(profile,[row],now).guidance[0]?.status).toBe("current");
+ expect(ProcessOutcomeSchema.safeParse({...row.outcomes.process,effective:{from:"2026-10-07T00:00:00.000002Z",through:"2026-10-07T00:00:00.000001Z",intake_indices:null}}).success).toBe(false);
+});
+
+it.each(["other","unknown"])("valid reported filing country %s remains honest unknown",visaApplicationCountry=>{expect(()=>projectProcess({visaApplicationCountry},[],now)).not.toThrow();expect(projectProcess({visaApplicationCountry},[],now).guidance).toEqual([]);});

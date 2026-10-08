@@ -64,7 +64,7 @@ describe("Part E personas", () => {
     expect(r.unknowns.some((u) => /official|confirm/i.test(u))).toBe(true);
     expect(
       r.stepsDetailed.some((s) => /Consular Services Portal/.test(s.text)),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("6. Pakistani 2-yr B.Com → Master's: honest unknown", () => {

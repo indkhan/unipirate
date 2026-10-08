@@ -1,3 +1,5 @@
+import {isLegacyProcessIdentity} from "../engine/process-identity";
+import type {ProcessOutcome} from "../engine/process";
 import { isQuarantinedJeeRule, isScopedJeePathRule } from "../engine/evaluate";
 import { JEE_SOURCE, JEE_FIELD_SOURCE, JEE_LEGACY_SLUG } from "../engine/jee";
 
@@ -23,9 +25,11 @@ type Condition =
   | { op: "in" | "nin"; value: Primitive[] };
 
 export type KbRule = {
+  id?: string; notes?: string | null;
   slug: string;
   conditions: Record<string, Condition>;
   outcomes: {
+    process?: ProcessOutcome;
     path?: string;
     aps?: string;
     aps_scopes?: Partial<Record<"qualification" | "application" | "visa", {
@@ -190,6 +194,7 @@ function renderOutcomes(outcomes: KbRule["outcomes"]): string[] {
 }
 
 export function ruleToChunk(rule: KbRule, options: { includeLegacyDmatQuote?: boolean } = {}): KbChunk {
+  if(rule.outcomes.process || isLegacyProcessIdentity(rule))return {slug:rule.slug,title:rule.slug,content:"Process applicability requires current immutable context. [[unknown]] Confirm with "+rule.source_url,source_url:rule.source_url,last_verified_at:null,country_code:rule.country_code};
   // Changing a historical row's outcomes cannot verify its old admission quote.
   const legacyJee = isQuarantinedJeeRule(rule) ||
     (rule.slug === JEE_LEGACY_SLUG && !isScopedJeePathRule(rule));

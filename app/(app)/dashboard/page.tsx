@@ -1,3 +1,4 @@
+import {ProcessGuidanceCard} from "@/components/app/process-guidance";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -87,7 +88,7 @@ export default async function DashboardPage() {
 
           {!view.hasProfile ? (
             <Link className={styles.profilePrompt} href="/check">
-              Finish eligibility check for global APS, visa, and blocked-account tasks.
+              Finish your academic check and optionally report visa context for scoped process guidance.
             </Link>
           ) : null}
         </header>
@@ -107,6 +108,7 @@ export default async function DashboardPage() {
                 </Link>
               </section>
             ) : null}
+            <ProcessGuidanceCard process={view.process}/>
             <DashboardViews
               key={dashboardViewsKey}
               buckets={view.buckets}

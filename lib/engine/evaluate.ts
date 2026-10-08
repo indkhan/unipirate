@@ -4,6 +4,8 @@
 // and merges outcomes. Missing rules produce explicit `unknown` outcomes with
 // confirm-with-the-official-source messages; the engine never guesses.
 import { z } from "zod";
+import {isLegacyProcessIdentity} from "./process-identity";
+import { ProcessOutcomeSchema, type ProcessProfile } from "./process";
 import { JeeProfileSchema, type JeeProfile, JEE_SOURCE, JEE_FIELD_SOURCE, JEE_ADMISSION_SOURCE } from "./jee";
 import { type IbProfile, deriveIbFacts, IB_FACT_LABELS, IB_SOURCE } from "./ib";
 import { gceEntry, gceIndependent, triples } from "./gce";
@@ -25,6 +27,7 @@ export type Profile = {
   jeeAdvanced?: boolean; // Legacy history only; never proof of qualifying passage.
   jee?: JeeProfile;
   visaApplicationCountry?: string;
+  processContext?: ProcessProfile["processContext"];
   // Explicit issuer context; legacy school attendance is never an APS issuer.
   schoolQualification?: { country?: string; context?: "national" | "international" | "unknown" };
   visaMissionContext?: "saudi_study" | "other" | "unknown";
@@ -218,6 +221,7 @@ const ApsScopesSchema = z.object({
 
 const RuleOutcomesSchema = z
   .object({
+    process: ProcessOutcomeSchema.optional(),
     path: PathValue.optional(),
     aps: FlagValue.optional(),
     aps_scopes: ApsScopesSchema.optional(),
@@ -548,7 +552,7 @@ function conditionPasses(fact: Fact | undefined, cond: Condition): boolean {
   }
 }
 
-function ruleMatches(facts: Record<string, Fact>, rule: ParsedRule): boolean {
+export function ruleMatches(facts: Record<string, Fact>, rule: ParsedRule): boolean {
   return Object.entries(rule.conditions).every(([key, cond]) =>
     conditionPasses(facts[key], cond),
   );
@@ -591,7 +595,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     const parsed = EngineRuleSchema.safeParse(r);
     // invalid rows and drafts are skipped: drafts are never user-facing, and a
     // malformed record must not take the checker down
-    return parsed.success && parsed.data.status !== "draft" ? [parsed.data] : [];
+    return parsed.success && parsed.data.status !== "draft" && !parsed.data.outcomes.process && !isLegacyProcessIdentity(parsed.data) ? [parsed.data] : [];
   });
   const facts = deriveFacts(profile);
   // A positive GCE path matches one complete three-AL witness. Other routes,

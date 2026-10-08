@@ -2,6 +2,7 @@
 // answers looks like, and how answers map onto the engine Profile.
 // No I/O, no React — unit-tested in __tests__/steps.test.ts.
 import { z } from "zod";
+import {ProcessContextSchema} from "@/lib/engine/process";
 import { JeeStatusSchema, JeeContextSchema, JeeSchoolCertificateSchema, JeeTargetFamilySchema } from "@/lib/engine/jee";
 import { IB_SUBJECTS, ibEntry, IbProfileSchema } from "@/lib/engine/ib";
 export { IB_SUBJECTS } from "@/lib/engine/ib";
@@ -203,6 +204,7 @@ export const JEE_STEPS = ["jeeSchoolCertificate", "jeeMainStatus", "jeeAdvancedS
 
 const AnswerFieldsSchema = z
   .object({
+    processContext: ProcessContextSchema.optional(),
     indiaStudyRouteVersion: z.literal(1).optional(),
     priorStudyMode: z.enum(["regular", "distance_online", "other", "unknown"]).optional(),
     priorStudyRecognition: z.enum(["reported_official_confirmed", "reported_official_rejected", "unknown"]).optional(),
@@ -556,6 +558,7 @@ export function withAnswer<K extends StepId>(
   }
   if (next.curriculumType === 'gce' && next.targetDegree === 'bachelor') next.gceVersion=1;
   if (answers[field] !== value) {
+    if(field==="visaApplicationCountry")delete next.processContext;
     if (["targetDegree", "curriculumType", "certificateCountry", "schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent"].includes(field)) {
       for (const key of JEE_STEPS) delete next[key];
       delete next.jeeAdvanced;
@@ -641,7 +644,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
     changed = false;
     const visible = new Set<string>(visibleSteps(next));
     for (const key of Object.keys(next)) {
-      if (key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && key !== "jeeVersion" && !visible.has(key)) {
+      if (key !== "processContext" && key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && key !== "jeeVersion" && !visible.has(key)) {
         delete next[key as StepId];
         changed = true;
       }
@@ -715,6 +718,7 @@ export function buildProfile(answers: Answers): Profile {
     curriculumType: tertiary ? "other" : answers.curriculumType ?? "other",
     targetField: answers.targetField,
   };
+  if(answers.processContext)profile.processContext=answers.processContext;
   if (visibleSteps(answers).includes("apsProcedureStatus") && answers.apsProcedureStatus !== undefined) {
     profile.apsProcedure = {
       status: answers.apsProcedureStatus,
@@ -853,4 +857,15 @@ export function hasDuplicateIbSubjects(subjects:IbSubjectAnswer[]):boolean {
  const keys=subjects.filter(s=>s.subjectId!=='other').map(s=>{
    const e=ibEntry(s.subjectId);return e?.kind==='language'||e?.course==='ab_initio'?s.subjectId+':'+(s.language??'').trim().toLowerCase():s.subjectId;
  });return new Set(keys).size!==keys.length;
+}
+
+/** Process reports never upgrade, prune or establish academic evidence. */
+export function withProcessContext<K extends keyof z.infer<typeof ProcessContextSchema>>(answers:PartialAnswers,field:K,value:z.infer<typeof ProcessContextSchema>[K]):PartialAnswers {
+ const report={...answers.processContext,version:1 as const,[field]:value};
+ if(answers.processContext?.[field]!==value){
+  if(field==="purpose" || field==="mission"){delete report.missionConfirmed;delete report.exception;delete report.ageBracket;delete report.fundingMethod;}
+  if(field==="kind"){delete report.ageBracket;delete report.exception;delete report.fundingMethod;}
+  if(field==="missionConfirmed")delete report.exception;
+ }
+ return {...answers,processContext:ProcessContextSchema.parse(report)};
 }
