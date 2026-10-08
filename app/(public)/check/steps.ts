@@ -485,7 +485,7 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   }
   // National bachelor routes can depend on previous university study. GCE/IB
   // history is reserved for their route issues; no eligibility is inferred here.
-  if (answers.targetDegree === "master" || (bachelor && answers.curriculumType === "national" && (!saudiFlow || isSaudiStudyBranch(answers)))) {
+  if (answers.targetDegree === "master" || (bachelor && answers.curriculumType === "national" && (!isSaudiCertificateBranch(answers) || isSaudiStudyBranch(answers)))) {
     steps.push("hasPriorUniversityStudy");
     if (answers.hasPriorUniversityStudy === true) {
       steps.push("priorQualificationType");
@@ -677,7 +677,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
     changed = false;
     const visible = new Set<string>(visibleSteps(next));
     // A newly introduced subtype question must not erase a restored history before the user chooses it.
-    if (next.saudiCertificateVersion === 1 && next.saudiCertificateSubtype === undefined && next.targetDegree === "bachelor" && next.curriculumType === "national" && (next.certificateCountry === "sa" || next.schoolQualificationCountry === "sa")) {
+    if (isSaudiCertificateBranch(next) && next.saudiCertificateSubtype === undefined) {
       for (const key of [...HISTORY_STEPS, ...INDIA_STUDY_STEPS]) visible.add(key);
     }
     for (const key of Object.keys(next)) {

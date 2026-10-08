@@ -198,3 +198,36 @@ it("restores Saudi edits at the new explicit subtype without guessing or droppin
   expect(restored.removeItem).not.toHaveBeenCalled();
   expect(saved.saudiCertificateVersion).toBeUndefined();
 });
+
+it("restores a Saudi-to-India issuer edit with visible core history and missing assessment", () => {
+  const edited = withAnswer(withAnswer({ ...saudiAnswers, board: "cbse", schoolGradePercent: 70, jeeAdvanced: false }, "schoolQualificationCountry", "in"), "schoolQualificationContext", "national");
+  const result = recover(JSON.stringify({ answers: { ...edited, board: "cbse", schoolGradePercent: 70, jeeAdvanced: false, hasExistingApsCertificate: false }, stepIndex: 99 }));
+  const a = result.answers as PartialAnswers;
+  expect(result.removeItem).not.toHaveBeenCalled();
+  expect(visibleSteps(a)).toContain("hasPriorUniversityStudy");
+  expect(visibleSteps(a)).toContain("priorStudyInstitution");
+  expect(visibleSteps(a)).toContain("yearsOfUniversityStudy");
+  expect(a.priorStudyInstitution).toBe(saudiAnswers.priorStudyInstitution);
+  expect(a.priorStudyRecognitionReference).toBeUndefined();
+  expect(a.priorStudyMode).toBeUndefined();
+  expect(result.stepIndex).toBe(visibleSteps(a).indexOf("priorStudyMode"));
+  for (const key of ["schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent"]) expect(visibleSteps(a).filter(s => s === key)).toHaveLength(1);
+});
+it("restores India-to-Saudi at missing subtype then exposes core history after explicit choice", () => {
+  const edited = withAnswer(withAnswer(indiaAnswers, "schoolQualificationCountry", "sa"), "schoolQualificationContext", "national");
+  const result = recover(JSON.stringify({ answers: edited, stepIndex: 99 }), "in");
+  const a = result.answers as PartialAnswers;
+  expect(result.removeItem).not.toHaveBeenCalled();
+  expect(result.stepIndex).toBe(visibleSteps(a).indexOf("saudiCertificateSubtype"));
+  expect(visibleSteps(a)).not.toContain("hasPriorUniversityStudy");
+  const chosen = withAnswer(a, "saudiCertificateSubtype", "industrial_certificate");
+  expect(visibleSteps(chosen)).toContain("hasPriorUniversityStudy");
+  expect(chosen.priorStudyRecognitionReference).toBeUndefined();
+});
+it("does not restore stale foreign degree detail through a missing Saudi subtype", () => {
+  const saved = { ...indiaAnswers, certificateCountry: "sa", saudiCertificateVersion: 1, hasPriorUniversityStudy: false };
+  const result = recover(JSON.stringify({ answers: saved, stepIndex: 99 }));
+  expect(result.removeItem).not.toHaveBeenCalled();
+  expect(result.answers).not.toHaveProperty("priorStudyInstitution");
+  expect(result.answers).not.toHaveProperty("priorStudyRecognitionReference");
+});
