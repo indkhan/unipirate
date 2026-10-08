@@ -39,8 +39,8 @@ app/ routes ──────────── server components render, serve
 lib/ modules
   ├─ engine/      pure rule evaluation        (zero I/O, unit-tested)
   ├─ tasks/       generate (pure) → materialize (write) → view (read)
-  ├─ courses/     URL normalization + deterministic DAAD parser
-  ├─ ai/          assistant, KB rendering, extraction fallback, markers
+  ├─ courses/     URL normalization, DAAD manual fallback, research/evidence contracts
+  ├─ ai/          assistant, KB rendering, bounded course research, markers
   ├─ checks/      anonymous-result ownership tokens
   ├─ auth/        requireUser/requireAdmin guards, safe redirects
   └─ db/          typed Supabase clients + ALL queries
@@ -315,9 +315,8 @@ There is no migration, DB publication, seed or KB rebuild in this change.
 
 ### 2. Course import & review
 
-1. A user pastes a course URL (plus the page's Ctrl+A text — the server
-   never fetches external pages) into the add-course sheet → `POST
-   /api/courses/import`.
+1. A user pastes a course URL, programme/university identity and the page's
+   Ctrl+A text into the add-course sheet → `POST /api/courses/import`.
    DAAD's hidden tabs are not included by Ctrl+A: the sheet instructs users
    to append the overview, requirements and fees tabs. The deterministic
    parser supports both legacy and current labels, preserves complete
@@ -326,13 +325,64 @@ There is no migration, DB publication, seed or KB rebuild in this change.
    dedupe. An existing course is linked to the user's dashboard instead of
    re-imported; a colliding pending import from another user surfaces as
    409 via the unique index.
-3. Extraction: the deterministic DAAD label parser
-   (`lib/courses/parse-daad.ts`) runs first; the AI fallback
-   (`lib/ai/extract-course.ts`) fills only the fields the parser missed,
-   with verbatim-quote prompting, zod validation and literal substring checks
-   against the pasted source. Unsupported AI values are discarded. Facts are stored
-   verbatim — deadlines and tuition are never reformatted.
-4. New imports land as `pending` and are visible only to their importer
+3. Research runs even for a completely parsed paste. The DAAD parser provides
+   manual fallback, never a completeness decision. `lib/ai/research-course.ts`
+   uses the existing Tavily HTTP API and configured OpenRouter extraction model
+   in a fixed workflow (three searches, at most three extraction batches, one
+   structured generation, no retries, 90-second total abort). Search begins on
+   DAAD/uni-assist; a retrieved DAAD page matching both identity labels may
+   endorse university/application website links on German domains. Pasted links,
+   arbitrary search hits and model URLs cannot expand that allowlist. Restricted
+   extraction follows official programme/regulations/PDF links, keeping at most
+   12 observations of 20,000 characters each; provider JSON is byte-bounded.
+   Full pasted text (up to 200,000 characters) is retained for manual recovery.
+4. Pure `lib/courses/research.ts` validates every model URL and literal quote
+   against retrieved observations, programme identity, source scope and applicant
+   wording. An effective intake needs explicit source term/year; source retrieval
+   is never an intake boundary. Unknown scope retains non-publishable sourced
+   captures. Complete scopes contain pending assertions or explicit topic gaps
+   (deadline, route, prerequisites, language/exemptions, tuition/semester fee,
+   documents/application link). Competing assertions remain unresolved with all
+   alternatives. Shape/literal checks establish fidelity, not semantic correctness.
+   The model-facing fact schema uses seven strict kind branches: only route facts
+   carry non-null route metadata, and only deadline facts carry non-null deadline
+   kind metadata. These constraints are present in the SDK tool JSON Schema;
+   invalid combinations retain incomplete manual recovery rather than being repaired.
+   Model reviewer/status/date metadata is rejected. Web/AI failure retains manual
+   values and a visible incomplete status; no error bodies or credentials are logged.
+5. The draft lives under `courses.field_extraction.research` with format
+   `up-course-01/v1`, alongside legacy provenance. Import uses only the caller's
+   course insert permission; catalogue writes remain admin-only. Saving legacy
+   manual edits preserves research. Both old approve and keep-update paths reject
+   research drafts (including malformed captures); approved research courses cannot
+   acquire new assertions through the legacy edit helper.
+6. Minimal review in the admin queue shows wording, applicability, retrieval time,
+   official URL, conflicts and gaps. The reviewer explicitly checks current primary
+   sources and selects accepted supported facts. Unselected/conflicting facts remain
+   unresolved, and normalized dates stay null. `publishAdminCourseResearch` validates
+   all selections before writes, reuses canonical programme/offering identities and
+   calls one atomic reviewed-version/protected-journal RPC per offering, with DB-derived
+   reviewer/time and the original raw research equality token.
+   A new legacy course publishes only its identity; broad unreviewed requirements,
+   fees and deadlines are cleared rather than entering legacy task planning. Existing
+   tasks and definitions are untouched. Research updates publish scoped versions
+   against the original course, then the existing reject-update RPC merges the
+   submitter's tracking link without replacing original facts or student progress.
+   Public course pages read the latest reviewed snapshot per offering and cite its
+   evidence; unresolved assertions never receive a reviewed label.
+   Trade-off: publication spans multiple caller-scoped requests. Partial failure
+   can expose only the course identity before a reviewed version finishes; retry
+   reuses linked scopes and preserves append-only history. No service escalation,
+   migration, backfill or automatic task integration is introduced. COURSE03 will
+   extend this same draft format/review boundary with field editing and conflict
+   resolution; it should not invent a second review contract.
+   A small JSON recovery editor allows admins to repair pending captures and
+   source-supported scope after web/AI failure. New human-entered observations
+   are labelled `manual`, and newly supplied `web` captures are relabelled server-side.
+   Source/identity/intake/literal checks apply to manual recovery too. Saving neither
+   supplies reviewer metadata nor publishes; the explicit acceptance step remains
+   mandatory. Conflict acceptance requires an explicit pending repair/resolution.
+7. New imports land as `pending` and are visible only to their importer
    until an admin approves them in `/admin`. "The page changed" submissions
    carry `conflicts_with` and get a side-by-side resolution UI backed by
    the atomic `resolve_course_conflict` DB function.
@@ -523,7 +573,7 @@ keep-old/keep-new), `match_kb_chunks` (semantic search), `is_admin`.
 | Add a DB query | `lib/db/queries.ts` (user) or `admin-queries.ts` (admin) |
 | Change the schema | new file in `supabase/migrations/` → `supabase db push` → `pnpm db:types` → RLS test |
 | Change assistant behavior | prompt/tools in `lib/ai/assistant.ts`; rerun `pnpm eval:assistant` |
-| Add course-page extraction support | labels in `lib/courses/parse-daad.ts`; the AI fallback needs no change |
+| Add course-page research support | `lib/ai/research-course.ts` for I/O, `lib/courses/research.ts` for evidence/scope decisions; DAAD parser is manual fallback |
 | Add an env var | `lib/env.ts` schemas + `runtimeEnv` + `.env.example` |
 
 ### Additive programme catalogue (UP-COURSE-02)
@@ -551,9 +601,10 @@ versions and scopes with verified versions. A public version can contain verifie
 or explicitly unresolved fields, never pending/rejected research. Pending research
 is admin-only; fact corrections and review decisions append a new version rather than
 mutating history. Query helpers return all reviewed history newest first, leaving
-version selection explicit. Catalogue publication stays explicit. The PROC01 consumer below integrates reviewed
+version selection explicit. UP-COURSE-01 integrates research import, explicit
+review/publication and public reading. The PROC01 consumer below integrates reviewed
 offering selection and tasks; there is no automatic import, backfill or publication,
-and legacy course/application/task identities remain intact.
+and existing course/application/task identities stay intact.
 
 Programme labels (name, institution, degree, source URL) can be corrected by an
 admin on the same canonical ID. The database freezes the ID, established legacy
@@ -579,7 +630,7 @@ Research programmes may start with a null legacy link. After a legacy course is
 approved and is not a conflict submission, `attachAdminProgrammeLegacyCourse`
 attaches it once on the same programme ID; replacement/detachment is forbidden.
 Publication integration can approve the legacy course, attach once, then append a
-reviewed version. This change implements no publication/AI/UI workflow. Linked
+reviewed version. UP-COURSE-01 uses that lifecycle through caller-scoped helpers. Linked
 courses must remain approved/non-conflict, while unmapped pending/conflict rows
 remain removable through existing operations. Existing applications and task values
 are never rewritten by either catalogue migration.
@@ -620,6 +671,88 @@ record key boundary reject `__proto__`, which record parsing would silently drop
 Other map keys, including `constructor` and `toString`, remain ordinary properties;
 empty maps, booleans, arrays and verbatim strings retain the existing contract.
 No existing applicability map is rewritten or given an inferred vocabulary.
+
+### COURSE01 / PROC01 interface
+
+The shared payload remains `OfferingFactSchema`; no catalogue schema change.
+Missing or unsupported nonnull model scope uses the same unscoped recovery path:
+only literal fact wording from retrieved official identity pages or their actually
+captured link chain survives. Model intake/applicant assertions are discarded, with
+explicit unresolved applicability, pending status and no planning/reviewer metadata.
+Unlinked sources and invented wording do not survive recovery; an empty recovery
+reports that no capture matched evidence. Recovery validation enforces this provenance
+and unknown label. Publication requires a captured valid offering scope and cannot
+publish an unscoped-only draft even with an empty acceptance selection. The existing
+strict offering/review/conflict guards remain the boundary when a human repairs scope.
+Manual recovery and publication validate the same captured applicability boundary:
+`source_scope` must equal the actual offering scope quote, every field's applicant
+label must equal the offering label, and its evidence must carry that captured
+identity/intake/group context or be explicitly linked from the captured scope page.
+Legacy keep-update resolution checks both incoming and canonical research markers;
+it cannot replace a research canonical record through the old task-sync workflow.
+Known source-named language instruments (IELTS, TOEFL, TestDaF, DSH, Cambridge,
+CEFR) identify independent semantic requirements regardless of model field labels.
+Combined assertions participate in each named instrument identity: an IELTS/TOEFL
+assertion overlaps a separate IELTS assertion. Different verbatim assertions with
+overlapping instruments require unresolved conflict review; no score parsing or
+equivalence is invented. Disjoint instruments and identical wording remain valid.
+Unknown instrument wording is conservatively grouped for review. Initial generation,
+manual recovery and publication enforce the same overlap decisions.
+Competing wording for the same instrument is unresolved; distinct instruments remain
+separate alternatives. Recovery cannot insert opposing pending semantic assertions.
+Route, stage/deadline, explicit language exemptions, tuition and semester-fee wording
+also receive semantic conflict identities; unrelated document/prerequisite labels
+remain separate captures rather than conflating all requirements into one field.
+
+Bounded retrieval deduplicates fragment/trailing-slash source variants while keeping
+the actually returned source URL and literal captured text. Retrieved DAAD identity
+mismatches are excluded from applicable evidence. Admission/application/regulation/PDF
+links rank before generic home/living/career navigation; current fees follow those
+consequential sources. DAAD's topical literal angle-bracket links can establish a
+university domain through the same retrieved programme identity boundary. The model
+receives retrieved web observations and identity, without duplicating the full paste;
+paste remains available in manual recovery. The existing 20,000-character source
+capture cap now reports any omitted text explicitly as unresolved rather than hiding
+the truncation. Shared 90-second budget, provider and SDK remain unchanged.
+Sanitized failure categories report timeout or invalid/unavailable response, never
+provider bodies or keys. Real provider acceptance still requires root's clean smoke.
+The configured `nvidia/nemotron-3-super-120b-a12b:free` import uses the existing SDK's
+`generateText` with one forced native `submit_research` tool, strict
+`ResearchOutputSchema` input and no execute handler or agent loop. Its supported
+OpenRouter setting disables reasoning through `extraBody.reasoning.enabled: false`;
+no response-format request is sent. Exactly one valid tool submission is required
+before the existing literal observation/provenance checks build a pending draft.
+The 6,000-token output cap favors a rich partial draft over exhaustive prose within
+the unchanged shared 90-second limit. Missing, wrong, malformed or truncated tool
+output retains explicit incomplete/manual recovery. Root's same-model diagnostic
+established native-tool capability, not full-workflow operational acceptance.
+Reviewed routes use kind `route` and its typed route value. Portal facts use kind
+`description`, literal HTTPS portal URL as `verbatim`, and exact keys
+`application_link:university`, `application_link:vpd`, `application_link:uniassist`.
+Source URLs identify evidence pages and must never be substituted for portal URLs.
+Deadline keys are `deadline:<stage>:<deadline_kind>` with those same three stages
+and the existing typed deadline semantics. A VPD preparation target is not an
+official application closing date. Different stages do not create false conflicts.
+Generic or unsupported stage captures cannot be accepted through publication;
+they remain unresolved unless manual correction supplies captured literal stage
+evidence. Current conservative wording checks admit explicit university application,
+VPD/Vorprüfungsdokumentation, or uni-assist application wording; unfamiliar wording
+requires manual source capture and remains unknown if still unsupported.
+
+Consumers must select a specific offering (programme, effective term/year and
+literal applicant group), then consume only verified fields from a reviewed
+version. `applicability.source_scope` retains the actual scope quote; applicant
+groups are literal labels, not an implemented resolver vocabulary. Neither fuzzy
+descriptions nor global profile intake establish application context. Dates remain
+unnormalized in COURSE01. PROC01 planning must preserve unknown dates and stages.
+
+Applications persist `course_id` plus an optional reviewed `offering_id` and
+`offering_applicant_context` (`{applicant_group, confirmed: true}`, or both
+null). The selection requires explicit intake/group confirmation and derives the
+immutable reviewed version/snapshot at use time; see “Explicit offering
+application procedure (UP-PROC-01)” below. There is no automatic import,
+backfill, or publication, and the legacy `course_id` and student state are
+preserved.
 
 ### Scoped APS contract (UP-ELIG-05)
 
@@ -733,6 +866,122 @@ neither replaces APS nor guarantees recognition/admission; a low score alone is
 not an APS refusal. The current APS clarification permits other complete documents
 before the dMAT certificate. Source checks dated 2026-10-07 are verification dates,
 not policy cutoffs. No database migration or generated type change is required.
+
+### Bounded import model context
+
+Captured observations remain unchanged for literal evidence validation and manual
+review. The model receives at most four official identity-linked sources and
+16,000 characters of literal excerpts (4,000 per source, 2,000 per excerpt).
+Identity and admission/intake/language/fee/document paragraphs rank before navigation
+and unrelated prose; unrelated search-only sources do not consume model context.
+Excerpts are actual substrings, not rewritten summaries or inferred applicability.
+Identical paragraphs consume the model budget once; original captures remain intact.
+A paragraph is emitted only when it fits in full within the remaining source budget;
+long paragraphs that fit retain separate contiguous slices. This prevents clipping
+a later condition or exception even when it lacks recognized warning wording.
+Omitted sources/text are disclosed; unknown effective scope remains unknown. Quotes
+must come from one excerpt and are still checked against original observations.
+This intentionally favors a useful partial multi-source draft over exhaustive
+research within the unchanged 90-second bound. Provider latency remains a root-owned
+real-workflow acceptance gate. Offering-free publication messaging now correctly
+requires captured intake/applicant scope before publication.
+
+### Omission reconciliation and combined fee conflicts
+
+Omitted substantive captured text cannot silently turn a surviving AI assertion into
+a verified fact. The review guard recomputes omissions from original captures (also
+for manual recovery); draft status, issue strings and client flags cannot bypass it.
+Each selected field requires a separate authenticated admin reconciliation checkbox
+and rationale after comparing the full captured sources and actual applicability.
+Unselected fields remain unresolved. Separator whitespace alone is not a substantive
+omission. Known model conflicts still require correction and cannot be overridden by
+this decision. No contradiction is inferred automatically from raw source wording.
+
+The caller-scoped publication helper retains the original RAW stored research JSON
+and preflights every offering/selection before any mutation. Every accepted local
+field requires a rationale, including when the model context omitted nothing.
+Identity approval, programme attachment and exact scope lookup remain separate
+requests. Each offering calls the authenticated admin-only
+publish_course_research_version RPC once with the next actual version number,
+local accepted keys/decisions and that same raw JSON equality token. The token is
+never reconstructed from parsed/trimmed Zod output or refreshed after preflight.
+Immediately after locking the submitted row, SQL rejects changed research with
+"research changed; reload and review again". Facts/full observations originate only
+from the locked row; reviewer and one consistent timestamp originate from DB
+identity/clock. One verified version and its protected audit event are atomic.
+There are no direct pending/verified inserts or editable metadata audit appends in
+this workflow. Errors propagate without automatic retry, success redirect or
+conflict cleanup. Keep-original resolution runs only after every RPC succeeds.
+Trade-off: setup and multiple offerings are not one transaction; an earlier
+successful version survives a later failure, and retry may append another version.
+No application/task/definition/progress sync is introduced.
+
+The reserved additive migration adds admin_audit_events.course_reconciliation
+without replacing existing status/programme-correction history or relaxing RLS.
+The payload records complete original observations, submitted ID, identity/scope,
+field decisions, immutable reviewer/time and actual offering/version UUID links.
+Caller-scoped admin queries bound history reads to a canonical envelope row ID.
+Strict pure Zod validation checks the entire protected payload/envelope; malformed
+records render explicitly unavailable, without partial trusted claims. The existing
+review queues receive validated history through page props. The existing audit view
+shows recent protected events and offers an approved-course history selector, so
+journal captures remain reachable after the incoming submission is deleted.
+The immutable payload retains reviewer/time after an account deletion nulls the
+outer actor FK; it is never mislabeled as a system review.
+
+Legacy research_reconciliations arrays remain caller-editable and visibly labelled
+"Untrusted legacy reconciliation data — caller-editable metadata". No UUID, timestamp
+or schema validation retrofits authenticity. They never enter the protected journal.
+The canonical research marker still guards legacy generic replacements even before
+a partial publication succeeds. If absent, only original raw research is merged as
+an untrusted guard marker using an exact conditional metadata update; existing
+canonical research and sibling metadata are preserved, and concurrent sibling edits
+force reload. Incoming legacy journal siblings are never copied into the canonical.
+Manual recovery preserves every original web/manual/paste observation exactly plus
+original draft.paste, while newly entered web content is labelled manual. Retained
+captures are merged before final evidence/scope validation; capacity overflow rejects
+instead of silently truncating evidence. Source quotes and retrieval timestamps remain
+unchanged. The root-generated schema types are consumed unchanged. Root owns SQL/RLS,
+DB/browser/build and real-provider acceptance; unit HTTP fixtures prove control flow,
+not database atomicity or operational provider success.
+
+Combined fee wording participates in both tuition and semester-fee identities.
+Overlapping differing assertions stay unresolved during build, stored-draft validation
+and review, while disjoint fees and identical quoted duplicates remain valid. Stored
+pending fields are also checked against every retained conflict alternative semantic
+identity in their offering, regardless of keys. An alias of even one literal
+alternative cannot become verified while that known conflict remains unresolved;
+omission reconciliation is not conflict resolution. Conflict records must retain
+their unresolved field and captured, applicant-scoped alternatives. Separate captured
+applicant offerings and unrelated semantic fields remain independent.
+No amounts, equivalences, dates or applicability are parsed/invented to settle a conflict.
+Native provider settings, timeout, retries and model context budget are unchanged.
+
+### Course research metadata compare-and-set transport
+
+Pending manual recovery and the canonical untrusted research marker use
+`compare_and_set_course_research_metadata` through the caller-scoped admin client.
+The additive migration `20261007000104_course_research_metadata_cas.sql` puts
+complete expected/new metadata in a POST RPC body; source captures and paste no
+longer become a PostgREST URL equality filter. Zod validates the boundary before
+mutation, and the original raw stored metadata remains the exact equality token.
+
+The function is security invoker with an empty fixed search path, authenticated-only
+execution, an explicit authenticated admin check, and existing courses RLS. It locks
+the row, compares all JSONB metadata, enforces exact sibling preservation and the
+pending-recovery/approved-unmarked-canonical lifecycle, then returns the actual
+updated course. Changed metadata or lifecycle rejects without mutation. SQL NULL
+has an explicit expectation flag; JSON null is distinct and is rejected as malformed
+metadata rather than normalized to an empty object. A null value returned by the
+normal course read retains the old SQL-NULL-only expectation, so a JSON-null legacy
+row cannot be silently overwritten. Neither path publishes or authenticates research.
+
+The shared strict source/scope/conflict/capture checks, original paste retention,
+manual-origin labels and explicit reviewed-version publication remain unchanged.
+`supabase/tests/course_research_metadata_cas.sql` supplies transactional disposable
+SQL cases. Real schema application, generated types, RLS and actual large-draft
+browser acceptance remain root-owned; HTTP fetch fixtures establish request
+construction and error propagation only.
 
 ### Indian Class XII plus successful bachelor study (UP-ELIG-03)
 

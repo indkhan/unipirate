@@ -8,11 +8,16 @@ import {
   listActiveCourseTaskDefinitions,
   listApplications,
   listTasks,
+  getProgrammeByLegacyCourse,
+  listCourseOfferings,
+  listReviewedOfferingVersions,
 } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
 
 import styles from "./course.module.css";
 import { CourseTaskList } from "./course-task-list";
+import { ReviewedOfferings } from "./reviewed-offerings";
+import { hasResearch, readResearch } from "@/lib/courses/research";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +62,15 @@ export default async function CoursePage({
   const tuition = typeof course.tuition === "string" ? course.tuition : null;
   const host = new URL(course.source_url).hostname;
   const definitions = await listActiveCourseTaskDefinitions(db, course.id);
+  const programme = await getProgrammeByLegacyCourse(db, course.id);
+  const offerings = programme ? await listCourseOfferings(db, programme.id) : [];
+  const reviewed = (await Promise.all(offerings.map(async o => {
+    const latest = (await listReviewedOfferingVersions(db, o.id))[0];
+    return latest ? [{ ...o, facts: latest.facts }] : [];
+  }))).flat();
+  let researchIncomplete = false;
+  try { researchIncomplete = readResearch(course.field_extraction)?.status === "incomplete"; }
+  catch { researchIncomplete = hasResearch(course.field_extraction); }
   const { data: auth } = await db.auth.getUser();
   let myTasks: Awaited<ReturnType<typeof listTasks>> | null = null;
   if (auth.user) {
@@ -87,6 +101,7 @@ export default async function CoursePage({
             In review — only you can see this course until it is approved.
           </p>
         ) : null}
+        {course.review_status !== "approved" && researchIncomplete ? <p className={styles.pendingBanner}>Research is incomplete. Pasted details are unverified; missing or conflicting facts stay unresolved.</p> : null}
 
         <section className={styles.card}>
           <h1 className={styles.courseName}>
@@ -185,6 +200,7 @@ export default async function CoursePage({
           )}
         </section>
 
+        <ReviewedOfferings offerings={reviewed} />
         <CourseTaskList
           definitions={definitions}
           myTasks={myTasks}

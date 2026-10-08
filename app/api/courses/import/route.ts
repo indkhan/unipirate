@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { extractCourse } from "@/lib/ai/extract-course";
+import { boundedJson } from "@/lib/ai/research-course";
+import { ResearchDraftSchema, ResearchUrlSchema } from "@/lib/courses/research";
+import type { ExtractedCourse } from "@/lib/ai/extract-course";
 import { normalizeUrl } from "@/lib/courses/import";
 import {
   getCourseById,
@@ -13,7 +16,8 @@ import { createClient } from "@/lib/db/server";
 import { trackCourse } from "@/lib/tasks/materialize";
 
 const ImportRequestSchema = z.object({
-  url: z.string().url("Enter the full course URL (starting with https://)."),
+  url: ResearchUrlSchema,
+  identity: z.object({ name: z.string().trim().min(1).max(240), university: z.string().trim().min(1).max(240) }).strict().optional(),
   // Absent text = lookup only: "does this URL already have a course?"
   text: z
     .string()
@@ -22,7 +26,7 @@ const ImportRequestSchema = z.object({
     .optional(),
   // Set = "the page changed" update submission against that existing course.
   conflictsWith: z.string().uuid().optional(),
-});
+}).strict();
 
 export async function POST(request: Request) {
   const db = await createClient();
@@ -35,7 +39,7 @@ export async function POST(request: Request) {
 
   let body: unknown;
   try {
-    body = await request.json();
+    body = await boundedJson(request, 850_000);
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
@@ -46,7 +50,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const { url, text, conflictsWith } = parsed.data;
+  const { url, text, conflictsWith, identity } = parsed.data;
 
   const normalizedUrl = normalizeUrl(url);
 
@@ -86,7 +90,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const { facts, fieldExtraction, extractionMethod } = await extractCourse(url, text);
+  let extracted: ExtractedCourse;
+  try { extracted = await extractCourse(url, text, undefined, identity); }
+  catch {
+    return NextResponse.json({ error: "Enter the programme and university names, and retain the pasted source for manual review." }, { status: 422 });
+  }
+  const { facts, fieldExtraction, extractionMethod } = extracted;
+  const research = ResearchDraftSchema.parse(extracted.research);
   if (!facts.name && facts.deadlines.length === 0) {
     return NextResponse.json(
       {
@@ -114,10 +124,10 @@ export async function POST(request: Request) {
       requirements: facts.requirements,
       tuition: facts.tuition,
       extraction_method: extractionMethod,
-      field_extraction: fieldExtraction,
+      field_extraction: { ...fieldExtraction, research },
     });
     await trackCourse(db, user.id, course.id);
-    return NextResponse.json({ course }, { status: 201 });
+    return NextResponse.json({ course, researchStatus: research.status }, { status: 201 });
   } catch (error) {
     // Someone else's pending course is invisible to RLS, so the dedupe check
     // can miss it — the unique index on normalized_url is the backstop.

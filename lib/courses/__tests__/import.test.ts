@@ -4,7 +4,6 @@ import {
   CourseFactsSchema,
   EMPTY_FACTS,
   firstDeadline,
-  missingRequired,
   normalizeUrl,
 } from "../import";
 
@@ -74,25 +73,5 @@ describe("CourseFactsSchema", () => {
     expect(() =>
       CourseFactsSchema.parse({ ...EMPTY_FACTS, deadlines: [""] }),
     ).toThrow();
-  });
-});
-
-describe("missingRequired", () => {
-  const full = {
-    ...EMPTY_FACTS,
-    name: "MSc CS",
-    university: "Uni Freiburg",
-    degree: "Master of Science",
-    language: "English",
-    deadlines: ["15 April to 31 May"],
-  };
-
-  it("is false when all required fields exist", () => {
-    expect(missingRequired(full)).toBe(false);
-  });
-
-  it("is true when any required field is missing", () => {
-    expect(missingRequired({ ...full, language: null })).toBe(true);
-    expect(missingRequired({ ...full, deadlines: [] })).toBe(true);
   });
 });

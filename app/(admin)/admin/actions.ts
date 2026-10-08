@@ -15,7 +15,10 @@ import {
   updateAdminRule,
   updateCourseReviewStatus,
   syncAdminCourseTaskDefinitions,
+  publishAdminCourseResearch,
+  saveAdminCourseResearchDraft,
 } from "@/lib/db/admin-queries";
+import { hasResearch, ResearchDraftSchema } from "@/lib/courses/research";
 import { normalizeUrl } from "@/lib/courses/import";
 import type { Json } from "@/lib/db/database.types";
 import { CalendarDateSchema } from "@/lib/engine/calendar-day";
@@ -117,6 +120,8 @@ export async function reviewCourseAction(formData: FormData) {
     review_status: formData.get("review_status"),
   });
 
+  const existing = await getAdminCourse(db, values.id);
+  if (values.review_status === "approved" && hasResearch(existing.field_extraction)) throw new Error("Use explicit research review/publication for this draft.");
   const course = await updateCourseReviewStatus(db, values.id, values.review_status);
   if (values.review_status === "approved") {
     await ensureSourceTaskDefinitions(db, course);
@@ -124,6 +129,28 @@ export async function reviewCourseAction(formData: FormData) {
   }
 
   redirect(`/admin?view=reviews&queue=pending&message=${encodeURIComponent(values.review_status === "approved" ? "Course approved." : "Course rejected.")}`);
+}
+
+export async function publishCourseResearchAction(formData: FormData) {
+  const { db, user } = await requireAdmin();
+  const values = z.object({ id: z.string().uuid(), attest: z.literal("yes"), accepted: z.array(z.string().min(1).max(250)).max(400) }).strict().parse({
+    id: formData.get("id"), attest: formData.get("attest"), accepted: formData.getAll("accepted"),
+  });
+  const reconciliation = z.array(z.object({ key: z.string().min(1).max(250), reason: z.string().trim().min(20).max(2000) }).strict()).max(400).parse(
+    formData.getAll("reconciled").map(key => ({ key, reason: formData.get(`reconciliation_reason:${key}`) })),
+  );
+  await publishAdminCourseResearch(db, values.id, values.accepted, user.id, reconciliation);
+  redirect(`/admin?view=reviews&queue=pending&message=${encodeURIComponent("Reviewed research published; unaccepted facts remain unresolved.")}`);
+}
+
+export async function saveCourseResearchDraftAction(formData: FormData) {
+  const { db } = await requireAdmin();
+  const values = z.object({ id: z.string().uuid(), draft: z.string().min(2).max(850_000) }).strict().parse({ id: formData.get("id"), draft: formData.get("draft") });
+  // Shape validation here; retained original captures are merged and the complete
+  // evidence/scope contract is validated by the caller-scoped recovery helper.
+  const draft = ResearchDraftSchema.innerType().parse(JSON.parse(values.draft));
+  await saveAdminCourseResearchDraft(db, values.id, draft);
+  redirect(`/admin?view=reviews&queue=pending&course=${values.id}&message=${encodeURIComponent("Research recovery saved as pending. Review and publication are still required.")}`);
 }
 
 async function ensureSourceTaskDefinitions(
@@ -298,6 +325,7 @@ export async function resolveConflictAction(formData: FormData) {
   });
 
   const update = await getAdminCourse(db, values.id);
+  if (values.keep_new === "true" && hasResearch(update.field_extraction)) throw new Error("Use explicit research review/publication for this update.");
   await resolveCourseConflict(db, values.id, values.keep_new === "true");
   if (values.keep_new === "true" && update.conflicts_with) {
     const course = await getAdminCourse(db, update.conflicts_with);
@@ -324,6 +352,8 @@ export async function updateCourseAction(formData: FormData) {
     requirements: formData.get("requirements"),
   });
 
+  const existing = await getAdminCourse(db, values.id);
+  const metadata = existing.field_extraction && typeof existing.field_extraction === "object" && !Array.isArray(existing.field_extraction) ? existing.field_extraction : {};
   await updateAdminCourse(db, values.id, {
     source_url: values.source_url,
     normalized_url: normalizeUrl(values.source_url),
@@ -338,6 +368,7 @@ export async function updateCourseAction(formData: FormData) {
     requirements: parseJson(values.requirements, "requirements", jsonStringArray, "a JSON array of non-empty strings"),
     extraction_method: "manual",
     field_extraction: {
+      ...metadata,
       core: "manual",
       description: "manual",
       deadlines: "manual",

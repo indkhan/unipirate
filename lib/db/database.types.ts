@@ -38,6 +38,7 @@ export type Database = {
         Row: {
           action: string
           actor_user_id: string | null
+          course_reconciliation: Json | null
           created_at: string
           id: string
           new_status: string | null
@@ -50,6 +51,7 @@ export type Database = {
         Insert: {
           action: string
           actor_user_id?: string | null
+          course_reconciliation?: Json | null
           created_at?: string
           id?: string
           new_status?: string | null
@@ -62,6 +64,7 @@ export type Database = {
         Update: {
           action?: string
           actor_user_id?: string | null
+          course_reconciliation?: Json | null
           created_at?: string
           id?: string
           new_status?: string | null
@@ -789,6 +792,44 @@ export type Database = {
         Args: { p_check_id: string; p_token_hash: string }
         Returns: boolean
       }
+      compare_and_set_course_research_metadata: {
+        Args: {
+          p_course_id: string
+          p_expected_metadata: Json
+          p_expected_sql_null: boolean
+          p_mode: string
+          p_next_metadata: Json
+        }
+        Returns: {
+          conflicts_with: string | null
+          created_at: string
+          deadlines: Json | null
+          degree: string | null
+          description: string | null
+          extraction_method:
+            | Database["public"]["Enums"]["extraction_method"]
+            | null
+          field_extraction: Json | null
+          id: string
+          imported_by: string | null
+          language: string | null
+          location: string | null
+          name: string | null
+          normalized_url: string
+          requirements: Json | null
+          review_status: Database["public"]["Enums"]["course_review_status"]
+          source_url: string
+          tuition: Json | null
+          university_name: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "courses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_shared_check: {
         Args: { p_check_id: string }
         Returns: {
@@ -812,6 +853,33 @@ export type Database = {
           source_url: string
           title: string
         }[]
+      }
+      publish_course_research_version: {
+        Args: {
+          p_accepted_keys: string[]
+          p_decisions: Json
+          p_expected_research: Json
+          p_offering_id: string
+          p_offering_index: number
+          p_submitted_course_id: string
+          p_version: number
+        }
+        Returns: {
+          created_at: string
+          facts: Json
+          id: string
+          offering_id: string
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "course_offering_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       publish_rule_version: {
         Args: {

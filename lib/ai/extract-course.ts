@@ -1,110 +1,31 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateObject } from "ai";
-
-import {
-  type CourseFacts,
-  CourseFactsSchema,
-  type FieldExtraction,
-  missingRequired,
-} from "@/lib/courses/import";
 import { parseDaadText } from "@/lib/courses/parse-daad";
-import { getServerEnv } from "@/lib/env";
-
-export const COURSE_EXTRACTION_MODEL = "nvidia/nemotron-3.5-lightning:free";
-
-// AI never invents facts: the prompt demands verbatim quotes and the output is
-// zod-validated; a failed call degrades to honest gaps (product rule: never
-// invent a fact — see CLAUDE.md).
-async function aiExtract(text: string, url: string): Promise<CourseFacts> {
-  const apiKey = getServerEnv().OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY is not configured");
-  }
-  const openrouter = createOpenRouter({ apiKey });
-  const { object } = await generateObject({
-    model: openrouter(COURSE_EXTRACTION_MODEL),
-    schema: CourseFactsSchema,
-    temperature: 0,
-    system:
-      "You extract structured facts about a university course from pasted page text. " +
-      "Quote every value verbatim from the text. If a fact is not literally present, " +
-      "use null (or an empty array). Never guess, infer, or reformat dates. " +
-      "location: the verbatim course location/city if present. " +
-      "description: the verbatim programme description/content section if present. " +
-      "deadlines: each application-deadline statement as one verbatim string. " +
-      "requirements: academic and language admission requirements, one per string. " +
-      "tuition: the verbatim tuition-fee statement.",
-    prompt: `Source URL: ${url}\n\nPage text:\n${text.slice(0, 60_000)}`,
-  });
-  return object;
-}
+import { buildResearchDraft, ResearchSeedSchema, type ResearchDraft, type ResearchSeed } from "@/lib/courses/research";
+import type { CourseFacts, FieldExtraction } from "@/lib/courses/import";
+import { researchCourse } from "./research-course";
+export { COURSE_EXTRACTION_MODEL } from "./research-course";
 
 export type ExtractedCourse = {
-  facts: CourseFacts;
-  fieldExtraction: FieldExtraction;
-  extractionMethod: "library" | "ai";
+  facts: CourseFacts; fieldExtraction: FieldExtraction; extractionMethod: "library" | "ai";
+  research: ResearchDraft;
 };
-
-const CORE = ["name", "university", "location", "degree", "language"] as const;
-
-export async function extractCourse(
-  url: string,
-  text: string,
-  ai: typeof aiExtract = aiExtract,
+export async function extractCourse(url: string, text: string,
+  research: (seed: ResearchSeed) => Promise<ResearchDraft> = researchCourse,
+  identity?: { name: string; university: string },
 ): Promise<ExtractedCourse> {
+  // Parser provides manual fallback and identity seed, never decides whether
+  // multi-source research runs or suppresses conflicting retrieved assertions.
   const facts = parseDaadText(text);
+  const seed = ResearchSeedSchema.parse({ url, text, name: identity?.name ?? facts.name, university: identity?.university ?? facts.university });
   const fieldExtraction: FieldExtraction = {};
-  if (CORE.some((k) => facts[k])) fieldExtraction.core = "library";
+  if (facts.name || facts.university) fieldExtraction.core = "library";
   if (facts.description) fieldExtraction.description = "library";
   if (facts.deadlines.length) fieldExtraction.deadlines = "library";
   if (facts.requirements.length) fieldExtraction.requirements = "library";
   if (facts.tuition) fieldExtraction.tuition = "library";
-
-  if (!missingRequired(facts)) {
-    return { facts, fieldExtraction, extractionMethod: "library" };
-  }
-
-  // Parser wins: AI only fills fields the parser left empty. A failed AI call
-  // (missing key, model error) degrades to honest gaps instead of failing the import.
-  let aiFacts: CourseFacts;
-  try {
-    aiFacts = CourseFactsSchema.parse(await ai(text, url));
-  } catch (error) {
-    console.error("course AI extraction failed:", error);
-    return { facts, fieldExtraction, extractionMethod: "library" };
-  }
-  // Schema validity is not evidence: only literal source quotes may fill gaps.
-  for (const key of [...CORE, "description", "tuition"] as const) {
-    if (aiFacts[key] && !text.includes(aiFacts[key])) aiFacts[key] = null;
-  }
-  for (const key of ["deadlines", "requirements"] as const) {
-    aiFacts[key] = aiFacts[key].filter((quote) => text.includes(quote));
-  }
-  let aiUsed = false;
-  for (const key of CORE) {
-    if (!facts[key] && aiFacts[key]) {
-      facts[key] = aiFacts[key];
-      fieldExtraction.core = "ai";
-      aiUsed = true;
-    }
-  }
-  if (!facts.description && aiFacts.description) {
-    facts.description = aiFacts.description;
-    fieldExtraction.description = "ai";
-    aiUsed = true;
-  }
-  for (const key of ["deadlines", "requirements"] as const) {
-    if (!facts[key].length && aiFacts[key].length) {
-      facts[key] = aiFacts[key];
-      fieldExtraction[key] = "ai";
-      aiUsed = true;
-    }
-  }
-  if (!facts.tuition && aiFacts.tuition) {
-    facts.tuition = aiFacts.tuition;
-    fieldExtraction.tuition = "ai";
-    aiUsed = true;
-  }
-
-  return { facts, fieldExtraction, extractionMethod: aiUsed ? "ai" : "library" };
+  // Identity input is a draft catalogue label, not sourced evidence.
+  facts.name = seed.name; facts.university = seed.university;
+  let draft: ResearchDraft;
+  try { draft = await research(seed); }
+  catch { draft = buildResearchDraft(seed, [{ url, content: text.slice(0, 20_000), origin: "paste", retrieved_at: new Date().toISOString() }], undefined, ["Research failed; paste/manual review retained."]); }
+  return { facts, fieldExtraction, extractionMethod: draft.observations.some(o => o.origin === "web") ? "ai" : "library", research: draft };
 }

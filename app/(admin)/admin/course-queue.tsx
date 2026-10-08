@@ -5,17 +5,22 @@ import type { Json, Tables } from "@/lib/db/database.types";
 import type { ConflictCourse } from "@/lib/db/admin-queries";
 import { courseTaskAdminPreview, deriveCourseTaskCandidates } from "@/lib/tasks/course-tasks";
 import { cn } from "@/lib/utils";
+import { hasResearch, researchNeedsReconciliation, readResearch, type ResearchAuditRecord } from "@/lib/courses/research";
 
 import {
   resolveConflictAction,
   adoptCourseTaskSourceChangeAction,
   reviewCourseAction,
+  publishCourseResearchAction,
+  saveCourseResearchDraftAction,
   retireCourseTaskAction,
   saveCourseTaskAction,
   updateCourseAction,
 } from "./actions";
 import { statusBadge } from "./admin-shared";
 import { ActionButton } from "./action-button";
+import { ResearchHistory, UntrustedLegacyReconciliation } from "./research-history";
+import { ResearchFactReview } from "./research-review-field";
 
 function compactJson(value: Json | null): string {
   if (value === null) return "Not extracted";
@@ -287,7 +292,7 @@ function CourseEditForm({ course, definitions }: { course: Tables<"courses">; de
   );
 }
 
-export function CourseQueue({ courses, definitionsByCourse }: { courses: Tables<"courses">[]; definitionsByCourse: Map<string, Tables<"course_task_definitions">[]> }) {
+export function CourseQueue({ courses, definitionsByCourse, researchHistoryByCourse = new Map() }: { courses: Tables<"courses">[]; definitionsByCourse: Map<string, Tables<"course_task_definitions">[]>; researchHistoryByCourse?: Map<string, ResearchAuditRecord[]> }) {
   return (
     <section className="rounded-lg border bg-card p-4">
       <div className="flex items-baseline justify-between gap-3">
@@ -318,11 +323,11 @@ export function CourseQueue({ courses, definitionsByCourse }: { courses: Tables<
                 </a>
               </div>
               <div className="flex gap-2">
-                <form action={reviewCourseAction}>
+                {!hasResearch(course.field_extraction) && <form action={reviewCourseAction}>
                   <input type="hidden" name="id" value={course.id} />
                   <input type="hidden" name="review_status" value="approved" />
                   <ActionButton pendingText="Approving…">Approve course</ActionButton>
-                </form>
+                </form>}
                 <form action={reviewCourseAction}>
                   <input type="hidden" name="id" value={course.id} />
                   <input type="hidden" name="review_status" value="rejected" />
@@ -332,6 +337,7 @@ export function CourseQueue({ courses, definitionsByCourse }: { courses: Tables<
             </div>
 
             <CourseEditForm course={course} definitions={definitionsByCourse.get(course.id) ?? []} />
+            <ResearchReview course={course} history={researchHistoryByCourse.get(course.id) ?? []} />
           </article>
         ))}
       </div>
@@ -343,6 +349,48 @@ export function CourseQueue({ courses, definitionsByCourse }: { courses: Tables<
       )}
     </section>
   );
+}
+
+function ResearchReview({ course, history }: { course: Tables<"courses">; history: ResearchAuditRecord[] }) {
+  const legacy = course.field_extraction && typeof course.field_extraction === "object" && !Array.isArray(course.field_extraction) ? course.field_extraction.research_reconciliations : undefined;
+  const journal = <><ResearchHistory records={history} /><UntrustedLegacyReconciliation value={legacy} /></>;
+  if (!hasResearch(course.field_extraction)) return journal;
+  let draft;
+  try { draft = readResearch(course.field_extraction); }
+  catch { return <>{journal}<p role="alert">Invalid research capture. Publication blocked; retain the manual source and submit a corrected draft.</p></>; }
+  if (!draft) return journal;
+  const needsReconciliation = researchNeedsReconciliation(draft);
+  const noSupportedOfferings = draft.offerings.length === 0;
+  return <>{journal}<form action={publishCourseResearchAction} className="mt-4 grid gap-3 rounded border p-3">
+    <input type="hidden" name="id" value={course.id} />
+    <h4 className="font-semibold">Research: {draft.status} · pending human review</h4>
+    <p className="text-sm">Open the official sources and check programme identity, actual effective intake and applicant scope before accepting a fact. Unchecked facts publish as unresolved. No dates or tasks are inferred from this draft.</p>
+    {needsReconciliation && <p className="text-amber-700">The AI context omitted captured content. Compare every full captured source before deciding each accepted field; known conflicts require explicit correction first.</p>}
+    {draft.issues.map(issue => <p className="text-sm text-amber-700" key={issue}>{issue}</p>)}
+    {draft.offerings.length === 0 && <p>Publication requires supported effective intake and applicant scope. Repair the offering scope before publishing; sourced captures and manual pasted values remain available for review.</p>}
+    {!!draft.unscoped?.length && <details><summary>Sourced captures with unknown effective intake (not publishable)</summary>{draft.unscoped.map(f => <div key={f.key}><p>{f.verbatim} · {f.applicability}</p>{f.evidence.map((e, i) => <blockquote key={i}><q>{e.source_quote}</q> · <a href={e.source_url} target="_blank" rel="noreferrer">{e.source_url}</a> · retrieved {e.retrieved_at}</blockquote>)}</div>)}</details>}
+    {draft.offerings.map((offering, index) => <fieldset key={index} className="grid gap-2 rounded border p-3">
+      <legend>{offering.intake_term} {offering.intake_year} · {offering.applicant_group}</legend>
+      <p className="text-sm">Effective scope: <q>{offering.scope.source_quote}</q> · <a href={offering.scope.source_url} target="_blank" rel="noreferrer" className="underline">Official scope source</a></p>
+      {offering.facts.map(fact => <div key={fact.key} className="border-b pb-2 text-sm">
+        <ResearchFactReview offeringIndex={index} factKey={fact.key} verbatim={fact.verbatim} status={fact.status} />
+        <p>Applicability: {fact.applicability}</p>
+        {fact.evidence.map((e, i) => <blockquote key={i}><q>{e.source_quote}</q> · <a href={e.source_url} target="_blank" rel="noreferrer" className="underline">{e.source_url}</a> · retrieved {e.retrieved_at}</blockquote>)}
+        {draft.conflicts.filter(c => c.offering === index && c.key === fact.key).map(c => <p key={c.key} className="text-amber-700">Source conflict: {c.alternatives.map(a => a.verbatim).join(" / ")}. Remains unresolved.</p>)}
+      </div>)}
+    </fieldset>)}
+    <details><summary>Captured sources and manual fallback</summary>{draft.paste && <pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">{draft.paste}</pre>}{draft.observations.map((o, i) => <article key={i}><p>{o.origin} · {o.url} · captured {o.retrieved_at}</p><pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">{o.content}</pre></article>)}</details>
+    <label className="flex gap-2 text-sm"><input type="checkbox" name="attest" value="yes" required={!noSupportedOfferings} disabled={noSupportedOfferings} />I checked the current official sources, identity, applicability and effective intake of every accepted assertion. Unaccepted facts remain unknown.</label>
+    <ActionButton pendingText="Publishing…" confirm="Publish these explicitly reviewed facts? Unaccepted assertions stay unresolved; existing task progress is retained." disabled={noSupportedOfferings}>Publish reviewed research</ActionButton>
+  </form>
+  <details className="mt-3"><summary>Manual research recovery (JSON)</summary>
+    <p className="text-sm">Capture current official source text with its real URL and retrieval time using origin &quot;manual&quot;. Correct scope/wording only when those observations support it; keep unknown scope in unscoped captures. Resolve a conflict explicitly before removing its conflict entry. Saving does not verify or publish any fact.</p>
+    <form action={saveCourseResearchDraftAction} className="grid gap-2">
+      <input type="hidden" name="id" value={course.id} />
+      <label>Pending research draft<textarea name="draft" required maxLength={850000} defaultValue={JSON.stringify(draft, null, 2)} className="min-h-60 w-full rounded border p-2 font-mono text-xs" /></label>
+      <ActionButton pendingText="Saving…">Save pending research recovery</ActionButton>
+    </form>
+  </details></>;
 }
 
 export function CourseTaskLibrary({
@@ -432,7 +480,7 @@ function SourceChanges({
   );
 }
 
-export function ConflictQueue({ conflicts }: { conflicts: ConflictCourse[] }) {
+export function ConflictQueue({ conflicts, researchHistoryByCourse = new Map() }: { conflicts: ConflictCourse[]; researchHistoryByCourse?: Map<string, ResearchAuditRecord[]> }) {
   if (conflicts.length === 0) return null;
 
   return (
@@ -494,7 +542,8 @@ export function ConflictQueue({ conflicts }: { conflicts: ConflictCourse[] }) {
                 >
                   {conflict.source_url}
                 </a>
-                <CourseEditForm course={conflict} definitions={[]} />
+                    <CourseEditForm course={conflict} definitions={[]} />
+                    <ResearchReview course={conflict} history={researchHistoryByCourse.get(conflict.id) ?? []} />
               </div>
             </div>
 
@@ -504,11 +553,11 @@ export function ConflictQueue({ conflicts }: { conflicts: ConflictCourse[] }) {
                 <input type="hidden" name="keep_new" value="false" />
                 <ActionButton pendingText="Resolving…" variant="outline" confirm="Keep the existing course and reject this submission? Linked dashboards remain on the existing course.">Keep existing (reject update)</ActionButton>
               </form>
-              <form action={resolveConflictAction}>
+              {!hasResearch(conflict.field_extraction) && <form action={resolveConflictAction}>
                 <input type="hidden" name="id" value={conflict.id} />
                 <input type="hidden" name="keep_new" value="true" />
                 <ActionButton pendingText="Replacing…" confirm="Replace the existing course with this update? Linked dashboards will move to the submitted record.">Replace with update (approve)</ActionButton>
-              </form>
+              </form>}
             </div>
           </article>
         ))}
