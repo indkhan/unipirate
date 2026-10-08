@@ -1,0 +1,34 @@
+{
+  "session": "01a11996-5edd-7631-a94c-ac71ea0f965b",
+  "model": "gpt-6.1-sol",
+  "branch": "fix/up-elig-10-diagnostic-results",
+  "worktree": "C:/codebases/unipirate-up-elig-10",
+  "head": "6656da6a5c0e604d46941e6b084a9bf74cc2eaab",
+  "tree": "16e78f4adbba60a20ebc458a54458274580fea73",
+  "baseline": "813182a33d65566950d6851205c9d47fb5f37386",
+  "museOriginalPatch": "f5950f8",
+  "museIntegratedPatch": "6656da6a5c0e604d46941e6b084a9bf74cc2eaab",
+  "revision": "unipirate/jee-ordinary+saudi+pakistan-current-v2+diagnostics+assessment-v1@sha256:ee253f54abbb96973d125f218ed4269024b65135c42f518b58f954cf848a0307",
+  "changedPaths": [
+    "lib/rules/current.ts",
+    "lib/rules/__tests__/saudi-assessment.test.ts",
+    "docs/up-elig-10-checks/engine-revision.json"
+  ],
+  "acceptance": {
+    "focused": 128,
+    "fullPassed": 1664,
+    "rlsSkipped": 29,
+    "lint": 0,
+    "nonincrementalType": 0,
+    "diffCheck": 0
+  },
+  "protectedNextEnvSha256": "4e4da12aa061aac172fb1bcb48e9b6e4b293080d2f494327925fdba8f39632ac",
+  "notes": [
+    "Only current revision, current expectation and literal revision evidence changed. Imported UI and academic logic unchanged.",
+    "Reviews2 read complete. Historical tokens and untracked prior reports preserved.",
+    "No new assertions, publication, migrations, dependencies, DB/provider/env/secret operations.",
+    "Default build, actual RLS, browser, CI and fresh reviews are root-owned and not executed here. Prior root gates are stale; UP-TEST-01 remains open.",
+    "Synchronous subprocesses exited; no owned background processes. No children.",
+    "exec helper returned helper_unknown_error; authorized Node22 shell:false fallback used."
+  ]
+}
