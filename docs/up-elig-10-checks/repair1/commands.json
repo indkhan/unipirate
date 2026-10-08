@@ -1,0 +1,80 @@
+{
+  "method": "Direct installed CLI using workspace-local Node22.23.2 spawnSync shell:false after exec helper failure; no pnpm wrappers claimed.",
+  "environment": "Allowlisted Windows paths plus CI=1/task-local TEMP/TMP; no credentials/env files supplied.",
+  "commands": [
+    {
+      "node": "C:/Users/mgsuk/AppData/Roaming/fnm/node-versions/v22.23.2/installation/node.exe",
+      "args": [
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "lib/engine/__tests__/diagnostics.test.ts",
+        "lib/rules/__tests__/assessment.test.ts",
+        "--maxWorkers=1",
+        "--no-cache"
+      ],
+      "cwd": "C:/codebases/unipirate-up-elig-10",
+      "exit": 1,
+      "log": "red.log"
+    },
+    {
+      "node": "C:/Users/mgsuk/AppData/Roaming/fnm/node-versions/v22.23.2/installation/node.exe",
+      "args": [
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "lib/engine/__tests__/diagnostics.test.ts",
+        "lib/rules/__tests__/assessment.test.ts",
+        "--maxWorkers=1",
+        "--no-cache"
+      ],
+      "cwd": "C:/codebases/unipirate-up-elig-10",
+      "exit": 1,
+      "log": "red-corrected.log"
+    },
+    {
+      "node": "C:/Users/mgsuk/AppData/Roaming/fnm/node-versions/v22.23.2/installation/node.exe",
+      "args": [
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "lib/engine/__tests__/diagnostics.test.ts",
+        "lib/rules/__tests__/assessment.test.ts",
+        "--maxWorkers=1",
+        "--no-cache"
+      ],
+      "cwd": "C:/codebases/unipirate-up-elig-10",
+      "exit": 0,
+      "log": "green.log"
+    },
+    {
+      "node": "C:/Users/mgsuk/AppData/Roaming/fnm/node-versions/v22.23.2/installation/node.exe",
+      "args": [
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--no-cache"
+      ],
+      "cwd": "C:/codebases/unipirate-up-elig-10",
+      "exit": 0,
+      "log": "full-unit.log"
+    },
+    {
+      "node": "C:/Users/mgsuk/AppData/Roaming/fnm/node-versions/v22.23.2/installation/node.exe",
+      "args": [
+        "node_modules/eslint/bin/eslint.js"
+      ],
+      "cwd": "C:/codebases/unipirate-up-elig-10",
+      "exit": 0,
+      "log": "lint.log"
+    },
+    {
+      "node": "C:/Users/mgsuk/AppData/Roaming/fnm/node-versions/v22.23.2/installation/node.exe",
+      "args": [
+        "node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "--incremental",
+        "false"
+      ],
+      "cwd": "C:/codebases/unipirate-up-elig-10",
+      "exit": 0,
+      "log": "typecheck.log"
+    }
+  ]
+}

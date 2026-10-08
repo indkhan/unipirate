@@ -10,7 +10,7 @@ import { raw, ruleId, version } from "./assessment-fixtures";
 
 const oldRevision = "unipirate/qualification+aps+dmat+india-study+ib+gce@bd836cc/assessment-v1";
 const priorSaudiRevision = "unipirate/jee-ordinary+saudi+assessment-v1@sha256:9ece1216013df345618b899bb6852ca00e44f1cc03fdbcdbbc7c6eedaaeddc5e";
-const newRevision = "unipirate/jee-ordinary+saudi+pakistan-current-v2+diagnostics+assessment-v1@sha256:552b8804d6d721b295a4091c2d06465bc7d2117035fc272c6aef41cd26bbd88e";
+const newRevision = "unipirate/jee-ordinary+saudi+pakistan-current-v2+diagnostics+assessment-v1@sha256:272b6bfadb6bb6be646b40014c9a6e206955df6a5e97fe2594b89398d3692490";
 const context = { evaluatedAt: "2026-10-08T12:00:00Z", engineRevision: ENGINE_REVISION };
 const industrialAnswers = { ...saudiAnswers, saudiCertificateSubtype: "industrial_certificate", yearsOfUniversityStudy: 0,
   saudiEnrollment: "reported_document", saudiEnrollmentField: "Computing", saudiEnrollmentReference: "Synthetic enrollment document",

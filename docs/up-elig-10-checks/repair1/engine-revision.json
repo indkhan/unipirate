@@ -79,5 +79,6 @@
       "path": "lib/tasks/profile.ts",
       "sha256": "070aa98154047e0c0cf2ccc2e00535a0a6a9d7dce78ebeb892a31e8b00ef15cf"
     }
-  ]
+  ],
+  "priorCandidateRevision": "unipirate/jee-ordinary+saudi+pakistan-current-v2+diagnostics+assessment-v1@sha256:552b8804d6d721b295a4091c2d06465bc7d2117035fc272c6aef41cd26bbd88e"
 }

@@ -42,3 +42,25 @@ it.each([{priorStudyRecognition:'reported_official_rejected' as const},{saudiBac
 it('historical display retains original diagnostic unknown strings',()=>{const p={...indianStudyProfile,qualificationHistory:undefined};const r=evaluate(p,reviewedIndiaStudyRules());expect(visibleUnknowns(r,p,true)).toContain(r.unknowns.find(n=>n.includes('Confirm with the university.')));});
 
 it('known unmet threshold shows its condition without generic official confirmation for that same formula',()=>{const p={...currentPakistanProfile,schoolGradePercent:49.99};const r=evaluate(p,reviewedPakistanRules());const visible=visibleUnknowns(r,p);expect(visible).not.toContain('No rule covers your admission path — confirm with the DAAD admission database and the uni-assist country page for your certificate.');expect(visible.find(n=>n.includes('50% condition unmet'))).not.toContain('Confirm with');});
+
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {VerdictCard} from '@/app/(public)/result/[id]/result-components';
+it.each([
+ {name:'missing prior-study history',profile:{...indianStudyProfile,qualificationHistory:undefined}},
+ {name:'missing successful years',profile:historyChange({completedYears:undefined})},
+])('returns and renders actual candidate evidence for $name without a winning route',({profile})=>{
+ const rule={...indiaStudyCandidates[0],status:'verified' as const};
+ const result=evaluate(profile,[rule]);
+ expect(result.path).toBe('unknown');
+ expect(result.citations).toEqual([]);
+ expect(result.diagnostics?.[0].ruleIds).toEqual([rule.id]);
+ expect(result.candidateCitations).toEqual([expect.objectContaining({ruleId:rule.id,sourceUrl:rule.source_url,verifiedAt:rule.last_verified_at,status:'verified',supports:['unknowns']})]);
+ expect(result.candidateCitations?.[0].claim).toMatch(/^Candidate route only:/);
+ expect(result.candidateCitations?.[0].claim).not.toBe(rule.outcomes.note);
+ const html=renderToStaticMarkup(createElement(VerdictCard,{result,profile,profileLine:''}));
+ expect(html).toContain('href="'+rule.source_url+'"');
+ expect(html).toContain('07 Oct 2026');
+ expect(html).toContain('candidate requires');
+ expect(html).not.toContain('Your reported qualifications indicate a subject-restricted direct route.');
+});

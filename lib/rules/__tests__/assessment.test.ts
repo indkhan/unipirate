@@ -72,3 +72,25 @@ it('source-only changes on an unresolved formula remain explanation-only',()=>{c
 it('rejects multiple overall follow-up questions',()=>expect(AssessmentResultSchema.safeParse({...original().result,diagnostics:[diagnostic,diagnostic]}).success).toBe(false));
 
 it('candidate citation sources cannot substitute the selected immutable source',()=>{const a=original();const source={...a.result.citations[0],supports:['unknowns' as const]};expect(parseStoredAssessment({...stored(),result:{...a.result,candidateCitations:[source]}},[version(1)]).kind).toBe('authoritative');expect(parseStoredAssessment({...stored(),result:{...a.result,candidateCitations:[{...source,sourceUrl:'https://example.invalid/substituted'}]}},[version(1)]).kind).toBe('invalid');});
+
+import {buildProfile} from '@/app/(public)/check/steps';
+import {indiaStudyCandidates} from '@/scripts/india-study.rules';
+it('generated unmatched India candidate evidence retains exact immutable provenance',()=>{
+ const savedAnswers={...answers,curriculumType:'national',board:'cbse',schoolGradePercent:70,jeeAdvanced:false,schoolQualificationCountry:'in',schoolQualificationContext:'national'};
+ const p=buildProfile(AnswersSchema.parse(savedAnswers));
+ expect(p.qualificationHistory).toBeUndefined();
+ const candidate=indiaStudyCandidates[0];
+ const v=version(1,{reviewed_at:'2026-10-07T00:00:00Z',published_at:'2026-10-07T00:00:00Z',raw_snapshot:{...raw,...candidate,id:ruleId,slug:candidate.id,country_code:'in',status:'verified'}});
+ const a=evaluateAssessment(p,[v],context);
+ expect(a.result.path).toBe('unknown');expect(a.result.citations).toEqual([]);
+ expect(a.result.candidateCitations).toEqual([expect.objectContaining({ruleId,sourceUrl:candidate.source_url,verifiedAt:candidate.last_verified_at,status:'verified',supports:['unknowns']})]);
+ expect(a.metadata.selectedVersionIds).toEqual([v.id]);
+ const row={answers:savedAnswers,result:a.result,assessment_metadata:a.metadata};const token=JSON.stringify(row);
+ const stored=parseStoredAssessment(row,[v]);expect(stored.kind).toBe('authoritative');
+ if(stored.kind==='authoritative'){expect(stored.original.result.candidateCitations).toEqual(a.result.candidateCitations);expect(stored.original.selectedVersions).toEqual([v]);}
+ expect(JSON.stringify(row)).toBe(token);
+ expect(parseStoredAssessment(row,[version(2)]).kind).toBe('invalid');
+ for(const change of [{sourceUrl:'https://example.invalid/substituted'},{verifiedAt:'2026-10-08T00:00:00Z'},{status:'beta'},{ruleId:'00000000-0000-4000-8000-000000000099'}]){
+  expect(parseStoredAssessment({...row,result:{...a.result,candidateCitations:a.result.candidateCitations!.map(c=>({...c,...change}))}},[v]).kind).toBe('invalid');
+ }
+});

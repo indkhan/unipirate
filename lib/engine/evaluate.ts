@@ -1036,6 +1036,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     documents,
     stepsDetailed,
     citations,
+    candidateCitations,
     unknowns,
     diagnostics,
   };
