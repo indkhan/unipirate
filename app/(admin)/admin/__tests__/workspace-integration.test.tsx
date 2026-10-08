@@ -33,6 +33,7 @@ function propsFor(node: ReactNode, component: unknown): Record<string, unknown> 
 }
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.context.mockReturnValue({ evaluatedAt: "2026-10-08T12:00:00Z", engineRevision: "synthetic-workspace-test" });
   mocks.guard.mockResolvedValue({ db });
   for (const read of [mocks.rules, mocks.pending, mocks.conflicts, mocks.courses, mocks.definitions, mocks.history, mocks.profiles, mocks.versions]) read.mockResolvedValue([]);
 });
