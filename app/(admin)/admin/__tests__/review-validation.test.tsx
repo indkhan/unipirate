@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Tables } from "@/lib/db/database.types";
+import { buildResearchDraft } from "@/lib/courses/research";
 
 import { CourseQueue } from "../course-queue";
 import {
@@ -169,5 +170,123 @@ describe("review validation deselect submission semantics", () => {
     expect(html).toContain("disabled");
     expect(html).toContain("short");
     expect(html).not.toContain('role="alert"');
+  });
+});
+
+describe("course unscoped publish browser guard (COURSE01)", () => {
+  const url = "https://www.daad.de/synthetic";
+  const seed = {
+    url,
+    name: "Synthetic Computing",
+    university: "Synthetic University",
+    text: "Synthetic manual paste ".repeat(12),
+  };
+  const observation = {
+    url,
+    origin: "web" as const,
+    retrieved_at: "2026-10-07T12:00:00Z",
+    content:
+      "Synthetic Computing Synthetic University Winter 2027 Non-EU applicants IELTS 6.5.",
+  };
+  const supportedDraft = buildResearchDraft(
+    seed,
+    [observation],
+    {
+      offerings: [
+        {
+          intake_term: "winter",
+          intake_year: 2027,
+          applicant_group: "Non-EU applicants",
+          scope: {
+            source_url: url,
+            source_quote: "Winter 2027 Non-EU applicants",
+          },
+          facts: [
+            {
+              key: "english",
+              kind: "language",
+              verbatim: "IELTS 6.5.",
+              applicability: "Non-EU applicants",
+              route: null,
+              deadline_kind: null,
+              evidence: [{ source_url: url, source_quote: "IELTS 6.5." }],
+            },
+          ],
+        },
+      ],
+    },
+    [],
+  );
+  const unscopedDraft = buildResearchDraft(
+    seed,
+    [observation],
+    {
+      offerings: [
+        {
+          intake_term: null,
+          intake_year: null,
+          applicant_group: null,
+          scope: null,
+          facts: [
+            {
+              key: "english",
+              kind: "language",
+              verbatim: "IELTS 6.5.",
+              applicability: "Non-EU applicants",
+              route: null,
+              deadline_kind: null,
+              evidence: [{ source_url: url, source_quote: "IELTS 6.5." }],
+            },
+          ],
+        },
+      ],
+    },
+    [],
+  );
+
+  function courseFor(id: string, draft: unknown) {
+    return {
+      id,
+      review_status: "pending",
+      source_url: url,
+      name: "Synthetic Computing",
+      field_extraction: { research: draft },
+    } as unknown as Tables<"courses">;
+  }
+
+  it("disables unscoped draft publication while keeping manual recovery and captured sources", () => {
+    expect(unscopedDraft.offerings).toHaveLength(0);
+    const html = renderToStaticMarkup(
+      <CourseQueue
+        courses={[courseFor("11111111-1111-4111-8111-111111111111", unscopedDraft)]}
+        definitionsByCourse={new Map()}
+      />,
+    );
+    expect(html).toContain("Publication requires supported effective intake");
+    expect(html).toContain("Sourced captures with unknown effective intake");
+    expect(html).toContain("Captured sources and manual fallback");
+    expect(html).toContain("Manual research recovery");
+    expect(html).toContain("Save pending research recovery");
+    // Publish is browser-blocked when no supported offering exists; the
+    // manual recovery path stays enabled. Match the real disabled
+    // attribute (disabled="") rather than the Tailwind disabled: classes.
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Publish reviewed research/);
+    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*>Save pending research recovery/);
+    expect(html).toMatch(/<input(?=[^>]*name="attest")(?=[^>]*disabled="")[^>]*>/);
+  });
+
+  it("keeps supported draft publication enabled with attestation", () => {
+    expect(supportedDraft.offerings).toHaveLength(1);
+    const html = renderToStaticMarkup(
+      <CourseQueue
+        courses={[courseFor("22222222-2222-4222-8222-222222222222", supportedDraft)]}
+        definitionsByCourse={new Map()}
+      />,
+    );
+    expect(html).toContain("Publish reviewed research");
+    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*>Publish reviewed research/);
+    expect(html).toContain('name="attest"');
+    expect(html).toMatch(/<input(?=[^>]*name="attest")(?=[^>]*required="")[^>]*>/);
+    expect(html).not.toMatch(/<input(?=[^>]*name="attest")(?=[^>]*disabled="")[^>]*>/);
   });
 });

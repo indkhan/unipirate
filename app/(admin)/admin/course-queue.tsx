@@ -360,6 +360,7 @@ function ResearchReview({ course, history }: { course: Tables<"courses">; histor
   catch { return <>{journal}<p role="alert">Invalid research capture. Publication blocked; retain the manual source and submit a corrected draft.</p></>; }
   if (!draft) return journal;
   const needsReconciliation = researchNeedsReconciliation(draft);
+  const noSupportedOfferings = draft.offerings.length === 0;
   return <>{journal}<form action={publishCourseResearchAction} className="mt-4 grid gap-3 rounded border p-3">
     <input type="hidden" name="id" value={course.id} />
     <h4 className="font-semibold">Research: {draft.status} · pending human review</h4>
@@ -379,8 +380,8 @@ function ResearchReview({ course, history }: { course: Tables<"courses">; histor
       </div>)}
     </fieldset>)}
     <details><summary>Captured sources and manual fallback</summary>{draft.paste && <pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">{draft.paste}</pre>}{draft.observations.map((o, i) => <article key={i}><p>{o.origin} · {o.url} · captured {o.retrieved_at}</p><pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">{o.content}</pre></article>)}</details>
-    <label className="flex gap-2 text-sm"><input type="checkbox" name="attest" value="yes" required />I checked the current official sources, identity, applicability and effective intake of every accepted assertion. Unaccepted facts remain unknown.</label>
-    <ActionButton pendingText="Publishing…" confirm="Publish these explicitly reviewed facts? Unaccepted assertions stay unresolved; existing task progress is retained.">Publish reviewed research</ActionButton>
+    <label className="flex gap-2 text-sm"><input type="checkbox" name="attest" value="yes" required={!noSupportedOfferings} disabled={noSupportedOfferings} />I checked the current official sources, identity, applicability and effective intake of every accepted assertion. Unaccepted facts remain unknown.</label>
+    <ActionButton pendingText="Publishing…" confirm="Publish these explicitly reviewed facts? Unaccepted assertions stay unresolved; existing task progress is retained." disabled={noSupportedOfferings}>Publish reviewed research</ActionButton>
   </form>
   <details className="mt-3"><summary>Manual research recovery (JSON)</summary>
     <p className="text-sm">Capture current official source text with its real URL and retrieval time using origin &quot;manual&quot;. Correct scope/wording only when those observations support it; keep unknown scope in unscoped captures. Resolve a conflict explicitly before removing its conflict entry. Saving does not verify or publish any fact.</p>
