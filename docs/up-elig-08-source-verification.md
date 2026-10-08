@@ -22,3 +22,9 @@ The literal >=50 boundary lives in candidate data and is never rounded. Below 50
 Completed two-/four-year degree outcomes and Master's assessment remain unknown. The completed two-year-degree discrepancy is a separate unresolved question from the one-/two-year prior-study conflict. Discontinued, part-time/distance, outside-Pakistan and other irregular study remain unknown. Humanities direct outcome and alias classifications require accessible primary evidence. Anabin and other denied sources were not accessed, proxied or bypassed.
 
 Publication: twelve candidates remain draft with null publication and effective-intake metadata. Disposable test copies exercise only bounded prep and honest unknown expectations. No direct positive official coverage, rule publication, seed, live DB/API 55321 access, migration, generated types, KB rebuild, deployment or merge. Parent UP-ELIG-08 direct gate and UP-TEST-01 broader official coverage remain BLOCKED/OPEN respectively.
+
+Repair note (2026-10-08): cross-issuer question routing and explicit assessment
+revision were repaired without changing factual thresholds, source quotes,
+verification timestamps, intake scope, aliases or publication status. The source
+inventory above remains the factual contract; no new source supersession claim
+or direct/Master's positive coverage is introduced.

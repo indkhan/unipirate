@@ -630,7 +630,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   }
 
   const path = resolve<Result["path"]>("path") ?? "unknown";
-  if (path === 'unknown' && profile.targetDegree === 'bachelor' && profile.curriculumType === 'national' && (profile.certificateCountry === 'pk' || profile.schoolQualification?.country === 'pk')) {
+  if (path === 'unknown' && profile.targetDegree === 'bachelor' && profile.curriculumType === 'national' && (profile.certificateCountry === 'pk' || profile.schoolQualification?.country === 'pk' || profile.pakistan?.version === 1)) {
     // Explain failed reviewed conditions; thresholds and family mappings stay in data.
     const candidates = live.filter(r => r.conditions.pk_prior_study_kind === 'none' && r.outcomes.path === 'studienkolleg');
     const applicableGroup = candidates.filter(r=>r.conditions.pk_documentary_group===facts.pk_documentary_group);

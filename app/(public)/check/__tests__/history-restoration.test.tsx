@@ -198,3 +198,16 @@ it('Pakistan account edits upgrade legacy records and require explicit certifica
 });
 
 it('upgrades unversioned Pakistan drafts into required history without retaining legacy board',()=>{const restored=recover(JSON.stringify({answers:{targetDegree:'bachelor',certificateCountry:'pk',nationality:'pk',visaApplicationCountry:'pk',curriculumType:'national',board:'fsc',schoolGradePercent:78,targetField:'cs',intake:null},stepIndex:99}),'pk');expect(restored.answers).toMatchObject({pakistanVersion:1,qualificationHistoryVersion:1});expect(restored.answers).not.toHaveProperty('board');});
+
+
+it.each(['pk','in'] as const)('restores %s landing with opposite actual issuer and unique reachable evidence', country=>{
+ const actual=country==='pk'?'in':'pk';
+ const saved={...indiaAnswers,pakistanVersion:1,certificateCountry:country,schoolQualificationCountry:actual,board:'cbse',pkCertificate:'hssc',pkGroup:'science',pkSchoolCompletion:'completed_12_grades',pkTargetFamily:'technology',pkTargetFamilyReference:'Programme source'} as const;
+ const restored=recover(JSON.stringify({answers:saved,stepIndex:99}),country);const answers=restored.answers as PartialAnswers;
+ const steps=visibleSteps(answers);expect(new Set(steps).size).toBe(steps.length);
+ expect(steps).toContain(actual==='in'?'board':'pkCertificate');
+ expect(answers).not.toHaveProperty(actual==='in'?'pkGroup':'board');
+ captured.initial=[];renderToStaticMarkup(React.createElement(ProfileReview,{initialAnswers:saved}));
+ expect(visibleSteps(captured.initial[0] as PartialAnswers)).toEqual(steps);
+ expect(saved.board).toBe('cbse');
+});

@@ -1,9 +1,10 @@
 import { type ReactElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ view: vi.fn() }));
+const mocks = vi.hoisted(() => ({ view: vi.fn(), materialize: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({ requireUser: async () => ({ db: {}, user: { id: "student", app_metadata: {} } }) }));
-vi.mock("@/lib/db/queries", () => ({ countTodayAssistantQuestions: async () => 0, hasGeneratedTasksMissingMetadata: async () => false }));
+vi.mock("@/lib/db/queries", () => ({ countTodayAssistantQuestions: async () => 0, hasGeneratedTasksMissingMetadata: async () => true }));
+vi.mock("@/lib/tasks/materialize", () => ({materializeAllTasksForUser: mocks.materialize}));
 vi.mock("@/lib/tasks/view", () => ({ buildDashboardView: mocks.view }));
 vi.mock("../dashboard-views", () => ({ DashboardViews: () => null }));
 
@@ -23,6 +24,7 @@ describe("dashboard refresh", () => {
     const view = { buckets: { now: [task], next: [], later: [] }, doneTasks: [], rail: [], calendarEvents: [], hasProfile: false, result: null, checkedAt: "2026-10-05" };
     mocks.view.mockResolvedValue(view);
     const original = viewKey(await DashboardPage());
+    expect(mocks.materialize).not.toHaveBeenCalled();
     for (const change of [{ description: "Second note" }, { source: { url: "https://example.com" } }, { adminChangeState: "update_pending" }]) {
       mocks.view.mockResolvedValue({ ...view, buckets: { ...view.buckets, now: [{ ...task, ...change }] } });
       expect(viewKey(await DashboardPage())).not.toBe(original);

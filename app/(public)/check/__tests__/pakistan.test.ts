@@ -1,7 +1,9 @@
 import { buildOptions, QUESTIONS } from '../check-questions';
 import { describe, expect, it } from 'vitest';
-import { AnswersSchema, PartialAnswersSchema, buildProfile, normalizeAnswers, visibleSteps, withAnswer } from '../steps';
-import { deriveFacts } from '@/lib/engine/evaluate';
+import { AnswersSchema, PartialAnswersSchema, buildProfile, normalizeAnswers, isAnswered, visibleSteps, withAnswer } from '../steps';
+import { indiaAnswers } from './india-study.fixture';
+import { reviewedPakistanRules } from '@/lib/engine/__tests__/pakistan.fixture';
+import { evaluate, deriveFacts } from '@/lib/engine/evaluate';
 const a = { qualificationHistoryVersion: 1, pakistanVersion: 1, apsScopeVersion: 1, targetDegree: 'bachelor', nationality: 'in', visaApplicationCountry: 'sa', certificateCountry: 'pk', curriculumType: 'national', schoolQualificationCountry: 'pk', schoolQualificationContext: 'national', pkCertificate: 'hssc', pkGroup: 'science', pkSchoolCompletion: 'completed_12_grades', schoolGradePercent: 50, hasPriorUniversityStudy: false, targetField: 'cs', pkTargetFamily: 'technology', pkTargetFamilyReference: 'University programme lists Technology', intake: null, apsApplicationContext: 'unknown', visaMissionContext: 'unknown' } as const;
 describe('Pakistan versioned checker', () => {
     it('maps validated exact certificate and group separately', () => { const p = buildProfile(AnswersSchema.parse(a)); expect(p.pakistan).toMatchObject({ version: 1, certificate: 'hssc', group: 'science', completion: 'completed_12_grades' }); expect(deriveFacts(p).pk_certificate).toBe('hssc'); });
@@ -29,3 +31,54 @@ it('new forward Pakistan flow reaches every newly required question', () => { le
     if (current[key] === undefined)
         current = withAnswer(current, key, a[key as keyof typeof a] as never);
 } expect(AnswersSchema.safeParse(current).success).toBe(true); expect(buildProfile(AnswersSchema.parse(current)).pakistan?.group).toBe('science'); });
+
+
+it.each(['pk','in','sa'])('routes explicit Indian issuer once from %s landing and collects its evidence', certificateCountry => {
+ let current = withAnswer({...a, certificateCountry, indiaStudyRouteVersion:1}, 'schoolQualificationCountry', 'in');
+ current = withAnswer(current, 'schoolQualificationContext', 'national');
+ const steps=visibleSteps(current);
+ expect(steps.filter(s=>s==='schoolQualificationCountry')).toHaveLength(1);
+ expect(steps.filter(s=>s==='schoolQualificationContext')).toHaveLength(1);
+ expect(steps).toContain('board');expect(steps).toContain('schoolGradePercent');expect(steps).toContain('jeeAdvanced');
+ expect(buildOptions('board',current).map(o=>o.value)).toContain('cbse');
+ expect(current.pkGroup).toBeUndefined();
+});
+it('issuer edits preserve core history but prune wrong-country evidence and recollect school marks',()=>{
+ const study={...a,indiaStudyRouteVersion:1,hasPriorUniversityStudy:true,priorQualificationType:'bachelor',priorStudyInstitution:'University',priorStudyCountry:'pk',priorStudyField:'CS',priorDegreeYears:4,yearsOfUniversityStudy:1,priorStudyCompletion:'in_progress',pkStudyMode:'full_time',pkRecognition:'reported_official_confirmed',pkRecognitionReference:'PK assessment'} as const;
+ let edited=withAnswer(study,'schoolQualificationCountry','in');
+ expect(edited.schoolGradePercent).toBeUndefined();expect(edited.pkRecognition).toBeUndefined();expect(edited.priorStudyInstitution).toBe('University');
+ edited=withAnswer(edited,'schoolQualificationContext','national');expect(visibleSteps(edited)).toContain('priorStudyRecognition');
+ edited=withAnswer({...edited,board:'cbse',schoolGradePercent:70,priorStudyRecognition:'reported_official_confirmed',priorStudyRecognitionReference:'IN assessment'},'schoolQualificationCountry','pk');
+ edited=withAnswer(edited,'schoolQualificationContext','national');expect(visibleSteps(edited)).toContain('pkCertificate');expect(edited.board).toBeUndefined();expect(edited.priorStudyRecognition).toBeUndefined();
+ expect(edited.priorStudyInstitution).toBe('University');
+});
+
+it('an India landing enters Pakistan evidence without a pre-existing Pakistan marker',()=>{
+ const edited=withAnswer({...a,pakistanVersion:undefined,certificateCountry:'in'},'schoolQualificationCountry','pk');
+ const current=withAnswer(edited,'schoolQualificationContext','national');expect(current.pakistanVersion).toBe(1);expect(visibleSteps(current)).toContain('pkCertificate');expect(visibleSteps(current)).not.toContain('board');
+});
+
+it.each(['other','unknown'])('foreign or uncertain issuer %s cannot retain hidden Indian evidence and stays cited unknown', schoolQualificationCountry=>{
+ const input={...a,schoolQualificationCountry,board:'cbse',jeeAdvanced:true} as import('../steps').PartialAnswers;
+ const normalized=normalizeAnswers(input);expect(normalized.board).toBeUndefined();expect(normalized.jeeAdvanced).toBeUndefined();expect(normalized.pkGroup).toBeUndefined();
+ const profile=buildProfile(AnswersSchema.parse(normalized));expect(deriveFacts(profile).pk_documentary_group).toBeUndefined();
+ const result=evaluate(profile,reviewedPakistanRules());expect(result.path).toBe('unknown');expect(result.citations.some(c=>c.sourceUrl.includes('ad-layerId=193'))).toBe(true);
+});
+it.each(['pk','in'] as const)('fresh %s landing can collect opposite issuer evidence progressively then return', landing=>{
+ const target=landing==='pk'?'in':'pk';const values={...a,...indiaAnswers,...(target==='pk'?a:{}),certificateCountry:landing,schoolQualificationCountry:target};
+ let current:import('../steps').PartialAnswers={qualificationHistoryVersion:1,apsScopeVersion:1,indiaStudyRouteVersion:1};
+ for(let index=0;index<visibleSteps(current).length;index++){const key=visibleSteps(current)[index];if(!isAnswered(current,key))current=withAnswer(current,key,values[key as keyof typeof values] as never);}
+ const profile=buildProfile(AnswersSchema.parse(current));expect(profile.certificateCountry).toBe(target);expect(profile.schoolQualification?.country).toBe(target);
+ expect(visibleSteps(current)).toContain(target==='in'?'priorStudyRecognition':'pkCertificate');
+ current=withAnswer(current,'schoolQualificationCountry',landing);current=withAnswer(current,'schoolQualificationContext','national');expect(visibleSteps(current)).toContain(landing==='in'?'board':'pkCertificate');
+});
+
+it.each(['international','unknown'])('uncovered %s school context stays source-review unknown', schoolQualificationContext=>{
+ const normalized=normalizeAnswers({...a,schoolQualificationContext} as import('../steps').PartialAnswers);
+ const profile=buildProfile(AnswersSchema.parse(normalized));expect(profile.certificateCountry).toBeUndefined();expect(profile.pakistan).toEqual({version:1});
+ expect(deriveFacts(profile).pk_grade_percent).toBeUndefined();expect(evaluate(profile,reviewedPakistanRules()).path).toBe('unknown');expect(evaluate(profile,reviewedPakistanRules()).citations.length).toBeGreaterThan(0);
+});
+it('passport and visa changes preserve reported Pakistan study assessments',()=>{
+ const study={...a,hasPriorUniversityStudy:true,priorQualificationType:'bachelor',priorStudyInstitution:'University',priorStudyCountry:'pk',priorStudyField:'CS',priorDegreeYears:4,yearsOfUniversityStudy:1,priorStudyCompletion:'in_progress',pkStudyMode:'full_time',pkStudyRegulations:'confirmed',pkAnnualRecords:'confirmed',pkSuccessfulYearsReference:'Annual records',pkRecognition:'reported_official_confirmed',pkRecognitionReference:'PK assessment',pkTargetRelation:'reported_official_previous',pkTargetRelationReference:'Target assessment'} as const;
+ for(const key of ['nationality','visaApplicationCountry'] as const){const next=withAnswer(study,key,'sa');expect(next.pkRecognitionReference).toBe(study.pkRecognitionReference);expect(next.pkTargetRelationReference).toBe(study.pkTargetRelationReference);expect(next.pkSuccessfulYearsReference).toBe(study.pkSuccessfulYearsReference);}
+});

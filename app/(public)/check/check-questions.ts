@@ -1,6 +1,7 @@
 import {
   AWARDING_BODIES,
   BOARDS,
+  nationalSchoolCountry,
   COUNTRIES,
   INTAKE_OPTIONS,
   TARGET_FIELDS,
@@ -302,7 +303,7 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
       ];
     case "board":
       return BOARDS
-        .filter((b) => b.country === answers.certificateCountry)
+        .filter((b) => b.country === nationalSchoolCountry(answers))
         .map((b) => ({ value: b.id, label: b.label, key: b.id }));
     case "hasPriorUniversityStudy":
     case "jeeAdvanced":
