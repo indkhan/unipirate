@@ -1,3 +1,4 @@
+import {currentPakistanAnswers} from './pakistan-current.fixture';
 import { buildOptions, QUESTIONS } from '../check-questions';
 import { describe, expect, it } from 'vitest';
 import { AnswersSchema, PartialAnswersSchema, buildProfile, normalizeAnswers, isAnswered, visibleSteps, withAnswer } from '../steps';
@@ -39,7 +40,7 @@ it.each(['pk','in','sa'])('routes explicit Indian issuer once from %s landing an
  const steps=visibleSteps(current);
  expect(steps.filter(s=>s==='schoolQualificationCountry')).toHaveLength(1);
  expect(steps.filter(s=>s==='schoolQualificationContext')).toHaveLength(1);
- expect(steps).toContain('board');expect(steps).toContain('schoolGradePercent');expect(steps).toContain('jeeAdvanced');
+ expect(steps).toContain('board');expect(steps).toContain('schoolGradePercent');expect(steps).toContain('jeeSchoolCertificate');
  expect(buildOptions('board',current).map(o=>o.value)).toContain('cbse');
  expect(current.pkGroup).toBeUndefined();
 });
@@ -82,3 +83,12 @@ it('passport and visa changes preserve reported Pakistan study assessments',()=>
  const study={...a,hasPriorUniversityStudy:true,priorQualificationType:'bachelor',priorStudyInstitution:'University',priorStudyCountry:'pk',priorStudyField:'CS',priorDegreeYears:4,yearsOfUniversityStudy:1,priorStudyCompletion:'in_progress',pkStudyMode:'full_time',pkStudyRegulations:'confirmed',pkAnnualRecords:'confirmed',pkSuccessfulYearsReference:'Annual records',pkRecognition:'reported_official_confirmed',pkRecognitionReference:'PK assessment',pkTargetRelation:'reported_official_previous',pkTargetRelationReference:'Target assessment'} as const;
  for(const key of ['nationality','visaApplicationCountry'] as const){const next=withAnswer(study,key,'sa');expect(next.pkRecognitionReference).toBe(study.pkRecognitionReference);expect(next.pkTargetRelationReference).toBe(study.pkTargetRelationReference);expect(next.pkSuccessfulYearsReference).toBe(study.pkSuccessfulYearsReference);}
 });
+
+it('collects current applicable Pakistan assessment and invalidates references on covered intake edits',()=>{
+ const input={...a,pkStudyEvidenceVersion:2,hasPriorUniversityStudy:true,priorQualificationType:'bachelor',priorStudyInstitution:'University',priorStudyCountry:'pk',priorStudyField:'CS',priorDegreeYears:4,yearsOfUniversityStudy:1,priorStudyCompletion:'in_progress',pkStudyMode:'full_time',pkStudyRegulations:'confirmed',pkAnnualRecords:'confirmed',pkSuccessfulYearsReference:'Successful annual records',pkRecognition:'reported_official_confirmed',pkRecognitionReference:'Recognition assessment',pkTargetRelation:'reported_official_previous',pkTargetRelationReference:'Target assessment',pkCurrentAssessment:'reported_current_support',pkCurrentAssessmentReference:'University current exact qualification/intake assessment',intake:{term:'winter',year:2026}} as const;
+ expect(AnswersSchema.safeParse(input).success).toBe(true);expect(visibleSteps(input)).toContain('pkCurrentAssessment');
+ const edited=withAnswer(input as never,'intake',{term:'summer',year:2027});expect(edited.pkSuccessfulYearsReference).toBeUndefined();expect(edited.pkRecognitionReference).toBeUndefined();expect(edited.pkTargetRelationReference).toBeUndefined();expect(edited.pkCurrentAssessmentReference).toBeUndefined();
+});
+
+it.each([['pkGroup','commerce'],['priorStudyInstitution','Changed institution'],['priorStudyField','Changed programme'],['priorStudyCompletion','discontinued'],['pkRecognition','reported_official_rejected'],['pkAnnualRecords','unknown'],['yearsOfUniversityStudy',2],['targetField','humanities']] as const)('changed %s invalidates applicable current assessment',(field,value)=>{const next=withAnswer(currentPakistanAnswers,field,value as never);expect(next.pkCurrentAssessmentReference).toBeUndefined();expect(next.pkCurrentAssessment).toBeUndefined();});
+it.each(['nationality','visaApplicationCountry'] as const)('%s preserves versioned current academic references',field=>{const next=withAnswer(currentPakistanAnswers,field,'sa');expect(next.pkCurrentAssessmentReference).toBe(currentPakistanAnswers.pkCurrentAssessmentReference);expect(next.pkRecognitionReference).toBe(currentPakistanAnswers.pkRecognitionReference);expect(next.pkTargetRelationReference).toBe(currentPakistanAnswers.pkTargetRelationReference);expect(next.pkSuccessfulYearsReference).toBe(currentPakistanAnswers.pkSuccessfulYearsReference);});

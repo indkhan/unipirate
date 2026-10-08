@@ -19,7 +19,7 @@ describe('UP-ELIG-03 accepted official-source route', () => {
     });
     it('retains exact unsafe legacy metadata inactive', () => { const old = legacy.find(r => r.id === '0e872b82-e7fb-41bb-9a35-53ecbe200df4')!; expect(old.slug).toBe('in-1yr-bachelor-70pct-subject-restricted'); expect(old.last_verified_at).toBe('2026-07-04T00:00:00+00:00'); expect(EngineRuleSchema.safeParse(old).success).toBe(false); expect(evaluate(indianStudyProfile, [old]).path).toBe('unknown'); });
     it('positive route has exact 13 keys and no JEE failure dependency; JEE remains independent', () => { expect(Object.keys(indiaStudyCandidates[0].conditions)).toHaveLength(13); expect(indiaStudyCandidates[0].conditions).not.toHaveProperty('jee_advanced'); for (const jeeAdvanced of [true, false, undefined])
-        expect(evaluate({ ...indianStudyProfile, jeeAdvanced }, reviewedIndiaStudyRules()).path).toBe('subject_restricted'); expect(evaluate({ ...historyChange({ priorStudyRecognition: 'unknown' }), jeeAdvanced: true }, reviewedIndiaStudyRules()).path).toBe('subject_restricted'); });
+        expect(evaluate({ ...indianStudyProfile, jeeAdvanced }, reviewedIndiaStudyRules()).path).toBe('subject_restricted'); expect(evaluate({ ...historyChange({ priorStudyRecognition: 'unknown' }), jeeAdvanced: true }, reviewedIndiaStudyRules()).path).toBe('unknown'); });
     it('does not invent publication or conflate certificate fulfilment', () => { expect(indiaStudyCandidates.every(r => r.status === 'draft')).toBe(true); for (const rules of [[], indiaStudyCandidates])
         expect(evaluate(indianStudyProfile, rules).citations).toEqual([]); for (const hasExistingApsCertificate of [true, false, undefined]) {
         const r = evaluate({ ...indianStudyProfile, hasExistingApsCertificate }, reviewedIndiaStudyRules());
@@ -44,7 +44,7 @@ describe('UP-ELIG-03 accepted official-source route', () => {
     } });
     it.each([{ schoolGradePercent: undefined }, { intake: undefined }, { schoolQualification: undefined }, { schoolQualification: { country: 'in', context: undefined } }])('requires missing applicability %j', change => { const r = evaluate({ ...indianStudyProfile, ...change }, reviewedIndiaStudyRules()); expect(r.path).toBe('unknown'); expect(r.unknowns.some(n => /Class XII|intake|issuer|context/.test(n))).toBe(true); });
 });
-it('school-only candidate cannot override independently supported JEE', () => { expect(evaluate({ ...indianStudyProfile, qualificationHistory: { hasPriorUniversityStudy: false }, jeeAdvanced: true }, reviewedIndiaStudyRules()).path).toBe('subject_restricted'); });
+it('explicit school-only history retains its independent reviewed school route; a legacy JEE boolean cannot grant direct access', () => { expect(evaluate({ ...indianStudyProfile, qualificationHistory: { hasPriorUniversityStudy: false }, jeeAdvanced: true }, reviewedIndiaStudyRules()).path).toBe('studienkolleg'); });
 
 it('can show reported direct access while scoped APS preparation is outstanding',()=>{const r=evaluate({...indianStudyProfile,apsApplicationContext:'uni_assist',hasExistingApsCertificate:false},reviewedIndiaStudyRules());expect(r.path).toBe('subject_restricted');expect(r.apsScopes?.qualification).toBe('required');expect(r.apsScopes?.application).toBe('required');expect(r.apsCertificate).toBe('missing');expect(r.stepsDetailed.some(s=>s.acquisition)).toBe(true);});
 

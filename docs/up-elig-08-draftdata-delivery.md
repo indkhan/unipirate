@@ -66,7 +66,7 @@ no frameworks, no dependencies.
    - `common_conditions` key count 17, `routes` length 3, `acceptance_cases` length 14.
    - No `supabase_url` / `service_role` secret markers.
    - Exit: 0 (`OK status=future_specification_data exec=false routes=3 cases=14 pos=5 unk=9`).
-2. `git diff --check` — clean, no whitespace errors. Exit: True (no output).
+2. `git diff --check` — clean, no whitespace errors. Exit: 0 (independently verified numeric exit; no output).
 3. `git status --short` before commit showed only untracked `docs/spec-data/`
    (new JSON) plus this new delivery file; no other working-tree changes.
 
@@ -84,14 +84,14 @@ no frameworks, no dependencies.
 ## Session / model
 
 - Model reported: `opencode/muse-spark-1.3-contributor-free`.
-- Session ID: unavailable in this environment (no session identifier exposed);
-  actual session ID returned where available: none.
+- Session ID: `ses_ee6fe1bd9ffeRmzvKplXs92ehh`, recorded/exported and verified in root supervisor metadata.
 
 ## Explicit non-claims
 
 - No tests written, no test coverage claimed, no test suite run for publication.
 - No engine/checker/harness/bootstrap coverage; full Pakistan positive coverage is
   activated only by the hard solution owner after implementation.
-- No provider, billing, model, ACL, permissions, push, merge, publish, deploy,
-  live-DB, or remote paid-provider access.
+- No additional research provider access. Execution used the configured
+  `opencode/muse-spark-1.3-contributor-free` provider. No billing/model changes,
+  ACL/permission changes, push, merge, publication, deployment or live-DB operation.
 - No additional research or source changes.

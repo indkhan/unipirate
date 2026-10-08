@@ -852,51 +852,75 @@ New and edited IB bachelor answers carry `ibVersion: 1`; historical answers rema
 See [IB source verification](ib-source-verification.md) for authority, source versions, effective sessions and unresolved limits. The executable IB corpus is activated in UP-TEST-01; final parent official coverage remains OPEN. No DB, publication, server-shell or version-selection interface was changed.
 
 
-### Pakistan bounded preparatory assessment (UP-ELIG-08)
+### Pakistan bounded current assessment (UP-ELIG-08)
 
-New Pakistan drafts and profile edits carry `pakistanVersion: 1` with required
-qualification history. Legacy saved-result reads remain unversioned/readable.
-For national Bachelor study, actual issuing country/context precedes exact
-HSSC/Intermediate/title category, twelve-grade completion, documentary group and
-overall percentage. Unknown percentage is explicit and distinct from an absent
-answer. FSc/FA/ICom/ICS and mixed titles never infer a group. GCE/IB remain
-independent qualification contracts. Target-family reports require a programme or
-institution reference; no field-string mapping establishes programme eligibility.
+Actual national school issuer/context is collected once before country-specific
+questions. Pakistan new/edit/restored drafts carry pakistanVersion 1; current
+study evidence separately carries pkStudyEvidenceVersion 2. Legacy reports remain
+readable without inventing a current applicable assessment. Actual India questions
+and prior history remain reachable regardless of the landing country. GCE/IB are
+independent. Passport/visa edits preserve academic reports.
 
-Pure `lib/engine/pakistan.ts` validates direct callers and derives fourteen narrowly
-scoped `pk_*` semantic facts. Generic legacy history/recognition keys remain
-inactive. Existing `qualificationHistory` preserves degree duration, actual
-successful study, completion, institution, country and field; its Pakistan report
-records mode, regulations, annual subject/marks evidence and applicable reported
-recognition/target assessments. Those are applicant reports, never app verification.
-Elapsed time, two semesters, names, HEC attestation, degree completion and matching
-fields do not establish successful academic years, recognition or relatedness.
+Pure lib/engine/pakistan.ts validates applicant reports and derives fifteen scoped
+pk_* facts. Generic legacy recognition/history facts stay inactive. Exact completed
+twelve-grade HSSC/Intermediate category is separate from documentary Science,
+Commerce or Humanities group; FSc/FA/ICom/ICS titles never infer groups. Missing
+grade differs from 49.99; the literal >=50 condition applies only to this formula.
+Existing qualificationHistory preserves institution, programme, country, completion
+and actual successful years. Names, HEC attestation, elapsed attendance, two semesters
+or field strings establish neither success, recognition nor target relationship.
 
-The three prep candidates require HSSC/Intermediate, twelve grades, >=50%,
-explicit no study and an intended family within the stated restriction. Thresholds
-and family membership stay in `scripts/pakistan.rules.ts`. The citation claim
-explicitly names Medicine/Natural Sciences/Technology, Social Sciences/Economics
-or Humanities and the subject-restricted preparatory/FSP nature. Below threshold
-means only this formula is unmet. Pure diagnostics compare published candidate
-conditions, prefer the reported documentary group and identify missing scope or
-outside-family requests without assigning an unsupported admission result.
+Three source-backed preparatory candidates restrict no-study applicants to their
+stated Medicine/Natural Sciences/Technology, Social Sciences/Economics or Humanities
+family. Six executable acceptance examples cover these families. Three current
+one-year candidates require the actual Pakistani national qualification, >=50%,
+recognized full-time academic Bachelor study in Pakistan under regulations, annual
+subject/mark records, at least one successful year and separate applicable success,
+recognition and previous/neighbouring-target report references. A current applicable
+assessment report/reference is required; a contrary assessment remains an individual
+confirmation conflict. Direct subject scope follows prior university study, not the
+school group. Ongoing Bachelor is conservative product coverage, not a new official
+qualification requirement. Covered product intakes are exactly 4053/4054/4055;
+missing, historical and other intakes remain targeted unknown. First intake selection
+preserves fresh evidence; subsequent relevant intake/target/school/history edits
+invalidate dependent references. Restored old drafts stop at missing current evidence.
 
-Current DAAD Science 195 and Commerce 199 say one successful academic year, while
-the still-linked 2022 PDF says two. Both source records resolve to cited unknown;
-no positive direct candidate is published or simulated as official acceptance.
-Humanities 206, completed qualifications/Master's, aliases and irregular study
-remain targeted unknown. The prior-study conflict differs from completed
-two-year-degree equivalence. See [source verification](up-elig-08-source-verification.md).
-Verification date is not effective intake; institution final assessment remains.
+Original anabin PAK-BV01/02/03 German wording was supplied in root's firsthand source
+review and independently adjudicated. DAAD195/199 corroborate one successful year;
+Humanities206 retrieval failure is not contrary evidence. The linked 2022 regional
+PDF still says two years. Three evidence-only candidates disclose that discrepancy
+in result citations and immutable current KB, without executing it as a competing
+current path. No formal withdrawal, legal precedence or historical commencement is
+asserted. Source verification date is not effective intake. Applicant reports are
+labelled separately from verified source rules; university/uni-assist makes the
+individual final decision. Completed two-year-degree discrepancy remains review-only;
+completed four-year Bachelor, Master's, aliases and irregular cases remain unknown.
 
-Issuer/curriculum/certificate/group/history edits invalidate dependent reports;
-target edits clear subject-family/relationship evidence. Restoration upgrades PK
-drafts and stops at newly missing questions; hidden answers prune to stability.
-Passport/visa edits preserve academic evidence. No storage migration, task mutation,
-live-rule change or consumer/RLS repair occurs. Twelve new candidates remain
-drafts with null publication/effective-intake metadata. TEST-01 activates only
-bounded verified prep expectations on disposable copies; parent direct gate stays
-BLOCKED and broader TEST coverage stays OPEN.
+All fourteen candidates remain draft/unpublished with null publication/effective
+intake. Runtime tests consume actual candidate clones with disposable published
+metadata; Muse's JSON remains its original future-data delivery record and alone
+proves no route. Renamed, exclusion-only, source-only and unscoped legacy Pakistan
+paths are quarantined consistently in engine, legacy retrieval and immutable current
+KB. Selected immutable human versions and captured context remain the sole current
+authority; cached prose, IDs and URLs are hints. Only resolved winning Pakistan
+paths project admission tasks. No DB, seed, embedding, migration or provider operation
+occurs. See [source verification](up-elig-08-source-verification.md).
+
+### India JEE ordinary qualifying passage (UP-ELIG-04)
+
+New/edited/restored answers use jeeVersion 2; version 1 and historical Advanced booleans remain readable without invented evidence. Separate reported Main/Advanced qualifying passages are never inferred from scores, percentiles, participation, result possession or the legacy boolean. Actual Indian national school issuer/context is established once before collecting a reported completed twelve-grade national secondary certificate. Foreign, missing or unknown issuer/context cannot expose or map hidden India JEE reports. Tertiary history is independent and cannot prove school completion.
+
+After target selection, both ordinary passages and the completed category permit a reported applicable university/uni-assist classification of this exact intended target as technology/natural sciences, with a trimmed nonblank reference up to 500 characters. Marketing, guessed STEM membership, a broad family sentence or a statement about another target cannot establish that report. The app verifies the rule source, not applicant documents or programme classification. Existing options and text editors render these questions progressively; unfinished draft text survives but complete submissions require applicable evidence. Target and changed intake clear bound family/reference, family edits clear reference, and qualification/category/exam/context changes prune dependent reports. First intake selection retains evidence just collected. Passport/visa edits preserve academic reports. Legacy drafts stop at newly missing evidence, retaining independent university history.
+
+The source-backed candidate requires both passed statuses, ordinary context, bachelor/national curriculum, actual Indian national issuer, completed secondary category, positive reported family with reference, and intake inclusion 4053/4054/4055. The shared pure engine/KB predicate rejects unscoped or exclusion-only metadata and other positive outcomes. No board whitelist, static programme mapping or 70% prerequisite is added. Missing/failed JEE excludes only JEE; independent India03 and scoped process routes remain available. Equal-specificity path conflicts remain unknown with both citations.
+
+Fresh verification 2026-10-08 follows [DAAD India selection](https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=2&ad-layerId=4) through [completed school category](https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=3&ad-layerId=21) to [both-parts result](https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=4&ad-layerId=63), corroborated by [uni-assist India](https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/). The recognition outcome is direct subject-restricted academic access, with institution final decision. Exact current product intake coverage is reviewed 2026-10-08, not a claimed source effective date; source commencement is unstated. Historical, missing and other intakes and Main exemption/preparatory/cross-year/unclear evidence remain targeted unknowns. No Anabin IND-BV02 text was independently verified. See [source contract](up-elig-04-source-verification.md).
+
+The candidate remains DRAFT with null publication date. Official harness positives use disposable published copies of that actual source-backed candidate; artificial matcher fixtures remain specification data. The former ordinary-source hold is superseded only within this reviewed contract. Production publication, real programme verification, exceptional/historical recognition and root full acceptance remain separate holds; no DB, seed or embedding operation occurs.
+
+#### Assistant JEE authority and immutable versions
+
+Engine and KB rendering share the canonical structured quarantine: unsupported historical JEE paths withhold path/note/quote/tasks and render cited unknowns with historical metadata distinguished from verification. Independent process outcomes survive. The approved legacy projectDmatKbMatches adapter remains unchanged and its exact cache-binding regressions remain executable, but it has no production caller. Rule34's current search_rules reads only caller-visible immutable versions through listRuleVersions and matchKbRuleHints; cached prose and unversioned snippets are search hints, never authority. Current-source selection retains reviewer/provenance/publication/applicability/version identity, then renders the selected structured snapshot. Missing/invalid/unreviewed/future sources cannot revive old cache content. Actual-tool JEE legacy, renamed lost-family, current independent and source-backed scoped replacement controls exercise this immutable format without rolling back to mutable published rows.
 
 ### Rule assessment consumer integration (UP-RULES-01)
 
@@ -955,5 +979,5 @@ recognition/relationship reports while retaining the core prior-study history.
 Uncovered/uncertain contexts prune hidden evidence and retain only a Pakistan
 source-review marker; that marker derives no Pakistan facts or positive outcome.
 Legacy reads remain unchanged. Passport/visa edits preserve academic reports.
-The explicit current revision adds pakistan-bounded-v1; protected old assessment
+The explicit current revision adds pakistan-current-v2; protected old assessment
 revisions, immutable source versions and captured UTC instants are never rewritten.

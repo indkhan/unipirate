@@ -12,6 +12,7 @@ import {
 } from "./steps";
 import { DMAT_FIELD_ENTRIES, DMAT_FIELD_SOURCE, DMAT_SOURCE } from "@/lib/engine/dmat";
 
+import { JEE_SOURCE, JEE_ADMISSION_SOURCE } from "@/lib/engine/jee";
 import { IB_SOURCE } from "@/lib/engine/ib";
 
 export type Option = { value: unknown; label: string; key: string };
@@ -20,6 +21,8 @@ export type Option = { value: unknown; label: string; key: string };
 const PK_SOURCE='https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=6&ad-layerId=193';
 const reported='Applicant-reported evidence; UniPirate does not independently verify it. No direct entry is established while the one-/two-year source conflict remains unresolved.';
 export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; sourceUrl?: string }> = {
+ pkCurrentAssessment:{question:'What does the intended institution/uni-assist current assessment say for this exact qualification, study, target and intake?',subtitle:'Current source guidance is nonbinding. Report a specific contrary instruction as a conflict; old or unrelated assessments cannot confirm this basis. '+reported,sourceUrl:'https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang'},
+ pkCurrentAssessmentReference:{question:'Which authority, document and conclusion applies to this exact current case and intake?',subtitle:reported,sourceUrl:'https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang'},
  pkCertificate:{question:'What exact certificate title category appears on your document?',subtitle:'HSSC and Intermediate are separate from FSc, FA, ICom and ICS titles. We do not automatically classify those aliases.',sourceUrl:PK_SOURCE},
  pkSchoolCompletion:{question:'Does your certificate confirm completion of twelve school grades?',subtitle:'School completion is separate from your marks and documentary group.',sourceUrl:PK_SOURCE},
  pkGroup:{question:'Which documentary group is stated on your school grade report?',subtitle:'Use the explicit Science/Pre-Engineering/Pre-Medical, Commerce or Humanities group. ICS, mixed or unclassified records need assessment; no subject combination is inferred.',sourceUrl:PK_SOURCE},
@@ -94,9 +97,15 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; so
     question: "What is your overall Class 12 result?",
     subtitle: "Your overall percentage across subjects.",
   },
+  jeeSchoolCertificate: { question: "Do you hold a completed Indian national secondary school-leaving certificate after 12 grades?", subtitle: "Report the completed certificate itself. A board label, provisional or future results, university study or Class XII percentage alone cannot establish this category. Your report is not independently verified by UniPirate.", sourceUrl: JEE_ADMISSION_SOURCE },
+  jeeTargetFamily: { question: "What does an applicable official classification say about this intended programme?", subtitle: "Report a university or uni-assist statement covering this exact target as technology or natural sciences. Personal guesses, marketing, the broad DAAD family sentence alone, another programme or an unclassified mixed title cannot establish it. This is applicant-reported evidence, not app verification.", sourceUrl: JEE_ADMISSION_SOURCE },
+  jeeTargetFamilyReference: { question: "Which official statement classifies this exact intended target?", subtitle: "Identify the university or uni-assist, document or communication and applicable conclusion for this programme/target. Your report does not guarantee programme admission.", sourceUrl: JEE_ADMISSION_SOURCE },
+  jeeMainStatus: { question: "Have you successfully passed JEE Main?", subtitle: "Report confirmed qualifying passage from official examination evidence. A score, percentile, result sheet or eligibility to sit Advanced alone is not a confirmed pass. Choose Cannot confirm if the wording is unclear. Your report is not independently verified by UniPirate.", sourceUrl: JEE_SOURCE },
+  jeeAdvancedStatus: { question: "Have you successfully qualified in JEE Advanced?", subtitle: "Report official qualifying passage/rank, not merely a result, marks or participation. Preparatory ranks, unclear results or cross-year evidence need individual assessment; use the next evidence question.", sourceUrl: JEE_SOURCE },
+  jeeEvidenceContext: { question: "Does your JEE evidence need an exception or individual assessment?", subtitle: "Choose the relevant uncertainty even if an exam report says qualified. An Indian examination Main exemption or foreign-entry rule does not establish a German recognition exception. Certificate and intake applicability remain separate.", sourceUrl: JEE_SOURCE },
   jeeAdvanced: {
     question: "Do you have a valid JEE Advanced result?",
-    subtitle: "A qualifying JEE Advanced rank changes your admission path.",
+    subtitle: "Historical answer only; new assessments require separate Main and Advanced qualifying passage.",
   },
   hasExistingApsCertificate: {
     question: "Do you already have an APS certificate?",
@@ -159,6 +168,7 @@ const countryOptions = COUNTRIES.map((c) => ({
 export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
   const options=(entries:readonly (readonly [string,string])[])=>entries.map(([value,label])=>({value,key:value,label}));
   switch (stepId) {
+    case 'pkCurrentAssessment':return options([['reported_current_support','Applicable current assessment supports this exact case'],['reported_contrary','Specific applicable assessment gives contrary requirements'],['unknown','Cannot confirm an applicable current assessment']]);
     case 'pkCertificate':return options([['hssc','Higher Secondary (School) Certificate'],['intermediate','Intermediate (Examination) Certificate'],['ssc','SSC / less than twelve grades'],['fsc','FSc title; category requires assessment'],['fa','FA title; category requires assessment'],['icom','ICom title; category requires assessment'],['ics','ICS title; category requires assessment'],['other','Another certificate'],['unknown','Cannot confirm']]);
     case 'pkGroup':return options([['science','Science / Pre-Engineering / Pre-Medical'],['commerce','Commerce'],['humanities','Humanities'],['mixed','ICS or mixed/unclassified'],['other','Another group'],['unknown','Cannot confirm']]);
     case 'pkSchoolCompletion':return options([['completed_12_grades','Certificate confirms twelve completed grades'],['incomplete','Incomplete or fewer than twelve grades'],['unknown','Cannot confirm']]);
@@ -168,6 +178,32 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
     case 'pkAnnualRecords':return options([['confirmed','Annual subjects and marks available'],['not_available','Annual records unavailable'],['unknown','Cannot confirm']]);
     case 'pkRecognition':return options([['reported_official_confirmed','Official assessment confirms recognition'],['reported_official_rejected','Official assessment rejects recognition'],['unknown','Cannot confirm applicable assessment']]);
     case 'pkTargetRelation':return options([['reported_official_previous','Official assessment confirms previous subject'],['reported_official_closely_related','Official assessment confirms related subject'],['reported_official_unrelated','Official assessment places target outside scope'],['unknown','Cannot confirm applicable assessment']]);
+
+    case "jeeSchoolCertificate": return [
+      {value:"completed_12_year_secondary",key:"completed_12_year_secondary",label:"I hold the completed Indian national secondary school-leaving certificate after 12 grades"},
+      {value:"other",key:"other",label:"Another, incomplete or shorter school qualification"},
+      {value:"unknown",key:"unknown",label:"Cannot confirm this completed certificate category"},
+    ];
+    case "jeeTargetFamily": return [
+      {value:"reported_official_technology",key:"reported_official_technology",label:"Applicable official statement classifies this target as technology"},
+      {value:"reported_official_natural_sciences",key:"reported_official_natural_sciences",label:"Applicable official statement classifies this target as natural sciences"},
+      {value:"reported_official_outside",key:"reported_official_outside",label:"Applicable official statement places this target outside these families"},
+      {value:"unknown",key:"unknown",label:"Cannot confirm an applicable official classification"},
+    ];
+    case "jeeMainStatus":
+    case "jeeAdvancedStatus": return [
+      {value:"passed",key:"passed",label:"Official evidence confirms qualifying passage"},
+      {value:"not_passed",key:"not_passed",label:"Not passed / not qualified"},
+      {value:"no_result",key:"no_result",label:"No result (not taken or pending)"},
+      {value:"unknown",key:"unknown",label:"Cannot confirm qualifying passage"},
+    ];
+    case "jeeEvidenceContext": return [
+      {value:"ordinary",key:"ordinary",label:"Ordinary qualifying evidence; no exception or uncertainty"},
+      {value:"main_exemption",key:"main_exemption",label:"Main exemption / direct foreign-entry exception"},
+      {value:"preparatory_rank",key:"preparatory_rank",label:"Preparatory-course rank only or unclear rank type"},
+      {value:"cross_year",key:"cross_year",label:"Results from different years / year applicability uncertain"},
+      {value:"unclear",key:"unclear",label:"Other unclear examination evidence"},
+    ];
     case 'ibDocumentStatus':return [{value:'awarded',key:'awarded',label:'Diploma awarded; final IBO document available'},{value:'official_results',key:'official_results',label:'Official IBO results confirm Diploma; physical document pending'},{value:'not_awarded',key:'not_awarded',label:'Diploma not awarded'},{value:'certificate',key:'certificate',label:'IB Certificate / course results only'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
     case 'ibExamSession':return [{value:'may',key:'may',label:'May'},{value:'november',key:'november',label:'November'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];
     case 'ibSchooling':return [{value:'ascending_full_time',key:'ascending_full_time',label:'Ascending years at schools with full-time instruction'},{value:'other',key:'other',label:'Another schooling pattern'},{value:'unknown',key:'unknown',label:'Cannot confirm'}];

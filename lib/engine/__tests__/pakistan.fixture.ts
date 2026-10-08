@@ -1,4 +1,4 @@
-// UP-TEST-01: source-reviewed bounded prep only. Parent direct gate is BLOCKED.
+// UP-TEST-01: adopted bounded prep/current one-year candidate acceptance; publication remains separate.
 // Test reports/references are synthetic applicant evidence, never app verification.
 import type { Profile } from '../evaluate';
 import { pakistanCandidates } from '@/scripts/pakistan.rules';
@@ -17,3 +17,7 @@ export const PAKISTAN_PREP_ACCEPTANCE = [
     path: string;
     sourceId: string;
 }[];
+
+export const currentPakistanProfile: Profile = {...pakistanProfile,intake:{term:'winter',year:2026},qualificationHistory:{hasPriorUniversityStudy:true,qualificationType:'bachelor',institution:'Reported Pakistan academic university',country:'pk',field:'Previous academic field',degreeYears:4,completedYears:1,completion:'in_progress',pakistanStudy:{evidenceVersion:2,mode:'full_time',regulations:'confirmed',annualRecords:'confirmed',successfulYearsReference:'Annual subjects and marks establish one successful academic year',recognition:'reported_official_confirmed',recognitionReference:'Applicable institutional assessment recognises this institution and academic bachelor study',relation:'reported_official_closely_related',relationReference:'Applicable university assessment identifies intended target as neighbouring previous subject',assessment:'reported_current_support',assessmentReference:'Intended university assessment supports this exact current qualification, study, target and intake'}}};
+
+export const PAKISTAN_CURRENT_ACCEPTANCE = (['science','commerce','humanities'] as const).flatMap(group => ([{term:'winter',year:2026},{term:'summer',year:2027},{term:'winter',year:2027}] as const).map(intake => ({id:'PK-current-'+group+'-'+intake.term+'-'+intake.year,profile:{...currentPakistanProfile,pakistan:{...currentPakistanProfile.pakistan!,group},intake},path:'subject_restricted' as const})));

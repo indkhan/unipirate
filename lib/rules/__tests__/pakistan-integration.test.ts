@@ -5,7 +5,7 @@ import {pakistanProfile,reviewedPakistanRules} from '@/lib/engine/__tests__/paki
 import {version,context,answers as oldAnswers,profile as oldProfile} from './assessment-fixtures';
 
 it('records explicit Pakistan integration revision with immutable source-backed UUID envelopes and retains protected old revision',()=>{
- expect(ENGINE_REVISION).toContain('pakistan-bounded-v1');
+ expect(ENGINE_REVISION).toContain('pakistan-current-v2');
  const raw={...reviewedPakistanRules()[0],id:'00000000-0000-4000-8000-000000000081'};
  const envelope=version(1,{rule_id:raw.id,raw_snapshot:raw,reviewed_at:'2026-10-08T00:00:00Z',published_at:'2026-10-08T00:00:00Z'});
  const assessment=evaluateAssessment(pakistanProfile,[envelope],{evaluatedAt:'2026-10-08T01:00:00Z',engineRevision:ENGINE_REVISION});

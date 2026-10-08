@@ -12,6 +12,8 @@ export const PakistanProfileSchema = z.object({
 }).strict();
 export type PakistanProfile = z.infer<typeof PakistanProfileSchema>;
 export const PakistanStudySchema = z.object({
+    evidenceVersion: z.literal(2).optional(),
+    assessment: z.enum(['reported_current_support','reported_contrary','unknown']).optional(), assessmentReference: reference.optional(),
     mode: z.enum(['full_time', 'part_time', 'distance_online', 'other', 'unknown']).optional(),
     regulations: z.enum(['confirmed', 'not_confirmed', 'unknown']).optional(),
     annualRecords: z.enum(['confirmed', 'not_available', 'unknown']).optional(),
@@ -20,7 +22,7 @@ export const PakistanStudySchema = z.object({
     relation: z.enum(['reported_official_previous', 'reported_official_closely_related', 'reported_official_unrelated', 'unknown']).optional(), relationReference: reference.optional(),
 }).strict();
 export type PakistanStudy = z.infer<typeof PakistanStudySchema>;
-export const PK_FACT_KEYS = ['pk_certificate', 'pk_documentary_group', 'pk_school_completion', 'pk_grade_percent', 'pk_prior_study_kind', 'pk_prior_study_country', 'pk_prior_study_completion', 'pk_successful_academic_years', 'pk_study_mode', 'pk_study_regulations', 'pk_annual_records', 'pk_reported_recognition', 'pk_reported_target_relation', 'pk_target_family'] as const;
+export const PK_FACT_KEYS = ['pk_certificate', 'pk_documentary_group', 'pk_school_completion', 'pk_grade_percent', 'pk_prior_study_kind', 'pk_prior_study_country', 'pk_prior_study_completion', 'pk_successful_academic_years', 'pk_study_mode', 'pk_study_regulations', 'pk_annual_records', 'pk_reported_recognition', 'pk_reported_target_relation', 'pk_target_family', 'pk_current_assessment'] as const;
 const PakistanHistorySchema = z.object({
     hasPriorUniversityStudy: z.boolean(), qualificationType: z.enum(['bachelor', 'master', 'diploma', 'other']).optional(),
     institution: z.string().trim().min(1).max(200).optional(), country: z.string().regex(/^(?:[a-z]{2}|other|unknown)$/).optional(),
@@ -40,6 +42,7 @@ export function derivePakistanFacts(p: Profile): Record<string, string | number 
     const study = PakistanStudySchema.safeParse(h?.pakistanStudy);
     if (h?.hasPriorUniversityStudy && study.success) {
         const e = study.data;
+        facts.pk_current_assessment = e.evidenceVersion === 2 && e.assessmentReference ? e.assessment ?? 'unknown' : 'unknown';
         facts.pk_study_mode = e.mode ?? 'unknown';
         facts.pk_study_regulations = e.regulations ?? 'unknown';
         facts.pk_annual_records = e.annualRecords ?? 'unknown';
