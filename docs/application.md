@@ -394,10 +394,31 @@ successful live assistant evaluation; it is not guaranteed by unit tests.
   `get_user_context` (profile + applications + tasks via the user's own
   RLS-scoped client), `web_search` (Tavily, official German domains first,
   everything flagged unverified; degrades honestly without an API key).
-- The system prompt enforces the contract: answer **only** from tool
+- The system prompt requires the contract: answer **only** from tool
   results; every claim ends with `[[rule:slug]]` or `[[web:url]]`; no
   coverage → `[[unknown]]` plus the official source. Refusing to guess is
   success.
+- The pure completed-answer guard (`lib/ai/response-guard.ts`) requires markers
+  and authorizes every rule/web citation against exact successful server tool
+  outputs in this request only. Shared source-envelope validation rejects malformed
+  records and conflicting versions/URLs. History, personal context and provider
+  source events authorize nothing; unknown cannot override an unauthorized citation.
+  Rejected prose is replaced entirely with a constant `[[unknown]]` refusal and
+  DAAD's general URL as a place to check, never as proof of the requested answer.
+  This checks presence and citation authorization, not sentence entailment,
+  factual accuracy, source accuracy or honesty of arbitrary unknown-marked prose.
+- Trade-off: the SDK 7 transform buffers answer text until each finish-step,
+  before the SDK accumulates text for continuation and persistence. Tool progress
+  remains immediate; incomplete/error/aborted steps discard pending text. The
+  existing per-step token cap remains. The UI can show multiple guarded steps;
+  stored assistant history retains only the final step, as before.
+- Trade-off: universal markers also apply to personal answers, which may now
+  become a controlled unknown when the model omits markers. No personal-history
+  citation type is invented.
+- The route now passes `request.signal` to the shared runner for cancellation.
+  Aborted requests retain the logged user question/quota consumption and do not
+  store a partial assistant answer. Reasoning transport is disabled with
+  `sendReasoning: false`; this adds no reasoning UI.
 - Markers (`lib/ai/markers.ts`, pure) are stripped for display and rendered
   as verified stamps / unverified chips / "not in our rules" blocks by
   `components/app/assistant-sidebar.tsx`; on finish they are parsed and
@@ -411,8 +432,12 @@ successful live assistant evaluation; it is not guaranteed by unit tests.
   are written before stale hints are removed; failed writes retain the old corpus
   but cannot authorize its old prose. No provider operation runs during rendering.
 - `pnpm eval:assistant` runs a 20-question adversarial eval (invented-fact
-  traps, out-of-scope traps, personal context) and fails on any uncited
-  claim.
+  traps, out-of-scope traps, personal context). It reports raw marker compliance
+  separately from guarded delivery, fails on replacement fallbacks (including
+  personal answers), and counts only unreplaced unknowns. A fallback-only model
+  cannot pass as healthy. Marker checks do not detect every uncited clause.
+  Deterministic provider-boundary tests exercise the actual SDK and route; real
+  original-model, RLS, default-build, CI and browser gates remain root-owned.
 
 ### 5. Auth & authorization
 

@@ -110,6 +110,7 @@ export async function POST(request: Request) {
 
   const result = await runAssistant({
     db,
+    abortSignal: request.signal,
     userId: user.id,
     countryCode: answers?.certificateCountry ?? answers?.nationality ?? null,
     messages: messages as unknown as UIMessage[],
@@ -118,6 +119,6 @@ export async function POST(request: Request) {
   });
 
   return createUIMessageStreamResponse({
-    stream: toUIMessageStream({ stream: result.stream }),
+    stream: toUIMessageStream({ stream: result.stream, sendReasoning: false }),
   });
 }
