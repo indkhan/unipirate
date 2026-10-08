@@ -4,6 +4,7 @@
 // and merges outcomes. Missing rules produce explicit `unknown` outcomes with
 // confirm-with-the-official-source messages; the engine never guesses.
 import { z } from "zod";
+import { JeeProfileSchema, type JeeProfile, JEE_SOURCE, JEE_FIELD_SOURCE, JEE_ADMISSION_SOURCE } from "./jee";
 import { type IbProfile, deriveIbFacts, IB_FACT_LABELS, IB_SOURCE } from "./ib";
 import { gceEntry, gceIndependent, triples } from "./gce";
 import { calendarDay } from "./calendar-day";
@@ -21,7 +22,8 @@ export type Profile = {
   curriculumType: "national" | "ib" | "gce" | "other";
   board?: string; // 'cbse' | 'fsc' | 'tawjihiyah' | ...
   schoolGradePercent?: number; // Class XII overall %
-  jeeAdvanced?: boolean;
+  jeeAdvanced?: boolean; // Legacy history only; never proof of qualifying passage.
+  jee?: JeeProfile;
   visaApplicationCountry?: string;
   // Explicit issuer context; legacy school attendance is never an APS issuer.
   schoolQualification?: { country?: string; context?: "national" | "international" | "unknown" };
@@ -182,6 +184,8 @@ const FactKeySchema = z.enum([
   "ib_total_points",
   "intake_index",
   "jee_advanced",
+  "jee_main_status", "jee_advanced_status", "jee_evidence_context",
+  "jee_school_certificate", "jee_reported_target_family",
   "target_degree",
   "target_field",
   "visa_application_country",
@@ -378,6 +382,18 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
     raw.aps_submission_confirmation = date === undefined ? "unknown" : "confirmed";
     raw.aps_confirmed_submission_day = date;
   }
+  // New evidence, even malformed, must not revive a contradictory legacy fallback.
+  if (p.jee !== undefined) raw.jee_advanced = undefined;
+  const jee = JeeProfileSchema.safeParse(p.jee);
+  if (p.targetDegree === "bachelor" && p.curriculumType === "national" &&
+      p.schoolQualification?.country === "in" && p.schoolQualification.context === "national" && jee.success) {
+    raw.jee_main_status = jee.data.main;
+    raw.jee_advanced_status = jee.data.advanced;
+    raw.jee_evidence_context = jee.data.context;
+    raw.jee_school_certificate = jee.data.schoolCertificate;
+    raw.jee_reported_target_family = p.targetField?.trim() && jee.data.targetFamilyReference?.trim()
+      ? jee.data.targetFamily : undefined;
+  }
   if (p.qualificationHistory) {
     const history = p.qualificationHistory;
     raw.has_prior_university_study = history.hasPriorUniversityStudy;
@@ -538,6 +554,29 @@ function ruleMatches(facts: Record<string, Fact>, rule: ParsedRule): boolean {
   );
 }
 
+// Shared structured quarantine for evaluation and assistant evidence. No I/O.
+type JeeRule = { conditions: Record<string, Condition>; outcomes: { path?: string } };
+export const isJeeRule = (r: JeeRule) =>
+  conditionPasses(true, r.conditions.jee_advanced ?? false) ||
+  ["jee_main_status", "jee_advanced_status", "jee_evidence_context", "jee_school_certificate", "jee_reported_target_family"].some(key => Object.hasOwn(r.conditions, key));
+const jeePath = (r: JeeRule) => r.outcomes.path !== undefined && isJeeRule(r);
+// Only exact positive inclusion is admissible; exclusions/unbounded futures cannot define applicability.
+const includedJeeValues = (condition: Condition | undefined, allowed: readonly Primitive[]): boolean => {
+  const values = typeof condition === "object" && condition !== null
+    ? condition.op === "in" ? condition.value : condition.op === "eq" ? [condition.value] : []
+    : condition === undefined ? [] : [condition];
+  return Array.isArray(values) && values.length > 0 && values.every(value => allowed.includes(value));
+};
+export const isScopedJeePathRule = (r: JeeRule) => r.outcomes.path === "subject_restricted" &&
+  r.conditions.jee_main_status === "passed" && r.conditions.jee_advanced_status === "passed" &&
+  r.conditions.jee_evidence_context === "ordinary" &&
+  r.conditions.target_degree === "bachelor" && r.conditions.curriculum === "national" &&
+  r.conditions.aps_issuer_country === "in" && r.conditions.aps_qualification_context === "national" &&
+  r.conditions.jee_school_certificate === "completed_12_year_secondary" &&
+  includedJeeValues(r.conditions.jee_reported_target_family, ["reported_official_technology", "reported_official_natural_sciences"]) &&
+  includedJeeValues(r.conditions.intake_index, [4053, 4054, 4055]);
+export const isQuarantinedJeeRule = (r: JeeRule) => jeePath(r) && r.outcomes.path !== "unknown" && !isScopedJeePathRule(r);
+
 // --------------------------------------------------------------- evaluate
 
 export const NO_RULE_MESSAGES = {
@@ -578,7 +617,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       ruleId: rule.id,
       sourceUrl: rule.source_url,
       verifiedAt: rule.last_verified_at ?? null,
-      claim: diagnosticClaim ?? rule.outcomes.note ?? rule.source_quote,
+      claim: diagnosticClaim ?? (isQuarantinedJeeRule(rule) ? "Stored JEE route requires qualifying-pass and applicability review." : rule.outcomes.note ?? rule.source_quote),
       status: rule.status === "beta" ? "beta" : "verified",
       supports: [support],
     });
@@ -589,6 +628,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   function resolve<V>(key: "path" | "aps" | "testas" | "dmat" | `aps:${ApsScope}`): V | undefined {
     const scope = key.startsWith("aps:") ? key.slice(4) as ApsScope : undefined;
     const outcome = (r: ParsedRule) => {
+      if (key === "path" && isQuarantinedJeeRule(r)) return undefined;
       // Possession is not applicability to the relevant completed procedure.
       // Keep other outcomes on the same historical row available.
       if (key === "dmat" && r.outcomes.dmat === "not_required" &&
@@ -625,6 +665,36 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   }
 
   const path = resolve<Result["path"]>("path") ?? "unknown";
+  if (profile.targetDegree === "bachelor" && profile.curriculumType === "national" &&
+      (profile.schoolQualification?.country === "in" || (!profile.schoolQualification && profile.certificateCountry === "in")) && (profile.jee !== undefined || profile.jeeAdvanced === true)) {
+    const report = JeeProfileSchema.safeParse(profile.jee);
+    const jee = report.success ? report.data : {};
+    const legacyRules = live.filter(r => isQuarantinedJeeRule(r) && ruleMatches(facts, r));
+    for (const rule of legacyRules) {
+      const message = "Stored JEE route is quarantined pending Main and Advanced qualifying passage, qualification, target field and intake review. Confirm with " + rule.source_url;
+      unknowns.push(message); cite(rule, "unknowns", message);
+    }
+    const ordinaryMatched = matched.some(r => jeePath(r) && isScopedJeePathRule(r) && ruleMatches(facts, r));
+    if (!ordinaryMatched) {
+      if (jee.context && jee.context !== "ordinary") {
+        unknowns.push("JEE " + jee.context + " needs individual assessment by uni-assist/the university. Main exemptions/foreign entry, preparatory ranks and cross-year or unclear results have no verified German exception here. Confirm with " + JEE_SOURCE + " and https://jeeadv.ac.in/foreign.html");
+      } else {
+        for (const [exam, status] of [["Main", jee.main], ["Advanced", jee.advanced]]) {
+          if (status === "not_passed" || status === "no_result") unknowns.push("JEE " + exam + " qualifying passage is not satisfied by the reported " + status + "; this excludes only the ordinary JEE route and does not establish Studienkolleg. Confirm with " + JEE_SOURCE);
+          else if (status !== "passed") unknowns.push("Establish JEE " + exam + " qualifying passage from official results; a percentile, score, rank/result possession or legacy boolean alone cannot confirm it. Confirm with " + JEE_SOURCE);
+        }
+        if (jee.main === "passed" && jee.advanced === "passed" && !jee.context) unknowns.push("Confirm whether JEE evidence is ordinary qualifying passage or needs individual assessment (Main exemption, preparatory rank, cross-year or unclear results): " + JEE_SOURCE);
+        if (jee.main === "passed" && jee.advanced === "passed") {
+          if (profile.schoolQualification?.country !== "in" || profile.schoolQualification.context !== "national") unknowns.push("Establish the actual Indian national school qualification issuer/context; nationality and school location supply no evidence. " + JEE_SOURCE);
+          if (jee.schoolCertificate !== "completed_12_year_secondary") unknowns.push("Confirm the reported completed Indian national 12-year secondary school-leaving certificate category; tertiary study and board labels alone cannot establish it. " + JEE_ADMISSION_SOURCE);
+          if (!profile.targetField?.trim() || !["reported_official_technology", "reported_official_natural_sciences"].includes(jee.targetFamily ?? "") || !jee.targetFamilyReference?.trim()) unknowns.push("Confirm an applicable reported official technology/natural-science target field classification and reference for this intended programme; programme names are not automatically classified. " + JEE_FIELD_SOURCE);
+          const scoped = live.filter(isScopedJeePathRule);
+          if (!scoped.some(rule => rule.conditions.intake_index !== undefined && conditionPasses(facts.intake_index, rule.conditions.intake_index))) unknowns.push("JEE intake product coverage is missing, noncovered or awaiting reviewed rule publication. Source effective intake is not stated; verification date is not commencement. " + JEE_ADMISSION_SOURCE);
+          if (!scoped.length) unknowns.push("No published reviewed ordinary JEE rule establishes qualification/certificate, target-family and intake coverage here. Confirm with " + JEE_ADMISSION_SOURCE);
+        }
+      }
+    }
+  }
   if (path === 'unknown' && profile.targetDegree === 'bachelor' && profile.curriculumType === 'gce') {
     // Diagnostics reuse published criteria; no catalogue or threshold can publish
     // a path on its own. Pick the smallest failed-condition set for this target.
@@ -701,14 +771,14 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   const documents: string[] = [];
   const steps: Result["stepsDetailed"] = [];
   for (const rule of matched) {
-    for (const doc of rule.outcomes.documents ?? []) {
+    for (const doc of isQuarantinedJeeRule(rule) ? [] : rule.outcomes.documents ?? []) {
       // Trade-off: old free-text APS entries lack machine-readable scope.
       // Suppress them pending admin review; never infer scope from their prose.
       if (/\bAPS\b/i.test(doc)) continue;
       if (!documents.includes(doc)) documents.push(doc);
       cite(rule, "documents");
     }
-    for (const step of rule.outcomes.steps ?? []) {
+    for (const step of isQuarantinedJeeRule(rule) ? [] : rule.outcomes.steps ?? []) {
       if (/\bAPS\b/i.test(step.text)) continue;
       if (!steps.some((s) => s.text === step.text)) {
         steps.push({ ...step, ruleId: rule.id });

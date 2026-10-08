@@ -60,20 +60,20 @@ const draft = { qualificationHistoryVersion: 1, targetDegree: "master", national
 it("restores the new dMAT version and stops at its first newly missing question", () => {
   const legacyDraft = Object.fromEntries(Object.entries(dmatAnswers).filter(([key]) => !key.startsWith("dmat")));
   const result = recover(JSON.stringify({ answers: legacyDraft, stepIndex: 99 }));
-  expect(result.answers).toMatchObject({ dmatVersion: 1, indiaStudyRouteVersion: 1, priorStudyCountry: "in", priorStudyField: "Mechanical Engineering" });
+  expect(result.answers).toMatchObject({ dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, priorStudyCountry: "in", priorStudyField: "Mechanical Engineering" });
   expect(result.stepIndex).toBe(visibleSteps({ ...dmatAnswers, dmatQualificationScope: undefined }).indexOf("dmatQualificationScope"));
   expect(legacyDraft).not.toHaveProperty("dmatVersion");
 });
 
 it("restores no-prior-study answers without hidden degree or APS data", () => {
   const result = recover(JSON.stringify({ answers: { ...draft, hasPriorUniversityStudy: false }, stepIndex: 99 }));
-  expect(result.answers).toEqual({ qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, targetDegree: "master", nationality: "pk", visaApplicationCountry: "in", targetField: "cs", intake: null, hasPriorUniversityStudy: false });
+  expect(result.answers).toEqual({ qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, targetDegree: "master", nationality: "pk", visaApplicationCountry: "in", targetField: "cs", intake: null, hasPriorUniversityStudy: false });
   expect(result.removeItem).not.toHaveBeenCalled();
 });
 
 it("resets malformed country drafts before installing any answers", () => {
   const result = recover(JSON.stringify({ answers: { ...draft, priorStudyCountry: 123 }, stepIndex: 99 }));
-  expect(result.answers).toEqual({ qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, certificateCountry: "sa" });
+  expect(result.answers).toEqual({ qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, certificateCountry: "sa" });
   expect(result.stepIndex).toBe(0);
   expect(result.removeItem).toHaveBeenCalledOnce();
 });
@@ -81,12 +81,12 @@ it("resets malformed country drafts before installing any answers", () => {
 it("resets wrong-shaped storage and invalid step indices but keeps valid partial drafts", () => {
   for (const saved of [null, [], { answers: null }, { answers: [] }, { answers: draft, stepIndex: "bad" }, { answers: draft, stepIndex: -1 }]) {
     const result = recover(JSON.stringify(saved));
-    expect(result.answers).toEqual({ qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, certificateCountry: "sa" });
+    expect(result.answers).toEqual({ qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, certificateCountry: "sa" });
     expect(result.stepIndex).toBe(0);
     expect(result.removeItem).toHaveBeenCalledOnce();
   }
   const incomplete = recover(JSON.stringify({ answers: { qualificationHistoryVersion: 1, targetDegree: "master", nationality: "pk" }, stepIndex: 99 }));
-  expect(incomplete.answers).toEqual({ qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, targetDegree: "master", nationality: "pk" });
+  expect(incomplete.answers).toEqual({ qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, targetDegree: "master", nationality: "pk" });
   expect(incomplete.stepIndex).toBe(2);
   expect(incomplete.removeItem).not.toHaveBeenCalled();
 });
@@ -102,16 +102,16 @@ it("normalizes account editing before initializing state without mutating stored
 
 it("preserves valid unversioned school answers on restoration and account initialization", () => {
   const legacy = { targetDegree: "master", nationality: "in", certificateCountry: "sa", curriculumType: "national", visaApplicationCountry: "in", targetField: "cs", intake: null } as const;
-  expect(recover(JSON.stringify({ answers: legacy, stepIndex: 0 })).answers).toEqual({ ...legacy, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1 });
+  expect(recover(JSON.stringify({ answers: legacy, stepIndex: 0 })).answers).toEqual({ ...legacy, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2 });
   captured.initial = [];
   renderToStaticMarkup(React.createElement(ProfileReview, { initialAnswers: legacy }));
-  expect(captured.initial[0]).toEqual({ ...legacy, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1 });
+  expect(captured.initial[0]).toEqual({ ...legacy, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2 });
 });
 
 it("keeps an unfinished text draft and stops at its empty required answer", () => {
   const unfinished = { ...draft, priorStudyInstitution: "" };
   const result = recover(JSON.stringify({ answers: unfinished, stepIndex: 99 }));
-  expect(result.answers).toEqual({ ...unfinished, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1 });
+  expect(result.answers).toEqual({ ...unfinished, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2 });
   expect(result.stepIndex).toBe(5);
   expect(result.removeItem).not.toHaveBeenCalled();
 });
@@ -186,4 +186,38 @@ it("restores an issuer edit and retains only its diagnostic marker across valida
   expect(profile.qualificationHistory).not.toHaveProperty("priorStudyRecognition");
   expect(profile.qualificationHistory).not.toHaveProperty("priorStudyTargetRelation");
   expect(profile.apsProcedure).toBeUndefined();
+});
+
+
+it("restores legacy JEE drafts at Main without inventing passage or losing university history", () => {
+  const legacy = { ...indiaAnswers, jeeVersion: undefined, jeeMainStatus: undefined,
+    jeeAdvancedStatus: undefined, jeeEvidenceContext: undefined, jeeAdvanced: true };
+  const result = recover(JSON.stringify({ answers: legacy, stepIndex: 99 }), "in");
+  const restored = result.answers as PartialAnswers;
+  expect(restored).toMatchObject({ jeeVersion: 2, priorStudyInstitution: indiaAnswers.priorStudyInstitution });
+  expect(restored.jeeMainStatus).toBeUndefined();
+  expect(restored.jeeAdvancedStatus).toBeUndefined();
+  expect(result.stepIndex).toBe(visibleSteps(restored).indexOf("jeeMainStatus"));
+  expect(buildProfile(restored as Answers).jeeAdvanced).toBeUndefined();
+  expect(result.removeItem).not.toHaveBeenCalled();
+});
+
+it("restores uncertain JEE passage at its missing evidence-context question", () => {
+  const saved = { ...indiaAnswers, jeeVersion: 1, jeeMainStatus: "unknown", jeeAdvancedStatus: "passed" };
+  const result = recover(JSON.stringify({ answers: saved, stepIndex: 99 }), "in");
+  const restored = result.answers as PartialAnswers;
+  expect(restored).toMatchObject({ jeeMainStatus: "unknown", jeeAdvancedStatus: "passed" });
+  expect(result.stepIndex).toBe(visibleSteps(restored).indexOf("jeeEvidenceContext"));
+});
+
+
+it("renders separate sourced JEE questions and exception choices in account editing", () => {
+  const answers = { ...indiaAnswers, jeeMainStatus: "passed", jeeAdvancedStatus: "passed", jeeEvidenceContext: "main_exemption" } as const;
+  const html = renderToStaticMarkup(React.createElement(ProfileReview, { initialAnswers: answers }));
+  expect(html).toContain("Have you successfully passed JEE Main?");
+  expect(html).toContain("Have you successfully qualified in JEE Advanced?");
+  expect(html).toContain("https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/");
+  expect(html).toContain("Preparatory-course rank only or unclear rank type");
+  expect(html).toContain("Main exemption / direct foreign-entry exception");
+  expect(html).toContain("Cannot confirm qualifying passage");
 });
