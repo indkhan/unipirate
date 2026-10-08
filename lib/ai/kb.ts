@@ -166,7 +166,7 @@ function renderOutcomes(outcomes: KbRule["outcomes"]): string[] {
   const lines: string[] = [];
   if (outcomes.path)
     lines.push(`Admission path: ${PATH_LABELS[outcomes.path] ?? outcomes.path}.`);
-  if (outcomes.institution_restriction === "fachhochschule") lines.push("Institution restriction: Fachhochschule (university of applied sciences), preparatory route only.");
+  if (outcomes.institution_restriction === "fachhochschule") lines.push("Institution restriction: Fachhochschule (university of applied sciences) only for this admission path.");
   const flag = (name: string, value?: string) => {
     if (value) lines.push(`${name}: ${value.replace(/_/g, " ")}.`);
   };

@@ -192,7 +192,7 @@ it("restores an issuer edit and retains only its diagnostic marker across valida
 it("restores Saudi edits at the new explicit subtype without guessing or dropping saved history", () => {
   const saved = { ...saudiAnswers, saudiCertificateVersion: undefined, saudiCertificateSubtype: undefined };
   const restored = recover(JSON.stringify({ answers: saved, stepIndex: 99 }));
-  expect(restored.answers).toMatchObject({ saudiCertificateVersion: 1, priorStudyInstitution: saved.priorStudyInstitution, priorStudyRecognitionReference: saved.priorStudyRecognitionReference });
+  expect(restored.answers).toMatchObject({ saudiCertificateVersion: 2, priorStudyInstitution: saved.priorStudyInstitution, priorStudyRecognitionReference: saved.priorStudyRecognitionReference });
   expect(restored.answers).not.toHaveProperty("saudiCertificateSubtype");
   expect(restored.stepIndex).toBe(visibleSteps(restored.answers as PartialAnswers).indexOf("saudiCertificateSubtype"));
   expect(restored.removeItem).not.toHaveBeenCalled();

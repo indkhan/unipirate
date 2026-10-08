@@ -57,6 +57,7 @@ export type Profile = {
     degreeYears?: number;
     completedYears?: number;
     completion?: "completed" | "in_progress" | "discontinued";
+    saudiBachelorEvidence?: { version: 2; context?: "national" | "other" | "unknown"; assessment?: "reported_official_norms_full_time" | "reported_official_unmet" | "unknown"; reference?: string };
     indiaStudyRouteVersion?: 1;
     priorStudyMode?: "regular" | "distance_online" | "other" | "unknown";
     priorStudyRecognition?: "reported_official_confirmed" | "reported_official_rejected" | "unknown";
@@ -135,6 +136,8 @@ const ConditionSchema = z.union([
 type Condition = z.infer<typeof ConditionSchema>;
 
 const FactKeySchema = z.enum([
+  "sa_secondary_completion", "sa_national_category", "sa_national_stream", "sa_reported_target_family", "sa_private_assessment_coverage",
+  "sa_degree_evidence", "sa_degree_issuer", "sa_degree_context", "sa_degree_kind", "sa_degree_completion", "sa_degree_nominal_years", "sa_degree_mode", "sa_degree_norms", "sa_degree_recognition", "sa_degree_institution", "sa_degree_field",
   "sa_certificate_evidence", "sa_certificate_subtype", "sa_reported_subject_assessment", "sa_prior_study_kind",
   "sa_successful_bachelor_years", "sa_reported_recognition", "sa_reported_target_relation",
   "sa_reported_enrollment", "sa_reported_enrollment_relation",
@@ -264,7 +267,7 @@ export const EngineRuleSchema = z
   })
   .passthrough()
   .superRefine((rule, context) => {
-    if (rule.outcomes.institution_restriction && rule.outcomes.path !== "studienkolleg") context.addIssue({ code: z.ZodIssueCode.custom, path: ["outcomes", "institution_restriction"], message: "FH restriction is supported only on the preparatory path." });
+    if (rule.outcomes.institution_restriction && rule.outcomes.path !== "studienkolleg" && !(rule.outcomes.path === "subject_restricted" && isScopedSaudiRule(rule) && rule.conditions.sa_certificate_subtype !== "national" && rule.conditions.sa_certificate_subtype !== "private_school" && rule.conditions.sa_degree_evidence === undefined)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["outcomes", "institution_restriction"], message: "FH restriction is supported only on preparation or scoped industrial subject-restricted access." });
     if (rule.status !== "draft" && !rule.last_verified_at) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -650,7 +653,12 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       testas: "testAS",
       dmat: "dMAT",
     }[key as "path" | "aps" | "testas" | "dmat"]) as ResultSupport;
-    const contenders = matched.filter((r) => outcome(r) !== undefined);
+    let contenders = matched.filter((r) => outcome(r) !== undefined);
+    // Independent general undergraduate HZB subsumes the narrower Saudi school
+    // entitlements. Those grants coexist; other source conflicts still resolve below.
+    if (key === "path" && contenders.some(r => r.conditions.sa_degree_evidence === "v2" && isScopedSaudiRule(r) && r.outcomes.path === "direct")) {
+      contenders = contenders.filter(r => !isScopedSaudiRule(r) || r.conditions.sa_degree_evidence !== undefined);
+    }
     if (contenders.length === 0) return undefined;
     const specificity = (r: ParsedRule) => Object.keys(r.conditions).length;
     const max = Math.max(...contenders.map(specificity));
@@ -756,13 +764,13 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     if(!nearest)unknowns.push('IB subject identity, two-year continuity, language context and applicable examination evidence require a reviewed rule: '+IB_SOURCE);
     unknowns.push('Ordinary recognition gaps do not establish Studienkolleg admission. KMK section 2 describes an additional examination/Feststellungsprüfung or qualifying successful prior study; confirm your applicable alternative and subject scope with the recognition authority: '+IB_SOURCE);
   }
-  if (path === "unknown" && isSaudiSchoolProfile(profile)) {
-    const candidates = live.filter(r => isScopedSaudiRule(r) && r.outcomes.path !== undefined && r.outcomes.path !== "unknown" && conditionPasses(facts.sa_certificate_subtype, r.conditions.sa_certificate_subtype!));
+  if (path === "unknown" && (isSaudiSchoolProfile(profile) || profile.targetDegree === "bachelor" && profile.qualificationHistory?.country === "sa")) {
+    const candidates = live.filter(r => isScopedSaudiRule(r) && r.outcomes.path !== undefined && r.outcomes.path !== "unknown" && (r.conditions.sa_degree_evidence !== undefined || conditionPasses(facts.sa_certificate_subtype, r.conditions.sa_certificate_subtype!)));
     const comparisons = candidates.map(rule => ({ rule, failed: Object.entries(rule.conditions).filter(([key, cond]) => !conditionPasses(facts[key], cond)) }));
     if (comparisons.some(c => c.failed.length)) {
       for (const nearest of comparisons.filter(c => c.failed.length)) {
       const diagnostic = "Saudi route not established: " + nearest.failed.map(([key]) => {
-        const label = key === "intake_index" ? "intake applicability (industrial regime starts Winter 2026/27)" : SAUDI_FACT_LABELS[key] ?? key;
+        const label = key === "intake_index" ? "intake applicability (current product coverage 4053/4054/4055; industrial source regime starts Winter 2026/27)" : SAUDI_FACT_LABELS[key] ?? key;
         return label + (facts[key] === "unmet" || facts[key] === "rejected" || facts[key] === "unrelated" ? " condition unmet by the reported assessment" : " not established");
       }).join("; ") + ". Confirm with " + nearest.rule.source_url;
       unknowns.push(diagnostic); cite(nearest.rule, "unknowns", diagnostic);
@@ -770,7 +778,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     } else if (!profile.saudiCertificate?.subtype || profile.saudiCertificate.subtype === "unknown") {
       unknowns.push("Select the explicit Saudi certificate subtype; no subtype is inferred from a legacy board. Confirm with " + SAUDI_SOURCE);
     } else {
-      unknowns.push("Saudi certificate/issuer applicability is unresolved. National stream and completed-degree routes lack verified criteria; confirm the exact qualification with " + SAUDI_SOURCE);
+      unknowns.push("Saudi certificate/issuer applicability is unresolved. Confirm the applicable documentary category, reports and covered intake; confirm the exact qualification with " + SAUDI_SOURCE);
     }
     for (const legacy of live.filter(r => isSaudiAdmissionRule(r) && !isScopedSaudiRule(r))) {
       cite(legacy, "unknowns", "Stored Saudi admission applicability is unverified; no admission path is established.");

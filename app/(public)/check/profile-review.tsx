@@ -35,6 +35,10 @@ type ProfileReviewProps = {
 };
 
 const QUESTIONS: Record<StepId, string> = {
+  saudiNationalCategory: "Reported documentary national category", saudiSecondaryCompletion: "Reported completed secondary certificate",
+  saudiTargetFamily: "Reported applicable target family", saudiTargetFamilyReference: "Applicable target-family reference",
+  saudiPrivateAssessmentCoverage: "Reported private diploma accreditation/breadth/minima coverage",
+  saudiBachelorAssessment: "Reported completed Bachelor qualification/norms assessment", saudiBachelorAssessmentReference: "Completed Bachelor assessment reference",
   saudiCertificateSubtype: "Saudi certificate subtype", saudiNationalStream: "Reported national stream",
   saudiSubjectAssessment: "Reported ZAB subject assessment", saudiSubjectAssessmentReference: "Subject assessment reference",
   saudiEnrollment: "Reported current Bachelor enrollment", saudiEnrollmentField: "Enrollment subject area",

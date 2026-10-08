@@ -29,3 +29,11 @@ it("quarantines both unsupported legacy families after immutable selection", () 
   expect(JSON.stringify(result)).not.toContain(saudi.source_quote);
   expect(JSON.stringify(result)).not.toContain(jee.source_quote);
 });
+
+it.each(["sa-reviewed-national-literary-prep","sa-reviewed-national-science-prep","sa-reviewed-national-commercial-prep","sa-reviewed-national-science-year","sa-reviewed-private-two","sa-reviewed-industrial-year","sa-reviewed-completed-bachelor"])("immutable current Saudi source scope %s ignores cached prose",id=>{
+ const v=envelope(saudiCandidates.find(r=>r.id===id)!);const r=projectVersionedKbMatches([{rule_id:ruleId,content:"Invented acceptance"}],[v],context);expect(r.chunks).toHaveLength(1);expect(r.chunks[0].content).not.toContain("Invented");expect(r.chunks[0].content).toContain("Official source says:");expect(r.chunks[0].versionId).toBe(v.id);if(id.includes("industrial")){expect(r.chunks[0].content).toContain("Fachhochschule");expect(r.chunks[0].content).not.toContain("preparatory route only");}
+});
+it("immutable renamed/missing Saudi applicability fails closed without reviving cache",()=>{
+ const candidate=saudiCandidates.find(r=>r.id==="sa-reviewed-national-literary-prep")!;
+ for(const key of ["aps_issuer_country","sa_national_category","sa_reported_target_family","intake_index"]){const conditions={...candidate.conditions};delete conditions[key as keyof typeof conditions];const v=envelope({...candidate,id:"renamed-independent",conditions});const r=projectVersionedKbMatches([{rule_id:ruleId,content:"Old acceptance"}],[v],context);expect(r.chunks[0].content).toContain("[[unknown]]");expect(r.chunks[0].last_verified_at).toBeNull();expect(r.chunks[0].content).not.toContain(candidate.source_quote);}
+});

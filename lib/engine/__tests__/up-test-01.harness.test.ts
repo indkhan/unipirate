@@ -56,7 +56,7 @@ export function assertExpected(c: CurrentExpectation, r: Result): void {
 }
 
 describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
-  it.each(SAUDI_ACCEPTANCE)("UP-ELIG-09 official bounded $id [$kind]", c => {
+  it.each(SAUDI_ACCEPTANCE)("UP-ELIG-09 official current contract $id [$kind]", c => {
     const r = evaluate(c.profile, reviewedSaudiRules());
     expect(r.path).toBe(c.path);
     expect(r.institutionRestriction === "fachhochschule").toBe(c.fh ?? false);
@@ -101,7 +101,7 @@ describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
   });
 
   it("version, cited sources, and future-spec index", () => {
-    expect(HARNESS_VERSION).toBe("up-test-01/v1-current-behavior.5");
+    expect(HARNESS_VERSION).toBe("up-test-01/v1-current-behavior.6");
     expect(HARNESS_BASELINE_SHA).toBe(
       "951ab821920497443cd66dfc7917d044a1f00159",
     );

@@ -21,11 +21,11 @@ describe("Saudi versioned checker", () => {
   it("maps references and reuses history without turning report into verification", () => {
     const parsed = AnswersSchema.parse(saudiAnswers);
     const p = buildProfile(parsed);
-    expect(p.saudiCertificate).toMatchObject({ version: 1, subtype: "private_school", subjectAssessment: "reported_official_met" });
+    expect(p.saudiCertificate).toMatchObject({ version: 2, subtype: "private_school", subjectAssessment: "reported_official_met" });
     expect(p.qualificationHistory?.completedYears).toBe(1);
     expect(evaluate(p, reviewedSaudiRules()).path).toBe("studienkolleg");
     expect(buildOptions("saudiCertificateSubtype", saudiAnswers).map(o => o.label)).toContain("Secondary Industrial Institutes Diploma");
-    expect(buildOptions("priorStudyTargetRelation", saudiAnswers).some(o => o.value === "reported_official_closely_related")).toBe(false);
+    expect(buildOptions("priorStudyTargetRelation", saudiAnswers).some(o => o.value === "reported_official_closely_related")).toBe(true);
   });
   it("keeps no/unknown/unmet reports usable and references progressive", () => {
     const a: PartialAnswers = { ...saudiAnswers, saudiSubjectAssessment: "unknown", priorStudyRecognition: "unknown", priorStudyTargetRelation: "unknown", yearsOfUniversityStudy: null, priorStudyCountry: "unknown" };
@@ -35,7 +35,7 @@ describe("Saudi versioned checker", () => {
     expect(AnswersSchema.safeParse({ ...saudiAnswers, saudiSubjectAssessmentReference: "" }).success).toBe(false);
     expect(PartialAnswersSchema.safeParse({ ...saudiAnswers, saudiSubjectAssessmentReference: "", yearsOfUniversityStudy: -1 }).success).toBe(true);
     expect(isAnswered({ ...saudiAnswers, yearsOfUniversityStudy: -1 }, "yearsOfUniversityStudy")).toBe(false);
-    expect(AnswersSchema.safeParse({ ...saudiAnswers, saudiCertificateVersion: 2 }).success).toBe(false);
+    expect(AnswersSchema.safeParse({ ...saudiAnswers, saudiCertificateVersion: 3 }).success).toBe(false);
   });
   it("prunes changed issuer/type/history/target reports while preserving nationality and visa", () => {
     for (const [key, value] of [["schoolQualificationCountry", "in"], ["curriculumType", "gce"], ["saudiCertificateSubtype", "industrial_diploma"]] as const) {
@@ -74,7 +74,8 @@ describe("Saudi versioned checker", () => {
   it("keeps national and other subtypes source held and tertiary degrees separate", () => {
     for (const subtype of ["national", "other", "unknown"] as const) {
       const a = { ...saudiAnswers, saudiCertificateSubtype: subtype, saudiNationalStream: "Reported science stream" };
-      expect(visibleSteps(a)).not.toContain("priorStudyRecognition");
+      if (subtype === "national") expect(visibleSteps(a)).toContain("priorStudyRecognition");
+      else expect(visibleSteps(a)).not.toContain("priorStudyRecognition");
       if (subtype === "national") expect(visibleSteps(a)).toContain("saudiNationalStream");
       expect(evaluate(buildProfile(a), reviewedSaudiRules()).path).toBe("unknown");
     }

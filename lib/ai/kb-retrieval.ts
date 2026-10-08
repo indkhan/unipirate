@@ -1,5 +1,5 @@
 // Pure retrieval projection. Persisted text is never parsed to infer policy.
-import { isSaudiAdmissionRule } from "@/lib/engine/saudi";
+import { isSaudiAdmissionRule, isScopedSaudiRule } from "@/lib/engine/saudi";
 import { z } from "zod";
 import { EngineRuleSchema, isJeeRule } from "@/lib/engine/evaluate";
 import { JEE_SOURCE, JEE_FIELD_SOURCE, JEE_LEGACY_SLUG } from "@/lib/engine/jee";
@@ -15,7 +15,7 @@ const RuleIdentitySchema = z.object({ slug: z.string(), outcomes: z.object({ dma
 const PublishedKbRuleSchema = EngineRuleSchema.innerType().extend({
   slug: z.string().min(1), country_code: z.string().nullable(),
   status: z.enum(["beta", "verified"]), last_verified_at: z.string().datetime({ offset: true }),
-}).refine(rule => !rule.outcomes.institution_restriction || rule.outcomes.path === "studienkolleg", { message: "FH restriction requires the preparatory path" });
+}).refine(rule => !rule.outcomes.institution_restriction || rule.outcomes.path === "studienkolleg" || rule.outcomes.path === "subject_restricted" && isScopedSaudiRule(rule) && rule.conditions.sa_certificate_subtype !== "national" && rule.conditions.sa_certificate_subtype !== "private_school" && rule.conditions.sa_degree_evidence === undefined, { message: "FH restriction requires preparation or scoped industrial direct access" });
 
 /** RULES01 reuse boundary: raw RPC matches + caller-visible current rule rows
  * (null means unavailable) -> model-visible chunks. No writes, clock or I/O.

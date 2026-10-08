@@ -34,7 +34,7 @@ describe("verified Saudi clauses on disposable published draft copies", () => {
     expect(result.path).toBe(c.path);
     expect(result.institutionRestriction === "fachhochschule").toBe(c.fh ?? false);
     if (c.reason) expect(result.unknowns.join(" ")).toMatch(c.reason);
-    if (c.path !== "unknown") expect(result.citations.some(x => x.supports.includes("path") && /uni-assist/.test(x.sourceUrl))).toBe(true);
+    if (c.path !== "unknown") expect(result.citations.some(x => x.supports.includes("path") && /uni-assist|anabin/.test(x.sourceUrl))).toBe(true);
   });
   it("keeps candidates draft and generic legacy conditions unsupported", () => {
     const drafts = ruleData.filter(r => r.id.startsWith("sa-reviewed-"));
@@ -66,17 +66,18 @@ describe("verified Saudi clauses on disposable published draft copies", () => {
     const fh = rules.find(r => r.id === "sa-reviewed-industrial-enrollment")!;
     const conflict = { ...fh, id: "synthetic-conflict", outcomes: { ...fh.outcomes, institution_restriction: undefined } };
     const r = evaluate(industrialProfile, [fh, conflict]);
-    expect(r.path).toBe("unknown");
-    expect(r.institutionRestriction).toBeUndefined();
-    expect(r.unknowns.join(" ")).toMatch(/conflicting/i);
-    expect(r.citations.filter(c => c.supports.includes("path"))).toHaveLength(2);
+    expect(r.path).toBe("studienkolleg");
+    expect(r.institutionRestriction).toBe("fachhochschule");
+    expect(r.citations.filter(c => c.supports.includes("path"))).toHaveLength(1);
+    expect(ruleToChunk({...conflict,slug:conflict.id,country_code:"sa",last_verified_at:conflict.last_verified_at!}).content).toMatch(/unknown/);
     expect(evaluate(industrialProfile, [{ ...fh, outcomes: { ...fh.outcomes, institution_restriction: "all" } }]).path).toBe("unknown");
   });
   it("does not generate FH preparation tasks when the successful-year Bachelor clause wins", () => {
     const p = { ...industrialProfile, qualificationHistory: { ...industrialProfile.qualificationHistory!, completedYears: 1 } };
     const r = evaluate(p, reviewedSaudiRules());
     expect(r.path).toBe("subject_restricted");
-    expect(generateGlobalTasks(r).some(t => /Fachhochschule|Studienkolleg/.test(t.title))).toBe(false);
+    expect(generateGlobalTasks(r).some(t => /Studienkolleg/.test(t.title))).toBe(false);
+    expect(generateGlobalTasks(r).some(t => /Fachhochschule/.test(t.title))).toBe(true);
     expect(generateGlobalTasks(r).some(t => /Bachelor admission/.test(t.title))).toBe(true);
   });
   it("shows FH and reported subject scope on result/route and existing source task renderer", () => {

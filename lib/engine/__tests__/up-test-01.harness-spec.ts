@@ -17,7 +17,7 @@ import * as personas from "./personas";
 // acceptance activates source-backed ordinary draft copies with certificate, reported family/reference and exact current product intake coverage.
 export { JEE_ACCEPTANCE } from "./jee.fixture";
 export { IB_ACCEPTANCE } from "./ib.fixture";
-export const HARNESS_VERSION = "up-test-01/v1-current-behavior.5" as const;
+export const HARNESS_VERSION = "up-test-01/v1-current-behavior.6" as const;
 export { INDIA_STUDY_ACCEPTANCE } from "./india-study.fixture";
 export { DMAT_ACCEPTANCE } from "./dmat.fixture";
 export const HARNESS_BASELINE_SHA =
