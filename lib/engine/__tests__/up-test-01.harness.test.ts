@@ -2,6 +2,7 @@ import { PAKISTAN_CURRENT_ACCEPTANCE, PAKISTAN_PREP_ACCEPTANCE, reviewedPakistan
 // UP-TEST-01 harness runner: CURRENT rows are green acceptance on the
 // baseline (no skips/todo); FUTURE rows are data only, never executed.
 // Pure: evaluate() + fixture data. Zero I/O.
+import { SAUDI_ACCEPTANCE, reviewedSaudiRules } from "./saudi.fixture";
 import { reviewedJeeRules } from "./jee.fixture";
 import { GCE_ACCEPTANCE } from "./gce.fixture";
 import { describe, expect, it } from "vitest";
@@ -56,6 +57,12 @@ export function assertExpected(c: CurrentExpectation, r: Result): void {
 }
 
 describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
+  it.each(SAUDI_ACCEPTANCE)("UP-ELIG-09 official current contract $id [$kind]", c => {
+    const r = evaluate(c.profile, reviewedSaudiRules());
+    expect(r.path).toBe(c.path);
+    expect(r.institutionRestriction === "fachhochschule").toBe(c.fh ?? false);
+    if (c.reason) expect(r.unknowns.join(" ")).toMatch(c.reason);
+  });
   it.each(PAKISTAN_CURRENT_ACCEPTANCE)('UP-ELIG-08 current official $id',c=>{const r=evaluate(c.profile,reviewedPakistanRules());expect(r.path).toBe(c.path);expect(r.citations.map(s=>s.sourceUrl)).toContain('https://anabin.kmk.org/db/schulabschluesse-mit-hochschulzugang');expect(r.citations.map(s=>s.sourceUrl)).toContain('https://www.daad.pk/files/2022/11/Study-in-Germany-Undergraduate-Degree-Courses_2022.pdf');});
   it.each(PAKISTAN_PREP_ACCEPTANCE)('UP-ELIG-08 bounded official $id',c=>{const r=evaluate(c.profile,reviewedPakistanRules());expect(r.path).toBe(c.path);expect(r.citations.map(s=>s.sourceUrl)).toContain('https://www.daad.de/en/studying-in-germany/requirements/admission-database/?ad-layer=6&ad-layerId='+c.sourceId);});
   it.each(JEE_ACCEPTANCE)("UP-ELIG-04 ordinary official contract: $id", c => {

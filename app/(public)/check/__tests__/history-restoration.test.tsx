@@ -4,9 +4,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { ProfileReview } from "../profile-review";
 import { CheckFlow } from "../check-flow";
+import { buildOptions } from "../check-questions";
 import { buildProfile } from "../steps";
 import { evaluate } from "@/lib/engine/evaluate";
 import { reviewedIndiaStudyRules } from "@/lib/engine/__tests__/india-study.fixture";
+import { saudiAnswers } from "./saudi.fixture";
 import { indiaAnswers } from "./india-study.fixture";
 import { dmatAnswers } from "./dmat.fixture";
 import { AnswersSchema, PartialAnswersSchema, visibleSteps, withAnswer, isAnswered, type Answers, type PartialAnswers } from "../steps";
@@ -189,6 +191,48 @@ it("restores an issuer edit and retains only its diagnostic marker across valida
   expect(profile.apsProcedure).toBeUndefined();
 });
 
+it("restores Saudi edits at the new explicit subtype without guessing or dropping saved history", () => {
+  const saved = { ...saudiAnswers, saudiCertificateVersion: undefined, saudiCertificateSubtype: undefined };
+  const restored = recover(JSON.stringify({ answers: saved, stepIndex: 99 }));
+  expect(restored.answers).toMatchObject({ saudiCertificateVersion: 2, priorStudyInstitution: saved.priorStudyInstitution, priorStudyRecognitionReference: saved.priorStudyRecognitionReference });
+  expect(restored.answers).not.toHaveProperty("saudiCertificateSubtype");
+  expect(restored.stepIndex).toBe(visibleSteps(restored.answers as PartialAnswers).indexOf("saudiCertificateSubtype"));
+  expect(restored.removeItem).not.toHaveBeenCalled();
+  expect(saved.saudiCertificateVersion).toBeUndefined();
+});
+
+it("restores a Saudi-to-India issuer edit with visible core history and missing assessment", () => {
+  const edited = withAnswer(withAnswer({ ...saudiAnswers, board: "cbse", schoolGradePercent: 70, jeeAdvanced: false }, "schoolQualificationCountry", "in"), "schoolQualificationContext", "national");
+  const result = recover(JSON.stringify({ answers: { ...edited, board: "cbse", schoolGradePercent: 70, jeeSchoolCertificate: "unknown", jeeMainStatus: "no_result", jeeAdvancedStatus: "no_result", hasExistingApsCertificate: false }, stepIndex: 99 }));
+  const a = result.answers as PartialAnswers;
+  expect(result.removeItem).not.toHaveBeenCalled();
+  expect(visibleSteps(a)).toContain("hasPriorUniversityStudy");
+  expect(visibleSteps(a)).toContain("priorStudyInstitution");
+  expect(visibleSteps(a)).toContain("yearsOfUniversityStudy");
+  expect(a.priorStudyInstitution).toBe(saudiAnswers.priorStudyInstitution);
+  expect(a.priorStudyRecognitionReference).toBeUndefined();
+  expect(a.priorStudyMode).toBeUndefined();
+  expect(result.stepIndex).toBe(visibleSteps(a).indexOf("priorStudyMode"));
+  for (const key of ["schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent"]) expect(visibleSteps(a).filter(s => s === key)).toHaveLength(1);
+});
+it("restores India-to-Saudi at missing subtype then exposes core history after explicit choice", () => {
+  const edited = withAnswer(withAnswer(indiaAnswers, "schoolQualificationCountry", "sa"), "schoolQualificationContext", "national");
+  const result = recover(JSON.stringify({ answers: edited, stepIndex: 99 }), "in");
+  const a = result.answers as PartialAnswers;
+  expect(result.removeItem).not.toHaveBeenCalled();
+  expect(result.stepIndex).toBe(visibleSteps(a).indexOf("saudiCertificateSubtype"));
+  expect(visibleSteps(a)).not.toContain("hasPriorUniversityStudy");
+  const chosen = withAnswer(a, "saudiCertificateSubtype", "industrial_certificate");
+  expect(visibleSteps(chosen)).toContain("hasPriorUniversityStudy");
+  expect(chosen.priorStudyRecognitionReference).toBeUndefined();
+});
+it("does not restore stale foreign degree detail through a missing Saudi subtype", () => {
+  const saved = { ...indiaAnswers, certificateCountry: "sa", saudiCertificateVersion: 1, hasPriorUniversityStudy: false };
+  const result = recover(JSON.stringify({ answers: saved, stepIndex: 99 }));
+  expect(result.removeItem).not.toHaveBeenCalled();
+  expect(result.answers).not.toHaveProperty("priorStudyInstitution");
+  expect(result.answers).not.toHaveProperty("priorStudyRecognitionReference");
+});
 it('upgrades saved Pakistan drafts and stops at the exact certificate without aliasing FSc',()=>{
  const saved={qualificationHistoryVersion:1,targetDegree:'bachelor',nationality:'pk',certificateCountry:'pk',visaApplicationCountry:'pk',curriculumType:'national',board:'fsc',schoolGradePercent:78,schoolQualificationCountry:'pk',schoolQualificationContext:'national',hasPriorUniversityStudy:false,targetField:'cs',intake:null,apsApplicationContext:'unknown'};
  const restored=recover(JSON.stringify({answers:saved,stepIndex:99}),'pk');const a=restored.answers as PartialAnswers;
@@ -246,6 +290,16 @@ it("renders separate sourced JEE questions and exception choices in account edit
   expect(html).toContain("Cannot confirm qualifying passage");
 });
 
+it("restores Saudi v2 actual India issuer with selectable Indian boards before any board answer", () => {
+ const edited = withAnswer(withAnswer(saudiAnswers, "schoolQualificationCountry", "in"), "schoolQualificationContext", "national");
+ const recovered = recover(JSON.stringify({ answers: edited, stepIndex: 99 }));
+ const answers = recovered.answers as PartialAnswers;
+ expect(recovered.removeItem).not.toHaveBeenCalled(); expect(answers.saudiCertificateVersion).toBe(2); expect(answers.board).toBeUndefined();
+ expect(recovered.stepIndex).toBe(visibleSteps(answers).indexOf("board"));
+ expect(buildOptions("board", answers).map(o => o.value)).toEqual(expect.arrayContaining(["cbse", "cisce", "state_board"]));
+ const html = renderToStaticMarkup(<CheckFlow initialAnswers={answers} initialStepIndex={recovered.stepIndex as number} />);
+ expect(html).toContain("CBSE"); expect(html).not.toContain("Tawjihiyah");
+});
 it('restores old Pakistan study reports without inventing current assessment evidence',()=>{
  const saved={...currentPakistanAnswers,pkStudyEvidenceVersion:undefined,pkCurrentAssessment:undefined,pkCurrentAssessmentReference:undefined};
  const restored=recover(JSON.stringify({answers:saved,stepIndex:99}),'pk');const answers=restored.answers as PartialAnswers;
