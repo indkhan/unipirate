@@ -4,7 +4,7 @@ import {
   COUNTRIES,
   INTAKE_OPTIONS,
   TARGET_FIELDS,
-  isIndiaStudyBranch, isSaudiStudyBranch,
+  isIndiaStudyBranch, isSaudiStudyBranch, isSaudiDegreeBranch,
   type PartialAnswers,
   type StepId,
 } from "./steps";
@@ -334,7 +334,7 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
       ];
     case "board":
       return BOARDS
-        .filter((b) => b.country === (answers.saudiCertificateVersion === 1 ? answers.schoolQualificationCountry ?? answers.certificateCountry : answers.certificateCountry))
+        .filter((b) => b.country === ((answers.saudiCertificateVersion === 1 || answers.saudiCertificateVersion === 2) ? answers.schoolQualificationCountry ?? answers.certificateCountry : answers.certificateCountry))
         .map((b) => ({ value: b.id, label: b.label, key: b.id }));
     case "hasPriorUniversityStudy":
     case "jeeAdvanced":
@@ -386,6 +386,11 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
 
 export function questionFor(step: StepId, answers: PartialAnswers) {
   const copy = QUESTIONS[step];
+  if (isSaudiDegreeBranch(answers)) {
+    if (step === "priorStudyMode") return { ...copy, sourceUrl: SAUDI_ANABIN, subtitle: "Report the actual mode of this completed Bachelor. Applicable official qualification evidence must confirm prescribed study norms and generally full-time study; nominal duration alone is insufficient." };
+    if (step === "priorStudyRecognition") return { ...copy, sourceUrl: SAUDI_ANABIN, subtitle: "Report an applicable official qualification or recognition assessment for this exact institution and completed Bachelor. Institution names or marketing cannot establish recognition. This is an applicant report, not app verification; undergraduate access does not establish Master’s equivalence or programme admission." };
+    if (step === "priorStudyRecognitionReference") return { ...copy, sourceUrl: SAUDI_ANABIN, subtitle: "Identify the assessing authority, document or communication and applicable recognition conclusion for THIS institution and completed Bachelor. Omit personal identifiers. This is an applicant report, not app verification; the university decides admission." };
+  }
   if (!isSaudiStudyBranch(answers) || !["priorStudyMode", "priorStudyRecognition", "priorStudyRecognitionReference", "priorStudyTargetRelation", "priorStudyTargetRelationReference"].includes(step)) return copy;
   return { ...copy, sourceUrl: SAUDI_SOURCE, subtitle: "Report an applicable uni-assist or university assessment for this exact Bachelor programme, attained study and target subject area. Names and matching field text are not proof. UniPirate does not independently verify reports; the university decides admission." };
 }

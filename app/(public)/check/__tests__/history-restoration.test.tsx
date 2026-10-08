@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { ProfileReview } from "../profile-review";
 import { CheckFlow } from "../check-flow";
+import { buildOptions } from "../check-questions";
 import { buildProfile } from "../steps";
 import { evaluate } from "@/lib/engine/evaluate";
 import { reviewedIndiaStudyRules } from "@/lib/engine/__tests__/india-study.fixture";
@@ -263,4 +264,15 @@ it("renders separate sourced JEE questions and exception choices in account edit
   expect(html).toContain("Preparatory-course rank only or unclear rank type");
   expect(html).toContain("Main exemption / direct foreign-entry exception");
   expect(html).toContain("Cannot confirm qualifying passage");
+});
+
+it("restores Saudi v2 actual India issuer with selectable Indian boards before any board answer", () => {
+ const edited = withAnswer(withAnswer(saudiAnswers, "schoolQualificationCountry", "in"), "schoolQualificationContext", "national");
+ const recovered = recover(JSON.stringify({ answers: edited, stepIndex: 99 }));
+ const answers = recovered.answers as PartialAnswers;
+ expect(recovered.removeItem).not.toHaveBeenCalled(); expect(answers.saudiCertificateVersion).toBe(2); expect(answers.board).toBeUndefined();
+ expect(recovered.stepIndex).toBe(visibleSteps(answers).indexOf("board"));
+ expect(buildOptions("board", answers).map(o => o.value)).toEqual(expect.arrayContaining(["cbse", "cisce", "state_board"]));
+ const html = renderToStaticMarkup(<CheckFlow initialAnswers={answers} initialStepIndex={recovered.stepIndex as number} />);
+ expect(html).toContain("CBSE"); expect(html).not.toContain("Tawjihiyah");
 });
