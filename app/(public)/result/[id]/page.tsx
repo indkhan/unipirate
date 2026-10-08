@@ -1,3 +1,4 @@
+import {ProcessGuidanceCard} from "@/components/app/process-guidance";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -143,9 +144,10 @@ export default async function ResultPage({
           </> : <p>Original assessment provenance unavailable. Saved answers: {check.created_at}. Current assessment below is a new evaluation.</p>}
           <h2>Current reassessment</h2>
           <p>Evaluated at {context.evaluatedAt}</p>
-          {comparison && <p>{comparison.policyChanged ? "Policy or assessment changed." : "Policy and assessment unchanged."} {comparison.explanationChanged ? "Source or explanation changed." : "Source and explanation unchanged."} {comparison.newCoverage ? "New coverage is available." : ""}</p>}
+          {comparison && <p>{comparison.policyChanged ? "Policy or assessment changed." : "Policy and assessment unchanged."} {comparison.explanationChanged ? "Source or explanation changed." : "Source and explanation unchanged."} {comparison.newCoverage ? "New coverage is available." : ""} {!comparison.processDecisionComparisonAvailable?"No originally saved process decision is recorded. Current process guidance is shown separately.":comparison.processChanged?"Process guidance or its source context changed; this is separate from academic eligibility.":""}</p>}
           {current?.metadata.selectionIssues.map(issue => <p key={issue.ruleId}>Current scope unresolved: {issue.reason}</p>)}
         </section>
+        <ProcessGuidanceCard process={current?.process}/>
         {!current && <p>Current rule knowledge unavailable. Confirm your requirements with <a href="https://www.uni-assist.de/en/how-to-apply/get-information/">the official application source</a>.</p>}
         {result && <div className={styles.grid}>
           <div className={styles.primary}>

@@ -1,5 +1,6 @@
 // Pure immutable rule boundaries, selection and publication diff. Zero I/O.
 import { z } from "zod";
+import {instantOrder} from "@/lib/engine/instant";
 import { EngineRuleSchema, evaluate, intakeIndex, type EngineRule, type Profile } from "@/lib/engine/evaluate";
 import { CalendarDateSchema } from "@/lib/engine/calendar-day";
 import type { Json } from "@/lib/db/database.types";
@@ -41,7 +42,8 @@ export const DraftSaveSchema=ReviewTokenSchema.omit({predecessor_id:true}).exten
 export function preflightPublication(input:unknown) {
  const approval=PublicationApprovalSchema.parse(input);
  const raw=RawRuleSchema.parse(approval.raw_snapshot);
- EngineRuleSchema.parse(approval.raw_snapshot);
+ const policy=EngineRuleSchema.parse(approval.raw_snapshot);
+ if(policy.outcomes.process && Object.keys(policy.outcomes).some(key=>key!=="process"))throw new Error("Process and academic outcomes must be published separately.");
  if(raw.id!==approval.rule_id || raw.status!=="draft" || !raw.last_verified_at) throw new Error("Review requires the saved draft and an explicit source verification date.");
  // Validate the approved state too; this copy is validation-only, never the RPC token.
  EngineRuleSchema.parse({...raw,status:approval.approval_status});
@@ -108,11 +110,4 @@ export function previewRuleImpact(cases:readonly {before:{profile:Profile;rules:
  return {changed,newCoverage};
 }
 
-/** Preserve PostgreSQL microseconds; Date alone rounds same-day publication races. */
-export function instantOrder(value:string):bigint {
- const valid=timestamp.parse(value);
- const fraction=valid.match(/\.(\d+)/)?.[1]??'';
- if(fraction.length>6)throw new Error('Instant precision exceeds PostgreSQL microseconds.');
- const whole=valid.replace(/\.\d+/, '');
- return BigInt(new Date(whole).getTime())*BigInt(1000)+BigInt(fraction.padEnd(6,'0'));
-}
+export {instantOrder} from "@/lib/engine/instant";

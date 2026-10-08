@@ -53,3 +53,11 @@ describe("completed answer marker authorization", () => {
     expect(guardAssistantAnswer("[[unknown]] [[rule:]]", [rule])).toBe(ASSISTANT_FALLBACK);
   });
 });
+
+it("accepts the strict process-aware selected envelope without trusting its unknown text", () => {
+  const processEnvelope = { ...envelope, processUnknowns: ["Personal or conditional process reports cannot authorize amounts."] };
+  const evidence = [{ toolName: "search_rules", output: processEnvelope }];
+  expect(guardAssistantAnswer("Synthetic claim. [[rule:synthetic]]", evidence)).toBe("Synthetic claim. [[rule:synthetic]]");
+  expect(guardAssistantAnswer("[[rule:forged]]", evidence)).toBe(ASSISTANT_FALLBACK);
+  expect(guardAssistantAnswer("[[rule:synthetic]]", [{ toolName: "search_rules", output: { ...processEnvelope, processUnknowns: [123] } }])).toBe(ASSISTANT_FALLBACK);
+});

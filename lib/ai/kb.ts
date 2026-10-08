@@ -1,3 +1,5 @@
+import {isLegacyProcessIdentity} from "../engine/process-identity";
+import type {ProcessOutcome} from "../engine/process";
 import { isQuarantinedPakistanRule, isQuarantinedJeeRule, isScopedJeePathRule } from "../engine/evaluate";
 import { JEE_SOURCE, JEE_FIELD_SOURCE, JEE_LEGACY_SLUG } from "../engine/jee";
 
@@ -25,9 +27,11 @@ type Condition =
   | { op: "in" | "nin"; value: Primitive[] };
 
 export type KbRule = {
+  id?: string; notes?: string | null;
   slug: string;
   conditions: Record<string, Condition>;
   outcomes: {
+    process?: ProcessOutcome;
     path?: string;
     institution_restriction?: "fachhochschule";
     aps?: string;
@@ -195,6 +199,7 @@ function renderOutcomes(outcomes: KbRule["outcomes"]): string[] {
 }
 
 export function ruleToChunk(rule: KbRule, options: { includeLegacyDmatQuote?: boolean } = {}): KbChunk {
+  if(rule.outcomes.process || isLegacyProcessIdentity(rule))return {slug:rule.slug,title:rule.slug,content:"Process applicability requires current immutable context. [[unknown]] Confirm with "+rule.source_url,source_url:rule.source_url,last_verified_at:null,country_code:rule.country_code};
   if (isSaudiAdmissionRule(rule) && !isScopedSaudiRule(rule)) return {
     slug: rule.slug, title: "Saudi admission applicability unverified",
     content: "Saudi admission applicability: unknown. [[unknown]] Stored certificate/stream/degree criteria require official source review; no admission path is established.",

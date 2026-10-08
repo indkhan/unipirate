@@ -1,0 +1,40 @@
+import {describe,it,expect} from "vitest";
+import {processCandidates} from "../../../scripts/process.rules";
+import {EngineRuleSchema,type Profile} from "@/lib/engine/evaluate";
+import {evaluateAssessment} from "../assessment";
+import {selectedKnowledge} from "@/lib/ai/versioned-kb";
+import {generateProcessTasks} from "@/lib/tasks/generate";
+import {ruleReviewReasons} from "../review-attention";
+const ids=[{"rule":"9cca3adf-f2af-47c0-8149-cea80c1f26c6","version":"d9244f62-de5c-4d8f-a35c-6db50486a12d"},{"rule":"edde530a-2398-48ec-afaf-d391fd30d823","version":"4b6ee807-d0df-475b-918e-28ae7812bda5"},{"rule":"d3e7fcc1-0621-4d39-987d-e262c4454826","version":"cc90a5b6-955a-441e-9100-7dc9f3c21c4e"},{"rule":"0812c626-5946-4999-b2de-49b9d8204331","version":"7f28542b-0a6a-4aba-b3d3-7de5b0301841"},{"rule":"db1740ca-3b00-4ac0-87b7-3b5d10b6a934","version":"80e197c8-ce00-4cd3-9558-715eec27f16d"},{"rule":"fbafe350-b99f-457e-9152-70c6300d3161","version":"28866e4d-d6ed-4587-a5a8-0e0b713ed636"},{"rule":"60dd598a-a46a-4d90-90f0-c1a95a0a89f4","version":"db968346-8d57-4acd-810e-047789d2fce6"}];
+const now="2026-10-08T02:24:14Z";
+const context={evaluatedAt:now,engineRevision:"test/source-reviewed-process"};
+// UUID immutable envelopes are deterministic test clones, never published records.
+const versions=processCandidates.map((candidate,i)=>({id:ids[i].version,rule_id:ids[i].rule,version_number:1,supersedes_version_id:null,raw_snapshot:{...candidate,id:ids[i].rule,slug:candidate.id,country_code:candidate.country,status:"verified"},status:"verified",effective_from:null,effective_until:null,intake_from:null,intake_until:null,reviewed_by:"e6c6686c-7d0d-4f83-bfc0-661e3c9c5f1b",reviewed_at:now,published_at:now,captured_at:null,draft_revision:1,provenance:"human_publication"}));
+const profile:Profile={targetDegree:"bachelor",curriculumType:"other",visaApplicationCountry:"in",processContext:{version:1,purpose:"study",mission:"new_delhi",missionConfirmed:true,fundingMethod:"blocked_account",exception:"none",ageBracket:"over18"}};
+const assess=(p:Profile=profile,vs=versions,time=now)=>evaluateAssessment(p,vs,{...context,evaluatedAt:time});
+describe("source-reviewed draft clone acceptance",()=>{
+ it("all candidates remain strict separate drafts",()=>{for(const row of processCandidates){expect(row.status).toBe("draft");expect(EngineRuleSchema.safeParse(row).success).toBe(true);expect(Object.keys(row.outcomes)).toEqual(["process"]);}});
+ it("uses literal funding periods and alternatives without changing academic results",()=>{const current=assess(profile,[versions[0]]);expect(current.process?.guidance[0]).toMatchObject({status:"current",amounts:processCandidates[0].outcomes.process!.amounts});expect(current.result).toEqual(assess(profile,[]).result);expect(current.process?.guidance[0].alternatives.map(a=>a.method)).toContain("scholarship");});
+ it.each(["loan","scholarship","commitment","other","unknown"] as const)("does not issue blocked-account instructions for reported %s",fundingMethod=>{const p={...profile,processContext:{...profile.processContext!,fundingMethod}};const a=assess(p,[versions[0]]);expect(a.process?.guidance[0].amounts).toEqual([]);expect(generateProcessTasks(a.process)).toEqual([]);expect(JSON.stringify(selectedKnowledge([versions[0]],{evaluatedAt:now,profile:p}))).not.toContain("11,904");});
+ it("preserves unresolved supplied versus retrieved INR observations without numeric KB leaks",()=>{const a=assess(profile,[versions[1]]);expect(a.process?.guidance[0].status).toBe("unresolved");expect(a.process?.guidance[0].evidence.observation.unresolved_observations?.[0].last_verified_at).toBeNull();const content=JSON.stringify(selectedKnowledge([versions[1]],{evaluatedAt:now,profile}));expect(content).not.toMatch(/8300|8400|75,--/);expect(ruleReviewReasons(versions[1].raw_snapshot,now).length).toBeGreaterThan(0);});
+ it("exact18 does not authorize either local INR bracket",()=>{const p={...profile,processContext:{...profile.processContext!,ageBracket:"exact18" as const,kind:"visa_fee" as const}};expect(assess(p,[versions[1],versions[2]]).process?.guidance.every(g=>g.amounts.length===0)).toBe(true);expect(JSON.stringify(selectedKnowledge([versions[1],versions[2]],{evaluatedAt:now,profile:p}))).not.toMatch(/8300|4200/);});
+ it("reported waiver uncertainty cannot authorize minor fee",()=>{const p={...profile,processContext:{...profile.processContext!,ageBracket:"under18" as const,exception:"public_scholarship" as const}};expect(assess(p,[versions[2]]).process?.guidance[0].status).toBe("conditional");});
+ it("minor scope is current only with reported complete context",()=>{const p={...profile,processContext:{...profile.processContext!,ageBracket:"under18" as const}};expect(assess(p,[versions[2]]).process?.guidance[0].amounts).toEqual(processCandidates[2].outcomes.process!.amounts);});
+ it("Saudi annotation does not start a date or compute SAR",()=>{const p={...profile,visaApplicationCountry:"sa",processContext:{...profile.processContext!,mission:"riyadh"}};expect(assess(p,[versions[3]]).process?.guidance[0].evidence.observation.effective.from).toBeNull();expect(assess(p,[versions[4]]).process?.guidance[0].amounts).toEqual([]);});
+ it("country alone cannot authorize differing missions and explicit identity selects task authority",()=>{const country={...profile,visaApplicationCountry:"pk",processContext:{...profile.processContext!,mission:undefined,kind:"appointment" as const}};expect(generateProcessTasks(assess(country,[versions[5],versions[6]]).process)).toEqual([]);const named={...country,processContext:{...country.processContext,mission:"islamabad"}};expect(generateProcessTasks(assess(named,[versions[5],versions[6]]).process).map(t=>t.key)).toEqual(["rule:"+ids[5].rule+":step:43"]);});
+ it("current review equality and overdue +1ms sanitize raw funding quote",()=>{const due=processCandidates[0].outcomes.process!.review_due;expect(assess(profile,[versions[0]],due).process?.guidance[0].status).toBe("current");const after=new Date(Date.parse(due)+1).toISOString();expect(assess(profile,[versions[0]],after).process?.guidance[0].status).toBe("review_needed");expect(JSON.stringify(selectedKnowledge([versions[0]],{evaluatedAt:after,profile}))).not.toContain("11,904");});
+});
+
+it("invalid process replacement has no fallback and retains an official pointer",()=>{
+ const invalid={...versions[0],id:"7e847d35-3181-4c7c-ac10-5fe7ac60dfd4",version_number:2,published_at:"2026-10-08T02:24:14.000001Z",raw_snapshot:{...versions[0].raw_snapshot,outcomes:{process:{...processCandidates[0].outcomes.process!,review_due:"invalid"}}}};
+ const a=assess(profile,[versions[0],invalid],"2026-10-08T02:24:14.001Z");expect(a.process?.guidance).toEqual([]);expect(a.process?.unknowns.join(" ")).toContain(processCandidates[0].source_url);
+});
+
+it("appointment context requires no unrelated funding or fee-exception report",()=>{const p:Profile={targetDegree:"bachelor",curriculumType:"other",visaApplicationCountry:"pk",processContext:{version:1,kind:"appointment",purpose:"study",mission:"islamabad",missionConfirmed:true}};expect(generateProcessTasks(assess(p,[versions[5]]).process)).toHaveLength(1);});
+
+it("invalid numeric verification offset cannot authorize actual candidate projection, immutable assessment, tasks or KB",()=>{
+ const bad={...versions[0],raw_snapshot:{...versions[0].raw_snapshot,last_verified_at:"2026-10-07T00:00:00+99:99"}};
+ expect(ruleReviewReasons(bad.raw_snapshot,now).length).toBeGreaterThan(0);
+ const a=assess(profile,[bad]);expect(a.process?.guidance.every(g=>g.status!=="current" && !g.amounts.length && !g.steps.length)).toBe(true);expect(a.process?.unknowns.length).toBeGreaterThan(0);expect(generateProcessTasks(a.process)).toEqual([]);
+ const kb=JSON.stringify(selectedKnowledge([bad],{evaluatedAt:now,profile}));expect(kb).not.toContain("11,904");expect(kb).not.toContain(processCandidates[0].source_quote);expect(kb).toContain(processCandidates[0].source_url);
+});
