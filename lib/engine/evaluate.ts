@@ -6,6 +6,7 @@
 import { z } from "zod";
 import {isLegacyProcessIdentity} from "./process-identity";
 import { ProcessOutcomeSchema, type ProcessProfile } from "./process";
+import { type SaudiReport, deriveSaudiFacts, isSaudiAdmissionRule, isScopedSaudiRule, isSaudiSchoolProfile, SAUDI_SOURCE, SAUDI_FACT_LABELS } from "./saudi";
 import { derivePakistanFacts, PK_FACT_KEYS, type PakistanProfile, type PakistanStudy } from "./pakistan";
 import { JeeProfileSchema, type JeeProfile, JEE_SOURCE, JEE_FIELD_SOURCE, JEE_ADMISSION_SOURCE } from "./jee";
 import { type IbProfile, deriveIbFacts, IB_FACT_LABELS, IB_SOURCE } from "./ib";
@@ -36,6 +37,7 @@ export type Profile = {
   apsApplicationContext?: "uni_assist" | "unknown";
   hasExistingApsCertificate?: boolean;
   dmat?: DmatProfile;
+  saudiCertificate?: SaudiReport;
   // Reported APS confirmation for this Class XII(/one-bachelor-year) procedure;
   // another/uncertain academic basis cannot confirm it. Never a courier alias.
   apsProcedure?: {
@@ -60,6 +62,7 @@ export type Profile = {
     degreeYears?: number;
     completedYears?: number;
     completion?: "completed" | "in_progress" | "discontinued";
+    saudiBachelorEvidence?: { version: 2; context?: "national" | "other" | "unknown"; assessment?: "reported_official_norms_full_time" | "reported_official_unmet" | "unknown"; reference?: string };
     pakistanStudy?: PakistanStudy;
     indiaStudyRouteVersion?: 1;
     priorStudyMode?: "regular" | "distance_online" | "other" | "unknown";
@@ -139,6 +142,11 @@ const ConditionSchema = z.union([
 type Condition = z.infer<typeof ConditionSchema>;
 
 const FactKeySchema = z.enum([
+  "sa_secondary_completion", "sa_national_category", "sa_national_stream", "sa_reported_target_family", "sa_private_assessment_coverage",
+  "sa_degree_evidence", "sa_degree_issuer", "sa_degree_context", "sa_degree_kind", "sa_degree_completion", "sa_degree_nominal_years", "sa_degree_mode", "sa_degree_norms", "sa_degree_recognition", "sa_degree_institution", "sa_degree_field",
+  "sa_certificate_evidence", "sa_certificate_subtype", "sa_reported_subject_assessment", "sa_prior_study_kind",
+  "sa_successful_bachelor_years", "sa_reported_recognition", "sa_reported_target_relation",
+  "sa_reported_enrollment", "sa_reported_enrollment_relation",
   ...PK_FACT_KEYS,
   "in_class12_prior_study_kind", "in_class12_prior_study_country", "in_class12_successful_bachelor_years",
   "in_class12_study_mode", "in_class12_reported_recognition", "in_class12_reported_target_relation",
@@ -227,6 +235,7 @@ const RuleOutcomesSchema = z
   .object({
     process: ProcessOutcomeSchema.optional(),
     path: PathValue.optional(),
+    institution_restriction: z.literal("fachhochschule").optional(),
     aps: FlagValue.optional(),
     aps_scopes: ApsScopesSchema.optional(),
     testas: FlagValue.optional(),
@@ -266,6 +275,7 @@ export const EngineRuleSchema = z
   })
   .passthrough()
   .superRefine((rule, context) => {
+    if (rule.outcomes.institution_restriction && rule.outcomes.path !== "studienkolleg" && !(rule.outcomes.path === "subject_restricted" && isScopedSaudiRule(rule) && rule.conditions.sa_certificate_subtype !== "national" && rule.conditions.sa_certificate_subtype !== "private_school" && rule.conditions.sa_degree_evidence === undefined)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["outcomes", "institution_restriction"], message: "FH restriction is supported only on preparation or scoped industrial subject-restricted access." });
     if (rule.status !== "draft" && !rule.last_verified_at) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -301,6 +311,7 @@ export type ResultSupport =
 
 export type Result = {
   path: z.infer<typeof PathValue>;
+  institutionRestriction?: "fachhochschule";
   aps: z.infer<typeof FlagValue>;
   /** Optional only for legacy serialized results; evaluate always supplies it. */
   apsScopes?: { qualification: z.infer<typeof FlagValue>; application: z.infer<typeof FlagValue>; visa: z.infer<typeof FlagValue> | "not_listed" };
@@ -450,6 +461,7 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
   // FactKeySchema yet. Supporting old published conditions would activate
   // unreviewed routes. Recognition, field equivalence and certificate criteria
   // remain missing until the dependent source-review issues define them.
+  Object.assign(raw, deriveSaudiFacts(p));
   if (p.ib) Object.assign(raw, deriveIbFacts(p.ib));
   if (p.gce) {
     const subjects = p.gce.subjects.map(s => {
@@ -590,7 +602,8 @@ export const isQuarantinedJeeRule = (r: JeeRule) => jeePath(r) && r.outcomes.pat
 type PakistanRule = JeeRule & {source_url?: string};
 export const isPakistanRule = (r: PakistanRule) => !['gce','ib'].includes(String(r.conditions.curriculum)) && (Object.keys(r.conditions).some(k=>k.startsWith('pk_')) ||
   ['certificate_country','aps_issuer_country'].some(k=>r.conditions[k]!==undefined && conditionPasses('pk',r.conditions[k])) ||
-  /daad\.pk|ad-layerId=(193|195|197|199|204|206)(?:&|$)|anabin\.kmk\.org\/db\/schulabschluesse-mit-hochschulzugang/.test(r.source_url??''));
+  /daad\.pk|ad-layerId=(193|195|197|199|204|206)(?:&|$)/.test(r.source_url??'') ||
+  /anabin\.kmk\.org\/db\/schulabschluesse-mit-hochschulzugang/.test(r.source_url??'') && !isScopedSaudiRule(r));
 export const isScopedPakistanPathRule = (r: PakistanRule) => {
  const c=r.conditions;
  const scope=c.target_degree==='bachelor' && c.curriculum==='national' && c.aps_issuer_country==='pk' && c.aps_qualification_context==='national';
@@ -627,7 +640,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   // Only reviewed evidence-scoped path conditions can establish ordinary recognition.
   const ibPath = (r: ParsedRule) => r.conditions.curriculum === 'ib' && r.outcomes.path !== undefined;
   const scopedIb = (r: ParsedRule) => r.conditions.ib_evidence === 'v1' && r.conditions.ib_document_status !== undefined && r.conditions.ib_exam_year !== undefined;
-  const matched = live.filter(r => ibPath(r) && !scopedIb(r) ? false : positiveGce(r) ? scopedGce(r) && witnesses.some(w=>ruleMatches(w,r)) : ruleMatches(facts,r));
+  const matched = live.filter(r => isSaudiAdmissionRule(r) && !isScopedSaudiRule(r) ? false : ibPath(r) && !scopedIb(r) ? false : positiveGce(r) ? scopedGce(r) && witnesses.some(w=>ruleMatches(w,r)) : ruleMatches(facts,r));
 
   const citations: Citation[] = [];
   const unknowns: string[] = [];
@@ -665,12 +678,18 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       testas: "testAS",
       dmat: "dMAT",
     }[key as "path" | "aps" | "testas" | "dmat"]) as ResultSupport;
-    const contenders = matched.filter((r) => outcome(r) !== undefined);
+    let contenders = matched.filter((r) => outcome(r) !== undefined);
+    // Independent general undergraduate HZB subsumes the narrower Saudi school
+    // entitlements. Those grants coexist; other source conflicts still resolve below.
+    if (key === "path" && contenders.some(r => r.conditions.sa_degree_evidence === "v2" && isScopedSaudiRule(r) && r.outcomes.path === "direct")) {
+      contenders = contenders.filter(r => !isScopedSaudiRule(r) || r.conditions.sa_degree_evidence !== undefined);
+    }
     if (contenders.length === 0) return undefined;
     const specificity = (r: ParsedRule) => Object.keys(r.conditions).length;
     const max = Math.max(...contenders.map(specificity));
     const top = contenders.filter((r) => specificity(r) === max);
-    const values = new Set(top.map(outcome));
+    // The narrow FH restriction belongs to its path, never a separately merged flag.
+    const values = new Set(top.map(r => key === "path" ? JSON.stringify([outcome(r), r.outcomes.institution_restriction ?? null]) : outcome(r)));
     if (values.size > 1) {
       top.forEach((rule) => cite(rule, support));
       unknowns.push(
@@ -788,6 +807,29 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     if(!nearest)unknowns.push('IB subject identity, two-year continuity, language context and applicable examination evidence require a reviewed rule: '+IB_SOURCE);
     unknowns.push('Ordinary recognition gaps do not establish Studienkolleg admission. KMK section 2 describes an additional examination/Feststellungsprüfung or qualifying successful prior study; confirm your applicable alternative and subject scope with the recognition authority: '+IB_SOURCE);
   }
+  if (path === "unknown" && (isSaudiSchoolProfile(profile) || profile.targetDegree === "bachelor" && profile.qualificationHistory?.country === "sa")) {
+    const candidates = live.filter(r => isScopedSaudiRule(r) && r.outcomes.path !== undefined && r.outcomes.path !== "unknown" && (r.conditions.sa_degree_evidence !== undefined || conditionPasses(facts.sa_certificate_subtype, r.conditions.sa_certificate_subtype!)));
+    const comparisons = candidates.map(rule => ({ rule, failed: Object.entries(rule.conditions).filter(([key, cond]) => !conditionPasses(facts[key], cond)) }));
+    if (comparisons.some(c => c.failed.length)) {
+      for (const nearest of comparisons.filter(c => c.failed.length)) {
+      const diagnostic = "Saudi route not established: " + nearest.failed.map(([key]) => {
+        const label = key === "intake_index" ? "intake applicability (current product coverage 4053/4054/4055; industrial source regime starts Winter 2026/27)" : SAUDI_FACT_LABELS[key] ?? key;
+        return label + (facts[key] === "unmet" || facts[key] === "rejected" || facts[key] === "unrelated" ? " condition unmet by the reported assessment" : " not established");
+      }).join("; ") + ". Confirm with " + nearest.rule.source_url;
+      unknowns.push(diagnostic); cite(nearest.rule, "unknowns", diagnostic);
+      }
+    } else if (!profile.saudiCertificate?.subtype || profile.saudiCertificate.subtype === "unknown") {
+      unknowns.push("Select the explicit Saudi certificate subtype; no subtype is inferred from a legacy board. Confirm with " + SAUDI_SOURCE);
+    } else {
+      unknowns.push("Saudi certificate/issuer applicability is unresolved. Confirm the applicable documentary category, reports and covered intake; confirm the exact qualification with " + SAUDI_SOURCE);
+    }
+    for (const legacy of live.filter(r => isSaudiAdmissionRule(r) && !isScopedSaudiRule(r))) {
+      cite(legacy, "unknowns", "Stored Saudi admission applicability is unverified; no admission path is established.");
+    }
+  }
+  if (path === "unknown" && profile.targetDegree === "master" && (profile.qualificationHistory?.country === "sa" || profile.certificateCountry === "sa")) {
+    unknowns.push("Saudi completed-degree equivalence for Master's admission remains source-held; duration or a completed Bachelor alone cannot establish eligibility. Ask the admitting university for its exact qualification criteria: " + SAUDI_SOURCE);
+  }
   if (!matched.some((r) => r.outcomes.path !== undefined))
     unknowns.push(NO_RULE_MESSAGES.path);
   const flag = (key: "aps" | "testas" | "dmat"): Result["aps"] => {
@@ -813,6 +855,8 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
   const documents: string[] = [];
   const steps: Result["stepsDetailed"] = [];
   for (const rule of matched) {
+    // Saudi path-specific tasks/documents follow the winning clause, not a superseded or conflicting preparation route.
+    if (isScopedSaudiRule(rule) && rule.outcomes.path !== undefined && (path === "unknown" || !citations.some(c => c.ruleId === rule.id && c.supports.includes("path")))) continue;
     const blockedPakistanTasks = isPakistanRule(rule) && rule.outcomes.path !== undefined && (rule.outcomes.path !== path || !citations.some(c => c.ruleId === rule.id && c.supports.includes("path")));
     for (const doc of (isQuarantinedJeeRule(rule) || isQuarantinedPakistanRule(rule) || blockedPakistanTasks) ? [] : rule.outcomes.documents ?? []) {
       // Trade-off: old free-text APS entries lack machine-readable scope.
@@ -855,6 +899,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
 
   return {
     path,
+    ...(path !== "unknown" && matched.some(r => r.outcomes.institution_restriction === "fachhochschule" && citations.some(c => c.ruleId === r.id && c.supports.includes("path"))) ? { institutionRestriction: "fachhochschule" as const } : {}),
     aps,
     apsScopes,
     apsCertificate: profile.hasExistingApsCertificate === true ? "held" : profile.hasExistingApsCertificate === false ? "missing" : "unknown",

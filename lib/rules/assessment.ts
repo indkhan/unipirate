@@ -24,6 +24,7 @@ const support=z.enum(['aps:qualification','aps:application','aps:visa','path','a
 /** Mirrors the actual exported engine Result, including optional legacy APS fields. */
 export const AssessmentResultSchema:z.ZodType<Result>=z.object({
  path:z.enum(['direct','subject_restricted','studienkolleg','insufficient','unknown']),aps:flag,
+ institutionRestriction:z.literal('fachhochschule').optional(),
  apsScopes:z.object({qualification:flag,application:flag,visa:z.enum(['required','not_required','unknown','not_listed'])}).strict().optional(),
  apsCertificate:z.enum(['held','missing','unknown']).optional(),apsRuleIds:z.array(canonicalId).optional(),
  testAS:flag,dMAT:flag,documents:z.array(z.string()),

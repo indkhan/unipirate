@@ -14,6 +14,8 @@ import { JEE_SOURCE, JEE_FIELD_SOURCE, JEE_LEGACY_SLUG } from "../engine/jee";
  * models are not comparable, and a mismatch returns plausible-looking but
  * wrong neighbours with no error.
  */
+import { isSaudiAdmissionRule, isScopedSaudiRule, SAUDI_FACT_LABELS } from "@/lib/engine/saudi";
+
 export const EMBEDDING_MODEL = "nvidia/nemotron-3-embed-1b:free";
 export const EMBEDDING_DIMENSIONS = 2048;
 
@@ -31,6 +33,7 @@ export type KbRule = {
   outcomes: {
     process?: ProcessOutcome;
     path?: string;
+    institution_restriction?: "fachhochschule";
     aps?: string;
     aps_scopes?: Partial<Record<"qualification" | "application" | "visa", {
       value: string; documents?: string[]; steps?: { order: number; text: string; acquisition?: boolean }[];
@@ -60,6 +63,7 @@ export type KbChunk = {
 // (see FactKeySchema in lib/engine/evaluate.ts). Unlisted keys fall back to
 // the key with underscores replaced by spaces.
 const FACT_LABELS: Record<string, string> = {
+  ...SAUDI_FACT_LABELS,
   in_class12_prior_study_kind: "reported prior-study kind for Indian Class XII",
   in_class12_prior_study_country: "reported bachelor institution country for Indian Class XII",
   in_class12_successful_bachelor_years: "reported successfully completed bachelor academic years (not programme duration)",
@@ -166,6 +170,7 @@ function renderOutcomes(outcomes: KbRule["outcomes"]): string[] {
   const lines: string[] = [];
   if (outcomes.path)
     lines.push(`Admission path: ${PATH_LABELS[outcomes.path] ?? outcomes.path}.`);
+  if (outcomes.institution_restriction === "fachhochschule") lines.push("Institution restriction: Fachhochschule (university of applied sciences) only for this admission path.");
   const flag = (name: string, value?: string) => {
     if (value) lines.push(`${name}: ${value.replace(/_/g, " ")}.`);
   };
@@ -195,6 +200,11 @@ function renderOutcomes(outcomes: KbRule["outcomes"]): string[] {
 
 export function ruleToChunk(rule: KbRule, options: { includeLegacyDmatQuote?: boolean } = {}): KbChunk {
   if(rule.outcomes.process || isLegacyProcessIdentity(rule))return {slug:rule.slug,title:rule.slug,content:"Process applicability requires current immutable context. [[unknown]] Confirm with "+rule.source_url,source_url:rule.source_url,last_verified_at:null,country_code:rule.country_code};
+  if (isSaudiAdmissionRule(rule) && !isScopedSaudiRule(rule)) return {
+    slug: rule.slug, title: "Saudi admission applicability unverified",
+    content: "Saudi admission applicability: unknown. [[unknown]] Stored certificate/stream/degree criteria require official source review; no admission path is established.",
+    source_url: rule.source_url, last_verified_at: null, country_code: rule.country_code,
+  };
   // Changing a historical row's outcomes cannot verify its old admission quote.
   const legacyJee = isQuarantinedJeeRule(rule) ||
     (rule.slug === JEE_LEGACY_SLUG && !isScopedJeePathRule(rule));

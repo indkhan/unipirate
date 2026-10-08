@@ -7,6 +7,7 @@ import {
   type ResultSupport,
 } from "@/lib/engine/evaluate";
 
+import { SCIENCE_STREAMS } from "@/lib/engine/saudi";
 import { BOARDS, COUNTRIES } from "@/app/(public)/check/steps";
 
 export type ViewerVariant = "anonymous_owner" | "claimed_owner" | "public";
@@ -91,12 +92,14 @@ export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
   return [
     {
       key: "path",
-      label: result.path === "subject_restricted" && profile.schoolQualification?.country === "pk" && profile.qualificationHistory?.pakistanStudy?.evidenceVersion === 2
+      label: profile.saudiCertificate?.version !== undefined && ["studienkolleg", "subject_restricted"].includes(result.path)
+        ? "Your reported qualifications indicate " + (result.path === "studienkolleg" ? profile.saudiCertificate.subtype === "national" && SCIENCE_STREAMS.includes(profile.saudiCertificate.nationalStream ?? "") ? "Studienkolleg in all preparatory Schwerpunktkurse" : "Studienkolleg" : "Bachelor access") + (result.institutionRestriction === "fachhochschule" ? " only at a Fachhochschule (university of applied sciences)" + (result.path === "studienkolleg" ? " in the enrollment subject area. " : " in the previous or neighbouring subject area. ") : " in the applicable reported subject area. ") + "UniPirate has not independently verified your reports; the university decides admission."
+       : result.path === "subject_restricted" && profile.schoolQualification?.country === "pk" && profile.qualificationHistory?.pakistanStudy?.evidenceVersion === 2
         ? "Your reported qualifications indicate a current subject-restricted direct route. Applicant reports are not independently verified by UniPirate; the institution decides. The linked regional brochure states two years; confirm the applicable assessment."
         : result.path === "subject_restricted" && profile.qualificationHistory?.indiaStudyRouteVersion === 1 &&
         profile.targetDegree === "bachelor" && profile.curriculumType === "national" && profile.schoolQualification?.country === "in"
         ? "Your reported qualifications indicate a subject-restricted direct route. UniPirate has not independently verified your reports; the university decides programme admission."
-        : PATH_LABELS[result.path],
+        : result.path === "direct" && profile.qualificationHistory?.saudiBachelorEvidence?.version === 2 ? "Your reported completed Bachelor indicates general undergraduate access to all subjects and higher education institutions. UniPirate has not independently verified your reports; the university decides programme admission. This does not establish Master's equivalence." : PATH_LABELS[result.path],
       citations: citationsFor(result, "path"),
       unknown: result.path === "unknown",
     },
@@ -152,11 +155,11 @@ export function buildRoute(result: Result): RouteStation[] {
   }
 
   const pending: string[] = [];
-  if (result.path === "studienkolleg") pending.push("Studienkolleg");
+  if (result.path === "studienkolleg") pending.push(result.institutionRestriction === "fachhochschule" ? "Studienkolleg (FH)" : "Studienkolleg");
   if (result.aps === "required" && result.apsCertificate !== "held") pending.push("APS");
   if (result.testAS === "required") pending.push("TestAS");
   if (result.dMAT === "required") pending.push("dMAT");
-  pending.push("Applications", "Visa", "Germany");
+  pending.push(result.path === "subject_restricted" && result.institutionRestriction === "fachhochschule" ? "Applications (FH only)" : "Applications", "Visa", "Germany");
 
   return [
     { label: "Eligibility", state: "done" },

@@ -102,3 +102,21 @@ it("a selected source-backed JEE replacement without certificate scope cannot re
  const r=(await search()).chunks[0];expect(r.versionId).toBe(version(2).id);expect(r.content).toContain("[[unknown]]");
  expect(r.content).not.toContain("Admission path: direct");expect(r.content).not.toContain(current.source_quote);expect(r.last_verified_at).toBeNull();
 });
+
+it("immutable search_rules withholds unsupported Saudi national cache claims", async () => {
+ const candidate = ruleData.find(r => r.id === "sa-tawjihiyah-studienkolleg")!;
+ mocks.listRuleVersions.mockResolvedValue([version(1, {raw_snapshot: {...candidate, id: ruleId, slug: candidate.id, country_code: "sa", status: "verified"}})]);
+ mocks.matchKbRuleHints.mockResolvedValue([{rule_id: ruleId, content: "Invented Saudi blanket admission"}, {rule_id: null, content: "Invented Saudi snippet"}]);
+ const r = (await search()).chunks[0];
+ expect(r.content).toContain("[[unknown]]"); expect(r.content).not.toContain(candidate.source_quote);
+ expect(r.content).not.toContain("Invented"); expect(r.last_verified_at).toBeNull();
+ expect(r).toMatchObject({ruleId, versionId: version(1).id, source_url: candidate.source_url});
+});
+it("immutable search_rules renders Saudi FH preparation from exact reviewed versions", async () => {
+ const candidate = ruleData.find(r => r.id === "sa-reviewed-industrial-enrollment")!;
+ mocks.listRuleVersions.mockResolvedValue([version(2, {raw_snapshot: {...candidate, id: ruleId, slug: candidate.id, country_code: "sa", status: "verified"}})]);
+ mocks.matchKbRuleHints.mockResolvedValue([{rule_id: ruleId, content: "Invented unrestricted Saudi Bachelor"}]);
+ const r = (await search()).chunks[0];
+ expect(r.content).toContain("Fachhochschule"); expect(r.content).toContain(candidate.source_quote);
+ expect(r.content).not.toContain("Invented"); expect(r.versionId).toBe(version(2).id);
+});

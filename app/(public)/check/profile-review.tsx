@@ -9,7 +9,7 @@ import { ThemeToggle } from "@/components/app/theme-toggle";
 import {ProcessContextEditor} from "./process-context-editor";
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
-import { buildOptions, QUESTIONS as QUESTION_COPY, type Option } from "./check-questions";
+import { buildOptions, questionFor, type Option } from "./check-questions";
 import { QualificationTextInput } from "./qualification-text-input";
 import { GceSubjectsEditor } from "./gce-subjects-editor";
 import { IbSubjectsEditor } from "./ib-subjects-editor";
@@ -17,6 +17,8 @@ import {
   NUMBER_STEPS,
   PartialAnswersSchema,
   normalizeAnswers,
+  upgradeSaudiAnswers,
+  isSaudiStudyBranch,
   pakistanAnswerVersion,
   isAnswered,
   isNumberStep,
@@ -36,6 +38,15 @@ type ProfileReviewProps = {
 };
 
 const QUESTIONS: Record<StepId, string> = {
+  saudiNationalCategory: "Reported documentary national category", saudiSecondaryCompletion: "Reported completed secondary certificate",
+  saudiTargetFamily: "Reported applicable target family", saudiTargetFamilyReference: "Applicable target-family reference",
+  saudiPrivateAssessmentCoverage: "Reported private diploma accreditation/breadth/minima coverage",
+  saudiBachelorAssessment: "Reported completed Bachelor qualification/norms assessment", saudiBachelorAssessmentReference: "Completed Bachelor assessment reference",
+  saudiCertificateSubtype: "Saudi certificate subtype", saudiNationalStream: "Reported national stream",
+  saudiSubjectAssessment: "Reported ZAB subject assessment", saudiSubjectAssessmentReference: "Subject assessment reference",
+  saudiEnrollment: "Reported current Bachelor enrollment", saudiEnrollmentField: "Enrollment subject area",
+  saudiEnrollmentReference: "Enrollment certificate reference", saudiEnrollmentTargetRelation: "Reported enrollment target relationship",
+  saudiEnrollmentTargetRelationReference: "Enrollment target assessment reference",
  pkCurrentAssessment:'Reported applicable current assessment',pkCurrentAssessmentReference:'Current assessment reference',
  pkCertificate:'Exact certificate category',pkGroup:'Documentary group',pkSchoolCompletion:'School completion',pkTargetFamily:'Reported target family',pkTargetFamilyReference:'Target-family reference',pkStudyMode:'Reported study mode',pkStudyRegulations:'Study regulations',pkAnnualRecords:'Annual subject/marks records',pkSuccessfulYearsReference:'Successful-year records',pkRecognition:'Reported recognition assessment',pkRecognitionReference:'Recognition reference',pkTargetRelation:'Reported target relationship',pkTargetRelationReference:'Target reference',
   priorStudyMode: "Previous bachelor study mode", priorStudyRecognition: "Reported official recognition",
@@ -100,7 +111,7 @@ const QUESTIONS: Record<StepId, string> = {
 export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
-  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1, jeeVersion: 2, ...pakistanAnswerVersion(initialAnswers) }));
+  const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1, ...pakistanAnswerVersion(initialAnswers), jeeVersion: 2 })));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const steps = visibleSteps(answers);
@@ -176,7 +187,7 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
           )}
           {step === 'schoolGradePercent' && isPakistanBranch(answers) && <button type="button" aria-pressed={answers[step]===null} onClick={()=>select(step,null)}>Cannot confirm overall percentage</button>}
           {answers.ibVersion===1 && ['ibExamYear','ibSchoolYears','ibTotalPoints'].includes(step) && <button type="button" aria-pressed={answers[step]===null} onClick={()=>select(step,null)}>Cannot confirm</button>}
-          {step === "yearsOfUniversityStudy" && (isIndiaStudyBranch(answers)||isPakistanBranch(answers)) && <button type="button" aria-pressed={answers[step] === null} onClick={() => select(step, null)}>Cannot establish successful academic years</button>}
+          {step === "yearsOfUniversityStudy" && (isIndiaStudyBranch(answers) || isSaudiStudyBranch(answers) || isPakistanBranch(answers)) && <button type="button" aria-pressed={answers[step] === null} onClick={() => select(step, null)}>Cannot establish successful academic years</button>}
         </div>
       );
     }
@@ -252,9 +263,9 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
         <div className={styles.reviewGrid}>
           {steps.map((step) => (
             <section className={styles.reviewCard} key={step}>
-              <h2 id={`${step}-label`}>{QUESTION_COPY[step].sourceUrl ? QUESTION_COPY[step].question : QUESTIONS[step]}</h2>
-              {QUESTION_COPY[step].sourceUrl && <p className={styles.subtitle}>
-                {QUESTION_COPY[step].subtitle} <a href={QUESTION_COPY[step].sourceUrl} target="_blank" rel="noreferrer">Official source guidance</a>
+              <h2 id={`${step}-label`}>{questionFor(step, answers).sourceUrl ? questionFor(step, answers).question : QUESTIONS[step]}</h2>
+              {questionFor(step, answers).sourceUrl && <p className={styles.subtitle}>
+                {questionFor(step, answers).subtitle} <a href={questionFor(step, answers).sourceUrl} target="_blank" rel="noreferrer">Official source guidance</a>
               </p>}
               {field(step)}
               {!isAnswered(answers, step) ? (

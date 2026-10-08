@@ -1,3 +1,5 @@
+Verified Saudi/Pakistan integration: the working candidate now includes verified main 813182a33d65566950d6851205c9d47fb5f37386. Academic current-source scopes and strict historical provenance are retained alongside separate process guidance. No source assertion, quote, date, applicability or candidate publication is changed by this merge resolution; no fresh official retrieval is claimed.
+
 # UP-PROC-02 integration source verification
 
 Offset-review repair: the original numeric offset must parse to a finite instant before exact microsecond ordering. Invalid offsets produce review attention/unknown guidance and cannot authorize amounts, steps or KB quotes. This repair and verified Pakistan-main integration change no source assertion, candidate source capture or publication; no additional official-source retrieval is claimed. The observations below retain their original retrieval provenance.

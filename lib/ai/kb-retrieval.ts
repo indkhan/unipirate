@@ -1,4 +1,5 @@
 // Pure retrieval projection. Persisted text is never parsed to infer policy.
+import { isSaudiAdmissionRule, isScopedSaudiRule } from "@/lib/engine/saudi";
 import { z } from "zod";
 import { EngineRuleSchema, isJeeRule, isPakistanRule } from "@/lib/engine/evaluate";
 import { JEE_SOURCE, JEE_FIELD_SOURCE, JEE_LEGACY_SLUG } from "@/lib/engine/jee";
@@ -14,7 +15,7 @@ const RuleIdentitySchema = z.object({ slug: z.string(), outcomes: z.object({ dma
 const PublishedKbRuleSchema = EngineRuleSchema.innerType().extend({
   slug: z.string().min(1), country_code: z.string().nullable(),
   status: z.enum(["beta", "verified"]), last_verified_at: z.string().datetime({ offset: true }),
-});
+}).refine(rule => !rule.outcomes.institution_restriction || rule.outcomes.path === "studienkolleg" || rule.outcomes.path === "subject_restricted" && isScopedSaudiRule(rule) && rule.conditions.sa_certificate_subtype !== "national" && rule.conditions.sa_certificate_subtype !== "private_school" && rule.conditions.sa_degree_evidence === undefined, { message: "FH restriction requires preparation or scoped industrial direct access" });
 
 /** RULES01 reuse boundary: raw RPC matches + caller-visible current rule rows
  * (null means unavailable) -> model-visible chunks. No writes, clock or I/O.
@@ -43,14 +44,15 @@ export function projectDmatKbMatches(matches: readonly unknown[], publishedRules
       last_verified_at: null });
     // No trusted structured snippet metadata exists in this interface. Even a
     // rebuilt snippet must not silently acquire authority from its stored text.
-    if (source_type !== "rule") return dmat || jee || pakistan ? unresolved() : match;
+    const saudiSnippet = ["snippet-saudi-tawjihiyah", "snippet-saudi-private-school-ladder", "snippet-studienkolleg-middle-east"].includes(match.slug);
+    if (source_type !== "rule") return dmat || jee || pakistan || saudiSnippet ? unresolved() : match;
     // Without valid current metadata a renamed rule cannot prove unrelatedness.
     if (match.slug === "snippet-dmat-details" || rows.length !== 1) return unresolved();
     if (!rule?.success) return unresolved();
     const current = ruleToChunk(rule.data, { includeLegacyDmatQuote: false });
     // A rule may lose its JEE/dMAT identity. Without a structured family guard,
     // cached evidence must bind exactly to the current row, never just its slug.
-    if (!isJeeRule(rule.data) && rule.data.slug !== JEE_LEGACY_SLUG && rule.data.outcomes.dmat === undefined &&
+    if (!isSaudiAdmissionRule(rule.data) && !isJeeRule(rule.data) && rule.data.slug !== JEE_LEGACY_SLUG && rule.data.outcomes.dmat === undefined &&
       Object.entries(current).some(([key, value]) =>
       match[key as keyof KbChunk] !== value)) return unresolved(current.source_url);
     return current;

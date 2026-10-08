@@ -8,6 +8,7 @@ import { dmatCandidates } from "./dmat.rules";
 import { ibCandidates, ibDocumentCandidates } from "./ib.rules";
 import { gceCandidates } from "./gce.rules";
 import {processCandidates} from "./process.rules";
+import { saudiCandidates } from "./saudi.rules";
 import { pakistanCandidates } from "./pakistan.rules";
 import { indiaStudyCandidates } from "./india-study.rules";
 
@@ -40,6 +41,7 @@ const APS_TRANSITION_CONDITIONS = {
 export const ruleData: RuleRecord[] = [
   ...indiaStudyCandidates,
   ...processCandidates,
+  ...saudiCandidates,
   ...pakistanCandidates,
   {
     id: "aps-transition-before", country: "in", status: "draft",
@@ -407,6 +409,7 @@ export const ruleData: RuleRecord[] = [
   },
   // ------------------------------------------------------------ Saudi Arabia
   {
+    // Historical source-review record; runtime and KB quarantine unscoped Saudi paths.
     id: "sa-tawjihiyah-studienkolleg",
     country: "sa",
     conditions: {
@@ -419,7 +422,7 @@ export const ruleData: RuleRecord[] = [
       path: "studienkolleg",
       note: "Regular Saudi high-school diploma (Tawjihiyah) requires Studienkolleg before university. Consider the Studienkolleg Middle East (Goethe-Institut Riyadh): one-year hybrid T-Kurs-focused program in Saudi Arabia, entry at German B1, FSP exams in Cairo.",
     },
-    status: "verified",
+    status: "draft",
     source_url:
       "https://saudiarabien.diplo.de/ksa-en/topics/weitere-themen/-/1686436",
     source_quote:
