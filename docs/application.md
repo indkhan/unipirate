@@ -999,3 +999,45 @@ source-review marker; that marker derives no Pakistan facts or positive outcome.
 Legacy reads remain unchanged. Passport/visa edits preserve academic reports.
 The explicit current revision adds pakistan-current-v2; protected old assessment
 revisions, immutable source versions and captured UTC instants are never rewritten.
+
+### Structured result diagnostics (UP-ELIG-10)
+
+New evaluations add optional strict diagnostics to Result: known_route,
+known_unmet_condition, targeted_missing_fact, source_conflict or unsupported.
+Each entry names its support, stable reason, candidate logical rule IDs and
+literal condition comparisons against the actual derived facts. Saudi completed-
+degree negative reports are retained separately as reported evidence; they do
+not change positive fact derivation or recognition. Failed candidates never
+change the resolved path, scoped APS, TestAS/dMAT, FH restriction or tasks.
+The existing matcher and reviewed admission scope guards remain the evaluator;
+GCE winning and failed comparisons use a single complete full-A-Level witness.
+Equal-specificity conflicts are captured at resolve(), with every contender.
+
+At most one answerable follow-up is selected for an unresolved academic case.
+Missing prior study asks whether study exists; successful academic years stay
+separate from nominal duration. Missing intake withheld by immutable selection
+can ask intake without claiming that a withheld version supplies a route.
+Unsupported applicability and source conflicts retain official confirmation;
+independent source caveats and process uncertainty remain visible.
+
+Unmatched evidence uses optional candidateCitations with candidate-only claims,
+separate from winning verdict citations. Both resolve through the exact selected
+immutable UUIDs and source metadata at historical reads; missing versions are
+never replaced by latest. Every optional object remains strict, including nested
+facts/questions. Absence remains valid for historical Result payloads. Stored
+answers, results, metadata, revision tokens and original unknown strings are
+never rewritten or re-evaluated for original display. Current display removes
+only the captured matching generic confirmation suffix when it asks the specific
+question or states the known unmet candidate condition, preserving the rest of the caveat. Candidate diagnostics, citations and
+unknown prose are explanations rather than academic policy identity; literal
+rule condition/outcome changes and existing coverage checks remain consequential.
+
+Current semantic identity uses SHA256(JSON.stringify(sorted path/SHA256 entries))
+for the combined checker, result, engine, immutable selection/assessment, KB and
+task-profile union, including the result components/page now displaying diagnostics.
+The exact literal entries and formula are recorded in
+[UP-ELIG-10 revision evidence](up-elig-10-checks/engine-revision.json).
+No criteria, source quotes, verification dates, publication, migrations,
+dependencies, providers or database/query/auth boundaries change. Draft candidate
+fixtures remain test-only; final UP-TEST-01 parent coverage and root integration
+browser/RLS/CI/review gates remain separate.

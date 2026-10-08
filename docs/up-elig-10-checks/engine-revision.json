@@ -1,0 +1,83 @@
+{
+  "formula": "SHA256(JSON.stringify(entries sorted by path))",
+  "baselineRevision": "unipirate/jee-ordinary+saudi+pakistan-current-v2+assessment-v1@sha256:2773be9b5a158e853f1d88febaf5b231a42e3778fc395776470f9de34c4635e5",
+  "revision": "unipirate/jee-ordinary+saudi+pakistan-current-v2+diagnostics+assessment-v1@sha256:552b8804d6d721b295a4091c2d06465bc7d2117035fc272c6aef41cd26bbd88e",
+  "entries": [
+    {
+      "path": "app/(public)/check/steps.ts",
+      "sha256": "af7cb2b573121470ebde30894e7841a6438651ed3d34b64cbfa4ce2cf7e48ddf"
+    },
+    {
+      "path": "app/(public)/result/[id]/page.tsx",
+      "sha256": "abab3fff33d85127de021f73e37bab6165dc621fd3449a89edc6998c92b63a3c"
+    },
+    {
+      "path": "app/(public)/result/[id]/result-components.tsx",
+      "sha256": "a422f7b587452c89ce86997c3408c8174e6e1591a4e91c73c2e6e7de6614055b"
+    },
+    {
+      "path": "app/(public)/result/[id]/result-model.ts",
+      "sha256": "1038895d7844e699d8e4405859cec77a0d70c3cd0d639628309b5334c4419b2c"
+    },
+    {
+      "path": "lib/ai/kb-retrieval.ts",
+      "sha256": "0a1556fdfd9f32b60b995d10b01bdf52a784f1278c02641c5f24d8e007058b58"
+    },
+    {
+      "path": "lib/ai/kb.ts",
+      "sha256": "943fcb6b24fc728098ff3c28179aadba837264d8a22a5534aae93e06a6d64f35"
+    },
+    {
+      "path": "lib/ai/versioned-kb.ts",
+      "sha256": "048a6f296fb456fbc8187fe6bcfbfecb8213e7b8839d7f9ebf3625b42c1cf754"
+    },
+    {
+      "path": "lib/engine/calendar-day.ts",
+      "sha256": "bc51a9a835b3bdfa47dd64e7c8ff5b7c1459a2d9f2ed97bb5eb79cb5d7a328c1"
+    },
+    {
+      "path": "lib/engine/dmat.ts",
+      "sha256": "64c922bbc4b5813dbe34ce92a3e7c1fa2384f630b773b643fe6e87857b25c282"
+    },
+    {
+      "path": "lib/engine/evaluate.ts",
+      "sha256": "20232df7f800f6d0bec65c28366fddf8b7d042e1f02faf7d17fadd067d35ef30"
+    },
+    {
+      "path": "lib/engine/gce.ts",
+      "sha256": "b89d61712c562f319e9189e549827d9d77be2dff1bd506cd6c1f49850483619c"
+    },
+    {
+      "path": "lib/engine/ib-annexes.json",
+      "sha256": "29e3fd3f38ab781bd020c392219c08fd41e33ae3855ded76ffd579e571825b47"
+    },
+    {
+      "path": "lib/engine/ib.ts",
+      "sha256": "774e96e50a5b79ffa0d5308b773d2873b496d532f25fbe2115eda9122791d312"
+    },
+    {
+      "path": "lib/engine/jee.ts",
+      "sha256": "64c8fffb9a70e7b5b4ffffd50c672ce136dda0f27f452c498f2a9a767cd561ef"
+    },
+    {
+      "path": "lib/engine/pakistan.ts",
+      "sha256": "425ad8c2d1f234304e194e03a494dd517af538d3b88e50f4b122b68071a58f77"
+    },
+    {
+      "path": "lib/engine/saudi.ts",
+      "sha256": "288cd1aa278553db250abd908fc2559c4114ff929b9a7d9552e1e3cf3f8b8e4c"
+    },
+    {
+      "path": "lib/rules/assessment.ts",
+      "sha256": "0e3fb8a999a5c188bdda338311dad0cf33054cf7eda0ae2bf7c9748d1fa60a11"
+    },
+    {
+      "path": "lib/rules/versioning.ts",
+      "sha256": "789e0b2ffa1f1a52d83783f7397bb2762fd8d587af692d5fd0699ac0199de410"
+    },
+    {
+      "path": "lib/tasks/profile.ts",
+      "sha256": "070aa98154047e0c0cf2ccc2e00535a0a6a9d7dce78ebeb892a31e8b00ef15cf"
+    }
+  ]
+}
