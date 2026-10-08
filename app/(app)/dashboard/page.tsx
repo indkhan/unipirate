@@ -1,3 +1,4 @@
+import {OfferingSelection} from "./offering-selection";
 import {ProcessGuidanceCard} from "@/components/app/process-guidance";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -153,6 +154,7 @@ export default async function DashboardPage() {
                       applicationId={application.id}
                       status={application.status}
                     />
+                    {application.offeringProcess ? <OfferingSelection key={JSON.stringify(application.offeringProcess.selection)} applicationId={application.id} context={application.offeringProcess}/> : null}
                     <div className={styles.cardFoot}>
                       <span className={styles.cardFootLabel}>Next deadline</span>
                       <span className={styles.deadline}>

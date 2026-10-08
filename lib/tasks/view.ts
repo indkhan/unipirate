@@ -1,9 +1,12 @@
+import { resolveOfferingProcess, generateOfferingProcessTasks, isVisibleOfferingTask, isOfferingProcessKey, type OfferingProcessPlan } from "./offering-process";
 // Read side of the dashboard: loads the saved profile, applications, and
 // active task rows, then derives buckets, the applications rail, calendar
 // events, and the next deadline. Strictly read-only — task rows are
 // materialized at event time by materialize.ts, never during render.
 import {
   getProfile,
+  getApplicationOfferingCatalogue,
+  listCourseSubmissionDefinitionIds,
   listRuleVersions,
   listApplicationsWithCourses,
   listTasks,
@@ -19,9 +22,6 @@ import {
   bucketTasks,
   isCurrentApsTask,
   daysUntil,
-  parseDeadlineDate,
-  selectSubmissionDeadline,
-  type TargetIntake,
 } from "@/lib/tasks/generate";
 import { profileFromAnswers } from "@/lib/tasks/profile";
 import { todayIsoBerlin } from "@/lib/tasks/dates";
@@ -57,6 +57,7 @@ export type RailApplication = {
   detail: string;
   sourceUrl: string;
   nextDeadline: { iso: string | null; verbatim: string | null };
+  offeringProcess?: {plan:OfferingProcessPlan;offerings:Awaited<ReturnType<typeof getApplicationOfferingCatalogue>>["offerings"];selection:{offering_id:string|null;applicant_context:unknown}};
 };
 
 export type CalendarEvent = {
@@ -107,7 +108,7 @@ function displayTasks(dbTasks: Tables<"tasks">[],processIds:Set<string>): Dashbo
       order: generated ? task.sort_order : 25,
       preferredBucket: preferredBucket(task.preferred_bucket),
       applicationId: task.application_id,
-      processEvidence: isProcessTaskKey(task.task_key,processIds)?"personal_history":undefined,
+      processEvidence: (isProcessTaskKey(task.task_key,processIds)||isOfferingProcessKey(task.task_key))?"personal_history":undefined,
       source: task.source_url
         ? { url: task.source_url, verifiedAt: task.source_verified_at }
         : null,
@@ -121,31 +122,8 @@ function displayTasks(dbTasks: Tables<"tasks">[],processIds:Set<string>): Dashbo
   });
 }
 
-function datedDeadline(
-  lines: unknown,
-  todayIso: string,
-  intake?: TargetIntake,
-): { iso: string | null; verbatim: string | null } {
-  if (!Array.isArray(lines)) return { iso: null, verbatim: null };
-  const selected = selectSubmissionDeadline(
-    lines.filter((line): line is string => typeof line === "string"),
-    todayIso,
-    intake,
-  );
-  if (selected.verbatim) return { iso: selected.date, verbatim: selected.verbatim };
-
-  for (const line of lines) {
-    if (typeof line !== "string" || !/\d/.test(line)) continue;
-    const iso = parseDeadlineDate(line);
-    if (iso) return { iso, verbatim: line };
-  }
-  return { iso: null, verbatim: null };
-}
-
 function railApplication(
   application: ApplicationWithCourse,
-  todayIso: string,
-  intake?: TargetIntake,
 ): RailApplication | null {
   const course = application.courses;
   if (!course || course.review_status === "rejected") return null;
@@ -157,7 +135,7 @@ function railApplication(
     universityName: course.university_name ?? "University pending review",
     detail: [course.location, course.degree].filter(Boolean).join(" \u00b7 "),
     sourceUrl: course.source_url,
-    nextDeadline: datedDeadline(course.deadlines, todayIso, intake),
+    nextDeadline: {iso:null,verbatim:null},
   };
 }
 
@@ -196,12 +174,44 @@ export async function buildDashboardView(
     listTasks(db, userId),
   ]);
 
-  const planningIds = new Set(applications.filter((application) => application.status === "planning").map((application) => application.id));
-  // Keep stored edits/completed work; pending preparation tasks resume if the
-  // application returns to planning. Personal reminders are always visible.
-  const allTasks = displayTasks(dbTasks.filter(task => isCurrentApsTask(task, result)),processIds).filter((task) =>
-    task.done || task.kind !== "course_task" || planningIds.has(task.applicationId ?? ""),
-  );
+  const offeringApplications = await Promise.all(applications.map(async application => {
+    const catalogue = application.courses?.review_status === "approved"
+      ? await getApplicationOfferingCatalogue(db,application.course_id,application.offering_id ?? null)
+      : {programme:null,offerings:[],versions:[]};
+    const selection = {offering_id:application.offering_id ?? null,applicant_context:application.offering_applicant_context ?? null};
+    const plan = resolveOfferingProcess({...catalogue,courseId:application.course_id,selection});
+    const submissionIds = catalogue.programme ? await listCourseSubmissionDefinitionIds(db,application.course_id) : [];
+    return {id:application.id,status:application.status,plan,catalogue,selection,submissionIds};
+  }));
+  // Actual identity only: editable titles and unrelated PROC02 visa reminders do not participate.
+  const obsoleteUniAssistIds = new Set(["uni-assist-vpd-process"]);
+  for (const version of versions) {
+    const raw = version.raw_snapshot;
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      const identity = raw as Record<string,unknown>;
+      if (identity.id === "uni-assist-vpd-process" || identity.slug === "uni-assist-vpd-process" || typeof identity.notes === "string" && identity.notes.startsWith("Bootstrap candidate: uni-assist-vpd-process.")) obsoleteUniAssistIds.add(version.rule_id);
+    }
+  }
+  const planningIds = new Set(applications.filter(a=>a.status==="planning").map(a=>a.id));
+  const visibleRows = dbTasks.filter(task => {
+    if (task.done) return true;
+    if (!isCurrentApsTask(task,result) || !isVisibleOfferingTask(task,offeringApplications)) return false;
+    if (isProcessTaskKey(task.task_key,obsoleteUniAssistIds)) {
+      const ruleId = /^rule:([^:]+):step:/.exec(task.task_key ?? "")?.[1];
+      if (ruleId && obsoleteUniAssistIds.has(ruleId)) return false;
+    }
+    const application = offeringApplications.find(a=>a.id===task.application_id);
+    if (task.course_task_definition_id && application?.submissionIds.includes(task.course_task_definition_id)) return false;
+    return task.course_task_definition_id === null || planningIds.has(task.application_id ?? "");
+  });
+  const allTasks = displayTasks(visibleRows,processIds).map(task => {
+    if (task.done || !isOfferingProcessKey(task.key)) return task;
+    const application = offeringApplications.find(a=>a.id===task.applicationId);
+    const desired = application && generateOfferingProcessTasks(application.id,application.status,application.plan).find(t=>t.key===task.key);
+    const saved = visibleRows.find(t=>t.id===task.id);
+    // Read projection only. Keep personal dates; untouched planning dates use today's same plan as the rail.
+    return desired && !saved?.has_personal_edits ? {...task,dueDate:desired.dueDate,verbatimDue:desired.verbatimDue} : task;
+  });
   const pendingTasks = allTasks.filter((task) => !task.done);
   const doneTasks = allTasks.filter((task) => task.done);
   const defaultBuckets = bucketTasks(
@@ -222,9 +232,14 @@ export async function buildDashboardView(
       ...defaultBuckets.later,
     ],
   };
-  const rail = applications.flatMap((application) => {
-    const row = railApplication(application, todayIso, profile?.intake);
-    return row ? [row] : [];
+  const rail = applications.flatMap(application => {
+    const row = railApplication(application);
+    if (!row) return [];
+    const selected = offeringApplications.find(a=>a.id===application.id)!;
+    const stageKeys = new Set(generateOfferingProcessTasks(application.id,application.status,selected.plan).filter(t=>!t.key.endsWith(":fee_confirmation")).map(t=>t.key));
+    const selectedTasks = pendingTasks.filter(t=>stageKeys.has(t.key));
+    const deadline = nextDeadline(selectedTasks,todayIso);
+    return [{...row,nextDeadline:{iso:deadline?.iso ?? null,verbatim:deadline?.verbatim ?? null},offeringProcess:{plan:selected.plan,offerings:selected.catalogue.offerings,selection:selected.selection}}];
   });
   const calendarEvents = pendingTasks.flatMap((task) =>
     task.dueDate
