@@ -1,5 +1,5 @@
 // Deterministic provider-boundary replay; no provider/network evidence.
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MockLanguageModelV4, MockEmbeddingModelV4 } from "ai/test";
 import captured from "@/lib/ai/__tests__/fixtures/unmarked-captured-answer.json";
 
@@ -17,7 +17,10 @@ vi.mock("@/lib/env", () => ({ getServerEnv: mocks.getServerEnv }));
 vi.mock("@/lib/db/queries", () => mocks);
 import { POST } from "../route";
 import { runAssistant } from "@/lib/ai/assistant";
-import { version } from "@/lib/rules/__tests__/assessment-fixtures";
+import { version, answers } from "@/lib/rules/__tests__/assessment-fixtures";
+import { processCandidates } from "@/scripts/process.rules";
+import { AnswersSchema } from "@/app/(public)/check/steps";
+import { responseRuleSources } from "@/components/app/assistant-sources";
 
 const fallback = "I cannot provide a source-backed answer to this question. [[unknown]] Check DAAD as a place to find official guidance: https://www.daad.de/";
 type ProviderResult = Awaited<ReturnType<MockLanguageModelV4["doStream"]>>;
@@ -53,6 +56,7 @@ beforeEach(() => {
   mocks.getServerEnv.mockReturnValue({ OPENROUTER_API_KEY: "offline" });
   mocks.countTodayAssistantQuestions.mockResolvedValue(0);
   mocks.getProfile.mockResolvedValue(null);
+  mocks.listRuleVersions.mockResolvedValue([]);
   mocks.listApplicationsWithCourses.mockResolvedValue([]);
   mocks.listTasks.mockResolvedValue([{ title: "Synthetic historical reminder", description: "UNVERIFIED PERSONAL REMINDER: historic 8,400 INR fee; this is not current official evidence", source_url: "https://www.daad.de/", due_date: null, done: false }]);
 });
@@ -300,4 +304,65 @@ it("keeps empty text lifecycles in tool-only steps empty while continuing", asyn
   const sse = await (await POST(request())).text();
   expect(uiText(sse)).toBe("Cannot confirm. [[unknown]]");
   expect(events(sse).filter(p => p.type === "finish-step")).toHaveLength(2);
+});
+
+// Actual SDK + route, with synthetic immutable copies of reviewed draft candidates.
+afterEach(() => { vi.useRealTimers(); });
+it.each([
+  ["current", "blocked_account", "new_delhi", true, 0],
+  ["context-only citation", "blocked_account", "new_delhi", true, 0],
+  ["waiver uncertainty", "blocked_account", "new_delhi", false, 2],
+  ["loan-only", "loan", "new_delhi", false, 0],
+  ["wrong jurisdiction", "blocked_account", "riyadh", false, 0],
+  ["overdue", "blocked_account", "new_delhi", false, 0],
+  ["invalid offset", "blocked_account", "new_delhi", false, 0],
+  ["conflicting fee and exactly18", "blocked_account", "new_delhi", false, 1],
+] as const)("keeps process projection, shared client parsing and guarded persistence aligned: %s", async (caseName, fundingMethod, mission, current, index) => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(caseName === "overdue" ? "2026-11-08T02:24:14.001Z" : "2026-10-08T02:25:00Z"));
+  const ruleId = "89985eb6-d3a6-41ce-879d-fc4bf4e206c9";
+  const candidate = processCandidates[index];
+  const raw = { ...candidate, id: ruleId, slug: candidate.id, country_code: candidate.country, status: "verified",
+    ...(caseName === "invalid offset" ? { last_verified_at: "2026-10-07T00:00:00+99:99" } : {}) };
+  const profileAnswers = { ...answers, hasExistingApsCertificate: false, visaApplicationCountry: caseName === "wrong jurisdiction" ? "sa" : "in", processContext: {
+    version: 1, purpose: "study", mission, missionConfirmed: true, fundingMethod, exception: caseName === "waiver uncertainty" ? "unknown" : "none",
+    ageBracket: index === 1 ? "exact18" : index === 2 ? "under18" : "over18",
+  } };
+  expect(AnswersSchema.safeParse(profileAnswers).success).toBe(true);
+  mocks.getProfile.mockResolvedValue({ answers: profileAnswers });
+  mocks.listRuleVersions.mockResolvedValue([version(1, { id: "0de37e64-0347-44a9-97c2-09b51454f1a9", rule_id: ruleId,
+    published_at: "2026-10-08T02:24:14Z", reviewed_at: "2026-10-08T02:24:14Z", raw_snapshot: raw })]);
+  mocks.matchKbRuleHints.mockResolvedValue([{ rule_id: ruleId, content: "UNTRUSTED cached 8400 INR" }, { rule_id: null, content: "UNTRUSTED curated amount" }]);
+  mocks.listTasks.mockResolvedValue([{ task_key: "rule:" + ruleId + ":step:41", title: "OLD 8400 INR payable", description: "OLD 8300 quote", source_url: "https://india.diplo.de/", due_date: null, done: false }]);
+  const text = current ? "Literal funding evidence [[rule:" + candidate.id + "]]." : "Cannot confirm current payable guidance. [[unknown]]";
+  mocks.model = new MockLanguageModelV4({ doStream: [
+    stream([{ type: "tool-call", toolCallId: "context", toolName: "get_user_context", input: "{}" }, finish("tool-calls")]),
+    ...(caseName === "context-only citation" ? [] : [stream([{ type: "tool-call", toolCallId: "rules", toolName: "search_rules", input: '{"query":"my funding"}' }, finish("tool-calls")])]),
+    stream(answer(text)),
+  ] });
+  const sse = await (await POST(request())).text();
+  const results = events(sse).filter(p => p.type === "tool-output-available");
+  const contextOutput = results.find(p => p.toolCallId === "context")!.output;
+  if (caseName === "context-only citation") {
+    expect(JSON.stringify(contextOutput.currentProcess)).toContain("11,904");
+    expect(JSON.stringify(contextOutput.tasks)).not.toMatch(/8400|8300/);
+    expect(uiText(sse)).toBe(fallback);
+    expect(mocks.insertAssistantMessage).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ role: "assistant", content: fallback, citations: [] }));
+    return;
+  }
+  const searchOutput = results.find(p => p.toolCallId === "rules")!.output;
+  expect(JSON.stringify(contextOutput.tasks)).not.toMatch(/8400|8300/);
+  expect(JSON.stringify(contextOutput.whereTheUserIs)).not.toMatch(/8400|8300/);
+  expect(JSON.stringify(searchOutput)).not.toContain("UNTRUSTED");
+  expect(JSON.stringify(contextOutput.currentProcess).includes("11,904")).toBe(current);
+  expect(JSON.stringify(searchOutput).includes("11,904")).toBe(current);
+  if (!current) expect(JSON.stringify(searchOutput)).not.toMatch(/8300|8400|4200|37,50|75,--/);
+  const parsed = responseRuleSources([{ type: "tool-search_rules", state: "output-available", output: searchOutput }]);
+  expect(parsed.has(candidate.id)).toBe(true);
+  expect(responseRuleSources([{ type: "tool-search_rules", state: "output-available", output: { ...searchOutput, processUnknowns: [123] } }]).size).toBe(0);
+  expect(uiText(sse)).toBe(text);
+  expect(mocks.insertAssistantMessage).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ role: "assistant", content: text }));
+  // One route country-note read plus one shared tool evidence read.
+  expect(mocks.getProfile).toHaveBeenCalledTimes(2);
+  expect(mocks.listRuleVersions).toHaveBeenCalledOnce();
 });

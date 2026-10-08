@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import {isLegacyProcessIdentity} from "@/lib/engine/process-identity";
 import { isSaudiAdmissionRule, isScopedSaudiRule } from "@/lib/engine/saudi";
 import { ruleData } from "../../../scripts/rules.bootstrap";
 import {
@@ -66,7 +67,7 @@ describe("ruleToChunk", () => {
       const chunk = ruleToChunk(bySlug(rule.id));
       expect(chunk.content.length).toBeGreaterThan(40);
       const legacyDmat = rule.outcomes.dmat === "not_required" && rule.conditions.has_existing_aps !== undefined && rule.conditions.dmat_procedure === undefined;
-      expect(chunk.content).toContain(isSaudiAdmissionRule(rule) && !isScopedSaudiRule(rule) ? "Saudi admission applicability: unknown" : rule.outcomes.aps ? "scoped applicability unverified" : legacyDmat ? "procedure applicability unverified" : "Official source says:");
+      expect(chunk.content).toContain(rule.outcomes.process || isLegacyProcessIdentity({slug:rule.id}) ? "Process applicability requires current immutable context" : isSaudiAdmissionRule(rule) && !isScopedSaudiRule(rule) ? "Saudi admission applicability: unknown" : rule.outcomes.aps ? "scoped applicability unverified" : legacyDmat ? "procedure applicability unverified" : "Official source says:");
       expect(chunk.source_url).toMatch(/^https:\/\//);
     }
   });

@@ -1,4 +1,5 @@
 "use client";
+import {ProcessContextEditor} from "./process-context-editor";
 
 import { z } from "zod";
 
@@ -364,6 +365,7 @@ export function CheckFlow({
           </div>
         )}
 
+        {isLast&&<ProcessContextEditor answers={answers} onChange={setAnswers}/>}
         {error && <div className={styles.error}>{error}</div>}
 
         <button

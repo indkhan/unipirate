@@ -157,7 +157,7 @@ export const CURRENT: CurrentExpectation[] = [
     id: "PK-negative-fsc-honest-unknown", family: "Pakistan", kind: "negative",
     routesTo: ["UP-ELIG-08"], profile: personas.p5PakistaniFsc,
     path: "unknown", aps: "unknown", dMAT: "not_required",
-    unknownsMatch: [/official|confirm/i], stepSubstrings: ["Consular Services Portal"],
+    unknownsMatch: [/official|confirm/i], // Process portal guidance is assessed separately.
     assertedIn: "evaluate.test.ts: Part E persona 5",
   },
   {

@@ -5,6 +5,7 @@
 // `app:<id>:course-task:<definition-id>` for admin-defined course tasks);
 // regeneration reconciles by key so user state (done, preferred bucket)
 // survives.
+import type {ProcessAssessment} from "@/lib/rules/process-assessment";
 import type { Citation, Result, Term } from "@/lib/engine/evaluate";
 import type { Json } from "@/lib/db/database.types";
 import {
@@ -540,4 +541,9 @@ export function prepareCourseTaskDefinitionSync(
         : [],
     ),
   };
+}
+
+/** Current structured guidance only; saved reminders and matched inventory are not authority. */
+export function generateProcessTasks(process:ProcessAssessment|undefined):GeneratedTask[] {
+ return (process?.guidance??[]).filter(g=>g.status==="current").flatMap(g=>g.steps.map(s=>({key:s.key,title:s.text,dueDate:null,verbatimDue:null,order:s.order,applicationId:null,ruleId:g.ruleId,courseTaskDefinitionId:null,adminSnapshot:null,source:{url:g.evidence.source_url,verifiedAt:g.evidence.last_verified_at}})));
 }
