@@ -746,11 +746,13 @@ groups are literal labels, not an implemented resolver vocabulary. Neither fuzzy
 descriptions nor global profile intake establish application context. Dates remain
 unnormalized in COURSE01. PROC01 planning must preserve unknown dates and stages.
 
-Current `applications` persist only `course_id`, not an offering selection. Durable
-per-application offering context therefore needs a separately reserved, reviewed
-persistence change in PROC01 (for example an optional offering reference, with
-version selection policy decided there). This is a proposal only: no migration,
-application/task changes or PROC01 implementation belongs to COURSE01.
+Applications persist `course_id` plus an optional reviewed `offering_id` and
+`offering_applicant_context` (`{applicant_group, confirmed: true}`, or both
+null). The selection requires explicit intake/group confirmation and derives the
+immutable reviewed version/snapshot at use time; see “Explicit offering
+application procedure (UP-PROC-01)” below. There is no automatic import,
+backfill, or publication, and the legacy `course_id` and student state are
+preserved.
 
 ### Scoped APS contract (UP-ELIG-05)
 
