@@ -320,7 +320,7 @@ export const ruleData: RuleRecord[] = [
       ],
       note: "Fees are charged per chosen study course per semester; reapplying in a new semester restarts at €75 for the first course.",
     },
-    status: "verified",
+    status: "draft",
     source_url:
       "https://www.uni-assist.de/en/how-to-apply/pay-all-fees/handling-fees/",
     source_quote:

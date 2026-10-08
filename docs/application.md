@@ -602,8 +602,9 @@ or explicitly unresolved fields, never pending/rejected research. Pending resear
 is admin-only; fact corrections and review decisions append a new version rather than
 mutating history. Query helpers return all reviewed history newest first, leaving
 version selection explicit. UP-COURSE-01 integrates research import, explicit
-review/publication and public reading; automatic task integration and backfill
-remain absent, and existing course/application/task identities stay intact.
+review/publication and public reading. The PROC01 consumer below integrates reviewed
+offering selection and tasks; there is no automatic import, backfill or publication,
+and existing course/application/task identities stay intact.
 
 Programme labels (name, institution, degree, source URL) can be corrected by an
 admin on the same canonical ID. The database freezes the ID, established legacy
@@ -872,6 +873,10 @@ review. The model receives at most four official identity-linked sources and
 Identity and admission/intake/language/fee/document paragraphs rank before navigation
 and unrelated prose; unrelated search-only sources do not consume model context.
 Excerpts are actual substrings, not rewritten summaries or inferred applicability.
+Identical paragraphs consume the model budget once; original captures remain intact.
+A paragraph is emitted only when it fits in full within the remaining source budget;
+long paragraphs that fit retain separate contiguous slices. This prevents clipping
+a later condition or exception even when it lacks recognized warning wording.
 Omitted sources/text are disclosed; unknown effective scope remains unknown. Quotes
 must come from one excerpt and are still checked against original observations.
 This intentionally favors a useful partial multi-source draft over exhaustive
@@ -1310,3 +1315,91 @@ No criteria, source quotes, verification dates, publication, migrations,
 dependencies, providers or database/query/auth boundaries change. Draft candidate
 fixtures remain test-only; final UP-TEST-01 parent coverage and root integration
 browser/RLS/CI/review gates remain separate.
+
+### Explicit offering application procedure (UP-PROC-01)
+
+Programme process is separate from academic evaluation and PROC02 visa/funding
+policy. `lib/tasks/offering-process.ts` is a zero-I/O resolver over the existing
+COURSE02 immutable catalogue. A nullable `applications.offering_id` and strict
+`offering_applicant_context` JSON record the explicitly selected intake/group on
+that existing application UUID. Context is exactly `{applicant_group,confirmed:true}`,
+or both selection columns are null. The report is applicant-supplied, not a
+verification of group eligibility. No nationality, profile intake, course prose,
+APS report or creation timestamp infers the context. All query/action boundaries
+validate selection with zod. Owner-scoped queries retain RLS as authorization.
+Reserved additive migration `20261007000103_application_offering_selection.sql`
+adds nullable fields, an offering FK, strict context CHECK and an invoker trigger
+binding offering/group to the application's mapped approved course. Existing
+owner CRUD/admin-read policies remain; even admins cannot select pending-only
+research or write another owner's context. Type additions are provisional until
+root generates against the disposable migrated schema; the SQL acceptance script
+is `supabase/tests/application_offering_selection.sql`, not mock RLS proof.
+
+Initial supported offering applicability is an empty map only. Fact applicability
+must equal the confirmed offering applicant group byte-for-byte. Additional map
+keys, missing group confirmation, other fact prose and unavailable programme
+mappings yield targeted official confirmation. The highest numbered reviewed
+version for that exact offering is selected before route matching. Exactly one
+applicable verified route is required; newer reviewed missing/unresolved/conflicting
+routes never revive predecessors. Pending/rejected research has no public authority.
+
+Optional stage keys use existing COURSE02 fact kinds, without a producer change:
+
+| Key | Required kind and interpretation |
+| --- | --- |
+| `process.university.portal` | description; exact HTTP(S) URL in verified verbatim and literal quote |
+| `process.uni_assist.portal` | description; same portal contract |
+| `process.university.closing` | deadline / application_closing |
+| `process.uni_assist.closing` | deadline / application_closing |
+| `process.vpd.preparation` | deadline / vpd_preparation_target; never a closing deadline |
+
+Source URLs are provenance/official confirmation pointers, never inferred portals.
+Missing portal/closing/preparation dates remain explicit confirmations, including
+reviewed undated wording. Dates sort/bucket/calendar only; source wording, time and
+nullable timezone display verbatim. Direct produces only university submission;
+standard uni-assist only its submission; VPD produces a request plus a separate
+university submission. Unresolved produces the specific rail confirmation with
+no submission/account/payment mandate. Generic account preparation is not inferred.
+Applicable verified fees are literal guidance; no structured payer/waiver/amount
+allocation exists, so uni-assist/VPD generates fee confirmation, never Pay, totals,
+per-course allocation or applicant-controlled payment authority. Applicable direct
+fee evidence can display as confirmation guidance without a uni-assist fee task.
+
+Dashboard rail selection and current evidence details render the actual offering,
+version facts, group/intake, quotes, URL, retrieval and source verification dates.
+Saved tasks snapshot full offering/version/fact/evidence in existing admin_snapshot;
+their source date comes from actual literal reviewed evidence, never course.created_at.
+Keys are `app:<applicationUUID>:offering:<offeringUUID>:process:<stage>` with only
+university_submission, uni_assist_submission, vpd_request or fee_confirmation.
+Version/title/fee/URL do not enter identity. Existing missing-key-only reconciliation
+includes inactive keys and never rewrites, deletes or reactivates edits/completion.
+Saving selection materializes at event time; rendering remains read-only. Returning
+to planning uses existing keys. Completing VPD changes task completion only, leaving
+application status and subsequent university submission independent.
+
+Pending process tasks show only for the current selected planning context and
+current supported route stages. Completed history survives context/status/route
+changes. Saved offering tasks are labelled personal history; current authoritative
+facts are displayed separately in the rail. Untouched task dates are read-projected
+from the same current plan; explicit personal date edits remain personal reminders.
+Rail next deadline uses those visible pending stage tasks, advancing after VPD
+completion and avoiding deleted/inactive keys. Calendar and next-deadline use the
+same projected tasks. No legacy course deadline is substituted into the rail.
+For mapped catalogue applications, generic submission definitions are not newly
+materialized and pending copies (including retired identities) are hidden. Existing
+rows/keys/completed history and manual/requirement tasks remain. Unmapped legacy
+course definitions retain existing generation; their rail separately requests
+reviewed context. Obsolete global uni-assist pending rows are hidden by exact known
+slug/bootstrap provenance mapped to immutable logical UUID, never editable title.
+PROC02 visa/funding reminders and existing APS projection remain unchanged.
+
+The historical bootstrap uni-assist candidate is now DRAFT; the current engine's
+legacy identity quarantine remains intact. This is repository retirement intent,
+not live rule publication. Official [VPD guidance](https://www.uni-assist.de/en/how-to-apply/plan-your-application/vpd/)
+and [handling-fee guidance](https://www.uni-assist.de/en/how-to-apply/pay-all-fees/handling-fees/)
+were rechecked 2026-10-08: university-specific VPD plus separate university filing,
+and university-paid fee exceptions support the bounded contract. That check date
+is not an effective intake or a verification stamp on any offering. No academic
+rule/catalogue publication, linked database operation, seed or embedding occurs.
+Root owns actual disposable SQL/RLS/typegen, default build/CI/browser review and
+integration before merge.

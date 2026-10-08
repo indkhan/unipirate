@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { researchCourse, COURSE_EXTRACTION_MODEL } from "../research-course";
 import { ResearchOutputSchema, ResearchDraftSchema, prepareResearchReview } from "@/lib/courses/research";
+import smoke14 from "@/lib/courses/__tests__/fixtures/smoke14-context.json";
 import { OfferingFactSchema } from "@/lib/courses/offerings";
 
 vi.mock("@/lib/env", () => ({ getServerEnv: () => ({ OPENROUTER_API_KEY: "synthetic-test-only" }) }));
@@ -201,4 +202,53 @@ describe("native research tool through installed SDK (synthetic HTTP only)", () 
     expect(ResearchDraftSchema.safeParse(draft).success).toBe(true);
     expect(() => prepareResearchReview(draft, 0, [draft.unscoped![0].key], "11111111-1111-4111-8111-111111111111", "2026-10-08T13:00:00Z")).toThrow();
   });
+});
+
+it("supplies whole actual-14 paragraphs to the native SDK and retains literal multi-source unknown-scope captures", async () => {
+  const captured = smoke14.observations;
+  const fee = "Currently **394.30 EUR** per semester, including a semester ticket covering public transport in Germany";
+  const language = "You need to provide proof of English language proficiency for the Olympiad and Aptitude track unless your are a native speaker. We accept the following English tests:";
+  const facts = [{ key: "semester_fee", kind: "fee", verbatim: fee, url: smoke14.seed.url }, { key: "language_exemption", kind: "language", verbatim: language, url: captured[1].url }].map(({url, ...f}) => ({...f, applicability: "Unknown scope", route: null, deadline_kind: null, evidence: [{source_url: url, source_quote: f.verbatim}]}));
+  let providerContext: { sources: {url: string; excerpts: string[]}[] } | undefined;
+  const provider = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body));
+    const context = JSON.parse(body.messages.at(-1).content);
+    providerContext = context;
+    return response("submit_research", JSON.stringify({offerings: [{intake_term: null, intake_year: null, applicant_group: null, scope: null, facts}]}));
+  });
+  vi.stubGlobal("fetch", provider);
+  const draft = await researchCourse(smoke14.seed, {tavilyKey: "offline", fetcher: async (url, init) => {
+    const body = JSON.parse(String(init?.body));
+    return Response.json(String(url).endsWith("search") ? {results: []} : {results: body.urls.flatMap((url: string) => { const o = captured.find(o => o.url === url); return o ? [{url, raw_content:o.content}] : []; })});
+  }});
+  const context = providerContext!;
+  for (const source of context.sources) {
+    const original = captured.find(o => o.url === source.url)!;
+    for (const paragraph of original.content.split(/\n\s*\n/)) {
+      if (!paragraph.trim() || source.excerpts.includes(paragraph)) continue;
+      if (source.excerpts.some(e => e.length > 0 && paragraph.startsWith(e))) {
+        expect(source.excerpts.filter(e => paragraph.includes(e)).join("")).toBe(paragraph);
+      }
+    }
+  }
+  expect(context.sources.flatMap((s: {excerpts: string[]}) => s.excerpts)).toEqual(expect.arrayContaining([fee, language]));
+  expect(provider).toHaveBeenCalledOnce();
+  expect(draft.unscoped?.map(f => f.verbatim)).toEqual([fee, language]);
+  expect(draft.offerings).toEqual([]);
+  expect(draft.unscoped?.every(f => f.status === "pending" && f.evidence.every(e => e.last_verified_at === null && e.verified_by === null))).toBe(true);
+});
+
+it.each(["literal-mismatch", "daad-identity-mismatch"])("keeps actual-14 %s submission unsupported through native SDK", async mode => {
+  const provider = vi.fn(async () => response("submit_research", JSON.stringify(smoke14.submission)));
+  vi.stubGlobal("fetch", provider);
+  const draft = await researchCourse(smoke14.seed, {tavilyKey: "offline", fetcher: async (url, init) => {
+    const body = JSON.parse(String(init?.body));
+    return Response.json(String(url).endsWith("search") ? {results: []} : {results: body.urls.flatMap((url: string) => {
+      const o = smoke14.observations.find(o => o.url === url);
+      return o ? [{url, raw_content: mode === "daad-identity-mismatch" && url === smoke14.seed.url ? o.content.replaceAll("Computer Science (BSc)", "Computer Science (MSc)") : o.content}] : [];
+    })});
+  }});
+  expect(provider).toHaveBeenCalledOnce();
+  expect(draft).toMatchObject({status: "incomplete", offerings: [], unscoped: [], paste: smoke14.seed.text});
+  expect(draft.issues.join(" ")).toContain(mode === "daad-identity-mismatch" ? "did not match the programme identity" : "No factual capture");
 });

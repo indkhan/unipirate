@@ -6,7 +6,7 @@ const scope="Winter 2027 Non-EU applicants";
 const fact=(key:string,kind:"language"|"fee",verbatim:string)=>({key,kind,verbatim,applicability:"Non-EU applicants",route:null,deadline_kind:null,evidence:[{source_url:url,source_quote:verbatim}]});
 const output=(facts:ReturnType<typeof fact>[])=>({offerings:[{intake_term:"winter",intake_year:2027,applicant_group:"Non-EU applicants",scope:{source_url:url,source_quote:scope},facts}]});
 const observation=(content:string)=>({url,origin:"web" as const,retrieved_at:"2026-10-07T00:00:00Z",content:seed.name+" "+seed.university+" "+scope+"\n\n"+content});
-export const omittedDraft=()=>buildResearchDraft(seed,[observation(["IELTS 6.5.","Application navigation ".repeat(110),"Application navigation ".repeat(110),"IELTS 7.0."].join("\n\n"))],output([fact("english","language","IELTS 6.5.")]),[]);
+export const omittedDraft=()=>buildResearchDraft(seed,[observation(["IELTS 6.5.","Availability notice: Full official context requiring reconciliation. ".padEnd(4000,"x"),"IELTS 7.0."].join("\n\n"))],output([fact("english","language","IELTS 6.5.")]),[]);
 describe("review7 omission and overlapping fee boundaries",()=>{
  it("requires explicit reconciliation before an assertion whose captured context was omitted can be verified",()=>{
   const draft=omittedDraft(); const context=buildResearchContext(seed,draft.observations);

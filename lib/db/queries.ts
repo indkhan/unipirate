@@ -1,3 +1,4 @@
+import { ApplicationOfferingSelectionSchema, SetApplicationOfferingSchema } from "@/lib/tasks/offering-process";
 import { z } from "zod";
 import { AnswersSchema } from "@/app/(public)/check/steps";
 import { AssessmentMetadataSchema, AssessmentResultSchema } from "@/lib/rules/assessment";
@@ -123,7 +124,7 @@ export async function listApplications(
   db: Db,
   userId: string,
 ): Promise<Tables<"applications">[]> {
-  return unwrap(await db.from("applications").select().eq("user_id", userId));
+  return unwrap(await db.from("applications").select().eq("user_id", userId)).map(validateApplicationOfferingSelection);
 }
 
 export async function hasApplicationForCourse(
@@ -163,13 +164,14 @@ export async function listApplicationsWithCourses(
   db: Db,
   userId: string,
 ): Promise<ApplicationWithCourse[]> {
-  return unwrap(
+  const rows = unwrap(
     await db
       .from("applications")
       .select("*, courses(*)")
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
   ) as ApplicationWithCourse[];
+  return rows.map(validateApplicationOfferingSelection);
 }
 
 /** Idempotently link one course to the user's dashboard (finder / URL dedupe). */
@@ -216,7 +218,7 @@ export async function getApplicationWithCourse(
   userId: string,
   id: string,
 ): Promise<ApplicationWithCourse | null> {
-  return unwrap(
+  const row = unwrap(
     await db
       .from("applications")
       .select("*, courses(*)")
@@ -224,6 +226,7 @@ export async function getApplicationWithCourse(
       .eq("id", id)
       .maybeSingle(),
   ) as ApplicationWithCourse | null;
+  return row ? validateApplicationOfferingSelection(row) : null;
 }
 
 export async function listActiveCourseTaskDefinitions(
@@ -650,4 +653,43 @@ export async function matchKbRuleHints(db: Db & RpcDb, embedding: string) {
   const rows = z.array(z.object({slug: z.string(), rule_id: RuleIdSchema.nullable()})).parse(
     unwrap(await db.from("kb_chunks").select("slug, rule_id").in("slug", matches.map(match => match.slug))));
   return matches.flatMap(match => {const exact = rows.filter(row => row.slug === match.slug); return exact.length === 1 ? [exact[0]] : [];});
+}
+
+/** Validate new selection columns without upgrading missing historical selection. */
+function validateApplicationOfferingSelection<T extends Tables<"applications">>(row: T): T {
+  ApplicationOfferingSelectionSchema.parse({offering_id:row.offering_id ?? null,applicant_context:row.offering_applicant_context ?? null});
+  return row;
+}
+
+/** Caller-visible reviewed catalogue; no profile intake or private research fallback. */
+export async function getApplicationOfferingCatalogue(db: Db, courseId: string, offeringId: string | null) {
+  const course = CourseCatalogueIdSchema.parse(courseId);
+  const selected = CourseCatalogueIdSchema.nullable().parse(offeringId);
+  const programme = await getProgrammeByLegacyCourse(db, course);
+  const offerings = programme ? await listCourseOfferings(db, programme.id) : [];
+  const belongs = selected !== null && offerings.some(o=>o.id===selected);
+  const versions = belongs ? await listReviewedOfferingVersions(db, selected) : [];
+  return {programme,offerings,versions};
+}
+
+/** RLS remains the authorization boundary; also reject forged/mismatched payloads before update. */
+export async function setApplicationOfferingSelection(db: Db, userId: string, input: unknown): Promise<Tables<"applications">> {
+  const owner = CourseCatalogueIdSchema.parse(userId);
+  const {id,selection} = SetApplicationOfferingSchema.parse(input);
+  const application = await getApplicationWithCourse(db, owner, id);
+  if (!application) throw new Error("Application not found");
+  if (selection.offering_id !== null) {
+    const catalogue = await getApplicationOfferingCatalogue(db, application.course_id, selection.offering_id);
+    const offering = catalogue.offerings.find(o=>o.id===selection.offering_id);
+    if (!catalogue.programme || catalogue.programme.legacy_course_id !== application.course_id || !offering || offering.programme_id !== catalogue.programme.id || offering.applicant_group !== selection.applicant_context?.applicant_group)
+      throw new Error("Offering or applicant group does not match this application course");
+  }
+  const row = unwrap<Tables<"applications">>(await db.from("applications").update({offering_id:selection.offering_id,offering_applicant_context:selection.applicant_context}).eq("id",id).eq("user_id",owner).select().single());
+  return validateApplicationOfferingSelection(row);
+}
+
+/** Includes retired identities so old pending generic submissions cannot contradict a selected plan. */
+export async function listCourseSubmissionDefinitionIds(db: Db, courseId: string): Promise<string[]> {
+  const rows = unwrap(await db.from("course_task_definitions").select("id").eq("course_id",CourseCatalogueIdSchema.parse(courseId)).eq("kind","submission"));
+  return z.array(z.object({id:CourseCatalogueIdSchema}).strict()).parse(rows).map(row=>row.id);
 }

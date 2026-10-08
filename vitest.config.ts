@@ -7,6 +7,9 @@ export default defineConfig({
     alias: { "@": path.resolve(__dirname) },
   },
   test: {
+    // Bound the CPU-heavy immutable corpus and avoid fork RPC update timeouts.
+    pool: "threads",
+    maxWorkers: 1,
     include: ["**/*.test.{ts,tsx}"],
     exclude: ["node_modules", ".next", ".claude/**"],
   },

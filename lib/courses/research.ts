@@ -365,7 +365,7 @@ export function buildResearchContext(input: ResearchSeed, captures: Observation[
     .sort((a, b) => researchUrlPriority(a.url, eligible) - researchUrlPriority(b.url, eligible));
   const selected = [...anchors, ...ranked].slice(0, 4);
   const sources = selected.map(o => {
-    const paragraphs = o.content.split(/\n\s*\n/);
+    const paragraphs = [...new Set(o.content.split(/\n\s*\n/))];
     const priority = (p: string) => {
       // Preserve availability/effective-scope caveats before any topic assertions.
       if (/currently viewing|will be published|not yet|unpublished|availability notice|effective (?:from|for)|valid (?:from|for)/i.test(p)) return 0;
@@ -380,8 +380,9 @@ export function buildResearchContext(input: ResearchSeed, captures: Observation[
     // Trade-off: literal paragraph heuristics cannot recover uncaptured text or
     // guarantee every topic fits. Omission counts keep manual review explicit.
     for (const p of paragraphs.sort((a, b) => priority(a) - priority(b))) {
-      // Never expose an assertion while clipping its controlling availability caveat.
-      if (priority(p) === 0 && p.length > 4000 - used) continue;
+      // Never expose an assertion while clipping a later condition or exception.
+      // This applies to every paragraph, not only recognized warning wording.
+      if (p.length > 4000 - used) continue;
       // Separate contiguous slices, never one quote assembled across omissions.
       for (let offset = 0; offset < p.length && used < 4000; offset += 2000) {
         const excerpt = p.slice(offset, offset + Math.min(2000, 4000 - used));

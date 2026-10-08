@@ -1,9 +1,11 @@
+import { resolveOfferingProcess, generateOfferingProcessTasks } from "./offering-process";
 // Write side of source-generated tasks. Called at event time (profile saved,
 // result claimed, course added, application status changed) — never during
 // dashboard render. Each task_key is inserted once; after that the task is
 // owned by the user and generation never changes or recreates it.
 import {
   ensureApplication,
+  getApplicationOfferingCatalogue,
   getApplicationWithCourse,
   getProfile,
   listRuleVersions,
@@ -76,11 +78,14 @@ async function materializeCourseTasksForApplicationRow(
   const taskDefinitions = application.courses
     ? await listActiveCourseTaskDefinitions(db, application.courses.id)
     : [];
-  const desired = generateCourseTasks(
-    [toGenerationApplication(application, taskDefinitions)],
-    todayIsoBerlin(),
-    intake,
-  );
+  const catalogue = application.courses?.review_status === "approved"
+    ? await getApplicationOfferingCatalogue(db,application.course_id,application.offering_id ?? null)
+    : {programme:null,offerings:[],versions:[]};
+  const plan = resolveOfferingProcess({...catalogue,courseId:application.course_id,selection:{offering_id:application.offering_id ?? null,applicant_context:application.offering_applicant_context ?? null}});
+  const desired = [
+    ...generateCourseTasks([toGenerationApplication(application,catalogue.programme ? taskDefinitions.filter(d=>d.kind!=="submission") : taskDefinitions)],todayIsoBerlin(),intake),
+    ...generateOfferingProcessTasks(application.id,application.status,plan),
+  ];
   await materializeGeneratedPrefix(
     db,
     userId,

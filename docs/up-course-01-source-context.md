@@ -33,3 +33,9 @@ success or explain smoke 10's zero facts: raw submitted tool arguments were not
 retained. Root still owns review, integration documentation and DB/service gates.
 Any new provider smoke requires separately explicit one-call approval; the previous
 single authorization is consumed and the alternative model is not adopted.
+
+Actual-14 follow-up: paragraph completeness now applies to every paragraph, not
+only recognized availability warnings. A paragraph that exceeds the remaining
+source budget is omitted in full. Original captures, literal formatting, identity,
+scope and review gates remain unchanged. The saved actual-14 submission still
+fails strict grounding; native SDK replay is offline evidence, not provider acceptance.

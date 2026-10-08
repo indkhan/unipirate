@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildResearchContext, buildResearchDraft, focusedResearchUrls, type Observation } from "../research";
 import smoke10 from "./fixtures/smoke10-context.json";
+import smoke14 from "./fixtures/smoke14-context.json";
 const seed = { url: "https://www.daad.de/example", name: "Synthetic Computing", university: "Synthetic University", text: "Paste ".repeat(50) };
 const observation = (url: string, content: string) => ({ url, content, origin: "web" as const, retrieved_at: "2026-10-07T12:00:00Z" });
 describe("bounded literal research context", () => {
@@ -142,4 +143,28 @@ describe("availability paragraph cap semantics", () => {
     expect(context.sources[0].excerpts[1]).toContain(negation);
     expect(context.omitted_characters).toBe(seed.name.length + seed.university.length + 3);
   });
+});
+
+describe("complete literal paragraph boundary", () => {
+  it("does not expose a partial assertion when remaining source budget is insufficient", () => {
+    const identity = seed.name + " " + seed.university;
+    const first = "Language requirements: ".padEnd(3000, "x");
+    const conditional = "Application deadline 15 July. ".padEnd(1500, "y") + " Only the Olympiad track is eligible; other applicants cannot apply.";
+    const context = buildResearchContext(seed, [observation(seed.url, identity + "\n\n" + first + "\n\n" + conditional)]);
+    const text = context.sources[0].excerpts.join("");
+    expect(text).not.toContain("Application deadline 15 July.");
+    expect(context.omitted_characters).toBe(conditional.length + 4);
+  });
+});
+
+it("counts the duplicate actual-14 deadline paragraph only once without altering raw captures", () => {
+  const captures = smoke14.observations as Observation[];
+  const before = structuredClone(captures);
+  const context = buildResearchContext(smoke14.seed, captures);
+  const page = context.sources.find(s => s.url === smoke14.seed.url)!;
+  const deadline = captures[0].content.split(/\n\s*\n/).find(p => p.startsWith("One final deadline on 15 July"))!;
+  expect(page.excerpts.filter(p => p === deadline)).toHaveLength(1);
+  expect(captures).toEqual(before);
+  expect(page.excerpts).toContain("Currently **394.30 EUR** per semester, including a semester ticket covering public transport in Germany");
+  expect(context.sources.flatMap(s => s.excerpts).join("\n")).toContain("You are currently viewing the admission requirements for 2026!");
 });
