@@ -956,6 +956,33 @@ their unresolved field and captured, applicant-scoped alternatives. Separate cap
 applicant offerings and unrelated semantic fields remain independent.
 No amounts, equivalences, dates or applicability are parsed/invented to settle a conflict.
 Native provider settings, timeout, retries and model context budget are unchanged.
+
+### Course research metadata compare-and-set transport
+
+Pending manual recovery and the canonical untrusted research marker use
+`compare_and_set_course_research_metadata` through the caller-scoped admin client.
+The additive migration `20261007000104_course_research_metadata_cas.sql` puts
+complete expected/new metadata in a POST RPC body; source captures and paste no
+longer become a PostgREST URL equality filter. Zod validates the boundary before
+mutation, and the original raw stored metadata remains the exact equality token.
+
+The function is security invoker with an empty fixed search path, authenticated-only
+execution, an explicit authenticated admin check, and existing courses RLS. It locks
+the row, compares all JSONB metadata, enforces exact sibling preservation and the
+pending-recovery/approved-unmarked-canonical lifecycle, then returns the actual
+updated course. Changed metadata or lifecycle rejects without mutation. SQL NULL
+has an explicit expectation flag; JSON null is distinct and is rejected as malformed
+metadata rather than normalized to an empty object. A null value returned by the
+normal course read retains the old SQL-NULL-only expectation, so a JSON-null legacy
+row cannot be silently overwritten. Neither path publishes or authenticates research.
+
+The shared strict source/scope/conflict/capture checks, original paste retention,
+manual-origin labels and explicit reviewed-version publication remain unchanged.
+`supabase/tests/course_research_metadata_cas.sql` supplies transactional disposable
+SQL cases. Real schema application, generated types, RLS and actual large-draft
+browser acceptance remain root-owned; HTTP fetch fixtures establish request
+construction and error propagation only.
+
 ### Indian Class XII plus successful bachelor study (UP-ELIG-03)
 
 New/restored checker and profile edits carry `indiaStudyRouteVersion: 1`.

@@ -792,6 +792,44 @@ export type Database = {
         Args: { p_check_id: string; p_token_hash: string }
         Returns: boolean
       }
+      compare_and_set_course_research_metadata: {
+        Args: {
+          p_course_id: string
+          p_expected_metadata: Json
+          p_expected_sql_null: boolean
+          p_mode: string
+          p_next_metadata: Json
+        }
+        Returns: {
+          conflicts_with: string | null
+          created_at: string
+          deadlines: Json | null
+          degree: string | null
+          description: string | null
+          extraction_method:
+            | Database["public"]["Enums"]["extraction_method"]
+            | null
+          field_extraction: Json | null
+          id: string
+          imported_by: string | null
+          language: string | null
+          location: string | null
+          name: string | null
+          normalized_url: string
+          requirements: Json | null
+          review_status: Database["public"]["Enums"]["course_review_status"]
+          source_url: string
+          tuition: Json | null
+          university_name: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "courses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_shared_check: {
         Args: { p_check_id: string }
         Returns: {

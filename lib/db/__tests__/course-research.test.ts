@@ -15,7 +15,7 @@ const draft = buildResearchDraft(seed, [{ url, origin: "web", retrieved_at: "202
   offerings: [{ intake_term: "winter", intake_year: 2027, applicant_group: "Non-EU applicants", scope: { source_url: url, source_quote: "Winter 2027 Non-EU applicants" }, facts: [{ key: "english", kind: "language", verbatim: "IELTS 6.5.", applicability: "Non-EU applicants", route: null, deadline_kind: null, evidence: [{ source_url: url, source_quote: "IELTS 6.5." }] }] }],
 }, []);
 type Write = { table: string; method: string; body: Record<string, unknown>; url: string };
-function client(conflict = false, failure?: string, changes: Record<string, unknown> = {}, canonicalChanges: Record<string, unknown> = {}, options: { failRpcAt?: number; malformedRpc?: boolean; markerRace?: boolean; versions?: number[]; unexpectedRpc?: boolean } = {}) {
+function client(conflict = false, failure?: string, changes: Record<string, unknown> = {}, canonicalChanges: Record<string, unknown> = {}, options: { failRpcAt?: number; malformedRpc?: boolean; markerRace?: boolean; versions?: number[]; unexpectedRpc?: boolean; maxUrlLength?: number; metadataResult?: unknown } = {}) {
   const writes: Write[] = [];
   let rpcCount = 0;
   let catalogue: unknown = null;
@@ -28,6 +28,7 @@ function client(conflict = false, failure?: string, changes: Record<string, unkn
       const requestUrl = new URL(String(request)); const table = requestUrl.pathname.split("/").at(-1)!;
       const method = init?.method ?? "GET"; const body = JSON.parse(String(init?.body ?? "{}"));
       if (method !== "GET") writes.push({ table, method, body, url: requestUrl.href });
+      if (options.maxUrlLength && requestUrl.href.length > options.maxUrlLength) return Response.json({ message: "URI too long" }, { status: 414 });
       if (table === failure) return Response.json({ message: "Synthetic DB failure" }, { status: 403 });
       let result: unknown = [];
       const generated = { id: table === "programmes" ? programmeId : offeringId, created_at: "2026-10-07T13:00:00Z" };
@@ -36,6 +37,11 @@ function client(conflict = false, failure?: string, changes: Record<string, unkn
       if (table === "course_offerings") { if (method === "GET") result = offeringRows; else { const row = { ...body, ...generated, id: offeringRows.length ? "55555555-5555-4555-8555-555555555555" : offeringId }; offeringRows.push(row); result = row; } }
       if (table === "course_offering_versions" && method === "GET") result = [...(options.versions ?? []).map(version => ({ id: offeringId, offering_id: offeringId, created_at: "2026-10-07T13:00:00Z", version, review_status: "pending", reviewed_at: null, reviewed_by: null, facts: draft.offerings[0].facts })), ...publishedRows.filter(row => requestUrl.searchParams.get("offering_id") === "eq." + row.offering_id)];
       if (table === "courses" && method === "PATCH" && requestUrl.searchParams.get("select") === "id") result = options.markerRace ? [] : [{ id: original }];
+      if (table === "compare_and_set_course_research_metadata") {
+        if (options.markerRace) return Response.json({ message: "Course metadata changed; reload and review again" }, { status: 400 });
+        result = { ...course, ...(body.p_course_id === original ? { id: original, conflicts_with: null, review_status: "approved", ...canonicalChanges } : {}), field_extraction: body.p_next_metadata };
+        if (Object.prototype.hasOwnProperty.call(options, "metadataResult")) result = options.metadataResult;
+      }
       if (table === "publish_course_research_version") {
         rpcCount++;
         if (rpcCount === options.failRpcAt) return Response.json({ message: "research changed; reload and review again" }, { status: 400 });
@@ -51,6 +57,67 @@ function client(conflict = false, failure?: string, changes: Record<string, unkn
 beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-10-07T13:00:00Z")); });
 afterEach(() => vi.useRealTimers());
 describe("research publication helpers (synthetic HTTP, no RLS claim)", () => {
+  it("saves eleven complete large captures through a bounded POST URL with the raw metadata in its body", async () => {
+    const large = structuredClone(draft);
+    large.paste = "Synthetic complete paste ".repeat(8000);
+    large.observations = Array.from({ length: 11 }, (_, index) => ({ ...draft.observations[0], content: (draft.observations[0].content + "\nSynthetic captured navigation " + index + " ").padEnd(20_000, "x") }));
+    const metadata = { research: large, sibling: { literal: ["  retain whitespace  ", null, false], capture: "Synthetic sibling ".repeat(1000) } };
+    const { db, writes } = client(false, undefined, { field_extraction: metadata }, {}, { maxUrlLength: 8192 });
+    const saved = await saveAdminCourseResearchDraft(db, id, large);
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatchObject({ table: "compare_and_set_course_research_metadata", method: "POST", body: { p_course_id: id, p_mode: "recovery", p_expected_metadata: metadata, p_expected_sql_null: false, p_next_metadata: metadata } });
+    expect(writes[0].url.length).toBeLessThan(256);
+    expect(new URL(writes[0].url).searchParams.has("field_extraction")).toBe(false);
+    expect(JSON.stringify(writes[0].body).length).toBeGreaterThan(800_000);
+    expect(saved.field_extraction).toEqual(metadata);
+  });
+
+
+  it("adds the canonical marker with large sibling metadata through a bounded POST URL", async () => {
+    const raw = structuredClone(draft); raw.identity.name = "  " + raw.identity.name + "  ";
+    const metadata = { sibling: "Synthetic complete canonical capture ".repeat(6000), literal: [null, false, " retain "], research_reconciliations: [{ forged: true }] };
+    const { db, writes } = client(true, undefined, { field_extraction: { research: raw } }, { field_extraction: metadata }, { maxUrlLength: 8192 });
+    await publishAdminCourseResearch(db, id, ["0:english"], id, decision);
+    const marker = writes.find(w => w.table === "compare_and_set_course_research_metadata")!;
+    expect(marker).toMatchObject({ method: "POST", body: { p_course_id: original, p_mode: "marker", p_expected_metadata: metadata, p_expected_sql_null: false, p_next_metadata: { ...metadata, research: raw } } });
+    expect(marker.url.length).toBeLessThan(256);
+    expect(new URL(marker.url).searchParams.has("field_extraction")).toBe(false);
+    expect(writes.find(w => w.table === "publish_course_research_version")?.body.p_expected_research).toEqual(raw);
+  });
+
+  it.each([ ["absent", null], ["wrong ID", { id: original, review_status: "pending", field_extraction: { research: draft } }], ["wrong lifecycle", { id, review_status: "approved", field_extraction: { research: draft } }], ["missing metadata", { id, review_status: "pending", field_extraction: {} }] ])("rejects an absent or unexpected metadata RPC result (%s)", async (_label, metadataResult) => {
+    const { db, writes } = client(false, undefined, {}, {}, { metadataResult });
+    await expect(saveAdminCourseResearchDraft(db, id, draft)).rejects.toThrow(/metadata result/i);
+    expect(writes).toHaveLength(1);
+  });
+
+  it("preserves the SQL-null marker expectation and the exact raw research value", async () => {
+    const raw = structuredClone(draft); raw.identity.name = "  " + raw.identity.name + "  ";
+    const { db, writes } = client(true, undefined, { field_extraction: { research: raw } }, { field_extraction: null });
+    await publishAdminCourseResearch(db, id, ["0:english"], id, decision);
+    expect(writes.find(w => w.table === "compare_and_set_course_research_metadata")?.body).toEqual({ p_course_id: original, p_expected_metadata: null, p_expected_sql_null: true, p_next_metadata: { research: raw }, p_mode: "marker" });
+  });
+  it("sends the raw recovery expectation even when draft parsing trims identity labels", async () => {
+    const raw = structuredClone(draft); raw.identity.name = "  " + raw.identity.name + "  ";
+    const metadata = { sibling: [false, null, " keep "], research: raw };
+    const { db, writes } = client(false, undefined, { field_extraction: metadata });
+    await saveAdminCourseResearchDraft(db, id, raw);
+    expect(writes[0].body.p_expected_metadata).toEqual(metadata);
+    expect(writes[0].body.p_next_metadata).toMatchObject({ sibling: [false, null, " keep "], research: { identity: { name: "Synthetic Computing" } } });
+  });
+  it.each(["stale", "authorization"])("propagates recovery %s errors without another mutation", async failure => {
+    const { db, writes } = failure === "stale" ? client(false, undefined, {}, {}, { markerRace: true }) : client(false, "compare_and_set_course_research_metadata");
+    await expect(saveAdminCourseResearchDraft(db, id, draft)).rejects.toThrow(failure === "stale" ? /metadata changed/ : /Synthetic DB failure/);
+    expect(writes).toHaveLength(1);
+    expect(writes[0].table).toBe("compare_and_set_course_research_metadata");
+    expect(writes.some(w => w.table === "publish_course_research_version")).toBe(false);
+  });
+  it.each(["bad-id", "missing-draft", "forged-review"])("validates recovery %s before any I/O", async invalid => {
+    const fetch = vi.fn(() => { throw new Error("Unexpected I/O"); });
+    const db = createClient<Database>("http://127.0.0.1:54321", "synthetic", { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch } });
+    await expect(saveAdminCourseResearchDraft(db, invalid === "bad-id" ? "bad-id" : id, invalid === "missing-draft" ? undefined : invalid === "forged-review" ? { ...draft, reviewed_by: id } : draft)).rejects.toThrow();
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it.each([["language", "IELTS 6.5.", "IELTS 7.0."], ["fee", "Tuition EUR 0; semester fee EUR 100.", "Semester fee EUR 200."]] as const)("rejects recovered %s conflict aliases before any save or publication", async (kind, first, second) => {
     const observations = [{ ...draft.observations[0], content: draft.observations[0].content + "\n\n" + first + "\n\n" + second }];
     const candidate = (verbatim: string) => ({ key: "known", kind, verbatim, applicability: "Non-EU applicants", route: null, deadline_kind: null, evidence: [{ source_url: url, source_quote: verbatim }] });
@@ -71,7 +138,7 @@ describe("research publication helpers (synthetic HTTP, no RLS claim)", () => {
     await expect(publishAdminCourseResearch(failed.db, id, ["0:english"], id)).rejects.toThrow(/reconcil/i); expect(failed.writes).toEqual([]);
     const recovered = structuredClone(omitted); recovered.observations[0].content = draft.observations[0].content;
     await saveAdminCourseResearchDraft(failed.db, id, recovered);
-    const saved = failed.writes[0].body.field_extraction as { research: typeof draft };
+    const saved = failed.writes[0].body.p_next_metadata as { research: typeof draft };
     expect(saved.research.observations.some(o => o.content.includes("IELTS 7.0."))).toBe(true);
     const published = client(false, undefined, { field_extraction: { research: omitted } });
     await publishAdminCourseResearch(published.db, id, ["0:english"], id, [{ key: "0:english", reason: "Compared full captured official sources and reconciled actual scope and requirements." }]);
@@ -81,7 +148,7 @@ describe("research publication helpers (synthetic HTTP, no RLS claim)", () => {
     expect(published.writes.some(w => JSON.stringify(w.body).includes("research_reconciliations"))).toBe(false);
     const legacy = client(true, undefined, { field_extraction: { research: omitted } }, { field_extraction: {} });
     await publishAdminCourseResearch(legacy.db, id, ["0:english"], id, [{ key: "0:english", reason: "Compared full captured sources and reconciled applicability for this assertion." }]);
-    const guarded = legacy.writes.find(w => w.table === "courses")!.body.field_extraction;
+    const guarded = legacy.writes.find(w => w.table === "compare_and_set_course_research_metadata")!.body.p_next_metadata;
     const replacement = client(true, undefined, { field_extraction: {} }, { field_extraction: guarded });
     await expect(resolveCourseConflict(replacement.db, id, true)).rejects.toThrow(/research/i);
     expect(replacement.writes).toEqual([]);
@@ -95,7 +162,7 @@ describe("research publication helpers (synthetic HTTP, no RLS claim)", () => {
     expect(writes).toEqual([]);
     const pending = client();
     await saveAdminCourseResearchDraft(pending.db, id, recovery);
-    expect(pending.writes[0].body).toMatchObject({ field_extraction: { research: { offerings: [], unscoped: expect.arrayContaining([expect.objectContaining({ status: "pending", applicability: "Unresolved effective intake/applicant scope" })]) } } });
+    expect(pending.writes[0].body).toMatchObject({ p_next_metadata: { research: { offerings: [], unscoped: expect.arrayContaining([expect.objectContaining({ status: "pending", applicability: "Unresolved effective intake/applicant scope" })]) } } });
     expect(pending.writes[0].body).not.toHaveProperty("review_status");
   });
   it("blocks a legacy incoming update to research canonical without reaching the RPC", async () => {
@@ -127,7 +194,7 @@ describe("research publication helpers (synthetic HTTP, no RLS claim)", () => {
     const edited = structuredClone(draft); edited.observations[0].content += " Human source capture.";
     await saveAdminCourseResearchDraft(db, id, edited);
     expect(writes).toHaveLength(1);
-    expect(writes[0].body).toMatchObject({ field_extraction: { research: { observations: expect.arrayContaining([expect.objectContaining({ origin: "manual" })]) } } });
+    expect(writes[0].body).toMatchObject({ p_next_metadata: { research: { observations: expect.arrayContaining([expect.objectContaining({ origin: "manual" })]) } } });
     expect(writes[0].body).not.toHaveProperty("review_status");
   });
   it("blocks legacy edits and recovery on published research before mutations", async () => {
@@ -191,9 +258,9 @@ describe("research publication helpers (synthetic HTTP, no RLS claim)", () => {
     await expect(publishAdminCourseResearch(db, id, ["0:english", "1:english"], id, [...decision, { ...decision[0], key: "1:english" }])).rejects.toThrow(/research changed/);
     expect(writes.filter(w => w.table === "publish_course_research_version")).toHaveLength(failRpcAt);
     expect(writes.some(w => w.table === "resolve_course_conflict" || w.table === "course_offering_versions")).toBe(false);
-    const marker = writes.find(w => w.table === "courses")?.body.field_extraction;
+    const marker = writes.find(w => w.table === "compare_and_set_course_research_metadata")?.body.p_next_metadata;
     expect(marker).toEqual({ sibling: "retain", research_reconciliations: [{ forged: true }], research: multi });
-    expect(new URL(writes.find(w => w.table === "courses")!.url).searchParams.get("field_extraction")).toBe("eq." + JSON.stringify({ sibling: "retain", research_reconciliations: [{ forged: true }] }));
+    expect(writes.find(w => w.table === "compare_and_set_course_research_metadata")?.body.p_expected_metadata).toEqual({ sibling: "retain", research_reconciliations: [{ forged: true }] });
     const generic = client(true, undefined, { field_extraction: {} }, { field_extraction: marker });
     await expect(resolveCourseConflict(generic.db, id, true)).rejects.toThrow(/research/i); expect(generic.writes).toEqual([]);
   });
@@ -213,7 +280,7 @@ describe("research publication helpers (synthetic HTTP, no RLS claim)", () => {
     const { db, writes } = client(false, undefined, { field_extraction: { research: previous, sibling: "retain" } });
     // Retained captures must be merged before final evidence validation.
     await saveAdminCourseResearchDraft(db, id, edited);
-    expect(writes[0].body.field_extraction).toMatchObject({ sibling: "retain", research: { paste: previous.paste, observations: previous.observations } });
+    expect(writes[0].body.p_next_metadata).toMatchObject({ sibling: "retain", research: { paste: previous.paste, observations: previous.observations } });
   });
   it("rejects recovery capacity overflow instead of truncating original captures", async () => {
     const previous = structuredClone(draft); previous.observations = Array.from({ length: 12 }, (_, i) => ({ ...draft.observations[0], content: draft.observations[0].content + i }));

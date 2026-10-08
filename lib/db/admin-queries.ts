@@ -24,7 +24,7 @@ import type { ApplicationWithCourse } from "@/lib/db/queries";
 import { profileFromAnswers } from "@/lib/tasks/profile";
 import { todayIsoBerlin } from "@/lib/tasks/dates";
 import { unwrap } from "@/lib/db/unwrap";
-import { hasResearch, readResearch, ResearchReconciliationSchema, prepareResearchReview, ResearchDraftSchema, ObservationSchema, parseResearchAuditEvent } from "@/lib/courses/research";
+import { hasResearch, readResearch, ResearchReconciliationSchema, prepareResearchReview, ResearchDraftSchema, parseResearchAuditEvent } from "@/lib/courses/research";
 import { getProgrammeByLegacyCourse, listCourseOfferings } from "@/lib/db/queries";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
@@ -428,12 +428,12 @@ export async function publishAdminCourseResearch(
   const id = CourseCatalogueIdSchema.parse(courseId);
   const reviewer = CourseCatalogueIdSchema.parse(reviewerId);
   accepted = z.array(z.string().min(1).max(250)).max(400).parse(accepted);
+  const decisions = ResearchReconciliationSchema.parse(reconciliation);
   const submitted = await getAdminCourse(db, id);
   const rawResearch = hasResearch(submitted.field_extraction) ? (submitted.field_extraction as Record<string, Json>).research : undefined;
   const draft = readResearch(submitted.field_extraction);
   if (!draft) throw new Error("No research draft to review");
   if (!draft.offerings.length) throw new Error("Effective offering scope is required before research publication; unscoped captures require manual recovery");
-  const decisions = ResearchReconciliationSchema.parse(reconciliation);
   if (new Set(decisions.map(d => d.key)).size !== decisions.length || decisions.some(d => !accepted.includes(d.key))) throw new Error("Invalid reconciliation selection");
   if (accepted.some(key => !decisions.some(d => d.key === key))) throw new Error("Each accepted field requires an explicit reconciliation decision");
   const known = new Set(draft.offerings.flatMap((o, i) => o.facts.map(f => `${i}:${f.key}`)));
@@ -464,10 +464,7 @@ export async function publishAdminCourseResearch(
   // Compare complete original metadata so concurrent sibling edits cannot be lost.
   if (!hasResearch(canonical.field_extraction)) {
     const metadata = z.record(z.unknown()).parse(canonical.field_extraction ?? {});
-    let marker = db.from("courses").update({ field_extraction: { ...metadata, research: rawResearch } as Json }).eq("id", canonicalId);
-    marker = canonical.field_extraction === null ? marker.is("field_extraction", null) : marker.eq("field_extraction", JSON.stringify(canonical.field_extraction));
-    const rows = unwrap(await marker.select("id"));
-    if (rows.length !== 1) throw new Error("Canonical metadata changed; reload and review again");
+    await compareAndSetCourseResearchMetadata(db, canonicalId, canonical.field_extraction, { ...metadata, research: rawResearch } as Json, "marker");
   }
   if (programme) {
     const scopes = await listCourseOfferings(db, programme.id);
@@ -495,11 +492,36 @@ export async function publishAdminCourseResearch(
   if (submitted.conflicts_with) await resolveCourseConflict(db, id, false);
 }
 
+/** Full metadata CAS travels in the POST body, never a PostgREST URL filter.
+ * Invoker SQL retains caller RLS and checks lifecycle/siblings under the row lock. */
+async function compareAndSetCourseResearchMetadata(
+  db: Pick<SupabaseClient<Database>, "rpc">,
+  courseId: string, expected: Json, next: Json, mode: "recovery" | "marker",
+): Promise<Tables<"courses">> {
+  const values = z.object({
+    p_course_id: CourseCatalogueIdSchema,
+    p_expected_metadata: JsonSchema,
+    p_expected_sql_null: z.boolean(),
+    p_next_metadata: z.record(JsonSchema),
+    p_mode: z.enum(["recovery", "marker"]),
+  }).strict().parse({ p_course_id: courseId, p_expected_metadata: expected,
+    p_expected_sql_null: expected === null, p_next_metadata: next, p_mode: mode });
+  // Validation must not reconstruct the exact stored equality token.
+  const row = unwrap(await db.rpc("compare_and_set_course_research_metadata", {
+    ...values, p_expected_metadata: expected, p_next_metadata: next,
+  }));
+  const result = z.object({ id: CourseCatalogueIdSchema, review_status: z.enum(["pending", "approved", "rejected"]), field_extraction: JsonSchema }).passthrough().safeParse(row);
+  if (!result.success || result.data.id !== courseId
+    || result.data.review_status !== (mode === "recovery" ? "pending" : "approved")
+    || !jsonEqual(result.data.field_extraction, next)) throw new Error("Unexpected research metadata result");
+  return row;
+}
+
 /** Admin-only pending recovery. Human source observations are labelled manual,
  * never represented as provider retrieval or reviewer verification. */
-export async function saveAdminCourseResearchDraft(db: Db, courseId: string, input: unknown) {
+export async function saveAdminCourseResearchDraft(db: Pick<SupabaseClient<Database>, "from" | "rpc">, courseId: string, input: unknown) {
   const id = CourseCatalogueIdSchema.parse(courseId);
-  const incoming = z.object({ observations: z.array(ObservationSchema).max(12) }).passthrough().parse(input);
+  const incoming = ResearchDraftSchema.innerType().parse(input);
   const existing = await getAdminCourse(db, id);
   if (existing.review_status !== "pending" || !hasResearch(existing.field_extraction)) throw new Error("Only pending research can be repaired; published history requires a new submission");
   const previous = readResearch(existing.field_extraction);
@@ -510,7 +532,7 @@ export async function saveAdminCourseResearchDraft(db: Db, courseId: string, inp
   const draft = ResearchDraftSchema.parse({ ...incoming, ...(previous?.paste !== undefined ? { paste: previous.paste } : {}), observations: [...retained, ...observations] });
   if (draft.identity.name !== existing.name || draft.identity.university !== existing.university_name) throw new Error("Research identity must match the course being reviewed");
   const metadata = existing.field_extraction as Record<string, Json>;
-  return unwrap(await db.from("courses").update({ field_extraction: { ...metadata, research: ResearchDraftSchema.parse(draft) } }).eq("id", id).eq("field_extraction", JSON.stringify(existing.field_extraction)).select().single());
+  return compareAndSetCourseResearchMetadata(db, id, existing.field_extraction, { ...metadata, research: draft }, "recovery");
 }
 
 /** Protected history is read only through a caller-scoped admin client/RLS. */

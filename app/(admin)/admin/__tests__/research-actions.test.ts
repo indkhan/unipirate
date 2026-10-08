@@ -61,3 +61,9 @@ it("propagates stale publication failure without success redirect or conflict cl
   await expect(publishCourseResearchAction(form({ id, attest: "yes", accepted: "0:english", reconciled: "0:english", "reconciliation_reason:0:english": "Compared complete actual captured sources and applicability." }))).rejects.toThrow("research changed; reload and review again");
   expect(mocks.resolve).not.toHaveBeenCalled(); expect(mocks.review).not.toHaveBeenCalled();
 });
+
+it("propagates stale recovery without a success redirect or publication", async () => {
+  mocks.saveDraft.mockRejectedValue(new Error("Course metadata changed; reload and review again"));
+  await expect(saveCourseResearchDraftAction(form({ id, draft: JSON.stringify(metadata.research) }))).rejects.toThrow("Course metadata changed; reload and review again");
+  expect(mocks.publish).not.toHaveBeenCalled(); expect(mocks.resolve).not.toHaveBeenCalled();
+});
