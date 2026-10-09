@@ -189,14 +189,14 @@ export function TaskActions({
   return (
     <>
       <div className={styles.taskActionRow} aria-label="Task actions">
-        {task.kind === "manual" ? <button
+        <button
           className={styles.taskIconButton}
           type="button"
           aria-label="Edit task"
           onClick={() => setEditing(true)}
         >
           <Pencil size={14} aria-hidden />
-        </button> : null}
+        </button>
         {task.kind === "manual" ? <button
           className={styles.taskIconButton}
           type="button"
