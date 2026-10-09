@@ -1165,6 +1165,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      enqueue_relevant_planning_scope: {
+        Args: { p_application: string; p_user: string }
+        Returns: undefined
+      }
       finish_planning_job: {
         Args: {
           p_error_code?: string

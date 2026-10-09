@@ -29,9 +29,12 @@ fixtures: offerings, reconciliation audit, research metadata CAS, application
 selection, assessment history, rule versions and AI planning. SQL files were
 transferred as exact UTF-8 bytes; a PowerShell text pipe corrupts source-hash fixtures.
 
-The full suite passed 2,926 tests with zero skips. Its seven required database
-suites ran 43 actual cases: RLS 29, course process 3, personal tasks 4,
-planning/publication 4, cursor 1, research persistence 1 and template reconciliation 1.
+The full suite passed 2,928 tests in 153 files with zero skips. Its eight required
+database suites ran 44 actual cases: RLS 29, course process 3, personal tasks 4,
+planning/publication 4, cursor 1, research persistence 1, relevant events 1 and
+template reconciliation 1. Migration 011 adds transactional profile/application/
+completion events; its actual regression also proves direct anonymous/student/
+admin RPC denial and suppression of no-op edits and approval loops.
 Lint, nonincremental typecheck and production build passed. Independent milestone
 reviews found and corrected stale edit forms, source-link reconciliation and
 out-of-order polling. Mounted UI tests cover same-tick mutation guards, exact bulk

@@ -1565,7 +1565,13 @@ original full paste, URL and unrelated metadata and rejects concurrent review.
 `planning_jobs` is the event outbox: owner, application/course, event, current
 input fingerprint, immutable source version, lease, retry state and batch cursor.
 Database fingerprints bind profile/application selection/status and current
-source/template context. Duplicate events coalesce. Worker leases use SKIP LOCKED;
+source/template context. Duplicate events coalesce. Meaningful profile answers,
+application selection/status and task completion
+changes enqueue jobs transactionally while planning is enabled. Each application
+uses its exact current reviewed offering when its applicant context is confirmed;
+unresolved contexts queue preliminary verification. Personal title/date edits,
+no-op updates and proposal approval inserts do not trigger planning loops.
+Worker leases use SKIP LOCKED;
 crashes expire safely, three failures produce a saved retryable failure, and
 successful bounded batches checkpoint progress before releasing the lease. A
 crash between candidate saving and checkpoint safely repeats an idempotent batch.
