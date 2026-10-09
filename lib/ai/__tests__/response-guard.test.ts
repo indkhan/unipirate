@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { guardAssistantAnswer, ASSISTANT_FALLBACK, type AssistantEvidence } from "../response-guard";
 import { projectVersionedKbMatches } from "../versioned-kb";
 import { context, version } from "@/lib/rules/__tests__/assessment-fixtures";
+import captured from "./fixtures/unknown-only-captured-answer.json";
 
 const envelope = projectVersionedKbMatches([], [version(1)], { evaluatedAt: context.evaluatedAt });
 const rule: AssistantEvidence = { toolName: "search_rules", output: envelope };
@@ -10,13 +11,19 @@ const web: AssistantEvidence = { toolName: "web_search", output: { unverified: t
 ] } };
 
 describe("completed answer marker authorization", () => {
+  it("replaces the captured unsupported denial despite its unknown marker and retrieved rules", () => {
+    expect(guardAssistantAnswer(captured.text, [rule])).toBe(ASSISTANT_FALLBACK);
+  });
   it.each([
-    ["I cannot confirm. [[unknown]]", []],
     ["Synthetic claim. [[rule:synthetic]]", [rule]],
     ["Unconfirmed synthetic claim. [[web:https://www.daad.de/exact?x=1]]", [web]],
     ["Mixed. [[rule:synthetic]] [[unknown]] [[web:https://www.daad.de/exact?x=1]]", [rule, web]],
   ] as const)("preserves valid text byte-for-byte: %s", (text, evidence) => {
     expect(guardAssistantAnswer(text, evidence)).toBe(text);
+  });
+  it.each([[[]], [[rule]], [[web]]])("replaces benign unknown-only prose regardless of available evidence: %j", evidence => {
+    expect(guardAssistantAnswer("I cannot confirm. [[unknown]]", evidence)).toBe(ASSISTANT_FALLBACK);
+    expect(guardAssistantAnswer("[[unknown]]", evidence)).toBe(ASSISTANT_FALLBACK);
   });
   it.each([
     "", "   ", "Raw fact: 8400 INR", "[[rule:]]", "[[web:bad]]", "[[unknown",
