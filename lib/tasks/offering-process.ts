@@ -1,7 +1,7 @@
 // Pure consumer of immutable COURSE02 facts; applicant reports never certify eligibility.
 import { z } from "zod";
 import { ProgrammeSchema, parseOfferingRow, parseOfferingVersionRow, parseProgrammeRow } from "@/lib/courses/offerings";
-import type { GeneratedTask } from "./generate";
+import { parseDeadlineDate, type GeneratedTask } from "./generate";
 import type { Json } from "@/lib/db/database.types";
 
 export const ApplicantOfferingContextSchema = z.object({
@@ -22,6 +22,7 @@ export type OfferingStage = {
   title: string;
   portal: ProcessFact | null;
   deadline: ProcessFact | null;
+  dueDate: string | null;
   deadlineLabel: "Preparation target" | "Application closing";
   confirmation: string | null;
 };
@@ -57,7 +58,9 @@ export function resolveOfferingProcess(input: {
   if (matches.length !== 1) return unknown("The selected offering is unavailable for this programme; confirm the intake and applicant group with the university.");
   const offering = matches[0]; plan.offering = offering;
   if (selected.data.applicant_context?.applicant_group !== offering.applicant_group) return unknown("Confirm the exact applicant group for this offering; the saved report does not match.");
-  if (Object.keys(offering.applicability).length !== 0) return unknown("This offering has additional applicability conditions that we cannot yet assess. Confirm them with the university.");
+  // Research source_scope is retained provenance, never an eligibility condition.
+  if (Object.keys(offering.applicability).some(key => key !== "source_scope")
+    || ("source_scope" in offering.applicability && typeof offering.applicability.source_scope !== "string")) return unknown("This offering has additional applicability conditions that we cannot yet assess. Confirm them with the university.");
   const reviewed = versions.filter(v => v.offering_id === offering.id && v.review_status === "verified").sort((a,b)=>b.version-a.version);
   if (!reviewed.length) return unknown("No reviewed procedure exists for this selected intake and group. Confirm with the university.");
   if (reviewed.filter(v => v.version === reviewed[0].version).length !== 1) return unknown("The latest reviewed version is ambiguous; confirm the procedure with the university.");
@@ -71,17 +74,23 @@ export function resolveOfferingProcess(input: {
   if (route.status !== "verified" || route.route === null || route.route === "unresolved") return unknown("The latest reviewed route is unresolved. Confirm this intake's procedure with the university.");
   plan.route = route.route; plan.routeFact = route;
   const applicable = version.facts.filter(f => f.status === "verified" && f.applicability === offering.applicant_group);
-  const field = (key: string, kind: ProcessFact["kind"], deadlineKind?: ProcessFact["deadline_kind"]) => {
-    const f = applicable.find(f=>f.key===key && f.kind===kind && (deadlineKind===undefined || f.deadline_kind===deadlineKind));
-    return f ?? null;
+  const field = (keys: string[], kind: ProcessFact["kind"], deadlineKind?: ProcessFact["deadline_kind"]) => {
+    const facts = version.facts.filter(f=>keys.includes(f.key));
+    // Coexisting identities cannot silently pick one assertion over another.
+    const fact = facts.length === 1 ? facts[0] : null;
+    return fact?.status === "verified" && fact.applicability === offering.applicant_group && fact.kind === kind
+      && (deadlineKind === undefined || fact.deadline_kind === deadlineKind) ? fact : null;
   };
   const stage = (kind: OfferingStage["kind"], prefix: string, title: string, preparation = false): OfferingStage => {
-    const capturedPortal = field(prefix+".portal", "description");
+    const researchStage = preparation ? "vpd" : kind === "uni_assist_submission" ? "uniassist" : "university";
+    const capturedPortal = field([prefix+".portal", "application_link:"+researchStage], "description");
     // Reuse the source URL grammar without treating a provenance URL as a portal.
     const portal = capturedPortal?.verbatim && ProgrammeSchema.shape.source_url.safeParse(capturedPortal.verbatim).success ? capturedPortal : null;
-    const deadline = preparation ? field("process.vpd.preparation", "deadline", "vpd_preparation_target") : field(prefix+".closing", "deadline", "application_closing");
-    const missing = [!portal ? "portal" : null,!deadline?.date ? (preparation ? "preparation target" : "closing deadline") : null].filter(Boolean);
-    return {kind,title,portal,deadline,deadlineLabel:preparation?"Preparation target":"Application closing",confirmation:missing.length ? "Confirm the "+missing.join(" and ")+" with the official source." : null};
+    const deadlineKind = preparation ? "vpd_preparation_target" : "application_closing";
+    const deadline = field([preparation ? "process.vpd.preparation" : prefix+".closing", `deadline:${researchStage}:${deadlineKind}`], "deadline", deadlineKind);
+    const dueDate = deadline?.date ?? literalDeadlineDate(deadline);
+    const missing = [!portal ? "portal" : null,!dueDate ? (preparation ? "preparation target" : "closing deadline") : null].filter(Boolean);
+    return {kind,title,portal,deadline,dueDate,deadlineLabel:preparation?"Preparation target":"Application closing",confirmation:missing.length ? "Confirm the "+missing.join(" and ")+" with the official source." : null};
   };
   if (plan.route === "vpd_then_university") plan.stages.push(stage("vpd_request","process.uni_assist","Request VPD",true));
   if (plan.route === "uni_assist") plan.stages.push(stage("uni_assist_submission","process.uni_assist","Submit uni-assist application"));
@@ -90,18 +99,29 @@ export function resolveOfferingProcess(input: {
   return plan;
 }
 
+function literalDeadlineDate(fact: ProcessFact | null): string | null {
+  if (!fact?.verbatim || !fact.key.startsWith("deadline:")) return null;
+  // Trade-off: only one explicit full date in supported literal wording sorts.
+  // Ranges, multiple years and undated statements need official confirmation.
+  if ((fact.verbatim.match(/\b\d{4}\b/g) ?? []).length !== 1
+    || /\b(?:from|between|to|until|through|bis|ab)\b|[–—]/i.test(fact.verbatim)) return null;
+  const numericDate = /\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\.\d{1,2}\.\d{4}\b/.test(fact.verbatim);
+  if ((fact.verbatim.match(/\d+/g) ?? []).length !== (numericDate ? 3 : 2)) return null;
+  return parseDeadlineDate(fact.verbatim);
+}
+
 export function generateOfferingProcessTasks(applicationId: string, status: string, plan: OfferingProcessPlan): GeneratedTask[] {
   if (status !== "planning" || plan.route === "unresolved" || !plan.offering || !plan.version || !plan.routeFact) return [];
   const evidence = plan.routeFact.evidence.find(e=>e.last_verified_at && e.source_quote.includes(plan.routeFact!.verbatim!))!;
   const snapshot = {offering:plan.offering,version:plan.version,routeFact:plan.routeFact,fees:plan.fees};
-  const task = (stage: string, title: string, order: number, deadline: ProcessFact | null, extra: object): GeneratedTask => ({
+  const task = (stage: string, title: string, order: number, deadline: ProcessFact | null, dueDate: string | null, extra: object): GeneratedTask => ({
     key:"app:"+applicationId+":offering:"+plan.offering!.id+":process:"+stage,title,
-    dueDate:deadline?.date??null,verbatimDue:deadline?.verbatim??null,order,applicationId,ruleId:null,courseTaskDefinitionId:null,
+    dueDate,verbatimDue:deadline?.verbatim??null,order,applicationId,ruleId:null,courseTaskDefinitionId:null,
     adminSnapshot:{...snapshot,stage,...extra} as Json,source:{url:evidence.source_url,verifiedAt:evidence.last_verified_at},
   });
-  const tasks = plan.stages.map((s,index)=>task(s.kind,s.title+(s.confirmation?" — "+s.confirmation:""),s.kind==="vpd_request"?20:30+index,s.deadline,{stageFact:s}));
+  const tasks = plan.stages.map((s,index)=>task(s.kind,s.title+(s.confirmation?" — "+s.confirmation:""),s.kind==="vpd_request"?20:30+index,s.deadline,s.dueDate,{stageFact:s}));
   // No structured payer/waiver contract exists. Literal guidance never authorizes payment.
-  if (plan.route !== "direct") tasks.push(task("fee_confirmation","Confirm applicable fees, payer and exemptions with the official source",22,null,{}));
+  if (plan.route !== "direct") tasks.push(task("fee_confirmation","Confirm applicable fees, payer and exemptions with the official source",22,null,null,{}));
   return tasks;
 }
 
