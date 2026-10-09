@@ -24,7 +24,7 @@ select jsonb_build_object(
   'identity',jsonb_build_object('name','Synthetic Computing','university','Synthetic University','source_url','https://www.daad.de/synthetic-audit-submission'),
   'observations',jsonb_build_array(
     jsonb_build_object('url','https://www.daad.de/synthetic-audit-submission','origin','web','retrieved_at',captured,
-      'content',E'Synthetic Computing Synthetic University Winter 2027 Non-EU applicants\nIELTS 6.5.\n[University](https://synthetic-university.de/application.pdf)'),
+      'content',E'Synthetic Computing Synthetic University Winter 2027 Non-EU applicants\nIELTS 6.5.\n[University](https://synthetic-university.de/application.pdf)\nExact UTF8 é \r\n終'),
     jsonb_build_object('url','https://synthetic-university.de/application.pdf','origin','web','retrieved_at',captured,'content','Synthetic instruction: certified transcript.')
   ),
   'offerings',jsonb_build_array(jsonb_build_object(
@@ -44,6 +44,8 @@ select jsonb_build_object(
   )), 'conflicts','[]'::jsonb,'issues','[]'::jsonb
 ),array['english'],jsonb_build_array(jsonb_build_object('key','english','reason','Synthetic test only: compared full stored captures and reconciled field applicability.'))
 from (select to_char((clock_timestamp()-interval '1 day') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') captured) capture;
+-- Identical duplicate captures identify one DISTINCT exact text, not ambiguity.
+update reconciliation_fixture set draft=jsonb_set(draft,'{observations}',(draft->'observations') || jsonb_build_array(draft->'observations'->0));
 grant select on reconciliation_fixture to authenticated, anon;
 -- Owner inserts valid pending data AND a fake sibling journal. No trusted history results.
 set local role authenticated;
@@ -90,7 +92,7 @@ select pg_temp.expect_state($q$update public.admin_audit_events set course_recon
 select pg_temp.expect_state('delete from public.admin_audit_events','42501');
 select pg_temp.assert_true(not has_function_privilege('anon','public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb,jsonb)','execute'),'anon/public execution revoked');
 select pg_temp.assert_true(not has_function_privilege('service_role','public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb,jsonb)','execute'),'no service-role execution grant');
-select pg_temp.assert_true((select proconfig @> array['search_path=public, pg_temp'] from pg_proc where oid='public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb,jsonb)'::regprocedure),'fixed search path');
+select pg_temp.assert_true((select exists(select 1 from unnest(proconfig) setting where setting in ('search_path=""','search_path=')) from pg_proc where oid='public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb,jsonb)'::regprocedure),'empty fixed search path; qualified tables/helpers and builtin hashing');
 select pg_temp.assert_true(to_regprocedure('public.publish_course_research_version(uuid,uuid,integer,integer,text[],jsonb)') is null,'no old revision-free overload');
 -- No caller-provided observations/actor/time parameter exists.
 select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000913','00000000-0000-4000-8000-000000000931',0,2,array['english'],'[]'::jsonb,(select draft from reconciliation_fixture),'{"reviewed_by":"forged","observations":[]}'::jsonb)$q$,'42883');
@@ -181,6 +183,34 @@ do $$ declare future text; edited jsonb; begin
 end $$;
 select pg_temp.assert_true((select count(*)=0 from public.admin_audit_events where course_reconciliation is not null and row_id='00000000-0000-4000-8000-000000000911'),'all rejection paths leave no trusted journal');
 select pg_temp.assert_true((select count(*)=1 from public.course_offering_versions where offering_id='00000000-0000-4000-8000-000000000931'),'all rejection paths leave only original pending snapshot');
+-- COURSE03: bounded optional decisions and exact UTF8 captured-text hashing.
+select pg_temp.assert_true(pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to('abc','UTF8')),'hex')='ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad','builtin SHA256 available without pgcrypto');
+select pg_temp.reject_draft('{review}','null');
+select pg_temp.reject_draft('{review}','{"rejected":[],"changes":[],"reviewed_by":"forged"}');
+select pg_temp.reject_draft('{review}','{"rejected":[{"offering":0,"key":"english","reason":"Synthetic rejection must block original acceptance."}],"changes":[]}');
+select pg_temp.reject_draft('{review}','{"rejected":[{"offering":0,"key":"unknown","reason":"Synthetic unknown identity is not valid review."}],"changes":[]}');
+select pg_temp.reject_draft('{review}','{"rejected":[{"offering":0,"key":"document","reason":"Synthetic valid rejection reason."},{"offering":0,"key":"document","reason":"Synthetic duplicate rejection reason."}],"changes":[]}');
+select pg_temp.reject_draft('{review}','{"rejected":[{"offering":0,"key":"document","reason":"1234567890123456789"}],"changes":[]}');
+select pg_temp.reject_draft('{review}',jsonb_build_object('rejected',jsonb_build_array(jsonb_build_object('offering',0,'key','document','reason',repeat('x',2001))),'changes','[]'::jsonb));
+select pg_temp.reject_draft('{review}',jsonb_build_object('rejected','[]'::jsonb,'changes',jsonb_build_array(jsonb_build_object('offering',0,'key','english','kind','resolve_conflict','reason','Synthetic conflict requires original alternatives.','before',(select draft->'offerings'->0->'facts'->0 from reconciliation_fixture)))));
+select pg_temp.reject_draft('{review}',jsonb_build_object('rejected','[]'::jsonb,'changes',jsonb_build_array(jsonb_build_object('offering',0,'key','english','kind','edit','reason','Synthetic edit cannot claim review metadata.','before',jsonb_set((select draft->'offerings'->0->'facts'->0 from reconciliation_fixture),'{status}','"verified"')))));
+select pg_temp.reject_draft('{offerings,0,facts,0,evidence,0,source_hash}',to_jsonb('sha256:' || repeat('0',64)));
+select pg_temp.reject_draft('{offerings,0,facts,0,evidence,0,source_hash}','"sha256:invalid"');
+do $hash_boundary$
+declare base jsonb; edited jsonb; content_hash text;
+begin
+  base := (select draft from reconciliation_fixture);
+  content_hash := 'sha256:' || pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(base->'observations'->0->>'content','UTF8')),'hex');
+  edited := base; -- Unchanged accepted AI evidence still has a null hash.
+  edited := jsonb_set(edited,'{observations}',(edited->'observations') || jsonb_build_array(jsonb_set(edited->'observations'->0,'{content}',to_jsonb((edited->'observations'->0->>'content') || E'\nDifferent é capture'))));
+  update public.courses set field_extraction=jsonb_set(field_extraction,'{research}',edited) where id='00000000-0000-4000-8000-000000000913';
+  perform pg_temp.expect_state('select pg_temp.publish_fixture(2)','23514');
+  edited := jsonb_set(base,'{offerings,0,facts,0,evidence,0,source_hash}',to_jsonb(content_hash));
+  edited := jsonb_set(edited,'{observations}',(edited->'observations') || jsonb_build_array(jsonb_set(edited->'observations'->0,'{content}',to_jsonb((edited->'observations'->0->>'content') || E'\nDifferent é capture'))));
+  update public.courses set field_extraction=jsonb_set(field_extraction,'{research}',edited) where id='00000000-0000-4000-8000-000000000913';
+  perform pg_temp.expect_state('select pg_temp.publish_fixture(2)','23514');
+  update public.courses set field_extraction=jsonb_set(field_extraction,'{research}',base) where id='00000000-0000-4000-8000-000000000913';
+end $hash_boundary$;
 select pg_temp.publish_fixture(2);
 select pg_temp.assert_true((select count(*)=1 from public.admin_audit_events where course_reconciliation is not null and row_id='00000000-0000-4000-8000-000000000911'),'one genuine event; owner fake never imported');
 select pg_temp.assert_true((select field_extraction->'research_reconciliations'->0->>'marker'='owner-fake' from public.courses where id='00000000-0000-4000-8000-000000000913'),'original untrusted JSON remains verbatim');
@@ -197,18 +227,53 @@ select pg_temp.assert_true((select a.actor_user_id='00000000-0000-4000-8000-0000
 select pg_temp.assert_true((select v.facts->0->>'status'='verified'
   and v.facts->0->'evidence'->0->>'verified_by'=v.reviewed_by::text
   and (v.facts->0->'evidence'->0->>'last_verified_at')::timestamptz=v.reviewed_at
-  and (v.facts->0->'evidence'->0) - array['verified_by','last_verified_at']=(f.draft->'offerings'->0->'facts'->0->'evidence'->0) - array['verified_by','last_verified_at']
+  and (v.facts->0->'evidence'->0) - array['verified_by','last_verified_at','source_hash']=(f.draft->'offerings'->0->'facts'->0->'evidence'->0) - array['verified_by','last_verified_at','source_hash']
+  and v.facts->0->'evidence'->0->>'source_hash'='sha256:a6382df07ea6a2fe2df08a7af92d240b2de40d438e009f92903a5f33778083bc'
+  and v.facts->0->'evidence'->0->>'source_hash'='sha256:' || pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(f.draft->'observations'->0->>'content','UTF8')),'hex')
   and v.facts->1->>'status'='unresolved' and v.facts->1->'verbatim'='null'::jsonb
   and v.facts->1->'evidence'=f.draft->'offerings'->0->'facts'->1->'evidence'
   and v.facts->0->'date'='null'::jsonb and v.facts->1->'date'='null'::jsonb
   from public.course_offering_versions v cross join reconciliation_fixture f where v.offering_id='00000000-0000-4000-8000-000000000931' and v.version=2),'narrow timestamp binding preserves literal capture; unknown fields remain unverified');
+select pg_temp.assert_true((select c.field_extraction->'research'=f.draft from public.courses c cross join reconciliation_fixture f where c.id='00000000-0000-4000-8000-000000000913'),'accepted null hash derivation never rewrites pending raw research/captures/siblings');
+select pg_temp.assert_true((select facts=(select draft->'offerings'->0->'facts' from reconciliation_fixture) and facts->0->'evidence'->0->'source_hash'='null'::jsonb from public.course_offering_versions where offering_id='00000000-0000-4000-8000-000000000931' and version=1),'historical pending snapshot remains exact with null hash; no backfill');
 reset role;
 create temp table reconciliation_history_before as select * from public.admin_audit_events;
 create temp table reconciliation_versions_before as select * from public.course_offering_versions where offering_id='00000000-0000-4000-8000-000000000931';
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000901","app_metadata":{"role":"admin"}}',true);
 insert into public.course_offering_versions(offering_id,version,facts) select '00000000-0000-4000-8000-000000000931',3,draft->'offerings'->0->'facts' from reconciliation_fixture;
+-- COURSE03: publish a pending corrected field with original alternatives and private rejection.
+-- Existing fixture observations stay literal, legacy null/historic capture identities stay untouched.
+do $review_success$
+declare edited jsonb; prior jsonb; conflict jsonb; hash text;
+begin
+  edited := (select draft from reconciliation_fixture);
+  prior := jsonb_set(jsonb_set(edited->'offerings'->0->'facts'->0,'{status}','"unresolved"'),'{verbatim}','null');
+  conflict := jsonb_build_object('offering',0,'key','english','alternatives',jsonb_build_array(
+    jsonb_build_object('key','english','kind','language','verbatim','IELTS 6.5.','applicability','Non-EU applicants','route',null,'deadline_kind',null,'evidence',jsonb_build_array(jsonb_build_object('source_url',prior->'evidence'->0->>'source_url','source_quote','IELTS 6.5.'))),
+    jsonb_build_object('key','english-alternative','kind','language','verbatim','6.5.','applicability','Non-EU applicants','route',null,'deadline_kind',null,'evidence',jsonb_build_array(jsonb_build_object('source_url',prior->'evidence'->0->>'source_url','source_quote','IELTS 6.5.')))
+  ));
+  edited := jsonb_set(edited,'{offerings}',(edited->'offerings') || jsonb_build_array(edited->'offerings'->0));
+  edited := jsonb_set(edited,'{review}',jsonb_build_object('rejected',jsonb_build_array(
+    jsonb_build_object('offering',0,'key','document','reason',E'  12345678901234567890\t'),
+    jsonb_build_object('offering',1,'key','english','reason',repeat('x',2000))),
+    'changes',jsonb_build_array(
+      jsonb_build_object('offering',0,'key','english','kind','edit','reason','Synthetic ordinary correction, no claimed original actor/time.','before',edited->'offerings'->0->'facts'->0),
+      jsonb_build_object('offering',0,'key','english','kind','resolve_conflict','reason','Synthetic explicit conflict correction retains original alternatives.','before',prior,'conflict',conflict))));
+  hash := 'sha256:' || pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(edited->'observations'->0->>'content','UTF8')),'hex');
+  edited := jsonb_set(edited,'{offerings,0,facts,0,evidence,0,source_hash}',to_jsonb(hash));
+  update public.courses set field_extraction=jsonb_set(field_extraction,'{research}',edited) where id='00000000-0000-4000-8000-000000000913';
+end $review_success$;
 select pg_temp.publish_fixture(4);
+select pg_temp.assert_true((select a.course_reconciliation->'review'->'rejected'=jsonb_build_array(c.field_extraction->'research'->'review'->'rejected'->0)
+  and a.course_reconciliation->'review'->'changes'=c.field_extraction->'research'->'review'->'changes'
+  and a.actor_user_id='00000000-0000-4000-8000-000000000901' and a.created_at=v.reviewed_at and v.reviewed_by=a.actor_user_id
+  and v.facts->0->'evidence'->0->>'source_hash'=c.field_extraction->'research'->'offerings'->0->'facts'->0->'evidence'->0->>'source_hash'
+  and v.facts->1->>'status'='unresolved' and v.facts->1->'verbatim'='null'::jsonb
+  from public.admin_audit_events a join public.course_offering_versions v on v.id=(a.course_reconciliation->'version'->>'id')::uuid cross join public.courses c
+  where v.offering_id='00000000-0000-4000-8000-000000000931' and v.version=4 and c.id='00000000-0000-4000-8000-000000000913'),'protected offering-local decisions/hash/DB attestation and rejected original unknown');
+select pg_temp.assert_true((select not (course_reconciliation ? 'review') from public.admin_audit_events where course_reconciliation->'version'->>'version'='2' and row_id='00000000-0000-4000-8000-000000000911'),'legacy protected payload absence remains unchanged');
+
 reset role;
 select pg_temp.assert_true(not exists(select * from reconciliation_history_before except select * from public.admin_audit_events),'all genuine prior history/status/programme payloads preserved');
 select pg_temp.assert_true((select count(*)=1 from public.admin_audit_events where row_id='00000000-0000-4000-8000-000000000921' and programme_correction->'new'->>'degree'='Synthetic audit fixture' and course_reconciliation is null),'existing programme_correction payload preserved independently');
@@ -239,7 +304,7 @@ select pg_temp.assert_true((select review_status='pending' and conflicts_with='0
 -- survives identity approval and unrelated metadata/updated_at changes.
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000901","app_metadata":{"role":"admin"}}',true);
-insert into public.courses(id,source_url,normalized_url,name,university_name,review_status,imported_by,field_extraction,updated_at) select '00000000-0000-4000-8000-000000000916','https://www.daad.de/synthetic-audit-initial','https://www.daad.de/synthetic-audit-initial','Synthetic Computing','Synthetic University','pending','00000000-0000-4000-8000-000000000902',jsonb_build_object('research',draft,'unrelated','before approval'),'2000-01-01T00:00:00Z'::timestamptz from reconciliation_fixture;
+insert into public.courses(id,source_url,normalized_url,name,university_name,review_status,imported_by,field_extraction,updated_at) select '00000000-0000-4000-8000-000000000916','https://www.daad.de/synthetic-audit-initial','https://www.daad.de/synthetic-audit-initial','Synthetic Computing','Synthetic University','pending','00000000-0000-4000-8000-000000000902',jsonb_build_object('research',jsonb_set(draft,'{offerings,0,facts,0,evidence,0,source_hash}','"historical-private-source-token"'),'unrelated','before approval'),'2000-01-01T00:00:00Z'::timestamptz from reconciliation_fixture;
 reset role;
 create temp table initial_research_snapshot as select field_extraction->'research' expected, updated_at previous_updated_at from public.courses where id='00000000-0000-4000-8000-000000000916';
 grant select on initial_research_snapshot to authenticated;
@@ -254,6 +319,7 @@ insert into public.course_offerings(id,programme_id,intake_term,intake_year,appl
 select pg_temp.expect_state($q$select public.publish_course_research_version('00000000-0000-4000-8000-000000000916','00000000-0000-4000-8000-000000000931',0,1,keys,decisions,expected) from reconciliation_fixture cross join initial_research_snapshot$q$,'23514');
 select public.publish_course_research_version('00000000-0000-4000-8000-000000000916','00000000-0000-4000-8000-000000000933',0,1,keys,decisions,expected) from reconciliation_fixture cross join initial_research_snapshot;
 select pg_temp.assert_true((select c.review_status='approved' and c.field_extraction->>'unrelated'='after approval' and c.field_extraction->'research'=s.expected and c.updated_at is distinct from s.previous_updated_at from public.courses c cross join initial_research_snapshot s where c.id='00000000-0000-4000-8000-000000000916'),'identity approval and unrelated metadata preserve exact research token');
+select pg_temp.assert_true((select v.facts->0->'evidence'->0->>'source_hash'='sha256:a6382df07ea6a2fe2df08a7af92d240b2de40d438e009f92903a5f33778083bc' and c.field_extraction->'research'->'offerings'->0->'facts'->0->'evidence'->0->>'source_hash'='historical-private-source-token' from public.course_offering_versions v cross join public.courses c where v.offering_id='00000000-0000-4000-8000-000000000933' and v.version=1 and c.id='00000000-0000-4000-8000-000000000916'),'accepted legacy private token gets canonical new snapshot only; pending legacy token survives');
 select pg_temp.assert_true((select count(*)=1 from public.admin_audit_events where row_id='00000000-0000-4000-8000-000000000916' and course_reconciliation->>'submitted_course_id'='00000000-0000-4000-8000-000000000916'),'same-row canonical publication journals initial version');
 reset role;
 create temp table durable_journal_before as select id,created_at,course_reconciliation from public.admin_audit_events where course_reconciliation is not null;
@@ -269,6 +335,20 @@ select pg_temp.assert_true((select count(*)=2 from public.admin_audit_events a c
   and a.course_reconciliation->'observations'=f.draft->'observations' and a.course_reconciliation->'identity'=f.draft->'identity'
   and a.course_reconciliation->'decisions'=f.decisions
   and exists(select 1 from public.course_offering_versions v where v.id=(a.course_reconciliation->'version'->>'id')::uuid and v.offering_id=(a.course_reconciliation->'version'->>'offering_id')::uuid and v.version=(a.course_reconciliation->'version'->>'version')::integer)),'keep-original retains captures/submitted ID/identity/decisions/version links');
+-- COURSE03: actual role denial and protected history privacy after genuine publication.
+set local role anon;
+select set_config('request.jwt.claims','{}',true);
+select pg_temp.expect_state('select pg_temp.publish_fixture(5)','42501');
+do $anon_history$ begin
+  begin
+    if exists(select 1 from public.admin_audit_events) then raise exception 'anon exposed protected field history'; end if;
+  exception when insufficient_privilege then null; end;
+end $anon_history$;
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000902","app_metadata":{}}',true);
+select pg_temp.expect_state('select pg_temp.publish_fixture(5)','42501');
+select pg_temp.assert_true((select count(*)=0 from public.admin_audit_events),'student cannot read protected field history');
+reset role;
 -- Account deletion nulls the audit actor FK, but never the immutable payload or
 -- version reviewer UUID. Run last, with root role, so no deleted actor is reused.
 delete from auth.users where id='00000000-0000-4000-8000-000000000901';

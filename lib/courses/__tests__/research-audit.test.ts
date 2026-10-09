@@ -26,3 +26,12 @@ describe("protected research audit boundary", () => {
     expect(result.status).toBe("unavailable"); expect(result).not.toHaveProperty("payload");
   });
 });
+
+ it("accepts offering-local private decisions only in the protected envelope", () => {
+  const review = { rejected: [{ offering: 0, key: "fee", reason: "Rejected unsupported fee interpretation." }], changes: [] };
+  const row = { ...auditFixture, course_reconciliation: { ...auditFixture.course_reconciliation, review } };
+  expect(parseResearchAuditEvent(row).status).toBe("available");
+  expect(parseResearchAuditEvent({ ...row, course_reconciliation: { ...row.course_reconciliation, review: { ...review, rejected: [{ ...review.rejected[0], key: "english" }] } } }).status).toBe("unavailable");
+  expect(parseResearchAuditEvent({ ...row, course_reconciliation: { ...row.course_reconciliation, review: { ...review, rejected: [{ ...review.rejected[0], offering: 1 }] } } }).status).toBe("unavailable");
+  expect(parseResearchAuditEvent({ ...row, course_reconciliation: { ...row.course_reconciliation, review: { ...review, reviewed_by: auditFixture.id } } }).status).toBe("unavailable");
+ });

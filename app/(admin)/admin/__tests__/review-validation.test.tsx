@@ -285,8 +285,40 @@ describe("course unscoped publish browser guard (COURSE01)", () => {
     );
     expect(html).toContain("Publish reviewed research");
     expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*>Publish reviewed research/);
+    const publicationId = "publish-research-22222222-2222-4222-8222-222222222222";
+    for (const name of ["accepted", "reconciled", "attest"]) {
+      const controls = html.match(new RegExp('<input(?=[^>]*name="' + name + '")[^>]*>', "g")) ?? [];
+      expect(controls.length).toBeGreaterThan(0);
+      for (const control of controls) expect(control).toContain('form="' + publicationId + '"');
+    }
+    expect(html).toMatch(new RegExp('<textarea(?=[^>]*name="reconciliation_reason:0:english")(?=[^>]*form="' + publicationId + '")[^>]*>'));
+
     expect(html).toContain('name="attest"');
     expect(html).toMatch(/<input(?=[^>]*name="attest")(?=[^>]*required="")[^>]*>/);
     expect(html).not.toMatch(/<input(?=[^>]*name="attest")(?=[^>]*disabled="")[^>]*>/);
   });
+});
+
+it("renders sibling guided forms, scoped section controls and rejected acceptance disabled", () => {
+  const url = "https://www.daad.de/synthetic";
+  const draft = buildResearchDraft({ url, name: "Synthetic", university: "Synthetic University", text: "manual paste ".repeat(30) }, [{ url, origin: "web", retrieved_at: "2026-10-07T12:00:00Z", content: "Synthetic Synthetic University Winter 2027 Non-EU applicants IELTS 6.5." }], { offerings: [{ intake_term: "winter", intake_year: 2027, applicant_group: "Non-EU applicants", scope: { source_url: url, source_quote: "Winter 2027 Non-EU applicants" }, facts: [{ key: "english", kind: "language", verbatim: "IELTS 6.5.", applicability: "Non-EU applicants", route: null, deadline_kind: null, evidence: [{ source_url: url, source_quote: "IELTS 6.5." }] }] }] }, ["Synthetic AI note"]);
+  draft.paste = "CapturedPasteMarker ".repeat(20);
+  draft.review = { rejected: [{ offering: 0, key: "english", reason: "Unsupported interpretation needs further review." }], changes: [] };
+  const course = { id: "11111111-1111-4111-8111-111111111111", review_status: "pending", source_url: url, name: "Synthetic", field_extraction: { research: draft } } as unknown as Tables<"courses">;
+  const html = renderToStaticMarkup(<CourseQueue courses={[course]} definitionsByCourse={new Map()} />);
+  expect(html).toContain("Unverified AI/research notes"); expect(html).toContain("Restore to pending"); expect(html).toContain("Reject selected language fields");
+  expect(html).toContain('name="patch"'); expect(html).toContain("Accept eligible fields in this section");
+  expect(html).toMatch(/<input(?=[^>]*name="accepted")(?=[^>]*value="0:english")(?=[^>]*disabled="")[^>]*>/);
+  const tags = html.match(/<\/?form\b[^>]*>/g) ?? [];
+  let depth = 0; for (const tag of tags) { depth += tag.startsWith("</") ? -1 : 1; expect(depth).toBeLessThanOrEqual(1); } expect(depth).toBe(0);
+  const publicationId = "publish-research-" + course.id;
+  expect((html.match(new RegExp('<form id="' + publicationId + '"', "g")) ?? [])).toHaveLength(1);
+  expect(html).toMatch(new RegExp('<form id="' + publicationId + '"[^>]*>[\\s\\S]*?name="id"[\\s\\S]*?Publish reviewed research[\\s\\S]*?</form>'));
+  for (const name of ["accepted", "attest"]) {
+    const controls = html.match(new RegExp('<input(?=[^>]*name="' + name + '")[^>]*>', "g")) ?? [];
+    expect(controls.length).toBeGreaterThan(0);
+    for (const control of controls) expect(control).toContain('form="' + publicationId + '"');
+  }
+  expect(html).not.toContain("Reviewed fact");
+  expect((html.match(/CapturedPasteMarker/g) ?? []).length).toBeLessThanOrEqual(60);
 });

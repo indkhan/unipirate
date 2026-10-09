@@ -373,9 +373,8 @@ There is no migration, DB publication, seed or KB rebuild in this change.
    Trade-off: publication spans multiple caller-scoped requests. Partial failure
    can expose only the course identity before a reviewed version finishes; retry
    reuses linked scopes and preserves append-only history. No service escalation,
-   migration, backfill or automatic task integration is introduced. COURSE03 will
-   extend this same draft format/review boundary with field editing and conflict
-   resolution; it should not invent a second review contract.
+   backfill or automatic task integration is introduced. COURSE03 extends the
+   same draft format/review boundary with the guided decisions described below.
    A small JSON recovery editor allows admins to repair pending captures and
    source-supported scope after web/AI failure. New human-entered observations
    are labelled `manual`, and newly supplied `web` captures are relabelled server-side.
@@ -391,6 +390,80 @@ There is no migration, DB publication, seed or KB rebuild in this change.
    retaining personal reminders, and publishes reviewed task definitions.
    Existing source-task snapshots remain available for explicit source adoption;
    completed tasks and student edits survive reconciliation.
+
+### Guided course field review (UP-COURSE-03)
+
+The existing research review queue now groups fields by offering and fact kind.
+Field controls edit, reject or restore one identity; section accept selects only
+eligible visible fields in that section, section edit opens those same individual
+editors, and section reject explicitly enumerates checked visible identities.
+Acceptance still uses the existing independent full-source reconciliation and
+rationale for every field. Publication is a separate authenticated attestation.
+The browser raw token and parsed draft are shared once through a small React
+context rather than duplicated in every form. Guided client forms attach the raw
+token to each pending action. All publication controls reference a sibling form; correction/rejection forms
+are never nested inside it. AI/research notes and all draft fields are labelled
+unverified. Unknown and rejected fields cannot receive an acceptance checkbox.
+
+The optional private draft member is exactly
+`review: {rejected: {offering,key,reason}[], changes:
+{offering,key,kind: "edit"|"resolve_conflict",reason,before,conflict?}[]}`.
+Both arrays are bounded to 400; offering indices are 0–7, keys are nonblank and
+at most 240 characters, and trimmed reasons are 20–2000 characters. Rejected
+identities are unique and must exist. Changes retain chronological original
+unverified fact snapshots; only conflict resolutions contain the exact original
+conflict and alternatives. Guided corrections preserve key/kind/deadline semantics,
+applicant scope, every unrelated raw fact/scope/capture/paste and metadata sibling.
+Known conflicts require explicit source-backed correction and rationale; one
+resolution removes only that conflict. Existing university/VPD/uni-assist stages
+stay distinct, and no intake, route, date, time or timezone is inferred.
+
+Rejection retains the original privately and blocks selection for publication.
+Restore removes the current private rejection without verification; the field's
+pending or unresolved state still applies. Unselected/rejected fields use the
+existing public unresolved/null projection, which renders neither original wording
+nor its evidence as a reviewed assertion. The public schema/status/format and
+catalogue/version identities are unchanged. Manual JSON recovery remains available
+for new literal captures and scope recovery; its values are not authenticated
+historical authorship. Recovery cannot erase existing pending decision history or
+overwrite rejected originals; restore and conflict resolution use guided controls.
+
+`patchAdminCourseResearchDraft` compares the browser's expected RAW research token
+with actual stored research before deriving a patch. It then sends the original
+full metadata plus the pending result through the existing caller-scoped
+`compare_and_set_course_research_metadata` POST body RPC, protecting the race after
+read without URL-sized JSON filters. Actions require `requireAdmin` and Zod;
+RLS remains the authorization boundary. Pure patch helpers perform zero I/O.
+
+The query shell computes new `sha256:<64 lowercase hex>` identities only for
+changed/new field evidence, from exact UTF-8 stored observation content without
+trimming or normalization. Evidence must match URL, literal retrieval timestamp
+and contiguous quote, with one distinct matching content; identical duplicate
+captures are permitted. Forged or ambiguous canonical hashes fail saving and
+publication. Before any approval/catalogue/publication mutation, the query shell
+preflights every accepted evidence capture across every offering, including
+unchanged AI evidence with null or legacy hashes. The publication RPC independently
+derives the canonical hash under its existing raw-draft lock for every accepted
+evidence item in the **new immutable verified snapshot only**, with database-derived
+reviewer/time. Offering version identifiers are not captured-text hashes. Pending
+raw research, untouched fields and every historical version retain their original
+null/arbitrary identities; there is no historical backfill. A hash identifies captured text, not original
+remote HTML/PDF bytes, authenticity, completeness or academic correctness.
+
+Additive migration `20261007000105_course_field_review.sql` replaces the existing
+publication function body with the same signature/grants/auth/locks/raw equality
+and version/audit atomicity. It validates optional review from locked actual stored
+research, rejects selected rejected fields, validates supplied canonical hashes
+and derives accepted snapshot hashes with
+qualified PostgreSQL builtin SHA256/UTF8 conversion under an empty function
+search path (no pgcrypto dependency).
+Only the selected offering's validated optional review is copied into protected
+`course_reconciliation`. Existing decisions and exact accepted-key invariants
+remain. Database reviewer/time attest the whole publication snapshot, never claimed
+original pending edit authorship. Legacy drafts and protected payloads without
+review remain valid and immutable. No table/column/RPC argument/type change is
+introduced. The extended disposable SQL fixture covers hashes, local decisions,
+role denial and atomic rollback; actual migration/RLS/browser gates remain root-owned.
 
 ### 3. Tasks: generate → materialize → view
 

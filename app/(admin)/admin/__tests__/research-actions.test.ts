@@ -1,9 +1,9 @@
 import { beforeEach, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ requireAdmin: vi.fn(), get: vi.fn(), review: vi.fn(), resolve: vi.fn(), publish: vi.fn(), edit: vi.fn(), saveDraft: vi.fn() }));
+const mocks = vi.hoisted(() => ({ requireAdmin: vi.fn(), get: vi.fn(), review: vi.fn(), resolve: vi.fn(), publish: vi.fn(), edit: vi.fn(), saveDraft: vi.fn(), patch: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: mocks.requireAdmin }));
-vi.mock("@/lib/db/admin-queries", () => ({ getAdminCourse: mocks.get, updateCourseReviewStatus: mocks.review, resolveCourseConflict: mocks.resolve, publishAdminCourseResearch: mocks.publish, updateAdminCourse: mocks.edit, saveAdminCourseResearchDraft: mocks.saveDraft }));
+vi.mock("@/lib/db/admin-queries", () => ({ getAdminCourse: mocks.get, updateCourseReviewStatus: mocks.review, resolveCourseConflict: mocks.resolve, publishAdminCourseResearch: mocks.publish, updateAdminCourse: mocks.edit, saveAdminCourseResearchDraft: mocks.saveDraft, patchAdminCourseResearchDraft: mocks.patch }));
 vi.mock("next/navigation", () => ({ redirect: () => { throw new Error("redirect"); } }));
-import { reviewCourseAction, resolveConflictAction, publishCourseResearchAction, updateCourseAction, saveCourseResearchDraftAction } from "../actions";
+import { reviewCourseAction, resolveConflictAction, publishCourseResearchAction, updateCourseAction, saveCourseResearchDraftAction, patchCourseResearchDraftAction } from "../actions";
 const id = "11111111-1111-4111-8111-111111111111";
 const metadata = { core: "library", research: { format: "up-course-01/v1", status: "incomplete", identity: { name: "Synthetic", university: "Synthetic", source_url: "https://www.daad.de/example" }, observations: [], offerings: [], conflicts: [], issues: [] } };
 const form = (fields: Record<string, string>) => { const data = new FormData(); for (const [key, value] of Object.entries(fields)) data.set(key, value); return data; };
@@ -66,4 +66,26 @@ it("propagates stale recovery without a success redirect or publication", async 
   mocks.saveDraft.mockRejectedValue(new Error("Course metadata changed; reload and review again"));
   await expect(saveCourseResearchDraftAction(form({ id, draft: JSON.stringify(metadata.research) }))).rejects.toThrow("Course metadata changed; reload and review again");
   expect(mocks.publish).not.toHaveBeenCalled(); expect(mocks.resolve).not.toHaveBeenCalled();
+});
+
+it("sends bounded guided decisions with the browser raw token, never actor/time", async () => {
+  const patch = { kind: "reject", entries: [{ offering: 0, key: "english" }], reason: "Compared source and rejected this interpretation." };
+  await expect(patchCourseResearchDraftAction(form({ id, expected: JSON.stringify(metadata.research), patch: JSON.stringify(patch) }))).rejects.toThrow("redirect");
+  expect(mocks.patch).toHaveBeenCalledWith({}, id, metadata.research, patch); expect(mocks.publish).not.toHaveBeenCalled();
+});
+it.each([null, "student"])("blocks unauthorized guided save (%s)", async role => {
+  mocks.requireAdmin.mockRejectedValue(new Error(role ?? "Anonymous"));
+  await expect(patchCourseResearchDraftAction(form({ id, expected: "{}", patch: "{}" }))).rejects.toThrow();
+  expect(mocks.patch).not.toHaveBeenCalled();
+});
+it("propagates guided stale-token failure without a success redirect", async () => {
+  mocks.patch.mockRejectedValue(new Error("Research changed; reload and review again"));
+  await expect(patchCourseResearchDraftAction(form({ id, expected: JSON.stringify(metadata.research), patch: JSON.stringify({ kind: "restore", offering: 0, key: "english" }) }))).rejects.toThrow(/changed/);
+  expect(mocks.publish).not.toHaveBeenCalled();
+});
+it("rejects forged guided author and short reason at the action boundary", async () => {
+  for (const patch of [{ kind: "reject", entries: [{ offering: 0, key: "english" }], reason: "short" }, { kind: "restore", offering: 0, key: "english", reviewed_by: id }]) {
+    await expect(patchCourseResearchDraftAction(form({ id, expected: "{}", patch: JSON.stringify(patch) }))).rejects.toThrow();
+  }
+  expect(mocks.patch).not.toHaveBeenCalled();
 });
