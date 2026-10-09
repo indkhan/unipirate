@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Database } from "../database.types";
-import { publishAdminCourseResearch, resolveCourseConflict, updateCourseReviewStatus, saveAdminCourseResearchDraft, updateAdminCourse, listAdminCourseResearchHistory } from "../admin-queries";
+import { publishAdminCourseResearch, resolveCourseConflict, updateCourseReviewStatus, saveAdminCourseResearchDraft, updateAdminCourse, listAdminCourseResearchHistory, patchAdminCourseResearchDraft } from "../admin-queries";
 import { auditFixture } from "@/lib/courses/__tests__/fixtures/research-audit";
 import { buildResearchDraft } from "@/lib/courses/research";
 const id = "11111111-1111-4111-8111-111111111111";
@@ -330,4 +330,105 @@ describe("research publication helpers (synthetic HTTP, no RLS claim)", () => {
     expect(writes.filter(w => w.table === "resolve_course_conflict")).toHaveLength(1);
   });
 
+});
+
+describe("guided pending query boundary", () => {
+  const reason = "Compared actual complete capture and scoped wording.";
+  it("rejects a stale browser raw token before patching or CAS", async () => {
+    const { db, writes } = client();
+    await expect(patchAdminCourseResearchDraft(db, id, { ...draft, issues: ["stale"] }, { kind: "reject", entries: [{ offering: 0, key: "english" }], reason })).rejects.toThrow(/changed|stale/i);
+    expect(writes).toEqual([]);
+  });
+  it("preserves raw sibling records and computes only changed field hashes from exact UTF8 content", async () => {
+    const raw = structuredClone(draft); raw.identity.name = "  " + raw.identity.name + "  ";
+    raw.observations[0].content += " é\n";
+    raw.offerings[0].facts[1].evidence = [];
+    const metadata = { research: raw, sibling: [null, false, " keep "] };
+    const { db, writes } = client(false, undefined, { field_extraction: metadata });
+    const replacement = structuredClone(raw.offerings[0].facts[0]);
+    await patchAdminCourseResearchDraft(db, id, raw, { kind: "edit", offering: 0, key: "english", reason, replacement });
+    const next = (writes[0].body.p_next_metadata as { research: typeof draft; sibling: unknown }).research;
+    const { createHash } = await import("node:crypto");
+    expect(next.offerings[0].facts[0].evidence[0].source_hash).toBe("sha256:" + createHash("sha256").update(raw.observations[0].content, "utf8").digest("hex"));
+    expect(next.offerings[0].facts.slice(1)).toEqual(raw.offerings[0].facts.slice(1));
+    expect(next.identity).toEqual(raw.identity); expect(next.observations).toEqual(raw.observations); expect(next.paste).toBe(raw.paste);
+    expect(writes[0].body.p_expected_metadata).toEqual(metadata);
+    expect((writes[0].body.p_next_metadata as Record<string, unknown>).sibling).toEqual(metadata.sibling);
+    expect(writes).toHaveLength(1);
+  });
+  it.each(["forged", "ambiguous"])("blocks %s capture hashes before mutations", async kind => {
+    const raw = structuredClone(draft);
+    if (kind === "ambiguous") raw.observations.push({ ...raw.observations[0], content: raw.observations[0].content + " Different capture" });
+    const replacement = structuredClone(raw.offerings[0].facts[0]);
+    if (kind === "forged") replacement.evidence[0].source_hash = "sha256:" + "0".repeat(64);
+    const { db, writes } = client(false, undefined, { field_extraction: { research: raw } });
+    await expect(patchAdminCourseResearchDraft(db, id, raw, { kind: "edit", offering: 0, key: "english", reason, replacement })).rejects.toThrow(/hash|ambiguous/i);
+    expect(writes).toEqual([]);
+  });
+  it("accepts identical duplicate captures and retains unrelated legacy hashes", async () => {
+    const raw = structuredClone(draft); raw.observations.push(structuredClone(raw.observations[0]));
+    raw.offerings[0].facts[0].evidence[0].source_hash = "historic-source-version";
+    const { db, writes } = client(false, undefined, { field_extraction: { research: raw } });
+    await patchAdminCourseResearchDraft(db, id, raw, { kind: "reject", entries: [{ offering: 0, key: "english" }], reason });
+    expect((writes[0].body.p_next_metadata as { research: typeof draft }).research.offerings).toEqual(raw.offerings);
+    const editing = client(false, undefined, { field_extraction: { research: raw } });
+    await patchAdminCourseResearchDraft(editing.db, id, raw, { kind: "edit", offering: 0, key: "english", reason, replacement: raw.offerings[0].facts[0] });
+    const saved = (editing.writes[0].body.p_next_metadata as { research: typeof draft }).research;
+    expect(saved.offerings[0].facts[0].evidence[0].source_hash).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(saved.observations).toEqual(raw.observations);
+  });
+  it("propagates the after-read CAS race and caller denial without publication", async () => {
+    for (const context of [client(false, undefined, {}, {}, { markerRace: true }), client(false, "compare_and_set_course_research_metadata")]) {
+      await expect(patchAdminCourseResearchDraft(context.db, id, draft, { kind: "reject", entries: [{ offering: 0, key: "english" }], reason })).rejects.toThrow();
+      expect(context.writes).toHaveLength(1); expect(context.writes[0].table).toBe("compare_and_set_course_research_metadata");
+    }
+  });
+  it("validates canonical stored hashes before publication", async () => {
+    const raw = structuredClone(draft); raw.offerings[0].facts[0].evidence[0].source_hash = "sha256:" + "f".repeat(64);
+    const { db, writes } = client(false, undefined, { field_extraction: { research: raw } });
+    await expect(publishAdminCourseResearch(db, id, ["0:english"], id, decision)).rejects.toThrow(/hash/i); expect(writes).toEqual([]);
+  });
+});
+
+it("manual recovery cannot erase pending decision history or overwrite rejected originals", async () => {
+  const raw = structuredClone(draft);
+  raw.review = { rejected: [{ offering: 0, key: "english", reason: "Keep original privately until explicit pending restore." }], changes: [] };
+  for (const mutate of [
+    (d: typeof raw) => { delete d.review; },
+    (d: typeof raw) => { d.offerings[0].facts[0].verbatim = "6.5."; },
+  ]) {
+    const edited = structuredClone(raw); mutate(edited);
+    const { db, writes } = client(false, undefined, { field_extraction: { research: raw } });
+    await expect(saveAdminCourseResearchDraft(db, id, edited)).rejects.toThrow(/guided|rejected|history/i); expect(writes).toEqual([]);
+  }
+});
+
+it("blocks selected rejected publication before identity or catalogue writes", async () => {
+  const raw = structuredClone(draft); raw.review = { rejected: [{ offering: 0, key: "english", reason: "Rejected this interpretation after actual source comparison." }], changes: [] };
+  const { db, writes } = client(false, undefined, { field_extraction: { research: raw } });
+  await expect(publishAdminCourseResearch(db, id, ["0:english"], id, decision)).rejects.toThrow(/rejected/i); expect(writes).toEqual([]);
+});
+
+ describe("accepted capture publication preflight", () => {
+  it("rejects distinct matching captures with null hashes before any mutation, including a later offering", async () => {
+    const raw = structuredClone(draft);
+    const second = structuredClone(raw.offerings[0]);
+    second.facts[0].evidence[0].source_url = "https://www.daad.de/later";
+    raw.offerings.push(second);
+    raw.observations.push({ ...raw.observations[0], url: "https://www.daad.de/later" }, { ...raw.observations[0], url: "https://www.daad.de/later", content: raw.observations[0].content + " Different captured text" });
+    const { db, writes } = client(false, undefined, { field_extraction: { research: raw } });
+    await expect(publishAdminCourseResearch(db, id, ["0:english", "1:english"], id, [...decision, { ...decision[0], key: "1:english" }])).rejects.toThrow(/ambiguous|hash/i);
+    expect(writes).toEqual([]);
+  });
+  it("allows identical full captures and preserves exact pending raw bytes and legacy hash tokens", async () => {
+    const raw = structuredClone(draft); raw.observations[0].content += "\r\nUnicode é 終";
+    raw.observations.push(structuredClone(raw.observations[0]));
+    raw.offerings[0].facts[0].evidence[0].source_hash = "historical-private-token";
+    const before = JSON.stringify(raw);
+    const { db, writes } = client(false, undefined, { field_extraction: { research: raw } });
+    await publishAdminCourseResearch(db, id, ["0:english"], id, decision);
+    expect(JSON.stringify(raw)).toBe(before);
+    expect(JSON.stringify(writes.find(w => w.table === "publish_course_research_version")?.body.p_expected_research)).toBe(before);
+    expect(writes.filter(w => w.table === "publish_course_research_version")).toHaveLength(1);
+  });
 });

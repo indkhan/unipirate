@@ -20,7 +20,7 @@ import {
 import { statusBadge } from "./admin-shared";
 import { ActionButton } from "./action-button";
 import { ResearchHistory, UntrustedLegacyReconciliation } from "./research-history";
-import { ResearchFactReview } from "./research-review-field";
+import { ResearchFactReview, ResearchFieldEditor, ResearchSectionControls, ResearchSectionReject, ResearchReviewProvider } from "./research-review-field";
 
 function compactJson(value: Json | null): string {
   if (value === null) return "Not extracted";
@@ -359,30 +359,39 @@ function ResearchReview({ course, history }: { course: Tables<"courses">; histor
   try { draft = readResearch(course.field_extraction); }
   catch { return <>{journal}<p role="alert">Invalid research capture. Publication blocked; retain the manual source and submit a corrected draft.</p></>; }
   if (!draft) return journal;
+  const expected = JSON.stringify((course.field_extraction as Record<string, Json>).research);
+  const formId = "publish-research-" + course.id;
   const needsReconciliation = researchNeedsReconciliation(draft);
   const noSupportedOfferings = draft.offerings.length === 0;
-  return <>{journal}<form action={publishCourseResearchAction} className="mt-4 grid gap-3 rounded border p-3">
-    <input type="hidden" name="id" value={course.id} />
+  return <ResearchReviewProvider expected={expected} draft={draft}>{journal}<section className="mt-4 grid gap-3 rounded border p-3">
     <h4 className="font-semibold">Research: {draft.status} · pending human review</h4>
     <p className="text-sm">Open the official sources and check programme identity, actual effective intake and applicant scope before accepting a fact. Unchecked facts publish as unresolved. No dates or tasks are inferred from this draft.</p>
     {needsReconciliation && <p className="text-amber-700">The AI context omitted captured content. Compare every full captured source before deciding each accepted field; known conflicts require explicit correction first.</p>}
+    <h5>Unverified AI/research notes</h5>
     {draft.issues.map(issue => <p className="text-sm text-amber-700" key={issue}>{issue}</p>)}
     {draft.offerings.length === 0 && <p>Publication requires supported effective intake and applicant scope. Repair the offering scope before publishing; sourced captures and manual pasted values remain available for review.</p>}
     {!!draft.unscoped?.length && <details><summary>Sourced captures with unknown effective intake (not publishable)</summary>{draft.unscoped.map(f => <div key={f.key}><p>{f.verbatim} · {f.applicability}</p>{f.evidence.map((e, i) => <blockquote key={i}><q>{e.source_quote}</q> · <a href={e.source_url} target="_blank" rel="noreferrer">{e.source_url}</a> · retrieved {e.retrieved_at}</blockquote>)}</div>)}</details>}
-    {draft.offerings.map((offering, index) => <fieldset key={index} className="grid gap-2 rounded border p-3">
-      <legend>{offering.intake_term} {offering.intake_year} · {offering.applicant_group}</legend>
+    {draft.offerings.map((offering, index) => <div key={index} className="grid gap-2 rounded border p-3">
+      <h5>{offering.intake_term} {offering.intake_year} · {offering.applicant_group}</h5>
       <p className="text-sm">Effective scope: <q>{offering.scope.source_quote}</q> · <a href={offering.scope.source_url} target="_blank" rel="noreferrer" className="underline">Official scope source</a></p>
-      {offering.facts.map(fact => <div key={fact.key} className="border-b pb-2 text-sm">
-        <ResearchFactReview offeringIndex={index} factKey={fact.key} verbatim={fact.verbatim} status={fact.status} />
-        <p>Applicability: {fact.applicability}</p>
-        {fact.evidence.map((e, i) => <blockquote key={i}><q>{e.source_quote}</q> · <a href={e.source_url} target="_blank" rel="noreferrer" className="underline">{e.source_url}</a> · retrieved {e.retrieved_at}</blockquote>)}
-        {draft.conflicts.filter(c => c.offering === index && c.key === fact.key).map(c => <p key={c.key} className="text-amber-700">Source conflict: {c.alternatives.map(a => a.verbatim).join(" / ")}. Remains unresolved.</p>)}
-      </div>)}
-    </fieldset>)}
+      {[...new Set(offering.facts.map(f => f.kind))].map(kind => <fieldset key={kind} className="grid gap-2 rounded border p-2">
+        <legend>{kind}</legend><ResearchSectionControls />
+        {offering.facts.filter(f => f.kind === kind).map(fact => <div key={fact.key} className="border-b pb-2 text-sm">
+          <ResearchFactReview formId={formId} offeringIndex={index} factKey={fact.key} verbatim={fact.verbatim}
+            status={draft.review?.rejected.some(e => e.offering === index && e.key === fact.key) ? "rejected" : fact.status} />
+          <p>Applicability: {fact.applicability} · Unverified pending research</p>
+          {fact.evidence.map((e, i) => <blockquote key={i}><q>{e.source_quote}</q> · <a href={e.source_url} target="_blank" rel="noreferrer" className="underline">{e.source_url}</a> · retrieved {e.retrieved_at} · captured-text identity: {e.source_hash ?? "Unavailable (legacy capture)"}</blockquote>)}
+          {draft.conflicts.filter(c => c.offering === index && c.key === fact.key).map(c => <p key={c.key} className="text-amber-700">Source conflict: {c.alternatives.map(a => a.verbatim).join(" / ")}. Remains unresolved.</p>)}
+          <ResearchFieldEditor courseId={course.id} offering={index} factKey={fact.key} />
+        </div>)}
+        <ResearchSectionReject courseId={course.id} offering={index} kind={kind} />
+      </fieldset>)}
+    </div>)}
     <details><summary>Captured sources and manual fallback</summary>{draft.paste && <pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">{draft.paste}</pre>}{draft.observations.map((o, i) => <article key={i}><p>{o.origin} · {o.url} · captured {o.retrieved_at}</p><pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">{o.content}</pre></article>)}</details>
-    <label className="flex gap-2 text-sm"><input type="checkbox" name="attest" value="yes" required={!noSupportedOfferings} disabled={noSupportedOfferings} />I checked the current official sources, identity, applicability and effective intake of every accepted assertion. Unaccepted facts remain unknown.</label>
-    <ActionButton pendingText="Publishing…" confirm="Publish these explicitly reviewed facts? Unaccepted assertions stay unresolved; existing task progress is retained." disabled={noSupportedOfferings}>Publish reviewed research</ActionButton>
-  </form>
+    <form id={formId} action={publishCourseResearchAction}><input type="hidden" name="id" value={course.id} />
+    <label className="flex gap-2 text-sm"><input type="checkbox" form={formId} name="attest" value="yes" required={!noSupportedOfferings} disabled={noSupportedOfferings} />I checked the current official sources, identity, applicability and effective intake of every accepted assertion. Unaccepted facts remain unknown.</label>
+    <ActionButton pendingText="Publishing…" confirm="Publish these explicitly reviewed facts? Unaccepted assertions stay unresolved; existing task progress is retained." disabled={noSupportedOfferings}>Publish reviewed research</ActionButton></form>
+  </section>
   <details className="mt-3"><summary>Manual research recovery (JSON)</summary>
     <p className="text-sm">Capture current official source text with its real URL and retrieval time using origin &quot;manual&quot;. Correct scope/wording only when those observations support it; keep unknown scope in unscoped captures. Resolve a conflict explicitly before removing its conflict entry. Saving does not verify or publish any fact.</p>
     <form action={saveCourseResearchDraftAction} className="grid gap-2">
@@ -390,7 +399,7 @@ function ResearchReview({ course, history }: { course: Tables<"courses">; histor
       <label>Pending research draft<textarea name="draft" required maxLength={850000} defaultValue={JSON.stringify(draft, null, 2)} className="min-h-60 w-full rounded border p-2 font-mono text-xs" /></label>
       <ActionButton pendingText="Saving…">Save pending research recovery</ActionButton>
     </form>
-  </details></>;
+  </details></ResearchReviewProvider>;
 }
 
 export function CourseTaskLibrary({

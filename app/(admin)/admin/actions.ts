@@ -17,8 +17,9 @@ import {
   syncAdminCourseTaskDefinitions,
   publishAdminCourseResearch,
   saveAdminCourseResearchDraft,
+  patchAdminCourseResearchDraft,
 } from "@/lib/db/admin-queries";
-import { hasResearch, ResearchDraftSchema } from "@/lib/courses/research";
+import { hasResearch, ResearchDraftSchema, ResearchPatchSchema } from "@/lib/courses/research";
 import { normalizeUrl } from "@/lib/courses/import";
 import type { Json } from "@/lib/db/database.types";
 import { CalendarDateSchema } from "@/lib/engine/calendar-day";
@@ -141,6 +142,17 @@ export async function publishCourseResearchAction(formData: FormData) {
   );
   await publishAdminCourseResearch(db, values.id, values.accepted, user.id, reconciliation);
   redirect(`/admin?view=reviews&queue=pending&message=${encodeURIComponent("Reviewed research published; unaccepted facts remain unresolved.")}`);
+}
+
+export async function patchCourseResearchDraftAction(formData: FormData) {
+  const { db } = await requireAdmin();
+  const values = z.object({ id: z.string().uuid(), expected: z.string().min(2).max(850_000) }).strict().parse({ id: formData.get("id"), expected: formData.get("expected") });
+  const rawPatch = formData.has("patch")
+    ? JSON.parse(z.string().min(2).max(100_000).parse(formData.get("patch")))
+    : { kind: "reject", reason: formData.get("reason"), entries: z.array(z.string().max(500)).max(50).parse(formData.getAll("entry")).map(e => JSON.parse(e)) };
+  const patch = ResearchPatchSchema.parse(rawPatch);
+  await patchAdminCourseResearchDraft(db, values.id, JSON.parse(values.expected), patch);
+  redirect("/admin?view=reviews&queue=pending&course=" + values.id + "&message=" + encodeURIComponent("Field review saved as pending. Explicit review and publication are still required."));
 }
 
 export async function saveCourseResearchDraftAction(formData: FormData) {

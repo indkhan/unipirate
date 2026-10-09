@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { ProgrammeCorrectionSchema, ProgrammeSchema, OfferingSchema, OfferingVersionSchema, CourseCatalogueIdSchema, parseProgrammeRow, parseOfferingRow, parseOfferingVersionRow } from "@/lib/courses/offerings";
 // Queries for the /admin review workspace: rule editing/verification, the
 // course review queues, and the audit trail. Callers must hold an admin
@@ -24,7 +25,7 @@ import type { ApplicationWithCourse } from "@/lib/db/queries";
 import { profileFromAnswers } from "@/lib/tasks/profile";
 import { todayIsoBerlin } from "@/lib/tasks/dates";
 import { unwrap } from "@/lib/db/unwrap";
-import { hasResearch, readResearch, ResearchReconciliationSchema, prepareResearchReview, ResearchDraftSchema, parseResearchAuditEvent } from "@/lib/courses/research";
+import { hasResearch, readResearch, ResearchReconciliationSchema, prepareResearchReview, ResearchDraftSchema, parseResearchAuditEvent, patchResearchDraft, ResearchPatchSchema, type ResearchDraft } from "@/lib/courses/research";
 import { getProgrammeByLegacyCourse, listCourseOfferings } from "@/lib/db/queries";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
@@ -433,6 +434,7 @@ export async function publishAdminCourseResearch(
   const rawResearch = hasResearch(submitted.field_extraction) ? (submitted.field_extraction as Record<string, Json>).research : undefined;
   const draft = readResearch(submitted.field_extraction);
   if (!draft) throw new Error("No research draft to review");
+  validateResearchHashes(draft);
   if (!draft.offerings.length) throw new Error("Effective offering scope is required before research publication; unscoped captures require manual recovery");
   if (new Set(decisions.map(d => d.key)).size !== decisions.length || decisions.some(d => !accepted.includes(d.key))) throw new Error("Invalid reconciliation selection");
   if (accepted.some(key => !decisions.some(d => d.key === key))) throw new Error("Each accepted field requires an explicit reconciliation decision");
@@ -444,6 +446,11 @@ export async function publishAdminCourseResearch(
     const keys = accepted.filter(k => k.startsWith(index + ":")).map(k => k.slice(k.indexOf(":") + 1));
     const localDecisions = decisions.filter(d => d.key.startsWith(index + ":")).map(d => ({ ...d, key: d.key.slice(d.key.indexOf(":") + 1) }));
     prepareResearchReview(draft, index, keys, reviewer, now, localDecisions);
+    // The locked RPC derives hashes on the new snapshot only. Preflight every
+    // accepted capture here so a later offering cannot fail after earlier writes.
+    for (const fact of scope.facts.filter(f => keys.includes(f.key))) {
+      for (const evidence of fact.evidence) captureHash(draft, evidence);
+    }
     return { scope, index, keys, decisions: localDecisions };
   });
   const canonicalId = submitted.conflicts_with ?? submitted.id;
@@ -517,6 +524,53 @@ async function compareAndSetCourseResearchMetadata(
   return row;
 }
 
+// Hashes identify exact stored captured text, not remote file bytes/authenticity.
+function captureHash(draft: ResearchDraft, e: ResearchDraft["offerings"][number]["facts"][number]["evidence"][number]): string {
+  const contents = new Set(draft.observations.filter(o => o.origin !== "paste" && o.url === e.source_url
+    && o.retrieved_at === e.retrieved_at && o.content.includes(e.source_quote)).map(o => o.content));
+  if (contents.size !== 1) throw new Error("Missing or ambiguous captured-text hash identity");
+  return "sha256:" + createHash("sha256").update([...contents][0], "utf8").digest("hex");
+}
+function validateResearchHashes(draft: ResearchDraft) {
+  for (const f of [...draft.offerings.flatMap(o => o.facts), ...(draft.unscoped ?? []), ...(draft.review?.changes.map(c => c.before) ?? [])]) {
+    for (const e of f.evidence) if (e.source_hash?.startsWith("sha256:")
+      && (!/^sha256:[0-9a-f]{64}$/.test(e.source_hash) || e.source_hash !== captureHash(draft, e))) throw new Error("Invalid captured-text hash");
+  }
+}
+function hashChangedEvidence(draft: ResearchDraft, previous: ResearchDraft, only?: { offering: number; key: string }) {
+  const groups = [...draft.offerings.map((o, i) => ({ facts: o.facts, previous: previous.offerings[i]?.facts ?? [], index: i })),
+    { facts: draft.unscoped ?? [], previous: previous.unscoped ?? [], index: -1 }];
+  for (const group of groups) for (const f of group.facts) {
+    const before = group.previous.find(p => p.key === f.key);
+    if (only ? group.index !== only.offering || f.key !== only.key : jsonEqual(before, f)) continue;
+    f.evidence = f.evidence.map(e => {
+      const hash = captureHash(draft, e);
+      const legacy = before?.evidence.some(p => jsonEqual(p, e));
+      if (e.source_hash !== null && e.source_hash !== hash && (!legacy || e.source_hash.startsWith("sha256:"))) throw new Error("Forged captured-text hash");
+      return { ...e, source_hash: hash };
+    });
+  }
+  validateResearchHashes(draft);
+}
+export async function patchAdminCourseResearchDraft(db: Pick<SupabaseClient<Database>, "from" | "rpc">, courseId: string, expectedRaw: unknown, input: unknown) {
+  const id = CourseCatalogueIdSchema.parse(courseId);
+  const expected = JsonSchema.parse(expectedRaw);
+  const patch = ResearchPatchSchema.parse(input);
+  const existing = await getAdminCourse(db, id);
+  if (existing.review_status !== "pending" || !hasResearch(existing.field_extraction)) throw new Error("Only pending research can be edited");
+  const metadata = existing.field_extraction as Record<string, Json>;
+  // Browser equality is checked BEFORE deriving any patch; POST body CAS guards the later race.
+  if (!jsonEqual(metadata.research, expected)) throw new Error("Research changed; reload and review again");
+  const raw = metadata.research as unknown as ResearchDraft;
+  const next = patchResearchDraft(raw, patch);
+  if (patch.kind === "edit" || patch.kind === "resolve_conflict") hashChangedEvidence(next, raw, patch);
+  else validateResearchHashes(next);
+  ResearchDraftSchema.parse(next);
+  const identity = ResearchDraftSchema.parse(next).identity;
+  if (identity.name !== existing.name || identity.university !== existing.university_name) throw new Error("Research identity must match course");
+  return compareAndSetCourseResearchMetadata(db, id, existing.field_extraction, { ...metadata, research: next } as unknown as Json, "recovery");
+}
+
 /** Admin-only pending recovery. Human source observations are labelled manual,
  * never represented as provider retrieval or reviewer verification. */
 export async function saveAdminCourseResearchDraft(db: Pick<SupabaseClient<Database>, "from" | "rpc">, courseId: string, input: unknown) {
@@ -525,11 +579,17 @@ export async function saveAdminCourseResearchDraft(db: Pick<SupabaseClient<Datab
   const existing = await getAdminCourse(db, id);
   if (existing.review_status !== "pending" || !hasResearch(existing.field_extraction)) throw new Error("Only pending research can be repaired; published history requires a new submission");
   const previous = readResearch(existing.field_extraction);
+  if (previous?.review && (!jsonEqual(previous.review, incoming.review)
+    || previous.review.rejected.some(e => !jsonEqual(previous.offerings[e.offering]?.facts.find(f => f.key === e.key), incoming.offerings[e.offering]?.facts.find(f => f.key === e.key)))))
+    throw new Error("Use guided decisions to preserve pending history and rejected originals");
+  if (previous?.conflicts.some(c => !incoming.conflicts.some(n => jsonEqual(c, n)))) throw new Error("Use guided explicit conflict resolution; retain original alternatives in history");
   // Retain every original capture including paste. New web content is a human
   // capture and cannot masquerade as a provider observation.
   const observations = incoming.observations.map(o => o.origin === "web" && !previous?.observations.some(p => JSON.stringify(p) === JSON.stringify(o)) ? { ...o, origin: "manual" as const } : o);
   const retained = (previous?.observations ?? []).filter(o => !observations.some(p => JSON.stringify(p) === JSON.stringify(o)));
   const draft = ResearchDraftSchema.parse({ ...incoming, ...(previous?.paste !== undefined ? { paste: previous.paste } : {}), observations: [...retained, ...observations] });
+  if (previous) hashChangedEvidence(draft, previous);
+  else validateResearchHashes(draft);
   if (draft.identity.name !== existing.name || draft.identity.university !== existing.university_name) throw new Error("Research identity must match the course being reviewed");
   const metadata = existing.field_extraction as Record<string, Json>;
   return compareAndSetCourseResearchMetadata(db, id, existing.field_extraction, { ...metadata, research: draft }, "recovery");

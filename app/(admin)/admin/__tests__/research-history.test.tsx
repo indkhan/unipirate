@@ -40,3 +40,10 @@ describe("admin research history rendering (no DB/auth claims)", () => {
     expect(html).toContain("draft"); expect(html).toContain("verified"); expect(html).toContain("system"); expect(html).not.toContain("Protected research reconciliation history");
   });
 });
+
+it("renders protected edit/rejection history with honest attestation and hash meaning", () => {
+  const record = parseResearchAuditEvent({ ...auditFixture, course_reconciliation: { ...auditFixture.course_reconciliation,
+    review: { rejected: [{ offering: 0, key: "fee", reason: "Source did not establish the alleged fee." }], changes: [] } } });
+  const html = renderToStaticMarkup(<ResearchHistory records={[record]} />);
+  expect(html).toContain("Rejected fee"); expect(html).toContain("publication attestation"); expect(html).toContain("not remote file authenticity");
+});

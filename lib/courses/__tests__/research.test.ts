@@ -251,3 +251,33 @@ describe("guided field decisions", () => {
     expect(() => patchResearchDraft(raw, { kind: "restore", offering: 0, key: "english" })).toThrow();
   });
 });
+
+it("validates chronological original snapshots and resolves only one of two independent conflicts", () => {
+  const sources = observations.map((o, i) => i === 2 ? { ...o, content: o.content + " IELTS 7.0." } : o);
+  const second = { ...output.offerings[0].facts[2], verbatim: "IELTS 7.0.", evidence: [{ source_url: sources[2].url, source_quote: "IELTS 7.0." }] };
+  const raw = buildResearchDraft(seed, sources, { offerings: [{ ...output.offerings[0], facts: [...output.offerings[0].facts, second] }] }, []);
+  expect(raw.conflicts).toHaveLength(2);
+  const original = raw.offerings[0].facts.find(f => f.key === "english")!;
+  const replacement = { ...original, status: "pending", verbatim: "IELTS 6.5.", evidence: [original.evidence[0]] };
+  const next = patchResearchDraft(raw, { kind: "resolve_conflict", offering: 0, key: "english", reason: "Compared both captured sources and resolved this field only.", replacement });
+  expect(next.conflicts).toEqual(raw.conflicts.filter(c => c.key !== "english"));
+  expect(next.review?.changes[0].conflict).toEqual(raw.conflicts.find(c => c.key === "english"));
+  const edited = patchResearchDraft(next, { kind: "edit", offering: 0, key: "english", reason: "Compared the pending correction once more against capture.", replacement });
+  expect(edited.review?.changes.map(c => c.kind)).toEqual(["resolve_conflict", "edit"]);
+  for (const mutate of [
+    (d: typeof edited) => { d.review!.changes[0].before.status = "verified"; },
+    (d: typeof edited) => { delete d.review!.changes[0].conflict; },
+    (d: typeof edited) => { d.review!.changes[1].conflict = raw.conflicts[0]; },
+    (d: typeof edited) => { d.review!.changes[0].before.evidence[0].source_quote = "Forged original capture"; },
+  ]) {
+    const forged = structuredClone(edited); mutate(forged); expect(ResearchDraftSchema.safeParse(forged).success).toBe(false);
+  }
+});
+
+it("rejects fabricated ordinary edit before evidence even when it contains the old literal value", () => {
+  const raw = buildResearchDraft(seed, observations, output, []);
+  const replacement = raw.offerings[0].facts.find(f => f.key === "english")!;
+  const next = patchResearchDraft(raw, { kind: "edit", offering: 0, key: "english", reason: "Compared complete original capture before correction.", replacement });
+  next.review!.changes[0].before.evidence[0].source_quote = "Fabricated original prefix IELTS 6.5.";
+  expect(ResearchDraftSchema.safeParse(next).success).toBe(false);
+});

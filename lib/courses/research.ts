@@ -36,6 +36,29 @@ export const ResearchOutputSchema = z.object({ offerings: z.array(z.object({
   intake_term: z.enum(["summer", "winter"]).nullable(), intake_year: z.number().int().min(1).max(9999).nullable(),
   applicant_group: label.nullable(), scope: ref.nullable(), facts: z.array(fact).max(40),
 }).strict()).max(8) }).strict();
+export const ResearchConflictSchema = z.object({ offering: z.number().int().min(0).max(7), key: label, alternatives: z.array(fact).min(2).max(40) }).strict();
+const pendingFact = OfferingFactSchema.superRefine((f, ctx) => {
+  if (!["pending", "unresolved"].includes(f.status) || [f.date, f.time, f.timezone].some(v => v !== null)
+    || f.evidence.some(e => e.verified_by !== null || e.last_verified_at !== null)
+    || (f.status === "pending" && (!f.verbatim || !f.evidence.some(e => e.source_quote.includes(f.verbatim!)))))
+    ctx.addIssue({ code: "custom", message: "Review snapshots must remain unverified with literal pending evidence" });
+});
+const reviewIdentity = z.object({ offering: z.number().int().min(0).max(7), key: label }).strict();
+const reviewReason = z.string().trim().min(20).max(2000);
+export const ResearchReviewSchema = z.object({
+  rejected: z.array(reviewIdentity.extend({ reason: reviewReason }).strict()).max(400),
+  changes: z.array(reviewIdentity.extend({ kind: z.enum(["edit", "resolve_conflict"]), reason: reviewReason,
+    before: pendingFact, conflict: ResearchConflictSchema.optional() }).strict().superRefine((c, ctx) => {
+    if (c.before.key !== c.key || (c.kind === "resolve_conflict") !== (c.conflict !== undefined)
+      || (c.conflict && (c.conflict.offering !== c.offering || c.conflict.key !== c.key || c.before.status !== "unresolved"
+        || c.conflict.alternatives.some(a => a.kind !== c.before.kind || a.applicability !== c.before.applicability
+          || a.evidence.some(e => !e.source_quote.includes(a.verbatim) || !c.before.evidence.some(b => b.source_url === e.source_url && b.source_quote === e.source_quote))))))
+      ctx.addIssue({ code: "custom", message: "Invalid original field/conflict snapshot" });
+  })).max(400),
+}).strict().superRefine((r, ctx) => {
+  if (new Set(r.rejected.map(e => e.offering + ":" + e.key)).size !== r.rejected.length)
+    ctx.addIssue({ code: "custom", message: "Duplicate rejected field identity" });
+});
 const scope = OfferingSchema.omit({ programme_id: true });
 export const ResearchDraftSchema = z.object({
   format: z.literal("up-course-01/v1"), status: z.enum(["draft", "incomplete"]),
@@ -44,13 +67,27 @@ export const ResearchDraftSchema = z.object({
   observations: z.array(ObservationSchema).max(12),
   unscoped: z.array(OfferingFactSchema).max(320).optional(),
   offerings: z.array(scope.extend({ scope: ref, facts: z.array(OfferingFactSchema).max(50) }).strict()).max(8),
-  conflicts: z.array(z.object({ offering: z.number().int(), key: label, alternatives: z.array(fact).max(40) }).strict()).max(320),
+  conflicts: z.array(ResearchConflictSchema).max(320),
+  review: ResearchReviewSchema.optional(),
   issues: z.array(z.string().max(300)).max(30),
 }).strict().superRefine((draft, ctx) => {
+  for (const entry of [...(draft.review?.rejected ?? []), ...(draft.review?.changes ?? [])]) {
+    const current = draft.offerings[entry.offering]?.facts.find(f => f.key === entry.key);
+    if (!current)
+      ctx.addIssue({ code: "custom", message: "Review identity must match an existing scoped field" });
+  }
+  for (const entry of draft.review?.changes ?? []) {
+    const current = draft.offerings[entry.offering]?.facts.find(f => f.key === entry.key);
+    if (current && (entry.before.kind !== current.kind || entry.before.applicability !== current.applicability)) ctx.addIssue({ code: "custom", message: "Original snapshot must retain field kind and scope" });
+  }
   // Manual observations represent an admin's own source capture. They expand
   // review provenance through the same DAAD identity/link rule, never AI trust.
   const domains = officialDomains(draft.identity, draft.observations.map(o => o.origin === "manual" ? { ...o, origin: "web" as const } : o));
   const recoverySources = identityLinkedSources(draft.identity, draft.observations.filter(o => o.origin !== "paste" && domains.some(d => onDomain(o.url, d))));
+  for (const entry of draft.review?.changes ?? []) for (const e of entry.before.evidence) {
+    if (!domains.some(d => onDomain(e.source_url, d)) || !draft.observations.some(o => o.origin !== "paste" && o.url === e.source_url
+      && o.retrieved_at === e.retrieved_at && o.content.includes(e.source_quote))) ctx.addIssue({ code: "custom", message: "Original review snapshot must retain its captured literal evidence" });
+  }
   for (const f of draft.unscoped ?? []) {
     if (f.applicability !== "Unresolved effective intake/applicant scope" || f.evidence.some(e => !recoverySources.has(e.source_url))) ctx.addIssue({ code: "custom", message: "Unscoped recovery needs captured identity/link provenance and unresolved applicability" });
   }
@@ -102,6 +139,47 @@ export const ResearchDraftSchema = z.object({
   }
 });
 export type ResearchDraft = z.infer<typeof ResearchDraftSchema>;
+export const ResearchPatchSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("reject"), entries: z.array(reviewIdentity).min(1).max(50), reason: reviewReason }).strict(),
+  reviewIdentity.extend({ kind: z.literal("restore") }).strict(),
+  reviewIdentity.extend({ kind: z.literal("edit"), reason: reviewReason, replacement: pendingFact }).strict(),
+  reviewIdentity.extend({ kind: z.literal("resolve_conflict"), reason: reviewReason, replacement: pendingFact }).strict(),
+]);
+export type ResearchPatch = z.infer<typeof ResearchPatchSchema>;
+// Validate without reconstructing unrelated raw records (Zod trims labels).
+export function patchResearchDraft(raw: ResearchDraft, input: unknown): ResearchDraft {
+  ResearchDraftSchema.parse(raw);
+  const patch = ResearchPatchSchema.parse(input);
+  const entries = patch.kind === "reject" ? patch.entries : [patch];
+  if (new Set(entries.map(e => e.offering + ":" + e.key)).size !== entries.length
+    || entries.some(e => !raw.offerings[e.offering]?.facts.some(f => f.key === e.key))) throw new Error("Unknown or duplicate field identity");
+  const next = structuredClone(raw);
+  next.review ??= { rejected: [], changes: [] };
+  if (patch.kind === "reject") {
+    for (const entry of entries) {
+      if (next.review.rejected.some(e => e.offering === entry.offering && e.key === entry.key)) throw new Error("Field already rejected");
+      next.review.rejected.push({ offering: entry.offering, key: entry.key, reason: patch.reason });
+    }
+  } else if (patch.kind === "restore") {
+    if (!next.review.rejected.some(e => e.offering === patch.offering && e.key === patch.key)) throw new Error("Field is not rejected");
+    next.review.rejected = next.review.rejected.filter(e => e.offering !== patch.offering || e.key !== patch.key);
+  } else {
+    if (next.review.rejected.some(e => e.offering === patch.offering && e.key === patch.key)) throw new Error("Restore rejected field before editing");
+    const offering = next.offerings[patch.offering];
+    const position = offering.facts.findIndex(f => f.key === patch.key);
+    const before = offering.facts[position];
+    const conflicts = next.conflicts.filter(c => c.offering === patch.offering && c.key === patch.key);
+    if (conflicts.length > 1 || (patch.kind === "resolve_conflict") !== (conflicts.length === 1)) throw new Error("Known conflict requires explicit conflict resolution");
+    if (patch.replacement.key !== before.key || patch.replacement.kind !== before.kind || patch.replacement.applicability !== before.applicability
+      || patch.replacement.status !== "pending" || patch.replacement.deadline_kind !== before.deadline_kind) throw new Error("Correction must preserve field identity, kind, stage and applicability and remain pending");
+    next.review.changes.push({ offering: patch.offering, key: patch.key, kind: patch.kind, reason: patch.reason,
+      before, ...(conflicts[0] ? { conflict: conflicts[0] } : {}) });
+    offering.facts[position] = patch.replacement;
+    if (conflicts[0]) next.conflicts = next.conflicts.filter(c => c.offering !== patch.offering || c.key !== patch.key);
+  }
+  ResearchDraftSchema.parse(next);
+  return next;
+}
 export function onDomain(url: string, domain: string): boolean {
   const parsed = ResearchUrlSchema.safeParse(url);
   if (!parsed.success) return false;
@@ -332,6 +410,7 @@ export function prepareResearchReview(draft: ResearchDraft, index: number, selec
   const offering = draft.offerings[z.number().int().min(0).parse(index)];
   if (!offering || new Set(selected).size !== selected.length) throw new Error("Invalid offering or duplicate review selection");
   for (const key of selected) {
+    if (draft.review?.rejected.some(e => e.offering === index && e.key === key)) throw new Error("Rejected facts cannot be accepted; restore to pending first");
     if (omitted && !decisions.some(d => d.key === key)) throw new Error("Context omissions require explicit full-source reconciliation for each accepted assertion");
     const fact = offering.facts.find(f => f.key === key);
     if (!fact || fact.status !== "pending" || !fact.verbatim || !fact.evidence.length || draft.conflicts.some(c => c.offering === index && c.key === key)) throw new Error("Only supported pending facts can be accepted; conflicts require resolution");
@@ -407,10 +486,15 @@ export const ResearchAuditPayloadSchema = z.object({
   identity: z.object({ name: auditKey, university: auditKey, source_url: ResearchUrlSchema }).strict(),
   scope: OfferingSchema.omit({ programme_id: true }).extend({ scope: ref }).strict(),
   offering_index: z.number().int().min(0).max(7), accepted_keys: z.array(auditKey).max(50),
+  review: ResearchReviewSchema.optional(),
   decisions: z.array(z.object({ key: auditKey, reason: z.string().min(20).max(2000) }).strict()).max(50),
   observations: z.array(ObservationSchema.extend({ retrieved_at: auditTimestamp })).max(12),
   version: z.object({ id: z.string().uuid(), offering_id: z.string().uuid(), version: z.number().int().positive() }).strict(),
 }).strict().superRefine((payload, ctx) => {
+  if (payload.review && ([...payload.review.rejected, ...payload.review.changes].some(e => e.offering !== payload.offering_index)
+    || payload.review.rejected.some(e => payload.accepted_keys.includes(e.key))
+    || payload.review.changes.some(e => e.before.applicability !== payload.scope.applicant_group)))
+    ctx.addIssue({ code: "custom", message: "Invalid offering-local protected review" });
   if (new Set(payload.accepted_keys).size !== payload.accepted_keys.length
     || new Set(payload.decisions.map(d => d.key)).size !== payload.decisions.length
     || payload.decisions.length !== payload.accepted_keys.length
