@@ -530,10 +530,13 @@ successful live assistant evaluation; it is not guaranteed by unit tests.
   records those exact projected outputs in the request-local allowlist; context
   and personal reminders cannot authorize rule citations. History, personal context and provider
   source events authorize nothing; unknown cannot override an unauthorized citation.
+  Answers without any rule/web citation, including unknown-only model prose,
+  always use the deterministic fallback even when tools returned evidence.
   Rejected prose is replaced entirely with a constant `[[unknown]]` refusal and
   DAAD's general URL as a place to check, never as proof of the requested answer.
-  This checks presence and citation authorization, not sentence entailment,
-  factual accuracy, source accuracy or honesty of arbitrary unknown-marked prose.
+  Trade-off: this checks presence and citation authorization, not sentence
+  entailment, factual accuracy or source accuracy. An authorized citation in a
+  mixed answer does not prove its other claims or unknown passages are supported.
 - Trade-off: the SDK 7 transform buffers answer text until each finish-step,
   before the SDK accumulates text for continuation and persistence. Tool progress
   remains immediate; incomplete/error/aborted steps discard pending text. The
