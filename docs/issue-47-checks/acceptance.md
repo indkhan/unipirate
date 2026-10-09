@@ -14,7 +14,9 @@ navigation skips answered degree/attendance-country questions; Back exposes both
 Bachelor starts with attendance country and qualification details; Master starts
 with prior university history. Draft keys isolate degree entries, and saved question
 identity survives reordering. Recovery and browser history stop at missing evidence.
-Edited country/degree values take precedence over the original URL hint.
+Country edits take precedence over the original URL hint. Explicit degree edits
+update the URL and save under the new degree key, so a later landing choice cannot
+accidentally restore the opposite degree.
 
 No database, query, auth, rule criteria/publication, task/jobs API or historical
 storage behavior changed. Existing qualification normalization handles explicit
@@ -30,8 +32,8 @@ mission and intake/process removals remain for sequential issues 49–53.
 - Additional mounted failures reproduced edited-country loss and history jumps;
   both passed after their fixes. React state/effects/events are real (`createRoot`,
   jsdom 26.1); only external router, analytics, action and theme I/O are mocked.
-- Focused checker/landing: 27 files, 291 tests passed, zero skips.
-- Full `pnpm test`: 131 files, 2,802 tests passed, zero skips. Environment keys
+- Focused checker/landing: 27 files, 292 tests passed, zero skips.
+- Full `pnpm test`: 131 files, 2,803 tests passed, zero skips. Environment keys
   were privately loaded from the existing disposable local configuration.
 - Actual disposable `127.0.0.1:55321` service: all 29 RLS tests and all three
   protected course-process integration tests passed. Feature ports 56321/56322,
@@ -56,6 +58,9 @@ real local Supabase service and no browser network/action mocks.
   nationality. Reload retained that history and no school-country answer.
 - Main landing Master link: Step 2 university history, without repeated degree.
   A supplied Saudi school hint did not become a university country.
+- After Back changes Bachelor to Master, URL becomes `degree=master` and refresh
+  follows university history. Returning to the landing and selecting Bachelor
+  starts its country step, without restoring the opposite edited degree.
 - `/check?country=sa`: degree first, then curriculum without repeating attendance
   country; IB reaches its document-evidence question.
 - `/check?country=in&degree=bachelor`: curriculum first. Explicit Pakistan issuer

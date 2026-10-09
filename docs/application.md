@@ -169,8 +169,10 @@ Answered entry questions are skipped going forward, but remain available through
 Back. Academic questions precede nationality and visa context. Session drafts
 store the current question identity as well as the legacy numeric index; recovery
 stops at newly missing evidence. Degree links use separate draft keys, so selecting
-Master cannot restore a Bachelor draft. Within an entry key, Back edits survive
-refresh even when they differ from the URL hint. Old country/numeric drafts remain
+Master cannot restore a Bachelor draft. Country edits survive under their original
+entry key. Explicit degree edits update the URL and save under the new degree's
+draft key, so refresh follows the edit while a later landing choice resumes that
+degree's own flow. Old country/numeric drafts remain
 recoverable. Existing normalization prunes hidden answers only for new/edit flows;
 historical checks, profile rows, applications, task IDs, completion and student
 edits receive no migration or rewrite. Issues #49–#53 retain their separate

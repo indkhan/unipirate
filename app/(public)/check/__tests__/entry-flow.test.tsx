@@ -115,14 +115,23 @@ it("validates entry hints independently and never turns school location into a M
   expect(restoredStepIndex(draft, 99, "not-a-step")).toBe(visibleSteps(draft).indexOf("gceQualificationType"));
 });
 
-it("degree links isolate drafts and retain an edited degree under the original entry key", async () => {
+it("degree links isolate drafts and refresh follows an explicitly edited degree", async () => {
   sessionStorage.setItem("unipirate.check.v1:none:bachelor", JSON.stringify({ answers: { targetDegree: "bachelor", certificateCountry: "sa", curriculumType: "gce" }, stepIndex: 3 }));
   await mount({ targetDegree: "master" }, "master");
   expect(question()).toBe("Have you studied at a university or other higher education institution?");
   await click("‹ Back"); await click("A Bachelor's degree"); await click("Continue");
   expect(question()).toBe("Where did you attend school?");
+  expect(new URL(window.location.href).searchParams.get("degree")).toBe("bachelor");
   await act(async () => root.unmount()); root = createRoot(container);
-  await mount({ targetDegree: "master" }, "master");
+  await mount(checkerEntry({ degree: "bachelor" }), "bachelor");
   expect(question()).toBe("Where did you attend school?");
-  expect(JSON.parse(sessionStorage.getItem("unipirate.check.v1:none:bachelor")!).answers.curriculumType).toBe("gce");
+  expect(JSON.parse(sessionStorage.getItem("unipirate.check.v1:none:master")!).answers.targetDegree).toBe("master");
+});
+
+it("a later landing degree choice cannot restore the opposite edited degree", async () => {
+  await mount({ targetDegree: "bachelor" }, "bachelor");
+  await click("‹ Back"); await click("A Master's degree"); await click("Continue");
+  await act(async () => root.unmount()); root = createRoot(container);
+  await mount({ targetDegree: "bachelor" }, "bachelor");
+  expect(question()).toBe("Where did you attend school?");
 });

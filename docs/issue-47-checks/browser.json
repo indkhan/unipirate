@@ -222,7 +222,8 @@
     "Master history → previous qualification → institution → Pakistan institution country → unknown system → field → nominal/successful years → completion → nationality; reload retains university history",
     "Landing Master → Step 2 university history, including supplied country=sa without issuer inference",
     "country=sa → degree first → Bachelor → curriculum → IB document evidence",
-    "country=in&degree=bachelor → curriculum → national → explicit Pakistan issuer/context → Pakistan certificate"
+    "country=in&degree=bachelor → curriculum → national → explicit Pakistan issuer/context → Pakistan certificate",
+    "Fresh landing Bachelor → Back → edit Master → URL degree=master and separate Master draft → reload retains Master → return landing Bachelor → school-country step, without restoring opposite edited degree"
   ],
   "limits": "Local UI and disposable DB checks only; no live provider, production deployment or CI claim."
 }

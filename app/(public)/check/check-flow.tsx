@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { ThemeToggle } from "@/components/app/theme-toggle";
 
@@ -69,12 +69,14 @@ export function CheckFlow({
   const storageKey = `${CHECK_STORAGE_PREFIX}:${
     initialAnswers.certificateCountry ?? "none"
   }${entryDegree ? `:${entryDegree}` : ""}`;
+  const activeStorageKey = useRef(storageKey);
 
   useEffect(() => {
     posthog.capture("check_started");
   }, [posthog]);
 
   useEffect(() => {
+    activeStorageKey.current = storageKey;
     const safeInitial = normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), qualificationHistoryVersion: 1 as const, apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, ...pakistanAnswerVersion(initialAnswers), jeeVersion: 2 as const }));
     let nextAnswers: PartialAnswers = safeInitial;
     let nextStepIndex = startStepIndex;
@@ -87,6 +89,9 @@ export function CheckFlow({
         const recovered = normalizeAnswers(upgradeSaudiAnswers({ ...saved.answers, ...(saved.answers?.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(saved.answers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, ...pakistanAnswerVersion(saved.answers), jeeVersion: 2 as const }));
         nextAnswers = recovered;
         nextStepIndex = restoredStepIndex(recovered, saved.stepIndex ?? startStepIndex, saved.stepId);
+        if (entryDegree === recovered.targetDegree && nextStepIndex === 0) {
+          nextStepIndex = nextEntryStep(recovered);
+        }
       }
     } catch {
       nextAnswers = safeInitial;
@@ -124,7 +129,7 @@ export function CheckFlow({
     if (!restored) return;
     const safeStepIndex = Math.min(stepIndex, Math.max(steps.length - 1, 0));
     sessionStorage.setItem(
-      storageKey,
+      activeStorageKey.current,
       JSON.stringify({
         answers,
         stepIndex: safeStepIndex,
@@ -164,6 +169,16 @@ export function CheckFlow({
 
   function select(stepId: StepId, value: unknown) {
     setError(null);
+    if (entryDegree && stepId === "targetDegree" && value !== answers.targetDegree &&
+      (value === "bachelor" || value === "master")) {
+      // A refresh follows the edited degree; a later landing choice resumes
+      // that degree's own draft. A discarded school hint cannot return as issuer.
+      const url = new URL(window.location.href);
+      url.searchParams.set("degree", value);
+      url.searchParams.delete("country");
+      window.history.replaceState(window.history.state, "", url);
+      activeStorageKey.current = `${CHECK_STORAGE_PREFIX}:none:${value}`;
+    }
     setAnswers((prev) =>
       withAnswer(prev, stepId, value as Answers[typeof stepId]),
     );
