@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -43,6 +43,7 @@ export type Database = {
           id: string
           new_status: string | null
           old_status: string | null
+          planner_model_selection: Json | null
           programme_correction: Json | null
           row_id: string
           rule_publication: Json | null
@@ -56,6 +57,7 @@ export type Database = {
           id?: string
           new_status?: string | null
           old_status?: string | null
+          planner_model_selection?: Json | null
           programme_correction?: Json | null
           row_id: string
           rule_publication?: Json | null
@@ -69,6 +71,7 @@ export type Database = {
           id?: string
           new_status?: string | null
           old_status?: string | null
+          planner_model_selection?: Json | null
           programme_correction?: Json | null
           row_id?: string
           rule_publication?: Json | null
@@ -479,6 +482,136 @@ export type Database = {
           },
         ]
       }
+      personal_task_operations: {
+        Row: {
+          created_at: string
+          instruction: string
+          operation_id: string
+          request_task: Json
+          task_receipt: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          instruction: string
+          operation_id: string
+          request_task: Json
+          task_receipt: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          instruction?: string
+          operation_id?: string
+          request_task?: Json
+          task_receipt?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
+      planning_jobs: {
+        Row: {
+          application_id: string | null
+          attempts: number
+          available_at: string
+          course_id: string | null
+          created_at: string
+          cursor: number
+          error_code: string | null
+          event: string
+          id: string
+          input_fingerprint: string
+          lease_owner: string | null
+          lease_until: string | null
+          source_version_id: string | null
+          state: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          application_id?: string | null
+          attempts?: number
+          available_at?: string
+          course_id?: string | null
+          created_at?: string
+          cursor?: number
+          error_code?: string | null
+          event: string
+          id?: string
+          input_fingerprint: string
+          lease_owner?: string | null
+          lease_until?: string | null
+          source_version_id?: string | null
+          state?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          application_id?: string | null
+          attempts?: number
+          available_at?: string
+          course_id?: string | null
+          created_at?: string
+          cursor?: number
+          error_code?: string | null
+          event?: string
+          id?: string
+          input_fingerprint?: string
+          lease_owner?: string | null
+          lease_until?: string | null
+          source_version_id?: string | null
+          state?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_jobs_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_jobs_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_jobs_source_version_id_fkey"
+            columns: ["source_version_id"]
+            isOneToOne: false
+            referencedRelation: "course_offering_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_settings: {
+        Row: {
+          enabled: boolean
+          id: boolean
+          planner_model: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          id?: boolean
+          planner_model?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          id?: boolean
+          planner_model?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           answers: Json
@@ -699,6 +832,134 @@ export type Database = {
         }
         Relationships: []
       }
+      task_proposals: {
+        Row: {
+          applicant_group: string | null
+          application_id: string | null
+          approval_fingerprint: string | null
+          approved_revision: number | null
+          approved_task_id: string | null
+          base_task_revision: number | null
+          before_task: Json | null
+          change_fields: string[]
+          course_id: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          evidence: Json
+          id: string
+          input_fingerprint: string
+          intake_term: string | null
+          intake_year: number | null
+          legacy_task_key: string | null
+          material_fingerprint: string
+          offering_id: string | null
+          reason: string
+          revision: number
+          semantic_action_key: string
+          source_version_id: string | null
+          stage: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          verbatim_due: string | null
+        }
+        Insert: {
+          applicant_group?: string | null
+          application_id?: string | null
+          approval_fingerprint?: string | null
+          approved_revision?: number | null
+          approved_task_id?: string | null
+          base_task_revision?: number | null
+          before_task?: Json | null
+          change_fields?: string[]
+          course_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          evidence?: Json
+          id?: string
+          input_fingerprint: string
+          intake_term?: string | null
+          intake_year?: number | null
+          legacy_task_key?: string | null
+          material_fingerprint: string
+          offering_id?: string | null
+          reason: string
+          revision?: number
+          semantic_action_key: string
+          source_version_id?: string | null
+          stage: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          verbatim_due?: string | null
+        }
+        Update: {
+          applicant_group?: string | null
+          application_id?: string | null
+          approval_fingerprint?: string | null
+          approved_revision?: number | null
+          approved_task_id?: string | null
+          base_task_revision?: number | null
+          before_task?: Json | null
+          change_fields?: string[]
+          course_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          evidence?: Json
+          id?: string
+          input_fingerprint?: string
+          intake_term?: string | null
+          intake_year?: number | null
+          legacy_task_key?: string | null
+          material_fingerprint?: string
+          offering_id?: string | null
+          reason?: string
+          revision?: number
+          semantic_action_key?: string
+          source_version_id?: string | null
+          stage?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          verbatim_due?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_proposals_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_proposals_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_proposals_offering_id_fkey"
+            columns: ["offering_id"]
+            isOneToOne: false
+            referencedRelation: "course_offerings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_proposals_source_version_id_fkey"
+            columns: ["source_version_id"]
+            isOneToOne: false
+            referencedRelation: "course_offering_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           admin_change_state: Database["public"]["Enums"]["course_task_change_state"]
@@ -712,6 +973,7 @@ export type Database = {
           generated_active: boolean
           has_personal_edits: boolean
           id: string
+          planning_revision: number
           preferred_bucket: string | null
           sort_order: number
           source_url: string | null
@@ -734,6 +996,7 @@ export type Database = {
           generated_active?: boolean
           has_personal_edits?: boolean
           id?: string
+          planning_revision?: number
           preferred_bucket?: string | null
           sort_order?: number
           source_url?: string | null
@@ -756,6 +1019,7 @@ export type Database = {
           generated_active?: boolean
           has_personal_edits?: boolean
           id?: string
+          planning_revision?: number
           preferred_bucket?: string | null
           sort_order?: number
           source_url?: string | null
@@ -775,6 +1039,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tasks_application_owner_fk"
+            columns: ["application_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
             foreignKeyName: "tasks_course_task_definition_id_fkey"
             columns: ["course_task_definition_id"]
             isOneToOne: false
@@ -788,6 +1059,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      advance_planning_job: {
+        Args: {
+          p_complete: boolean
+          p_current_cursor: number
+          p_id: string
+          p_next_cursor: number
+          p_worker: string
+        }
+        Returns: boolean
+      }
+      approve_task_proposals: { Args: { p_selection: Json }; Returns: Json }
       claim_check: {
         Args: { p_check_id: string; p_token_hash: string }
         Returns: boolean
@@ -830,6 +1112,66 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      configure_planning_dispatch: {
+        Args: { p_secret: string; p_worker_url: string }
+        Returns: undefined
+      }
+      create_personal_task: {
+        Args: { p_instruction: string; p_operation_id: string; p_task: Json }
+        Returns: Json
+      }
+      dismiss_task_proposal: {
+        Args: { p_id: string; p_revision: number }
+        Returns: boolean
+      }
+      enqueue_course_template_planning: {
+        Args: { p_course_id: string }
+        Returns: undefined
+      }
+      enqueue_planning_job: {
+        Args: {
+          p_application_id?: string
+          p_event: string
+          p_source_version_id?: string
+        }
+        Returns: {
+          application_id: string | null
+          attempts: number
+          available_at: string
+          course_id: string | null
+          created_at: string
+          cursor: number
+          error_code: string | null
+          event: string
+          id: string
+          input_fingerprint: string
+          lease_owner: string | null
+          lease_until: string | null
+          source_version_id: string | null
+          state: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "planning_jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      finish_planning_job: {
+        Args: {
+          p_error_code?: string
+          p_id: string
+          p_success: boolean
+          p_worker: string
+        }
+        Returns: boolean
+      }
+      get_planning_context_fingerprint: {
+        Args: { p_application_id?: string }
+        Returns: string
+      }
       get_shared_check: {
         Args: { p_check_id: string }
         Returns: {
@@ -841,6 +1183,33 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      lease_planning_jobs: {
+        Args: { p_limit?: number; p_worker: string }
+        Returns: {
+          application_id: string | null
+          attempts: number
+          available_at: string
+          course_id: string | null
+          created_at: string
+          cursor: number
+          error_code: string | null
+          event: string
+          id: string
+          input_fingerprint: string
+          lease_owner: string | null
+          lease_until: string | null
+          source_version_id: string | null
+          state: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "planning_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       match_kb_chunks: {
         Args: { match_count?: number; query_embedding: string }
         Returns: {
@@ -853,6 +1222,10 @@ export type Database = {
           source_url: string
           title: string
         }[]
+      }
+      planning_context_fingerprint: {
+        Args: { p_application: string; p_user: string }
+        Returns: string
       }
       publish_course_research_version: {
         Args: {
@@ -914,6 +1287,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      refresh_planning_job: {
+        Args: { p_id: string; p_worker: string }
+        Returns: boolean
+      }
       remove_my_course: { Args: { course_id: string }; Returns: undefined }
       resolve_course_conflict: {
         Args: { p_keep_new: boolean; p_new_course_id: string }
@@ -922,6 +1299,87 @@ export type Database = {
       result_viewer: {
         Args: { p_check_id: string; p_token_hash?: string }
         Returns: string
+      }
+      retire_missing_planning_proposals: {
+        Args: {
+          p_input_fingerprint: string
+          p_job_id: string
+          p_supported_action_keys: string[]
+          p_worker: string
+        }
+        Returns: number
+      }
+      save_planning_research: {
+        Args: {
+          p_draft: Json
+          p_expected_metadata: Json
+          p_expected_sql_null: boolean
+          p_job_id: string
+          p_worker: string
+        }
+        Returns: boolean
+      }
+      save_task_proposals: {
+        Args: {
+          p_candidates: Json
+          p_input_fingerprint: string
+          p_job_id: string
+          p_worker: string
+        }
+        Returns: {
+          applicant_group: string | null
+          application_id: string | null
+          approval_fingerprint: string | null
+          approved_revision: number | null
+          approved_task_id: string | null
+          base_task_revision: number | null
+          before_task: Json | null
+          change_fields: string[]
+          course_id: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          evidence: Json
+          id: string
+          input_fingerprint: string
+          intake_term: string | null
+          intake_year: number | null
+          legacy_task_key: string | null
+          material_fingerprint: string
+          offering_id: string | null
+          reason: string
+          revision: number
+          semantic_action_key: string
+          source_version_id: string | null
+          stage: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          verbatim_due: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "task_proposals"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      set_planner_model: {
+        Args: { p_catalogue_snapshot: Json; p_model: string }
+        Returns: {
+          enabled: boolean
+          id: boolean
+          planner_model: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "planning_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       valid_application_offering_context: {
         Args: { value: Json }

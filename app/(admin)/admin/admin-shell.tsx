@@ -31,6 +31,7 @@ export function AdminShell({ state, counts, children }: { state: AdminState; cou
         {items.map(([view, label, Icon]) => <Link key={view} href={adminHref({ view })} className={cn("flex min-h-12 shrink-0 items-center gap-3 rounded-lg border border-transparent px-3 text-sm font-semibold text-[var(--ink-secondary)] transition-colors hover:bg-[var(--route-blue-tint)] focus-visible:outline-2 focus-visible:outline-[var(--route-blue)]", state.view === view && "border-[var(--line)] bg-[var(--surface)] text-[var(--route-blue)] shadow-sm")}>
           <Icon aria-hidden className="size-4" /><span>{label}</span>{count(view) > 0 && <span className="ml-auto rounded-full bg-[var(--signal-tint)] px-2 py-0.5 text-xs text-[var(--signal)]">{count(view)}</span>}
         </Link>)}
+        <Link href="/admin/planner" className="flex min-h-12 shrink-0 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-[var(--ink-secondary)] hover:bg-[var(--route-blue-tint)] focus-visible:outline-2 focus-visible:outline-[var(--route-blue)]">Planner model</Link>
       </nav>
       <div className="min-w-0">{state.message && <div role="status" className="mb-4 rounded-lg border border-[var(--verified-line)] bg-[var(--verified-tint)] px-4 py-3 text-sm text-[var(--verified)]">{state.message}</div>}{children}</div>
     </div>

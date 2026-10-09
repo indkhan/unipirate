@@ -8,6 +8,9 @@ describe("disposable course integration settings", () => {
   it("accepts explicit isolated local settings and overrides CI", () => {
     expect(courseProcessLocalConfig({ ...ci, COURSE_PROCESS_LOCAL_API: "http://127.0.0.1:55321", COURSE_PROCESS_LOCAL_PUBLIC_KEY: "local-public", COURSE_PROCESS_LOCAL_SERVICE_KEY: "local-secret" })).toEqual({ api: "http://127.0.0.1:55321", publicKey: "local-public", serviceKey: "local-secret", enabled: true });
   });
+  it("accepts the independently owned feature disposable instance",()=>{
+    expect(courseProcessLocalConfig({...ci,COURSE_PROCESS_LOCAL_API:"http://127.0.0.1:56321"}).enabled).toBe(true);
+  });
   it.each(["https://linked.supabase.co", "http://localhost:54321", "http://127.0.0.1:54320", "http://127.0.0.1:54321/", "http://127.0.0.1:54321?x=1", "http://user@127.0.0.1:54321", "https://127.0.0.1:54321"])("rejects nonallowlisted API %s even with keys", api => {
     expect(courseProcessLocalConfig({ ...ci, COURSE_PROCESS_LOCAL_API: api }).enabled).toBe(false);
   });

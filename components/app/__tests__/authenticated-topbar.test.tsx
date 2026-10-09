@@ -12,6 +12,7 @@ vi.mock("../theme-toggle", () => ({
 vi.mock("../user-menu", () => ({
   UserMenu: () => null,
 }));
+vi.mock("../suggestion-notifications",()=>({SuggestionNotifications:()=>null}));
 
 import { AuthenticatedTopbar } from "../authenticated-topbar";
 

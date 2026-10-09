@@ -1,5 +1,7 @@
 import { ApplicationOfferingSelectionSchema, SetApplicationOfferingSchema } from "@/lib/tasks/offering-process";
 import { z } from "zod";
+import { ManualTaskSchema, TaskReceiptSchema, type ManualTaskInput } from "@/lib/tasks/manual";
+import { ProposalCandidateSchema,ProposalSelectionSchema,TaskProposalSchema, type ProposalCandidate } from "@/lib/planning/proposals";
 import { AnswersSchema } from "@/app/(public)/check/steps";
 import { AssessmentMetadataSchema, AssessmentResultSchema } from "@/lib/rules/assessment";
 import { RuleIdSchema, RuleVersionSchema, type RuleVersion } from "@/lib/rules/versioning";
@@ -25,6 +27,54 @@ import { unwrap } from "@/lib/db/unwrap";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
 type RpcDb = Pick<SupabaseClient<Database>, "rpc">;
+
+// Durable planning operations. Privileges in SQL distinguish authenticated
+// enqueue/approval from the narrow internal worker lease/write functions.
+export async function getPlanningSettings(db:Db){return unwrap<Tables<"planning_settings">>(await db.from("planning_settings").select("*").eq("id",true).single());}
+export async function enqueuePlanningJob(db:RpcDb,event:"research"|"preliminary"|"verified",applicationId:string|null,sourceVersionId:string|null=null){
+  return unwrap(await db.rpc("enqueue_planning_job",{p_event:z.enum(["research","preliminary","verified"]).parse(event),p_application_id:applicationId as string,p_source_version_id:sourceVersionId as string}));
+}
+export async function listPlanningJobs(db:Db,userId:string){
+  return unwrap(await db.from("planning_jobs").select("*").eq("user_id",z.string().uuid().parse(userId)).order("created_at",{ascending:false}));
+}
+export async function retryPlanningJob(db:Db&RpcDb,userId:string,jobId:string){
+  const job=unwrap<Tables<"planning_jobs">>(await db.from("planning_jobs").select("*").eq("id",z.string().uuid().parse(jobId)).eq("user_id",z.string().uuid().parse(userId)).single());
+  if(!job||job.state!=="failed")throw new Error("Only a failed saved job can be retried.");
+  return enqueuePlanningJob(db,job.event as "research"|"preliminary"|"verified",job.application_id,job.source_version_id);
+}
+export async function leasePlanningJobs(db:RpcDb,worker:string,limit:number){return unwrap(await db.rpc("lease_planning_jobs",{p_worker:z.string().uuid().parse(worker),p_limit:z.number().int().min(1).max(20).parse(limit)}));}
+export async function finishPlanningJob(db:RpcDb,id:string,worker:string,success:boolean,errorCode:string|null){return unwrap(await db.rpc("finish_planning_job",{p_id:id,p_worker:worker,p_success:success,p_error_code:errorCode as string}));}
+export async function refreshPlanningJob(db:RpcDb,id:string,worker:string){return unwrap(await db.rpc("refresh_planning_job",{p_id:id,p_worker:worker}));}
+export async function advancePlanningJob(db:RpcDb,id:string,worker:string,currentCursor:number,nextCursor:number,complete:boolean){
+ return unwrap(await db.rpc("advance_planning_job",{p_id:z.string().uuid().parse(id),p_worker:z.string().uuid().parse(worker),p_current_cursor:z.number().int().nonnegative().parse(currentCursor),p_next_cursor:z.number().int().nonnegative().parse(nextCursor),p_complete:z.boolean().parse(complete)}));
+}
+export async function retireMissingPlanningProposals(db:RpcDb,id:string,worker:string,fingerprint:string,supportedKeys:string[]){
+ return unwrap(await db.rpc("retire_missing_planning_proposals",{p_job_id:z.string().uuid().parse(id),p_worker:z.string().uuid().parse(worker),p_input_fingerprint:z.string().regex(/^[0-9a-f]{64}$/).parse(fingerprint),p_supported_action_keys:z.array(z.string().min(1).max(500)).parse(supportedKeys)}));
+}
+export async function saveTaskProposals(db:RpcDb,jobId:string,worker:string,fingerprint:string,candidates:ProposalCandidate[]){
+  return unwrap(await db.rpc("save_task_proposals",{p_job_id:jobId,p_worker:worker,p_input_fingerprint:fingerprint,p_candidates:z.array(ProposalCandidateSchema).max(100).parse(candidates) as Json}));
+}
+export async function listTaskProposals(db:Db,userId:string){
+  const rows:Tables<"task_proposals">[]=[];
+  for(let offset=0;;offset+=500){const page=unwrap(await db.from("task_proposals").select("*").eq("user_id",z.string().uuid().parse(userId)).order("created_at").order("id").range(offset,offset+499));rows.push(...page);if(page.length<500)return z.array(TaskProposalSchema).parse(rows);}
+}
+export async function approveTaskProposals(db:RpcDb,selection:unknown){return unwrap(await db.rpc("approve_task_proposals",{p_selection:ProposalSelectionSchema.parse(selection) as Json}));}
+export async function dismissTaskProposal(db:RpcDb,id:string,revision:number){
+  const result=unwrap(await db.rpc("dismiss_task_proposal",{p_id:z.string().uuid().parse(id),p_revision:z.number().int().positive().parse(revision)}));
+  if(!result)throw new Error("This suggestion changed. Refresh it before rejecting.");
+}
+
+/** Worker-only context shell. Never return this to an HTTP caller or admin UI. */
+export async function getPlanningJobContext(db:Db,job:{user_id:string;application_id:string|null;course_id:string|null}){
+ const owner=z.string().uuid().parse(job.user_id);
+ const application=job.application_id ? await getApplicationWithCourse(db,owner,z.string().uuid().parse(job.application_id)) : null;
+ if(job.application_id&&(!application||application.course_id!==job.course_id))throw Object.assign(new Error("stale_context"),{code:"stale_context"});
+ return {profile:await getProfile(db,owner),application};
+}
+export async function finishPlanningResearch(db:RpcDb,jobId:string,worker:string,expected:Json|null,draft:unknown){
+ const {ResearchDraftSchema}=await import("@/lib/courses/research");
+ return unwrap(await db.rpc("save_planning_research",{p_job_id:z.string().uuid().parse(jobId),p_worker:z.string().uuid().parse(worker),p_expected_metadata:expected as Json,p_expected_sql_null:expected===null,p_draft:ResearchDraftSchema.parse(draft) as unknown as Json}));
+}
 
 // ------------------------------------------------------------------- rules
 
@@ -259,6 +309,20 @@ export async function deleteApplicationForCourse(
 }
 
 // -------------------------------------------------------------------- tasks
+
+export async function createPersonalTaskReceipt(db:RpcDb,operationId:string,instruction:string,input:ManualTaskInput) {
+  const task=ManualTaskSchema.parse(input);
+  return TaskReceiptSchema.parse(unwrap(await db.rpc("create_personal_task",{
+    p_operation_id:z.string().uuid().parse(operationId),p_instruction:z.string().min(1).max(20000).parse(instruction),p_task:task,
+  })));
+}
+
+export async function getPersonalTaskReceipt(db:Db,userId:string,operationId:string,instruction:string) {
+  const row=unwrap<Pick<Tables<"personal_task_operations">,"instruction"|"task_receipt">|null>(await db.from("personal_task_operations").select("instruction,task_receipt").eq("user_id",z.string().uuid().parse(userId)).eq("operation_id",z.string().uuid().parse(operationId)).maybeSingle());
+  if(!row)return null;
+  if(row.instruction!==instruction)throw new Error("This request ID was already used for different task content.");
+  return TaskReceiptSchema.parse({status:"already_exists",task:row.task_receipt});
+}
 
 export async function listTasks(
   db: Db,

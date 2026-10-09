@@ -5,6 +5,8 @@ import { resolveOfferingProcess, generateOfferingProcessTasks } from "./offering
 // owned by the user and generation never changes or recreates it.
 import {
   ensureApplication,
+  getPlanningSettings,
+  enqueuePlanningJob,
   getApplicationOfferingCatalogue,
   getApplicationWithCourse,
   getProfile,
@@ -31,7 +33,19 @@ import { profileFromAnswers } from "@/lib/tasks/profile";
 import { todayIsoBerlin } from "@/lib/tasks/dates";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-type Db = Pick<SupabaseClient<Database>, "from">;
+type Db = Pick<SupabaseClient<Database>, "from" | "rpc">;
+
+async function enqueueApplicationPlanning(db: Db, application: ApplicationWithCourse): Promise<void> {
+  if (application.courses?.review_status === "approved") {
+    const catalogue = await getApplicationOfferingCatalogue(db, application.course_id, application.offering_id ?? null);
+    const plan = resolveOfferingProcess({...catalogue,courseId:application.course_id,selection:{offering_id:application.offering_id ?? null,applicant_context:application.offering_applicant_context ?? null}});
+    if (plan.route !== "unresolved" && plan.version) {
+      await enqueuePlanningJob(db, "verified", application.id, plan.version.id);
+      return;
+    }
+  }
+  await enqueuePlanningJob(db, "preliminary", application.id);
+}
 
 function toGenerationApplication(
   application: ApplicationWithCourse,
@@ -101,6 +115,12 @@ export async function materializeCourseTasksForApplication(
 ): Promise<void> {
   const application = await getApplicationWithCourse(db, userId, applicationId);
   if (!application) return;
+  const settings = await getPlanningSettings(db);
+  if (!settings) throw new Error("Planning settings unavailable");
+  if (settings.enabled) {
+    await enqueueApplicationPlanning(db, application);
+    return;
+  }
 
   const profile = await currentProfile(db, userId);
   await materializeCourseTasksForApplicationRow(
@@ -127,6 +147,14 @@ export async function materializeAllTasksForUser(
   userId: string,
   assessment?: Assessment,
 ): Promise<void> {
+  const settings = await getPlanningSettings(db);
+  if (!settings) throw new Error("Planning settings unavailable");
+  if (settings.enabled) {
+    await enqueuePlanningJob(db, "preliminary", null);
+    const applications = await listApplicationsWithCourses(db, userId);
+    for (const application of applications) await enqueueApplicationPlanning(db, application);
+    return;
+  }
   const profile = await currentProfile(db, userId);
   const current=assessment ?? (profile ? evaluateAssessment(profile, await listRuleVersions(db), currentAssessmentContext()) : null);
   const result=current?.result??null;

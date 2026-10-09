@@ -5,6 +5,9 @@ import { materializeCourseTasksForApplication } from "@/lib/tasks/materialize";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
+import { ManualTaskSchema } from "@/lib/tasks/manual";
+import { createPersonalTask } from "@/lib/tasks/personal";
 
 import { requireUser, type Session } from "@/lib/auth/session";
 import {
@@ -13,7 +16,6 @@ import {
   deleteManualTask as deleteTaskRow,
   insertAnswerReport,
   hasApplication,
-  insertTask,
   removeMyCourse,
   setTaskPreferredBucket,
   setTaskDone,
@@ -61,33 +63,7 @@ export async function moveTaskToBucket(input: unknown): Promise<void> {
   await setTaskPreferredBucket(db, user.id, id, bucket);
 }
 
-const taskDateSchema = z.preprocess(
-  (value) => (value === "" ? null : value),
-  z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
-);
-
-const taskSchema = z.object({
-  title: z.string().trim().min(1).max(240),
-  description: z
-    .preprocess(
-      (value) => (typeof value === "string" && value.trim() === "" ? null : value),
-      z.string().trim().max(2000).nullable(),
-    )
-    .optional()
-    .default(null),
-  sourceUrl: z
-    .preprocess(
-      (value) => (typeof value === "string" && value.trim() === "" ? null : value),
-      z.string().trim().url().max(2048).nullable(),
-    )
-    .optional()
-    .default(null),
-  dueDate: taskDateSchema,
-  applicationId: z
-    .preprocess((value) => (value === "" ? null : value), z.string().uuid().nullable())
-    .optional()
-    .default(null),
-});
+const taskSchema = ManualTaskSchema;
 
 /** Trust-boundary check: a forged applicationId must not attach to a new task. */
 async function assertOwnedApplication(
@@ -102,19 +78,14 @@ async function assertOwnedApplication(
 }
 
 export async function createTask(input: unknown): Promise<void> {
-  const task = taskSchema.parse(input);
+  const {operationId,...task} = taskSchema.extend({operationId:z.string().uuid().optional()}).parse(input);
   const { db, user } = await requireUser();
 
   await assertOwnedApplication(db, user.id, task.applicationId);
-  await insertTask(db, {
-    user_id: user.id,
-    title: task.title,
-    description: task.description,
-    source_url: task.sourceUrl,
-    due_date: task.dueDate,
-    application_id: task.applicationId,
-  });
+  const receipt=await createPersonalTask(db,user.id,task,{operationId:operationId??randomUUID(),instruction:"Create personal task from form"});
+  if(receipt.status==="failed")throw new Error(receipt.error);
   revalidatePath("/dashboard");
+  revalidatePath("/courses","layout");
 }
 
 const updateTaskSchema = taskSchema.extend({
@@ -134,6 +105,7 @@ export async function updateTask(input: unknown): Promise<void> {
     application_id: task.applicationId,
   });
   revalidatePath("/dashboard");
+  revalidatePath("/courses","layout");
 }
 
 const courseTaskEditSchema = taskSchema.extend({ id: z.string().uuid() });

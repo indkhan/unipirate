@@ -4,13 +4,15 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { selectedKnowledge } from "@/lib/ai/versioned-kb";
 import { context, raw, version } from "@/lib/rules/__tests__/assessment-fixtures";
 
-const chat = vi.hoisted(() => ({ messages: [] as UIMessage[], openNext: false }));
+const chat = vi.hoisted(() => ({ messages: [] as UIMessage[], openNext: false, startingUsed: null as number | null }));
+vi.mock("next/navigation",()=>({useRouter:()=>({refresh:vi.fn()})}));
 vi.mock("@ai-sdk/react", () => ({ useChat: () => ({ messages: chat.messages, status: "ready", sendMessage: vi.fn() }) }));
 vi.mock("@/app/(app)/dashboard/actions", () => ({ reportAssistantAnswer: vi.fn() }));
 vi.mock("react", async importOriginal => {
   const actual = await importOriginal<typeof import("react")>();
   return { ...actual, useState: (initial: unknown) => {
     if (chat.openNext) { chat.openNext = false; return actual.useState(true); }
+    if (typeof initial === "number" && chat.startingUsed !== null) return actual.useState(chat.startingUsed);
     return actual.useState(initial);
   } };
 });
@@ -27,7 +29,23 @@ function render(messages: UIMessage[]) {
   return renderToStaticMarkup(<AssistantSidebar initialUsed={0} />);
 }
 const evidence = () => selectedKnowledge([version(1)], { evaluatedAt: context.evaluatedAt });
-beforeEach(() => { chat.messages = []; });
+beforeEach(() => { chat.messages = []; chat.startingUsed = null; });
+it("does not count session questions again when router refresh updates the server quota", () => {
+  chat.startingUsed = 17;
+  chat.messages = [{ id: "question", role: "user", parts: [{ type: "text", text: "Question" }] }];
+  chat.openNext = true;
+  const html = renderToStaticMarkup(<AssistantSidebar initialUsed={18} />);
+  expect(html).toContain("18/20 today");
+  expect(html).not.toContain("19/20 today");
+});
+it("counts a new in-flight question after a refreshed quota without prematurely exhausting it", () => {
+  chat.startingUsed = 17;
+  chat.messages = ["first", "second"].map(id => ({ id, role: "user", parts: [{ type: "text", text: "Question" }] }));
+  chat.openNext = true;
+  const html = renderToStaticMarkup(<AssistantSidebar initialUsed={18} />);
+  expect(html).toContain("19/20 today");
+  expect(html).not.toContain("You've used all questions");
+});
 it("renders the selected tool envelope's exact source link and literal verification date", () => {
   const html = render([response("first", evidence())]);
   expect(html).toContain('href="' + raw.source_url + '"');

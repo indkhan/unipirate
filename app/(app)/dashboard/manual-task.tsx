@@ -33,6 +33,8 @@ function TaskDialog({
   const [sourceUrl, setSourceUrl] = useState(initialTask?.source?.url ?? "");
   const [dueDate, setDueDate] = useState(initialTask?.dueDate ?? "");
   const [applicationId, setApplicationId] = useState(initialTask?.applicationId ?? "");
+  const [operationId]=useState(()=>crypto.randomUUID());
+  const [error,setError]=useState<string|null>(null);
 
   const isEdit = mode === "edit" && initialTask;
 
@@ -70,6 +72,8 @@ function TaskDialog({
           onSubmit={(event) => {
             event.preventDefault();
             startTransition(async () => {
+              setError(null);
+              try {
               const payload = {
                 title,
                 description,
@@ -84,13 +88,15 @@ function TaskDialog({
                   await updateTask({ id: initialTask.id, ...payload });
                 }
               } else {
-                await createTask(payload);
+                await createTask({...payload,operationId});
               }
               onClose();
               router.refresh();
+              } catch(error) {setError(error instanceof Error?error.message:"The task was not saved. Try again.");}
             });
           }}
         >
+          {error?<p role="alert">{error}</p>:null}
           <input
             aria-label="Task title"
             className={styles.taskInput}

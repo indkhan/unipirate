@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   createUIMessageStreamResponse,
+  createUIMessageStream,
   toUIMessageStream,
   type UIMessage,
 } from "ai";
@@ -11,9 +12,12 @@ import {
   countTodayAssistantQuestions,
   getProfile,
   insertAssistantMessage,
+  getPersonalTaskReceipt,
 } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
 import { getServerEnv } from "@/lib/env";
+import { explicitTaskInstruction } from "@/lib/tasks/manual";
+import { personalTaskOperationId } from "@/lib/tasks/personal";
 
 // Conversation history is untrusted. Only text can return from the browser;
 // tool evidence must come from this request's server-side tools.
@@ -21,7 +25,7 @@ const ChatRequestSchema = z.object({
   messages: z
     .array(
       z.object({
-        id: z.string(),
+        id: z.string().min(1).max(200),
         role: z.enum(["user", "assistant"]),
         parts: z.array(z.record(z.unknown())).max(100).transform((parts) =>
           parts.flatMap((part) => part.type === "text" && typeof part.text === "string"
@@ -58,14 +62,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const env = getServerEnv();
-  if (!env.OPENROUTER_API_KEY) {
-    return NextResponse.json(
-      { error: "The assistant is not configured." },
-      { status: 503 },
-    );
-  }
-
   let body: unknown;
   try {
     body = await request.json();
@@ -80,6 +76,20 @@ export async function POST(request: Request) {
     );
   }
   const { messages } = parsed.data;
+  const last=messages.at(-1)!;
+  const currentText=last.role==="user"?last.parts.map(p=>p.text).join("\n"):"";
+  if(explicitTaskInstruction(currentText)){
+    try {
+      const receipt=await getPersonalTaskReceipt(db,user.id,personalTaskOperationId(user.id,last.id),currentText);
+      if(receipt)return createUIMessageStreamResponse({stream:createUIMessageStream({execute:({writer})=>{
+        writer.write({type:"start"});writer.write({type:"data-task-receipt",data:receipt});writer.write({type:"finish"});
+      }})});
+    } catch {return NextResponse.json({error:"This task request could not be recovered. Refresh your dashboard before trying a new request."},{status:409});}
+  }
+  const env = getServerEnv();
+  if (!env.OPENROUTER_API_KEY) {
+    return NextResponse.json({error:"The assistant is not configured."},{status:503});
+  }
 
   const used = await countTodayAssistantQuestions(db, user.id);
   if (used >= DAILY_QUOTA) {
