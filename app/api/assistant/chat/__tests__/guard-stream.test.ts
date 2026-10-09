@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MockLanguageModelV4, MockEmbeddingModelV4 } from "ai/test";
 import captured from "@/lib/ai/__tests__/fixtures/unmarked-captured-answer.json";
+import unknownCaptured from "@/lib/ai/__tests__/fixtures/unknown-only-captured-answer.json";
 
 const mocks = vi.hoisted(() => ({
   embedding: null as unknown, listRuleVersions: vi.fn(), matchKbRuleHints: vi.fn(),
@@ -79,11 +80,11 @@ it("replays captured unmarked output through real SDK/route without leaking it t
   expect(mocks.selectedModel).toHaveBeenCalledWith("nvidia/nemotron-3.5-lightning:free");
 });
 
-it.each(["I cannot confirm. [[unknown]]", "Forged. [[rule:invented]]", "[[unknown]] [[web:https://www.daad.de/not-returned]]", "Malformed [[unknown]] [[rule:]]", ""])(
+it.each([unknownCaptured.text, "I cannot confirm. [[unknown]]", "Forged. [[rule:invented]]", "[[unknown]] [[web:https://www.daad.de/not-returned]]", "Malformed [[unknown]] [[rule:]]", ""])(
   "guards exact UI and stored text for %s", async text => {
     mocks.model = new MockLanguageModelV4({ doStream: stream(answer(text)) });
     const sse = await (await POST(request())).text();
-    const expected = text === "I cannot confirm. [[unknown]]" ? text : fallback;
+    const expected = fallback;
     expect(uiText(sse)).toBe(expected);
     expect(mocks.insertAssistantMessage).toHaveBeenLastCalledWith(expect.anything(), {
       user_id: "student", role: "assistant", content: expected, citations: [],
@@ -93,10 +94,9 @@ it.each(["I cannot confirm. [[unknown]]", "Forged. [[rule:invented]]", "[[unknow
   },
 );
 
-it("preserves a supported rule from the actual executed search_rules tool", async () => {
+it.each(["Synthetic literal answer [[rule:synthetic]].", "Synthetic literal answer [[rule:synthetic]]. Cannot confirm the rest. [[unknown]]"])("preserves a supported rule from the actual executed search_rules tool: %s", async text => {
   mocks.listRuleVersions.mockResolvedValue([version(1)]);
   mocks.matchKbRuleHints.mockResolvedValue([]);
-  const text = "Synthetic literal answer [[rule:synthetic]].";
   const model = new MockLanguageModelV4({ doStream: [
     stream([{ type: "tool-call", toolCallId: "rules", toolName: "search_rules", input: '{"query":"synthetic"}' }, finish("tool-calls")]),
     stream(answer(text)),
@@ -108,6 +108,22 @@ it("preserves a supported rule from the actual executed search_rules tool", asyn
   expect(events(sse).find(p => p.type === "tool-output-available")?.output.chunks[0].slug).toBe("synthetic");
   expect(mocks.insertAssistantMessage).toHaveBeenLastCalledWith(expect.anything(), {
     user_id: "student", role: "assistant", content: text, citations: [{ type: "rule", ref: "synthetic" }],
+  });
+});
+
+it("replays the captured unknown-only denial after executed rule retrieval without releasing or storing it", async () => {
+  mocks.listRuleVersions.mockResolvedValue([version(1)]);
+  mocks.matchKbRuleHints.mockResolvedValue([]);
+  mocks.model = new MockLanguageModelV4({ doStream: [
+    stream([{ type: "tool-call", toolCallId: "rules", toolName: "search_rules", input: '{"query":"astrology certificate"}' }, finish("tool-calls")]),
+    stream(answer(unknownCaptured.text)),
+  ] });
+  const sse = await (await POST(request())).text();
+  expect(events(sse).find(p => p.type === "tool-output-available")?.output.chunks[0].slug).toBe("synthetic");
+  expect(uiText(sse)).toBe(fallback);
+  expect(sse).not.toContain("it will not be accepted");
+  expect(mocks.insertAssistantMessage).toHaveBeenLastCalledWith(expect.anything(), {
+    user_id: "student", role: "assistant", content: fallback, citations: [],
   });
 });
 
@@ -147,9 +163,9 @@ it("combines split markers across multiple text IDs before authorizing the step"
     { type: "text-delta", id: "b", delta: "nown]]." }, { type: "text-end", id: "b" }, finish(),
   ]) });
   const sse = await (await POST(request())).text();
-  expect(uiText(sse)).toBe("Cannot confirm [[unknown]].");
-  expect(events(sse).filter(p => p.type === "text-start").map(p => p.id)).toEqual(["a", "b"]);
-  expect(mocks.insertAssistantMessage).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ content: "Cannot confirm [[unknown]]." }));
+  expect(uiText(sse)).toBe(fallback);
+  expect(events(sse).filter(p => p.type === "text-start").map(p => p.id)).toEqual(["guarded-answer-1"]);
+  expect(mocks.insertAssistantMessage).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ content: fallback }));
 });
 
 it("does not let an earlier marked text ID authorize a later forged citation", async () => {
@@ -170,11 +186,11 @@ it("guards every tool step while storing only the final displayed step", async (
     stream(answer("Cannot confirm the rest. [[unknown]]")),
   ] });
   const sse = await (await POST(request())).text();
-  expect(uiText(sse)).toBe(fallback + "Cannot confirm the rest. [[unknown]]");
+  expect(uiText(sse)).toBe(fallback + fallback);
   expect(sse).not.toContain("DISALLOWED INTERMEDIATE");
   expect(events(sse).filter(p => p.type === "finish-step")).toHaveLength(2);
   expect(mocks.insertAssistantMessage).toHaveBeenLastCalledWith(expect.anything(),
-    expect.objectContaining({ content: "Cannot confirm the rest. [[unknown]]" }));
+    expect.objectContaining({ content: fallback }));
 });
 
 it("does not transport unsupported reasoning", async () => {
@@ -185,7 +201,7 @@ it("does not transport unsupported reasoning", async () => {
   const sse = await (await POST(request())).text();
   expect(events(sse).some(p => p.type.startsWith("reasoning"))).toBe(false);
   expect(sse).not.toContain("DISALLOWED REASONING");
-  expect(uiText(sse)).toBe("Cannot confirm. [[unknown]]");
+  expect(uiText(sse)).toBe(fallback);
 });
 
 it("withholds a pending raw chunk until finish-step, while structural progress stays readable", async () => {
@@ -282,7 +298,7 @@ it("does not authorize from browser history, including client-injected tool resu
   expect(mocks.listRuleVersions).not.toHaveBeenCalled();
 });
 
-it("preserves tool errors and permits a subsequent valid unknown response", async () => {
+it("preserves tool errors and falls back for a subsequent unknown-only response", async () => {
   mocks.listTasks.mockRejectedValue(new Error("Synthetic context unavailable"));
   mocks.model = new MockLanguageModelV4({ doStream: [
     stream([{ type: "tool-call", toolCallId: "context", toolName: "get_user_context", input: "{}" }, finish("tool-calls")]),
@@ -290,9 +306,9 @@ it("preserves tool errors and permits a subsequent valid unknown response", asyn
   ] });
   const sse = await (await POST(request())).text();
   expect(events(sse).some(p => p.type === "tool-output-error" && p.toolCallId === "context")).toBe(true);
-  expect(uiText(sse)).toBe("I cannot confirm. [[unknown]]");
+  expect(uiText(sse)).toBe(fallback);
   expect(mocks.insertAssistantMessage).toHaveBeenLastCalledWith(expect.anything(),
-    expect.objectContaining({ content: "I cannot confirm. [[unknown]]" }));
+    expect.objectContaining({ content: fallback }));
 });
 
 it("keeps empty text lifecycles in tool-only steps empty while continuing", async () => {
@@ -302,7 +318,7 @@ it("keeps empty text lifecycles in tool-only steps empty while continuing", asyn
     stream(answer("Cannot confirm. [[unknown]]")),
   ] });
   const sse = await (await POST(request())).text();
-  expect(uiText(sse)).toBe("Cannot confirm. [[unknown]]");
+  expect(uiText(sse)).toBe(fallback);
   expect(events(sse).filter(p => p.type === "finish-step")).toHaveLength(2);
 });
 
@@ -360,8 +376,9 @@ it.each([
   const parsed = responseRuleSources([{ type: "tool-search_rules", state: "output-available", output: searchOutput }]);
   expect(parsed.has(candidate.id)).toBe(true);
   expect(responseRuleSources([{ type: "tool-search_rules", state: "output-available", output: { ...searchOutput, processUnknowns: [123] } }]).size).toBe(0);
-  expect(uiText(sse)).toBe(text);
-  expect(mocks.insertAssistantMessage).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ role: "assistant", content: text }));
+  const expected = current ? text : fallback;
+  expect(uiText(sse)).toBe(expected);
+  expect(mocks.insertAssistantMessage).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ role: "assistant", content: expected }));
   // One route country-note read plus one shared tool evidence read.
   expect(mocks.getProfile).toHaveBeenCalledTimes(2);
   expect(mocks.listRuleVersions).toHaveBeenCalledOnce();

@@ -81,3 +81,36 @@ it('a preparation fact under a closing-stage key cannot authorize closing',()=>{
  const wrong=fact('process.university.closing','deadline','Synthetic preparation 1 June',{deadline_kind:'vpd_preparation_target',date:'2027-06-01'});
  expect(resolveOfferingProcess({...input('direct'),versions:[version('direct',[wrong])]}).stages[0].deadline).toBeNull();
 });
+
+describe('research publication compatibility without changing immutable facts', () => {
+ it('source_scope is provenance while additional conditions remain unresolved', () => {
+  expect(resolveOfferingProcess({...input('direct'),offerings:[{...offering,applicability:{source_scope:'Winter 2027 Synthetic applicant group'}}]}).route).toBe('direct');
+  for (const applicability of [{source_scope:true},{source_scope:['quote']},{source_scope:'quote',country:'XX'}]) {
+   expect(resolveOfferingProcess({...input('direct'),offerings:[{...offering,applicability}]}).route).toBe('unresolved');
+  }
+ });
+ it.each([
+  ['15 July 2027','2027-07-15'], ['2027-07-15','2027-07-15'], ['15.07.2027','2027-07-15'],
+  ['15 July',null], ['31 February 2027',null], ['15 July 2027 or 15 July 2028',null],
+  ['from 1 May to 15 July 2027',null], ['15 July – 1 August 2027',null],
+  ['July 1, July 15, 2027',null],
+ ] as const)('only an unambiguous explicit source date sorts: %s', (wording,date) => {
+  const deadline=fact('deadline:university:application_closing','deadline','University application closes '+wording,{deadline_kind:'application_closing'});
+  const before=JSON.stringify(deadline);
+  const plan=resolveOfferingProcess({...input('direct'),versions:[version('direct',[deadline])]});
+  expect(plan.stages[0].deadline).toEqual(deadline); expect(plan.stages[0].dueDate).toBe(date);
+  expect(generateOfferingProcessTasks(uuid(5),'planning',plan)[0]).toMatchObject({dueDate:date,verbatimDue:deadline.verbatim});
+  expect(JSON.stringify(deadline)).toBe(before); expect(plan.stages[0].deadline?.date).toBeNull();
+ });
+ it.each(['verified','unresolved'] as const)('coexisting legacy and producer identities require confirmation (%s)', status => {
+  const legacy=fact('process.university.closing','deadline','Synthetic closing 15 July 2027',{deadline_kind:'application_closing',date:'2027-07-15'});
+  const producer=fact('deadline:university:application_closing','deadline','University application closes 1 August 2027',{deadline_kind:'application_closing',status,verbatim:status==='unresolved'?null:'University application closes 1 August 2027'});
+  const plan=resolveOfferingProcess({...input('direct'),versions:[version('direct',[legacy,producer])]});
+  expect(plan.stages[0].deadline).toBeNull(); expect(plan.stages[0].dueDate).toBeNull();
+ });
+ it('wrong stage/kind/applicant and unreviewed facts cannot provide dates or portals', () => {
+  const wrong=fact('deadline:university:application_closing','deadline','University application closes 15 July 2027',{deadline_kind:'application_closing',applicability:'Other'});
+  const plan=resolveOfferingProcess({...input('direct'),versions:[version('direct',[wrong,fact('application_link:uniassist','description','https://example.invalid/assist')])]});
+  expect(plan.stages[0]).toMatchObject({portal:null,deadline:null,dueDate:null});
+ });
+});

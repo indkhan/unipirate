@@ -82,13 +82,15 @@ jobs:
             const fs = require("node:fs");
             const path = require("node:path");
             const report = JSON.parse(fs.readFileSync(path.join(process.env.RUNNER_TEMP, "vitest.json"), "utf8"));
-            const files = report.testResults.filter((t) => path.basename(t.name) === "rls.integration.test.ts");
-            if (files.length === 0) throw new Error("rls.integration.test.ts absent from report: suite did not execute (honest failure, not a skip)");
-            const cases = files.flatMap((f) => f.assertionResults);
-            if (cases.length === 0) throw new Error("rls.integration.test.ts produced zero cases: suite skipped, not green");
-            const bad = cases.filter((c) => c.status !== "passed");
-            if (bad.length > 0) throw new Error(`${bad.length}/${cases.length} RLS cases not passed: ${bad.map((c) => `${c.title}:${c.status}`).join("; ")}`);
-            console.log(`RLS proof: ${cases.length} cases passed, 0 skipped/failed.`);
+            for (const suite of ["rls.integration.test.ts", "course-process.integration.test.ts"]) {
+              const files = report.testResults.filter((t) => path.basename(t.name) === suite);
+              if (files.length === 0) throw new Error(`${suite} absent from report: suite did not execute (honest failure, not a skip)`);
+              const cases = files.flatMap((f) => f.assertionResults);
+              if (cases.length === 0) throw new Error(`${suite} produced zero cases: suite skipped, not green`);
+              const bad = cases.filter((c) => c.status !== "passed");
+              if (bad.length > 0) throw new Error(`${bad.length}/${cases.length} ${suite} cases not passed: ${bad.map((c) => `${c.title}:${c.status}`).join("; ")}`);
+              console.log(`${suite} proof: ${cases.length} cases passed, 0 skipped/failed.`);
+            }
           '
 
       - name: Course-offerings SQL gate (disposable local DB)

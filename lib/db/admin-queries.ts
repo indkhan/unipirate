@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { ProgrammeCorrectionSchema, ProgrammeSchema, OfferingSchema, OfferingVersionSchema, CourseCatalogueIdSchema, parseProgrammeRow, parseOfferingRow, parseOfferingVersionRow } from "@/lib/courses/offerings";
+import { CourseEvidenceSchema, ProgrammeCorrectionSchema, ProgrammeSchema, OfferingSchema, OfferingVersionSchema, CourseCatalogueIdSchema, parseProgrammeRow, parseOfferingRow, parseOfferingVersionRow } from "@/lib/courses/offerings";
 // Queries for the /admin review workspace: rule editing/verification, the
 // course review queues, and the audit trail. Callers must hold an admin
 // session (requireAdmin) — RLS rejects these writes for everyone else.
@@ -14,6 +14,7 @@ import type {
   TablesUpdate,
 } from "@/lib/db/database.types";
 import { z } from "zod";
+import { EngineRuleSchema } from "@/lib/engine/evaluate";
 import { JsonSchema, DraftSaveSchema, RawRuleSchema, RuleDraftSchema, RuleIdSchema, RuleVersionSchema, jsonEqual, preflightPublication, type RuleDraft, type RuleVersion } from "@/lib/rules/versioning";
 import { toCourseTaskDefinition } from "@/lib/tasks/course-tasks";
 import {
@@ -52,6 +53,25 @@ export async function listAdminRules(db: Db, filters: AdminRuleFilters): Promise
 }
 export async function getAdminRuleDraft(db:Db,id:string):Promise<RuleDraft> {
  return RuleDraftSchema.parse(unwrap(await db.from("rule_drafts").select().eq("rule_id",RuleIdSchema.parse(id)).single()));
+}
+const RuleCandidateSchema = EngineRuleSchema.innerType().omit({id:true}).extend({
+ slug: CourseEvidenceSchema.innerType().shape.source_quote,
+ country_code: z.string().regex(/^[a-z]{2}$/).nullable(),
+ status: z.literal("draft"),
+ source_url: CourseEvidenceSchema.innerType().shape.source_url,
+ source_quote: CourseEvidenceSchema.innerType().shape.source_quote,
+ last_verified_at: CourseEvidenceSchema.innerType().shape.retrieved_at,
+ notes: z.string().nullable(),
+}).strict();
+/** Create a logical draft only. Slug uniqueness, UUID, clocks and workspace
+ * initialization belong to the DB; country_code is the stored lowercase code.
+ * Source text is preserved exactly. This does not verify or publish evidence. */
+export async function insertAdminRuleCandidate(db:Db,input:unknown):Promise<RuleDraft> {
+ const values = RuleCandidateSchema.parse(input);
+ // Validation-only identity: never sent to the database or returned as a rule ID.
+ EngineRuleSchema.parse({...values,id:""});
+ const row = z.object({id:RuleIdSchema}).parse(unwrap(await db.from("rules").insert(values).select("id").single()));
+ return getAdminRuleDraft(db,row.id);
 }
 export async function listAdminRuleVersions(db:Db,id:string):Promise<RuleVersion[]> {
  return z.array(RuleVersionSchema).parse(unwrap(await db.from("rule_versions").select().eq("rule_id",RuleIdSchema.parse(id)).order("version_number",{ascending:false})));

@@ -20,7 +20,8 @@ export function guardAssistantAnswer(text: string, evidence: readonly AssistantE
     const marker = parseMarkers(token);
     return token !== "[[unknown]]" && !marker.citations.some(c => token === `[[${c.type}:${c.ref}]]`);
   }) || text.replace(/\[\[[\s\S]*?\]\]/g, "").includes("[[");
-  if (!text.trim() || malformed || (!parsed.unknown && !parsed.citations.length)) return ASSISTANT_FALLBACK;
+  // Unknown-only model prose has no source authority, even after retrieval.
+  if (!text.trim() || malformed || !parsed.citations.length) return ASSISTANT_FALLBACK;
   const rules = responseRuleSources(evidence.filter(e => e.toolName === "search_rules").map(e => ({
     type: "tool-search_rules", state: "output-available", output: e.output,
   })));
@@ -36,6 +37,8 @@ export function guardAssistantAnswer(text: string, evidence: readonly AssistantE
     }
   }
   for (const url of ambiguous) web.delete(url);
+  // Trade-off: authorized citation presence does not prove sentence entailment,
+  // including unknown passages in otherwise cited answers.
   return parsed.citations.every(c => c.type === "rule" ? rules.has(c.ref) : web.has(c.ref))
     ? text : ASSISTANT_FALLBACK;
 }

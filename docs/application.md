@@ -530,10 +530,13 @@ successful live assistant evaluation; it is not guaranteed by unit tests.
   records those exact projected outputs in the request-local allowlist; context
   and personal reminders cannot authorize rule citations. History, personal context and provider
   source events authorize nothing; unknown cannot override an unauthorized citation.
+  Answers without any rule/web citation, including unknown-only model prose,
+  always use the deterministic fallback even when tools returned evidence.
   Rejected prose is replaced entirely with a constant `[[unknown]]` refusal and
   DAAD's general URL as a place to check, never as proof of the requested answer.
-  This checks presence and citation authorization, not sentence entailment,
-  factual accuracy, source accuracy or honesty of arbitrary unknown-marked prose.
+  Trade-off: this checks presence and citation authorization, not sentence
+  entailment, factual accuracy or source accuracy. An authorized citation in a
+  mixed answer does not prove its other claims or unknown passages are supported.
 - Trade-off: the SDK 7 transform buffers answer text until each finish-step,
   before the SDK accumulates text for continuation and persistence. Tool progress
   remains immediate; incomplete/error/aborted steps discard pending text. The
@@ -1437,7 +1440,9 @@ research or write another owner's context. Type additions are provisional until
 root generates against the disposable migrated schema; the SQL acceptance script
 is `supabase/tests/application_offering_selection.sql`, not mock RLS proof.
 
-Initial supported offering applicability is an empty map only. Fact applicability
+Supported offering applicability is an empty map or the research producer's
+literal `source_scope` provenance string only. That quote adds no eligibility
+condition; any other map key or non-string scope remains unresolved. Fact applicability
 must equal the confirmed offering applicant group byte-for-byte. Additional map
 keys, missing group confirmation, other fact prose and unavailable programme
 mappings yield targeted official confirmation. The highest numbered reviewed
@@ -1445,15 +1450,26 @@ version for that exact offering is selected before route matching. Exactly one
 applicable verified route is required; newer reviewed missing/unresolved/conflicting
 routes never revive predecessors. Pending/rejected research has no public authority.
 
-Optional stage keys use existing COURSE02 fact kinds, without a producer change:
+Optional stage keys consume both protected research publication identities and
+existing COURSE02 process identities, without rewriting immutable facts:
 
-| Key | Required kind and interpretation |
-| --- | --- |
-| `process.university.portal` | description; exact HTTP(S) URL in verified verbatim and literal quote |
-| `process.uni_assist.portal` | description; same portal contract |
-| `process.university.closing` | deadline / application_closing |
-| `process.uni_assist.closing` | deadline / application_closing |
-| `process.vpd.preparation` | deadline / vpd_preparation_target; never a closing deadline |
+| Process key | Research key | Required kind and interpretation |
+| --- | --- | --- |
+| `process.university.portal` | `application_link:university` | description; exact HTTP(S) URL in verified verbatim and literal quote |
+| `process.uni_assist.portal` | `application_link:uniassist` (submission), `application_link:vpd` (VPD request) | description; same portal contract |
+| `process.university.closing` | `deadline:university:application_closing` | deadline / application_closing |
+| `process.uni_assist.closing` | `deadline:uniassist:application_closing` | deadline / application_closing |
+| `process.vpd.preparation` | `deadline:vpd:vpd_preparation_target` | deadline / vpd_preparation_target; never a closing deadline |
+
+Coexisting identities, unresolved fields and mismatched field scope request
+confirmation rather than choosing one assertion. Protected research dates stay
+null in immutable facts. The pure planner separately derives `stage.dueDate` from
+one supported literal full date with its own explicit year; ranges, additional
+numbers/years, invalid dates and absent years remain undated. It never borrows
+the offering year, URL, quote context, retrieval or publication date. Existing
+reviewed structured process dates remain compatible. Derived dates drive only
+sorting, buckets and calendar; the displayed deadline remains the exact source
+wording, and source time/timezone fields are never inferred.
 
 Source URLs are provenance/official confirmation pointers, never inferred portals.
 Missing portal/closing/preparation dates remain explicit confirmations, including
