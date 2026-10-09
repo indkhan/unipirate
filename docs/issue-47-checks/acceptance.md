@@ -78,3 +78,54 @@ Responsive measurements and full local screenshot paths are in [browser.json](br
 Representative inspected images: [mobile landing, dark](mobile-landing-dark.png)
 and [desktop Master entry, dark](desktop-master-dark.png).
 Full local command logs remain in ignored `test-results/issue-47/`.
+
+## PR 64 review repair (2026-10-10)
+
+Review base: `a42e06a3d6f340a277cd325a4a0c3ee87c28bb97`.
+
+The reviewer's exact sequence was reproduced with actual T3 browser history:
+Bachelor entry, Saudi attendance, Continue, in-app Back twice, Master, Continue,
+browser Back twice. The form showed university history while the URL reverted to
+Bachelor; refresh then restored the Bachelor draft. The repair keeps the active
+entry URL with its draft across traversal. It also handles Next's fresh equivalent
+server props and replacement of custom history state. Current history progress
+survives remounts before the outgoing draft effect saves, including Back to degree.
+
+The second finding is corrected with a version-sensitive profile label. Current
+qualification-history flows display **School attendance country**, separately
+from **School qualification issuer country**. Unversioned profiles retain the
+legacy **Certificate country** label. No stored answer or historical record is
+rewritten, and attendance never infers an issuer.
+
+- Failing mounted tests first reproduced the stale URL, equivalent-props reset,
+  lost history metadata, stale draft progress and incorrect attendance label.
+  Actual asynchronous `history.back()` / `history.forward()` events, remounts,
+  independent degree drafts and retained university-history answers are covered.
+- Final focused checker/landing: **27 files, 296 passed, zero skips**.
+- Final full suite with the existing disposable environment preloaded:
+  **131 files, 2,807 passed, zero skips**. JSON-report inspection proves all
+  **29 RLS** and **3 course-process** integration cases passed on API 55321 / DB
+  55322. An earlier invocation skipped the three course-process cases because
+  their environment was not loaded at module import; the configured rerun
+  supersedes that incomplete gate.
+- Lint: exit 0, zero errors, the same three existing warnings. Nonincremental
+  TypeScript: exit 0. Default `pnpm build` using Turbopack: exit 0.
+- T3 browser reproduced and verified the exact repair at 390/768/1440 pixels;
+  Back/Forward and refresh before traversal were also checked. Bachelor national,
+  GCE and IB entry, country reuse and direct Master landing remained reachable.
+  Authenticated disposable profile verification displayed Saudi attendance and
+  Indian issuer distinctly; its saved answers remained unchanged.
+- After T3 explicitly reported its automation host unavailable, an existing
+  headless Chromium installation verified the local production build on 3047.
+  Six combinations of 390/768/1440 pixels and actual app light/dark settings
+  passed real Back/Forward/refresh and cross-country profile-label assertions,
+  with no horizontal overflow. Browser preference emulation alone does not
+  select this app's dark theme; these checks asserted the actual `.dark` class.
+  Disposable browser accounts were removed. Measurements are in
+  [repair-browser.json](repair-browser.json); inspected screenshots show
+  [mobile profile](repair-profile-mobile-dark.png) and
+  [desktop Master](repair-master-desktop-dark.png), both in dark mode.
+
+Local gates establish repository/local disposable behavior, not deployed
+production or provider behavior. Fresh independent review remains root-owned;
+no merge, issue closure, linked reset, feature-service edit or publication occurs.

@@ -70,13 +70,21 @@ export function CheckFlow({
     initialAnswers.certificateCountry ?? "none"
   }${entryDegree ? `:${entryDegree}` : ""}`;
   const activeStorageKey = useRef(storageKey);
+  const activeEntryUrl = useRef<string | null>(null);
+  const restoredEntry = useRef<string | null>(null);
 
   useEffect(() => {
     posthog.capture("check_started");
   }, [posthog]);
 
   useEffect(() => {
+    const entry = JSON.stringify([initialAnswers, startStepIndex, storageKey, entryDegree]);
+    // History traversal can deliver a new server props object for the same entry.
+    // Restore once per entry, preserving the question selected by Back/Forward.
+    if (restoredEntry.current === entry) return;
+    restoredEntry.current = entry;
     activeStorageKey.current = storageKey;
+    activeEntryUrl.current = window.location.href;
     const safeInitial = normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), qualificationHistoryVersion: 1 as const, apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, ...pakistanAnswerVersion(initialAnswers), jeeVersion: 2 as const }));
     let nextAnswers: PartialAnswers = safeInitial;
     let nextStepIndex = startStepIndex;
@@ -89,7 +97,11 @@ export function CheckFlow({
         const recovered = normalizeAnswers(upgradeSaudiAnswers({ ...saved.answers, ...(saved.answers?.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(saved.answers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, ...pakistanAnswerVersion(saved.answers), jeeVersion: 2 as const }));
         nextAnswers = recovered;
         nextStepIndex = restoredStepIndex(recovered, saved.stepIndex ?? startStepIndex, saved.stepId);
-        if (entryDegree === recovered.targetDegree && nextStepIndex === 0) {
+        const historyStep = window.history.state?.[CHECK_HISTORY_STEP_KEY];
+        if (typeof historyStep === "number" && Number.isInteger(historyStep) && historyStep >= 0) {
+          // A history remount can happen before the outgoing draft effect saves.
+          nextStepIndex = restoredStepIndex(recovered, historyStep);
+        } else if (entryDegree === recovered.targetDegree && nextStepIndex === 0) {
           nextStepIndex = nextEntryStep(recovered);
         }
       }
@@ -136,6 +148,13 @@ export function CheckFlow({
         stepId: steps[safeStepIndex],
       } satisfies SavedCheckState),
     );
+    // Next can replace custom history state while committing a traversal.
+    // Reattach the displayed question and active URL after that commit.
+    window.history.replaceState(
+      { ...(window.history.state ?? {}), [CHECK_HISTORY_STEP_KEY]: safeStepIndex },
+      "",
+      activeEntryUrl.current ?? window.location.href,
+    );
   }, [answers, restored, stepIndex, steps, storageKey]);
 
   useEffect(() => {
@@ -144,6 +163,15 @@ export function CheckFlow({
       const historyStep = event.state?.[CHECK_HISTORY_STEP_KEY];
       if (typeof historyStep !== "number" || !Number.isInteger(historyStep)) return;
       const safeStepIndex = restoredStepIndex(answers, Math.max(historyStep, 0));
+      // Older question entries can still contain the original landing degree.
+      // Keep the active edited draft and URL together across Back and Forward.
+      if (activeEntryUrl.current && window.location.href !== activeEntryUrl.current) {
+        window.history.replaceState(
+          { ...event.state, [CHECK_HISTORY_STEP_KEY]: safeStepIndex },
+          "",
+          activeEntryUrl.current,
+        );
+      }
       setError(null);
       setStepIndex(safeStepIndex);
     }
@@ -176,6 +204,7 @@ export function CheckFlow({
       const url = new URL(window.location.href);
       url.searchParams.set("degree", value);
       url.searchParams.delete("country");
+      activeEntryUrl.current = url.href;
       window.history.replaceState(window.history.state, "", url);
       activeStorageKey.current = `${CHECK_STORAGE_PREFIX}:none:${value}`;
     }

@@ -172,7 +172,14 @@ stops at newly missing evidence. Degree links use separate draft keys, so select
 Master cannot restore a Bachelor draft. Country edits survive under their original
 entry key. Explicit degree edits update the URL and save under the new degree's
 draft key, so refresh follows the edit while a later landing choice resumes that
-degree's own flow. Old country/numeric drafts remain
+degree's own flow. Browser Back/Forward retain the edited entry URL and active draft
+while revisiting questions, so stale history URLs cannot undo a degree edit on
+refresh. Restoration runs once per entry input, and a valid current history
+position takes precedence over draft progress during a history remount. The
+checker reattaches its question metadata after Next's history commits. Profile
+editing labels the versioned school field as school attendance
+country, separately from its issuer; unversioned profiles retain the legacy
+certificate-country label. Old country/numeric drafts remain
 recoverable. Existing normalization prunes hidden answers only for new/edit flows;
 historical checks, profile rows, applications, task IDs, completion and student
 edits receive no migration or rewrite. Issues #49–#53 retain their separate

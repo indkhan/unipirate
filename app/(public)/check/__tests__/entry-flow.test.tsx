@@ -30,6 +30,14 @@ async function remount(initialAnswers: PartialAnswers = {}) {
   await mount(initialAnswers);
 }
 function question() { return container.querySelector("h1")?.textContent; }
+async function traverse(direction: "back" | "forward") {
+  await act(async () => {
+    await new Promise<void>(resolve => {
+      window.addEventListener("popstate", () => setTimeout(resolve, 25), { once: true });
+      window.history[direction]();
+    });
+  });
+}
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   sessionStorage.clear(); window.history.replaceState({}, "", "/check");
@@ -132,6 +140,63 @@ it("a later landing degree choice cannot restore the opposite edited degree", as
   await mount({ targetDegree: "bachelor" }, "bachelor");
   await click("‹ Back"); await click("A Master's degree"); await click("Continue");
   await act(async () => root.unmount()); root = createRoot(container);
+  window.history.pushState({}, "", "/check?degree=bachelor");
   await mount({ targetDegree: "bachelor" }, "bachelor");
   expect(question()).toBe("Where did you attend school?");
+});
+
+it("refresh on the degree question retains Back's position rather than skipping the prefilled answer", async () => {
+  window.history.replaceState({}, "", "/check?degree=master");
+  await mount({ targetDegree: "master" }, "master");
+  await click("‹ Back");
+  await act(async () => root.unmount()); root = createRoot(container);
+  // A Next history remount can precede the previous component's draft effect.
+  const key = "unipirate.check.v1:none:master";
+  const saved = JSON.parse(sessionStorage.getItem(key)!);
+  sessionStorage.setItem(key, JSON.stringify({ ...saved, stepIndex: 1, stepId: "hasPriorUniversityStudy" }));
+  await mount({ targetDegree: "master" }, "master");
+  expect(question()).toBe("Which degree level are you applying for?");
+  expect(button("A Master's degree").getAttribute("aria-pressed")).toBe("true");
+});
+
+it.each([false, true])("real history traversal keeps an edited degree consistent (refresh before Back: %s)", async refreshBeforeBack => {
+  window.history.replaceState({}, "", "/check?degree=bachelor");
+  await mount({ targetDegree: "bachelor" }, "bachelor");
+  await click("Saudi Arabia"); await click("Continue");
+  await click("‹ Back"); await click("‹ Back");
+  await click("A Master's degree"); await click("Continue");
+  if (refreshBeforeBack) {
+    await act(async () => root.unmount()); root = createRoot(container);
+    await mount(checkerEntry({ degree: "master" }), "master");
+  }
+  await traverse("back");
+  // Next can deliver a fresh props object for the same entry after popstate.
+  if (refreshBeforeBack) {
+    window.history.replaceState({}, "", window.location.href);
+    await mount(checkerEntry({ degree: "master" }), "master");
+    expect(window.history.state.__unipirateCheckStep).toBe(0);
+  }
+  expect(question()).toBe("Which degree level are you applying for?");
+  expect(button("A Master's degree").getAttribute("aria-pressed")).toBe("true");
+  await traverse("back");
+  expect(question()).toBe("Have you studied at a university or other higher education institution?");
+  expect(new URL(window.location.href).searchParams.get("degree")).toBe("master");
+  await act(async () => root.unmount()); root = createRoot(container);
+  await mount(checkerEntry({ degree: new URL(window.location.href).searchParams.get("degree") }), "master");
+  expect(question()).toBe("Have you studied at a university or other higher education institution?");
+  await traverse("forward");
+  expect(question()).toBe("Which degree level are you applying for?");
+  expect(new URL(window.location.href).searchParams.get("degree")).toBe("master");
+  await traverse("forward");
+  expect(question()).toBe("Have you studied at a university or other higher education institution?");
+  await click("Yes"); await click("Continue");
+  await act(async () => root.unmount()); root = createRoot(container);
+  const degree = new URL(window.location.href).searchParams.get("degree")!;
+  await mount(checkerEntry({ degree }), degree as "master");
+  expect(question()).toBe("What qualification was that study leading to?");
+  const master = JSON.parse(sessionStorage.getItem("unipirate.check.v1:none:master")!).answers;
+  expect(master).toMatchObject({ targetDegree: "master", hasPriorUniversityStudy: true });
+  expect(master.certificateCountry).toBeUndefined();
+  expect(JSON.parse(sessionStorage.getItem("unipirate.check.v1:none:bachelor")!).answers)
+    .toMatchObject({ targetDegree: "bachelor", certificateCountry: "sa" });
 });

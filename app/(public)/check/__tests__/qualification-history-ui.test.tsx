@@ -10,6 +10,16 @@ vi.mock("../actions", () => ({ submitCheck: vi.fn() }));
 vi.mock("@/components/app/theme-toggle", () => ({ ThemeToggle: () => null }));
 const answers = { targetDegree: "master", nationality: "pk", certificateCountry: "pk", visaApplicationCountry: "sa", targetField: "cs", intake: null, qualificationHistoryVersion: 1, hasPriorUniversityStudy: true, priorQualificationType: "bachelor", priorStudyInstitution: "Example University", priorStudyCountry: "in", priorQualificationContext: "national", priorStudyField: "Computing", priorDegreeYears: 4, yearsOfUniversityStudy: 2, priorStudyCompletion: "in_progress" } as const;
 describe("history UI", () => {
+  it("labels versioned school attendance separately from the issuer and retains legacy country wording", () => {
+    const saved = { targetDegree: "bachelor", certificateCountry: "sa", curriculumType: "national", schoolQualificationCountry: "in", schoolQualificationContext: "national" } as const;
+    const current = renderToStaticMarkup(<ProfileReview initialAnswers={{ ...saved, qualificationHistoryVersion: 1 }} />);
+    expect(current).toContain('id="certificateCountry-label">School attendance country</h2>');
+    expect(current).toContain('id="schoolQualificationCountry-label">School qualification issuer country</h2>');
+    expect(current).not.toContain('>Certificate country</h2>');
+    const legacy = renderToStaticMarkup(<ProfileReview initialAnswers={saved} />);
+    expect(legacy).toContain('id="certificateCountry-label">Certificate country</h2>');
+    expect(saved).toMatchObject({ certificateCountry: "sa", schoolQualificationCountry: "in" });
+  });
   it("renders editable text history in checker and review", () => {
     const html = renderToStaticMarkup(React.createElement(CheckFlow, { initialAnswers: answers, initialStepIndex: visibleSteps({ ...answers, apsScopeVersion: 1 }).indexOf("priorStudyInstitution") }));
     expect(html).toContain('value="Example University"');
