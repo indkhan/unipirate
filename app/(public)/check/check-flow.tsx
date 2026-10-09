@@ -15,6 +15,7 @@ import { questionFor, buildOptions, type Option } from "./check-questions";
 import { QualificationTextInput } from "./qualification-text-input";
 import { GceSubjectsEditor } from "./gce-subjects-editor";
 import { IbSubjectsEditor } from "./ib-subjects-editor";
+import { nextEntryStep, restoredStepIndex } from "./entry";
 import {
   NUMBER_STEPS,
   PartialAnswersSchema,
@@ -38,11 +39,13 @@ type CheckFlowProps = {
   initialAnswers?: PartialAnswers;
   initialStepIndex?: number;
   userMenu?: ReactNode;
+  entryDegree?: "bachelor" | "master";
 };
 
 const SavedCheckStateSchema = z.object({
   answers: PartialAnswersSchema,
   stepIndex: z.number().int().nonnegative().optional(),
+  stepId: z.string().min(1).max(100).optional(),
 }).strict();
 type SavedCheckState = z.infer<typeof SavedCheckStateSchema>;
 
@@ -51,20 +54,21 @@ const CHECK_STORAGE_PREFIX = "unipirate.check.v1";
 
 export function CheckFlow({
   initialAnswers = {},
-  initialStepIndex = 0,
+  initialStepIndex,
   userMenu,
+  entryDegree,
 }: CheckFlowProps) {
   const router = useRouter();
   const posthog = usePostHog();
   const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1, ...pakistanAnswerVersion(initialAnswers), jeeVersion: 2 })));
-  const [stepIndex, setStepIndex] = useState(initialStepIndex);
+  const startStepIndex = initialStepIndex ?? nextEntryStep(initialAnswers);
+  const [stepIndex, setStepIndex] = useState(startStepIndex);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [restored, setRestored] = useState(false);
-  const [historyDepth, setHistoryDepth] = useState(0);
   const storageKey = `${CHECK_STORAGE_PREFIX}:${
     initialAnswers.certificateCountry ?? "none"
-  }`;
+  }${entryDegree ? `:${entryDegree}` : ""}`;
 
   useEffect(() => {
     posthog.capture("check_started");
@@ -73,35 +77,20 @@ export function CheckFlow({
   useEffect(() => {
     const safeInitial = normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), qualificationHistoryVersion: 1 as const, apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, ...pakistanAnswerVersion(initialAnswers), jeeVersion: 2 as const }));
     let nextAnswers: PartialAnswers = safeInitial;
-    let nextStepIndex = initialStepIndex;
+    let nextStepIndex = startStepIndex;
     try {
       const raw = sessionStorage.getItem(storageKey);
       if (raw) {
         const saved = SavedCheckStateSchema.parse(JSON.parse(raw));
-        const savedCountry = saved.answers?.certificateCountry;
-        if (
-          // The storage key already separates landing countries. A new master's
-          // answers intentionally contain no school certificate country.
-          (saved.answers?.targetDegree === "master" && saved.answers.qualificationHistoryVersion === 1) ||
-          !initialAnswers.certificateCountry ||
-          savedCountry === initialAnswers.certificateCountry
-        ) {
-          const recovered = normalizeAnswers(upgradeSaudiAnswers({ ...saved.answers, ...(saved.answers?.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(saved.answers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, ...pakistanAnswerVersion(saved.answers), jeeVersion: 2 as const }));
-          const savedSteps = visibleSteps(recovered);
-          const firstMissing = savedSteps.findIndex((step) => !isAnswered(recovered, step));
-          const recoveredStepIndex = Math.min(
-            Math.max(saved.stepIndex ?? initialStepIndex, 0),
-            Math.max(savedSteps.length - 1, 0),
-            // Newly added questions must not be skipped by a stored numeric index.
-            firstMissing === -1 ? savedSteps.length - 1 : firstMissing,
-          );
-          nextAnswers = recovered;
-          nextStepIndex = recoveredStepIndex;
-        }
+        // Entry keys separate drafts. Back may have changed degree or country;
+        // the URL is an initial hint, never an override of the student's edits.
+        const recovered = normalizeAnswers(upgradeSaudiAnswers({ ...saved.answers, ...(saved.answers?.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(saved.answers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, ...pakistanAnswerVersion(saved.answers), jeeVersion: 2 as const }));
+        nextAnswers = recovered;
+        nextStepIndex = restoredStepIndex(recovered, saved.stepIndex ?? startStepIndex, saved.stepId);
       }
     } catch {
       nextAnswers = safeInitial;
-      nextStepIndex = initialStepIndex;
+      nextStepIndex = startStepIndex;
       sessionStorage.removeItem(storageKey);
     } finally {
       window.history.replaceState(
@@ -118,7 +107,7 @@ export function CheckFlow({
         setRestored(true);
       });
     }
-  }, [initialAnswers, initialStepIndex, storageKey]);
+  }, [initialAnswers, startStepIndex, storageKey, entryDegree]);
 
   const steps = visibleSteps(answers);
   const step = steps[Math.min(stepIndex, steps.length - 1)];
@@ -139,21 +128,18 @@ export function CheckFlow({
       JSON.stringify({
         answers,
         stepIndex: safeStepIndex,
+        stepId: steps[safeStepIndex],
       } satisfies SavedCheckState),
     );
-  }, [answers, restored, stepIndex, steps.length, storageKey]);
+  }, [answers, restored, stepIndex, steps, storageKey]);
 
   useEffect(() => {
     if (!restored) return;
     function onPopState(event: PopStateEvent) {
       const historyStep = event.state?.[CHECK_HISTORY_STEP_KEY];
-      if (typeof historyStep !== "number") return;
-      const safeStepIndex = Math.min(
-        Math.max(historyStep, 0),
-        Math.max(visibleSteps(answers).length - 1, 0),
-      );
+      if (typeof historyStep !== "number" || !Number.isInteger(historyStep)) return;
+      const safeStepIndex = restoredStepIndex(answers, Math.max(historyStep, 0));
       setError(null);
-      setHistoryDepth((depth) => Math.max(depth - 1, 0));
       setStepIndex(safeStepIndex);
     }
     window.addEventListener("popstate", onPopState);
@@ -186,23 +172,16 @@ export function CheckFlow({
   function back() {
     setError(null);
     if (stepIndex > 0) {
-      if (
-        historyDepth > 0 &&
-        window.history.state?.[CHECK_HISTORY_STEP_KEY] === stepIndex
-      ) {
-        window.history.back();
-      } else {
-        const previousStepIndex = stepIndex - 1;
-        setStepIndex(previousStepIndex);
-        window.history.replaceState(
-          {
-            ...(window.history.state ?? {}),
-            [CHECK_HISTORY_STEP_KEY]: previousStepIndex,
-          },
-          "",
-          window.location.href,
-        );
-      }
+      const previousStepIndex = stepIndex - 1;
+      setStepIndex(previousStepIndex);
+      window.history.replaceState(
+        {
+          ...(window.history.state ?? {}),
+          [CHECK_HISTORY_STEP_KEY]: previousStepIndex,
+        },
+        "",
+        window.location.href,
+      );
     } else router.push("/");
   }
 
@@ -214,9 +193,8 @@ export function CheckFlow({
     }
     posthog.capture("step_completed", { step: stepIndex + 1, question: step });
     if (!isLast) {
-      const nextStepIndex = stepIndex + 1;
+      const nextStepIndex = nextEntryStep(answers, stepIndex);
       setStepIndex(nextStepIndex);
-      setHistoryDepth((depth) => depth + 1);
       window.history.pushState(
         {
           ...(window.history.state ?? {}),

@@ -182,6 +182,11 @@
   line-height: 1.3;
 }
 
+.questionRow span {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .questionRow span,
 .checkMeta {
   color: var(--ink-muted);
@@ -433,7 +438,10 @@
     margin-left: 6px;
   }
 
-  .countryGrid,
+  .countryGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .comparison {
     grid-template-columns: repeat(3, 1fr);
   }

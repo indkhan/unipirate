@@ -1,0 +1,228 @@
+{
+  "date": "2026-10-10",
+  "server": "http://localhost:3047",
+  "browser": "T3 collaborative preview",
+  "responsive": [
+    {
+      "width": 390,
+      "overflow": false,
+      "theme": "light",
+      "degreeLinks": [
+        {
+          "text": "A Bachelor's degree›",
+          "href": "/check?degree=bachelor",
+          "box": {
+            "x": 37,
+            "width": 316,
+            "height": 54
+          }
+        },
+        {
+          "text": "A Master's degree›",
+          "href": "/check?degree=master",
+          "box": {
+            "x": 37,
+            "width": 316,
+            "height": 54
+          }
+        }
+      ],
+      "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kkqd2-9825eb41.png"
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "theme": "dark",
+      "degreeLinks": [
+        {
+          "text": "A Bachelor's degree›",
+          "href": "/check?degree=bachelor",
+          "box": {
+            "x": 37,
+            "width": 316,
+            "height": 54
+          }
+        },
+        {
+          "text": "A Master's degree›",
+          "href": "/check?degree=master",
+          "box": {
+            "x": 37,
+            "width": 316,
+            "height": 54
+          }
+        }
+      ],
+      "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kkqtw-ece279f8.png"
+    },
+    {
+      "width": 768,
+      "overflow": false,
+      "theme": "light",
+      "degreeLinks": [
+        {
+          "text": "A Bachelor's degree›",
+          "href": "/check?degree=bachelor",
+          "box": {
+            "x": 65,
+            "width": 314,
+            "height": 54
+          }
+        },
+        {
+          "text": "A Master's degree›",
+          "href": "/check?degree=master",
+          "box": {
+            "x": 389,
+            "width": 314,
+            "height": 54
+          }
+        }
+      ],
+      "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kkrdd-2aa99846.png"
+    },
+    {
+      "width": 768,
+      "overflow": false,
+      "theme": "dark",
+      "degreeLinks": [
+        {
+          "text": "A Bachelor's degree›",
+          "href": "/check?degree=bachelor",
+          "box": {
+            "x": 65,
+            "width": 314,
+            "height": 54
+          }
+        },
+        {
+          "text": "A Master's degree›",
+          "href": "/check?degree=master",
+          "box": {
+            "x": 389,
+            "width": 314,
+            "height": 54
+          }
+        }
+      ],
+      "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kkrtx-b5b5fdd8.png"
+    },
+    {
+      "width": 1440,
+      "overflow": false,
+      "theme": "light",
+      "degreeLinks": [
+        {
+          "text": "A Bachelor's degree›",
+          "href": "/check?degree=bachelor",
+          "box": {
+            "x": 401,
+            "width": 314,
+            "height": 54
+          }
+        },
+        {
+          "text": "A Master's degree›",
+          "href": "/check?degree=master",
+          "box": {
+            "x": 725,
+            "width": 314,
+            "height": 54
+          }
+        }
+      ],
+      "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kksc2-38519131.png"
+    },
+    {
+      "width": 1440,
+      "overflow": false,
+      "theme": "dark",
+      "degreeLinks": [
+        {
+          "text": "A Bachelor's degree›",
+          "href": "/check?degree=bachelor",
+          "box": {
+            "x": 401,
+            "width": 314,
+            "height": 54
+          }
+        },
+        {
+          "text": "A Master's degree›",
+          "href": "/check?degree=master",
+          "box": {
+            "x": 725,
+            "width": 314,
+            "height": 54
+          }
+        }
+      ],
+      "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kksmg-d546c9ff.png"
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "theme": "light",
+      "question": "Have you studied at a university or other higher education institution?",
+      "step": "Step 2",
+      "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kl4u0-e00f2941.png"
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "theme": "dark",
+      "question": "Have you studied at a university or other higher education institution?",
+      "step": "Step 2",
+      "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kl59y-0568f7d9.png"
+    },
+    {
+      "width": 768,
+      "overflow": false,
+      "theme": "light",
+      "question": "Have you studied at a university or other higher education institution?",
+      "step": "Step 2",
+      "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kl5ss-d78db3ba.png"
+    },
+    {
+      "width": 768,
+      "overflow": false,
+      "theme": "dark",
+      "question": "Have you studied at a university or other higher education institution?",
+      "step": "Step 2",
+      "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kl69q-be1a78b8.png"
+    },
+    {
+      "width": 1440,
+      "overflow": false,
+      "theme": "light",
+      "question": "Have you studied at a university or other higher education institution?",
+      "step": "Step 2",
+      "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kl6r0-dd0b3ec8.png"
+    },
+    {
+      "width": 1440,
+      "overflow": false,
+      "theme": "dark",
+      "question": "Have you studied at a university or other higher education institution?",
+      "step": "Step 2",
+      "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kl76g-d26d652f.png"
+    }
+  ],
+  "finalMobileLanding": {
+    "screenshotPath": "C:\\Users\\mgsuk\\.t3\\userdata\\browser-artifacts\\browser-screenshot-localhost-mv1kmo63-988b0702.png",
+    "width": 390,
+    "theme": "dark",
+    "horizontalOverflow": false,
+    "stepLabelHeight": 16.5
+  },
+  "flows": [
+    "Landing Bachelor → Step 2 country → curriculum → GCE context",
+    "GCE British international context → Continue → full-page navigation reload → Back retains selection",
+    "Back → attendance country → degree → Master; school answers pruned",
+    "Master history → previous qualification → institution → Pakistan institution country → unknown system → field → nominal/successful years → completion → nationality; reload retains university history",
+    "Landing Master → Step 2 university history, including supplied country=sa without issuer inference",
+    "country=sa → degree first → Bachelor → curriculum → IB document evidence",
+    "country=in&degree=bachelor → curriculum → national → explicit Pakistan issuer/context → Pakistan certificate"
+  ],
+  "limits": "Local UI and disposable DB checks only; no live provider, production deployment or CI claim."
+}
