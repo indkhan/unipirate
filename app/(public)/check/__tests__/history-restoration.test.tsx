@@ -41,7 +41,7 @@ it("restores a master's saved edits under its landing-country key and stops at n
     captured.effects[1]();
     expect(captured.values[0]).toMatchObject({ priorStudyInstitution: "Saved University", priorStudyField: "Saved field", priorStudyCountry: "in" });
     // The newly required context question precedes the already-answered final intake.
-    expect(captured.values[1]).toBe(7);
+    expect(captured.values[1]).toBe(visibleSteps(captured.values[0] as PartialAnswers).indexOf("priorQualificationContext"));
   } finally { vi.unstubAllGlobals(); }
 });
 
@@ -90,7 +90,7 @@ it("resets wrong-shaped storage and invalid step indices but keeps valid partial
   }
   const incomplete = recover(JSON.stringify({ answers: { qualificationHistoryVersion: 1, targetDegree: "master", nationality: "pk" }, stepIndex: 99 }));
   expect(incomplete.answers).toEqual({ qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, targetDegree: "master", nationality: "pk" });
-  expect(incomplete.stepIndex).toBe(2);
+  expect(incomplete.stepIndex).toBe(visibleSteps(incomplete.answers as PartialAnswers).indexOf("hasPriorUniversityStudy"));
   expect(incomplete.removeItem).not.toHaveBeenCalled();
 });
 
@@ -115,7 +115,7 @@ it("keeps an unfinished text draft and stops at its empty required answer", () =
   const unfinished = { ...draft, priorStudyInstitution: "" };
   const result = recover(JSON.stringify({ answers: unfinished, stepIndex: 99 }));
   expect(result.answers).toEqual({ ...unfinished, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2 });
-  expect(result.stepIndex).toBe(5);
+  expect(result.stepIndex).toBe(visibleSteps(result.answers as PartialAnswers).indexOf("priorStudyInstitution"));
   expect(result.removeItem).not.toHaveBeenCalled();
 });
 

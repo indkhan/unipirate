@@ -3,7 +3,7 @@ import { isAdminRole } from "@/lib/auth/roles";
 import { createClient } from "@/lib/db/server";
 
 import { CheckFlow } from "./check-flow";
-import { COUNTRIES, type PartialAnswers } from "./steps";
+import { checkerEntry } from "./entry";
 
 export const dynamic = "force-dynamic";
 
@@ -14,24 +14,14 @@ export const metadata = {
 export default async function CheckPage({
   searchParams,
 }: {
-  searchParams: Promise<{ country?: string }>;
+  searchParams: Promise<{ country?: string; degree?: string }>;
 }) {
   const db = await createClient();
   const {
     data: { user },
   } = await db.auth.getUser();
   const params = await searchParams;
-  const requestedCountry = params.country;
-  const certificateCountry = COUNTRIES.some(
-    (country) => country.code === requestedCountry,
-  )
-    ? requestedCountry
-    : undefined;
-  const initialAnswers: PartialAnswers = {
-    ...(certificateCountry ? { certificateCountry } : {}),
-  };
-  // Degree comes first: a landing-page country must not become a master's school-based route.
-  const initialStepIndex = 0;
+  const initialAnswers = checkerEntry(params);
 
   const userMenu = user ? (
     <UserMenu
@@ -43,7 +33,7 @@ export default async function CheckPage({
   return (
     <CheckFlow
       initialAnswers={initialAnswers}
-      initialStepIndex={initialStepIndex}
+      entryDegree={initialAnswers.targetDegree}
       userMenu={userMenu}
     />
   );
