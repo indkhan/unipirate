@@ -43,7 +43,14 @@ export default async function proxy(request: NextRequest) {
 
   if (!claims) {
     const url = request.nextUrl.clone();
+    // Convenience return destination, built only from the request URL the
+    // proxy itself matched — never from a user-supplied `next` parameter, so
+    // a hostile query value cannot become redirect authority. The login page
+    // still launders this through safeNextPath() as the redirect boundary.
+    const next = `${request.nextUrl.pathname}${request.nextUrl.search}`;
     url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("next", next);
     return NextResponse.redirect(url);
   }
 
