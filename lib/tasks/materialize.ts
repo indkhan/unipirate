@@ -1,4 +1,5 @@
 import { resolveOfferingProcess, generateOfferingProcessTasks } from "./offering-process";
+import { enqueueApplicationPlanning } from "@/lib/planning/enqueue";
 // Write side of source-generated tasks. Called at event time (profile saved,
 // result claimed, course added, application status changed) — never during
 // dashboard render. Each task_key is inserted once; after that the task is
@@ -34,18 +35,6 @@ import { todayIsoBerlin } from "@/lib/tasks/dates";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Db = Pick<SupabaseClient<Database>, "from" | "rpc">;
-
-async function enqueueApplicationPlanning(db: Db, application: ApplicationWithCourse): Promise<void> {
-  if (application.courses?.review_status === "approved") {
-    const catalogue = await getApplicationOfferingCatalogue(db, application.course_id, application.offering_id ?? null);
-    const plan = resolveOfferingProcess({...catalogue,courseId:application.course_id,selection:{offering_id:application.offering_id ?? null,applicant_context:application.offering_applicant_context ?? null}});
-    if (plan.route !== "unresolved" && plan.version) {
-      await enqueuePlanningJob(db, "verified", application.id, plan.version.id);
-      return;
-    }
-  }
-  await enqueuePlanningJob(db, "preliminary", application.id);
-}
 
 function toGenerationApplication(
   application: ApplicationWithCourse,

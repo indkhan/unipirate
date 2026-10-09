@@ -838,6 +838,7 @@ export type Database = {
           application_id: string | null
           approval_fingerprint: string | null
           approved_revision: number | null
+          approved_source_url: string | null
           approved_task_id: string | null
           base_task_revision: number | null
           before_task: Json | null
@@ -857,6 +858,7 @@ export type Database = {
           reason: string
           revision: number
           semantic_action_key: string
+          source_baseline_known: boolean
           source_version_id: string | null
           stage: string
           status: string
@@ -870,6 +872,7 @@ export type Database = {
           application_id?: string | null
           approval_fingerprint?: string | null
           approved_revision?: number | null
+          approved_source_url?: string | null
           approved_task_id?: string | null
           base_task_revision?: number | null
           before_task?: Json | null
@@ -889,6 +892,7 @@ export type Database = {
           reason: string
           revision?: number
           semantic_action_key: string
+          source_baseline_known?: boolean
           source_version_id?: string | null
           stage: string
           status?: string
@@ -902,6 +906,7 @@ export type Database = {
           application_id?: string | null
           approval_fingerprint?: string | null
           approved_revision?: number | null
+          approved_source_url?: string | null
           approved_task_id?: string | null
           base_task_revision?: number | null
           before_task?: Json | null
@@ -921,6 +926,7 @@ export type Database = {
           reason?: string
           revision?: number
           semantic_action_key?: string
+          source_baseline_known?: boolean
           source_version_id?: string | null
           stage?: string
           status?: string
@@ -1331,6 +1337,7 @@ export type Database = {
           application_id: string | null
           approval_fingerprint: string | null
           approved_revision: number | null
+          approved_source_url: string | null
           approved_task_id: string | null
           base_task_revision: number | null
           before_task: Json | null
@@ -1350,6 +1357,7 @@ export type Database = {
           reason: string
           revision: number
           semantic_action_key: string
+          source_baseline_known: boolean
           source_version_id: string | null
           stage: string
           status: string

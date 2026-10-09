@@ -92,7 +92,7 @@ jobs:
             const fs = require("node:fs");
             const path = require("node:path");
             const report = JSON.parse(fs.readFileSync(path.join(process.env.RUNNER_TEMP, "vitest.json"), "utf8"));
-            for (const suite of ["rls.integration.test.ts", "course-process.integration.test.ts", "personal-tasks.integration.test.ts", "planning.integration.test.ts", "planning-cursor.integration.test.ts", "reconciliation.integration.test.ts"]) {
+            for (const suite of ["rls.integration.test.ts", "course-process.integration.test.ts", "personal-tasks.integration.test.ts", "planning.integration.test.ts", "planning-cursor.integration.test.ts", "planning-research.integration.test.ts", "reconciliation.integration.test.ts"]) {
               const files = report.testResults.filter((t) => path.basename(t.name) === suite);
               if (files.length === 0) throw new Error(`${suite} absent from report: suite did not execute (honest failure, not a skip)`);
               const cases = files.flatMap((f) => f.assertionResults);

@@ -16,7 +16,7 @@ const {enabled}=planningLocalConfig(api,publicKey,serviceKey);
 const candidate=(key:string)=>({semantic_action_key:key,stage:"preliminary",title:"Confirm the application procedure",description:null,reason:"No applicable reviewed procedure",due_date:null,verbatim_due:null,evidence:[],source_version_id:null,legacy_task_key:null});
 function must<T extends {data:unknown;error:{message:string}|null}>(result:T):NonNullable<T["data"]> { expect(result.error?.message??null).toBeNull();expect(result.data).not.toBeNull();return result.data as NonNullable<T["data"]>; }
 describe.skipIf(!enabled)("durable planning (real local owner RLS and races)",()=>{
- it("actual immutable review publication fans out scoped proposals, approves same-task updates and preserves completed personal edits",async()=>{
+ it.each([false,true])("actual publication preserves personal edits and reconciles official source metadata (personal source: %s)",async(personalSource)=>{
   const options={auth:{persistSession:false,autoRefreshToken:false}};
   const service=createClient<Database>(api!,serviceKey!,options),owner=createClient<Database>(api!,publicKey!,options),admin=createClient<Database>(api!,publicKey!,options),other=createClient<Database>(api!,publicKey!,options);
   const users:string[]=[];
@@ -29,10 +29,11 @@ describe.skipIf(!enabled)("durable planning (real local owner RLS and races)",()
    }
    expect((await service.from("planning_settings").update({enabled:true}).eq("id",true)).error).toBeNull();
    const url=`https://www.daad.de/SYNTHETIC-planning-${randomUUID()}`,name="Synthetic planning publication",university="Synthetic university",group="Non-EU applicants",scope="Winter 2027 Non-EU applicants";
-   const draft=(day:string)=>{
+   const nextUrl=url+"/reviewed-v2",personalUrl="https://example.invalid/my-personal-source";
+   const draft=(day:string,sourceUrl=url)=>{
     const entries=[{key:"route",kind:"route",verbatim:"Synthetic direct application route.",route:"direct",deadline_kind:null},{key:"deadline:university:application_closing",kind:"deadline",verbatim:`University application closes ${day}.`,route:null,deadline_kind:"application_closing"}];
     const content=[name,university,scope,...entries.map(e=>e.verbatim)].join("\n\n");
-    return buildResearchDraft({url,name,university,text:content.padEnd(200," ")},[{url,content,origin:"web",retrieved_at:"2026-10-07T00:00:00Z"}],{offerings:[{intake_term:"winter",intake_year:2027,applicant_group:group,scope:{source_url:url,source_quote:scope},facts:entries.map(e=>({...e,applicability:group,evidence:[{source_url:url,source_quote:e.verbatim}]}))}]},[]);
+    return buildResearchDraft({url:sourceUrl,name,university,text:content.padEnd(200," ")},[{url:sourceUrl,content,origin:"web",retrieved_at:"2026-10-07T00:00:00Z"}],{offerings:[{intake_term:"winter",intake_year:2027,applicant_group:group,scope:{source_url:sourceUrl,source_quote:scope},facts:entries.map(e=>({...e,applicability:group,evidence:[{source_url:sourceUrl,source_quote:e.verbatim}]}))}]},[]);
    };
    const initialDraft=draft("15 July 2027");
    const course=await insertCourse(owner,{imported_by:users[0],source_url:url,normalized_url:url,name,university_name:university,field_extraction:{research:initialDraft} as unknown as Json});
@@ -59,9 +60,13 @@ describe.skipIf(!enabled)("durable planning (real local owner RLS and races)",()
    must(await owner.rpc("approve_task_proposals",{p_selection:[{id:proposal.id,revision:proposal.revision}]}));
    const approved=must(await owner.from("task_proposals").select("*").eq("id",proposal.id).single());
    const taskId=approved.approved_task_id!;
+   const shown=(await listTaskProposals(owner,users[0])).find(row=>row.id===proposal.id)!;
+   expect(shown).not.toHaveProperty("approved_source_url");expect(shown).not.toHaveProperty("source_baseline_known");
+   expect(must(await owner.from("tasks").select("source_url").eq("id",taskId).single()).source_url).toBe(url);
+   if(personalSource) expect((await owner.from("tasks").update({source_url:personalUrl}).eq("id",taskId)).error).toBeNull();
    expect((await owner.from("tasks").update({title:"My personal completed filing",description:"Private personal note",done:true,preferred_bucket:"later",has_personal_edits:true}).eq("id",taskId)).error).toBeNull();
    must(await service.rpc("finish_planning_job",{p_id:firstJob.id,p_worker:worker,p_success:true}));
-   const changed=await insertCourse(owner,{imported_by:users[0],source_url:url,normalized_url:url,conflicts_with:course.id,name,university_name:university,field_extraction:{research:draft("1 August 2027")} as unknown as Json});
+   const changed=await insertCourse(owner,{imported_by:users[0],source_url:url,normalized_url:url,conflicts_with:course.id,name,university_name:university,field_extraction:{research:draft("1 August 2027",nextUrl)} as unknown as Json});
    await publishAdminCourseResearch(admin,changed.id,accepted,users[1],decisions);
    const nextCatalogue=await getApplicationOfferingCatalogue(owner,course.id,offering.id);
    const nextPlan=resolveOfferingProcess({...nextCatalogue,courseId:course.id,selection:{offering_id:offering.id,applicant_context:{applicant_group:group,confirmed:true}}});
@@ -80,7 +85,7 @@ describe.skipIf(!enabled)("durable planning (real local owner RLS and races)",()
    const refreshed=must(await service.rpc("save_task_proposals",{p_job_id:nextJob.id,p_worker:nextWorker,p_input_fingerprint:nextJob.input_fingerprint,p_candidates:candidates as unknown as Json}))[0];
    expect(refreshed.revision).toBeGreaterThan(update.revision);
    must(await owner.rpc("approve_task_proposals",{p_selection:[{id:refreshed.id,revision:refreshed.revision}]}));
-   const saved=must(await owner.from("tasks").select("*").eq("id",taskId).single());expect(saved).toMatchObject({title:"My newer personal filing",description:"Private personal note",done:true,preferred_bucket:"later",due_date:"2027-08-01",task_key:null});
+   const saved=must(await owner.from("tasks").select("*").eq("id",taskId).single());expect(saved).toMatchObject({title:"My newer personal filing",description:"Private personal note",done:true,preferred_bucket:"later",due_date:"2027-08-01",task_key:null,source_url:personalSource?personalUrl:nextUrl});
    expect(must(await owner.from("tasks").select("id").eq("application_id",app.id))).toHaveLength(1);
    const omittedKey=`app:${app.id}:offering:${offering.id}:verify:unsupported`,otherIntakeKey=`app:${app.id}:offering:${randomUUID()}:verify:unsupported`;
    const omitted=must(await service.rpc("save_task_proposals",{p_job_id:nextJob.id,p_worker:nextWorker,p_input_fingerprint:nextJob.input_fingerprint,p_candidates:[candidate(omittedKey),candidate(otherIntakeKey)] as Json}));
@@ -90,7 +95,7 @@ describe.skipIf(!enabled)("durable planning (real local owner RLS and races)",()
    expect(must(await owner.from("task_proposals").select("status").eq("id",omitted[1].id).single()).status).toBe("pending");
    must(await service.rpc("finish_planning_job",{p_id:nextJob.id,p_worker:nextWorker,p_success:true}));
    // Withholding previously accepted fields is a REAL immutable publication, not a forged service version.
-   const withdrawnSubmission=await insertCourse(owner,{imported_by:users[0],source_url:url,normalized_url:url,conflicts_with:course.id,name,university_name:university,field_extraction:{research:draft("1 August 2027")} as unknown as Json});
+   const withdrawnSubmission=await insertCourse(owner,{imported_by:users[0],source_url:url,normalized_url:url,conflicts_with:course.id,name,university_name:university,field_extraction:{research:draft("1 August 2027",nextUrl)} as unknown as Json});
    await publishAdminCourseResearch(admin,withdrawnSubmission.id,[],users[1],[]);
    const withdrawnCatalogue=await getApplicationOfferingCatalogue(owner,course.id,offering.id);
    const withdrawnPlan=resolveOfferingProcess({...withdrawnCatalogue,courseId:course.id,selection:{offering_id:offering.id,applicant_context:{applicant_group:group,confirmed:true}}});
@@ -103,7 +108,7 @@ describe.skipIf(!enabled)("durable planning (real local owner RLS and races)",()
    expect(withdrawal).toMatchObject({id:proposal.id,approved_task_id:taskId,stage:"preliminary",due_date:null,verbatim_due:null});
    expect(must(await owner.from("tasks").select("due_date").eq("id",taskId).single()).due_date).toBe("2027-08-01");
    must(await owner.rpc("approve_task_proposals",{p_selection:[{id:withdrawal.id,revision:withdrawal.revision}]}));
-   expect(must(await owner.from("tasks").select("*").eq("id",taskId).single())).toMatchObject({title:"My newer personal filing",description:"Private personal note",done:true,preferred_bucket:"later",due_date:null,verbatim_due:null});
+   expect(must(await owner.from("tasks").select("*").eq("id",taskId).single())).toMatchObject({title:"My newer personal filing",description:"Private personal note",done:true,preferred_bucket:"later",due_date:null,verbatim_due:null,source_url:personalSource?personalUrl:null});
    // Deleting an approved task retains proposal linkage and cannot recreate it on retry.
    expect((await owner.from("tasks").delete().eq("id",taskId)).error).toBeNull();
    const retry=must(await owner.rpc("approve_task_proposals",{p_selection:[{id:withdrawal.id,revision:withdrawal.revision}]}));expect(retry).toMatchObject([{status:"deleted",task_id:taskId}]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import styles from "./task-suggestions.module.css";
 
 // Presentation-only view of a task proposal row. Compatible with the worker
@@ -320,6 +320,7 @@ export function SuggestionsList({ proposals, applicationNames, approve, reject }
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [rowBusy, setRowBusy] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  const mutationBusy = useRef(false);
 
   const byId = useMemo(() => new Map(pending.map((p) => [p.id, p])), [pending]);
 
@@ -343,7 +344,8 @@ export function SuggestionsList({ proposals, applicationNames, approve, reject }
   }
 
   async function confirmApprove() {
-    if (!confirming) return;
+    if (!confirming || mutationBusy.current) return;
+    mutationBusy.current = true;
     setConfirmPending(true);
     setConfirmError(null);
     const selection: ApproveSelectionItem[] = confirming.items.map((s) => {
@@ -358,11 +360,14 @@ export function SuggestionsList({ proposals, applicationNames, approve, reject }
     } catch (e) {
       setConfirmError(e instanceof Error ? e.message : "Approval failed. Nothing was approved.");
     } finally {
+      mutationBusy.current = false;
       setConfirmPending(false);
     }
   }
 
   async function rejectOne(id: string, revision: number) {
+    if (mutationBusy.current) return;
+    mutationBusy.current = true;
     setRowBusy(id);
     setRowErrors((m) => ({ ...m, [id]: "" }));
     try {
@@ -371,6 +376,7 @@ export function SuggestionsList({ proposals, applicationNames, approve, reject }
     } catch (e) {
       setRowErrors((m) => ({ ...m, [id]: e instanceof Error ? e.message : "Reject failed." }));
     } finally {
+      mutationBusy.current = false;
       setRowBusy(null);
     }
   }
@@ -417,7 +423,7 @@ export function SuggestionsList({ proposals, applicationNames, approve, reject }
             {groupLabel(g.key, applicationNames, pending)} ({g.items.length})
           </h3>
           {g.items.map((p) => (
-            <ProposalCard key={p.id} {...cardProps(p)} />
+            <ProposalCard key={`${p.id}:${p.revision}`} {...cardProps(p)} />
           ))}
         </section>
       ))}
@@ -468,6 +474,7 @@ export function ProposalPopup({ proposals, applicationNames, approve, reject, on
   const [edits, setEdits] = useState<Map<string, ApproveEdit>>(new Map());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mutationBusy = useRef(false);
 
   if (!pending.length || !groups.length) return null;
   const safeIndex = Math.min(index, groups.length - 1);
@@ -482,7 +489,8 @@ export function ProposalPopup({ proposals, applicationNames, approve, reject, on
   }
 
   async function doConfirm() {
-    if (!confirming) return;
+    if (!confirming || mutationBusy.current) return;
+    mutationBusy.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -496,11 +504,14 @@ export function ProposalPopup({ proposals, applicationNames, approve, reject, on
     } catch (e) {
       setError(e instanceof Error ? e.message : "Approval failed. Nothing was approved.");
     } finally {
+      mutationBusy.current = false;
       setBusy(false);
     }
   }
 
   async function rejectOne(id: string, revision: number) {
+    if (mutationBusy.current) return;
+    mutationBusy.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -508,6 +519,7 @@ export function ProposalPopup({ proposals, applicationNames, approve, reject, on
     } catch (e) {
       setError(e instanceof Error ? e.message : "Reject failed.");
     } finally {
+      mutationBusy.current = false;
       setBusy(false);
     }
   }
@@ -547,7 +559,7 @@ export function ProposalPopup({ proposals, applicationNames, approve, reject, on
       ) : null}
       {group.items.map((p) => (
         <ProposalCard
-          key={p.id}
+          key={`${p.id}:${p.revision}`}
           p={p}
           checked={false}
           showCheckbox={false}

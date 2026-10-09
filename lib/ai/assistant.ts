@@ -299,6 +299,10 @@ export async function runAssistant(options: {
     tools: assistantTools({ db, userId, openrouter, tavilyApiKey, recordEvidence,taskRequest:instruction&&last?.id?{instruction,operationId}:undefined }),
     stopWhen: stepCountIs(6),
     temperature: 0,
+    maxRetries:0,
+    // Provider error bodies may echo prompts/private context. The stream already
+    // carries an error part; do not send those bodies to server logs.
+    onError:()=>{},
     // Answers are 1-4 sentences per point by design; the cap also bounds cost.
     maxOutputTokens: 1024,
     onFinish: async (event) => {

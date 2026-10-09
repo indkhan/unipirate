@@ -1558,7 +1558,7 @@ rows, while all new or changed links must belong to the owner.
 The import owner (#57/#58) saves meaningful identity and the exact DAAD URL/full
 paste before enqueueing. `ResearchSeedSchema` keeps its 200-character paste
 boundary. A job without recoverable meaningful identity/paste fails honestly.
-Research uses captured official material and produces pending shared drafts; it
+An already approved course reuses its current selected reviewed offering, or queues preliminary verification for unresolved scope, without redundant research. Research uses captured official material and produces pending shared drafts; it
 does not publish facts or academic rules. Lease-scoped metadata CAS retains the
 original full paste, URL and unrelated metadata and rejects concurrent review.
 
@@ -1605,7 +1605,7 @@ literal wording; parsed dates sort/bucket, and the source wording stays visible.
 revisions and approved task linkage. Material source changes create Update task
 proposals; approval edits the same row with task-revision CAS, preserving completion
 and unrelated personal edits. Concurrent student changes require renewed review.
-Deletion is a tombstone for approval retries. Rewording alone does not reopen a
+Approved updates replace or clear official source links only while the task still retains its last accepted source link; personal links remain. Pending updates created before source baseline tracking preserve their existing link on first approval because the prior accepted source cannot be recovered safely. Deletion is a tombstone for approval retries. Rewording alone does not reopen a
 rejection. Withdrawal produces a preliminary verification/update proposal rather
 than retaining official authority silently. Obsolete pending items require recheck.
 

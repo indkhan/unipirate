@@ -56,7 +56,7 @@ export async function saveTaskProposals(db:RpcDb,jobId:string,worker:string,fing
 }
 export async function listTaskProposals(db:Db,userId:string){
   const rows:Tables<"task_proposals">[]=[];
-  for(let offset=0;;offset+=500){const page=unwrap(await db.from("task_proposals").select("*").eq("user_id",z.string().uuid().parse(userId)).order("created_at").order("id").range(offset,offset+499));rows.push(...page);if(page.length<500)return z.array(TaskProposalSchema).parse(rows);}
+  for(let offset=0;;offset+=500){const page=unwrap(await db.from("task_proposals").select("*").eq("user_id",z.string().uuid().parse(userId)).order("created_at").order("id").range(offset,offset+499));rows.push(...page);if(page.length<500)return z.array(TaskProposalSchema).parse(rows.map(row=>{const {approved_source_url,source_baseline_known,...dto}=row;void approved_source_url;void source_baseline_known;return dto;}));}
 }
 export async function approveTaskProposals(db:RpcDb,selection:unknown){return unwrap(await db.rpc("approve_task_proposals",{p_selection:ProposalSelectionSchema.parse(selection) as Json}));}
 export async function dismissTaskProposal(db:RpcDb,id:string,revision:number){

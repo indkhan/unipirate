@@ -9,6 +9,31 @@ const db={} as SupabaseClient<Database>;
 const candidate={semantic_action_key:"prepare:documents",stage:"preliminary" as const,title:"Review document availability",description:null,reason:"Optional preparation.",due_date:null,verbatim_due:null,evidence:[],source_version_id:null,legacy_task_key:null};
 const job=(cursor=0)=>({id:randomUUID(),user_id:randomUUID(),application_id:null,course_id:null,event:"preliminary",input_fingerprint:"a".repeat(64),source_version_id:null,state:"running",attempts:1,lease_owner:randomUUID(),lease_until:"2099-01-01T00:00:00Z",cursor});
 beforeEach(()=>{vi.resetAllMocks();queries.finishPlanningJob.mockResolvedValue(true);queries.advancePlanningJob.mockResolvedValue(true);queries.saveTaskProposals.mockResolvedValue([]);});
+it("saves the complete batch before retiring missing actions and checkpointing",async()=>{
+ const saved=job(6);queries.leasePlanningJobs.mockResolvedValue([saved]);const finalize=vi.fn();
+ expect(await runPlanningJobs(db,{plan:async()=>({candidates:[candidate],nextCursor:7,complete:true,completedCatalogueKeys:[candidate.semantic_action_key]}),research:vi.fn(),finalize})).toEqual([{id:saved.id,status:"succeeded"}]);
+ expect(finalize).toHaveBeenCalledWith(expect.objectContaining({id:saved.id,input_fingerprint:saved.input_fingerprint}),expect.any(String),[candidate.semantic_action_key]);
+ expect(queries.saveTaskProposals.mock.invocationCallOrder[0]).toBeLessThan(finalize.mock.invocationCallOrder[0]);
+ expect(finalize.mock.invocationCallOrder[0]).toBeLessThan(queries.advancePlanningJob.mock.invocationCallOrder[0]);
+});
+it("never retires missing actions when saving the final batch fails",async()=>{
+ const saved=job();queries.leasePlanningJobs.mockResolvedValue([saved]);queries.saveTaskProposals.mockRejectedValue(new Error("persistence failed"));const finalize=vi.fn();
+ await runPlanningJobs(db,{plan:async()=>({candidates:[candidate],nextCursor:1,complete:true,completedCatalogueKeys:[candidate.semantic_action_key]}),research:vi.fn(),finalize});
+ expect(finalize).not.toHaveBeenCalled();expect(queries.advancePlanningJob).not.toHaveBeenCalled();
+});
+it("does not retire incomplete catalogues and retries without a checkpoint if finalization fails",async()=>{
+ const saved=job();queries.leasePlanningJobs.mockResolvedValue([saved]);const finalize=vi.fn().mockRejectedValue(Object.assign(new Error("stale_context"),{code:"stale_context"}));queries.refreshPlanningJob.mockResolvedValue(true);
+ await runPlanningJobs(db,{plan:async()=>({candidates:[candidate],nextCursor:1,complete:false}),research:vi.fn(),finalize});
+ expect(finalize).not.toHaveBeenCalled();queries.advancePlanningJob.mockClear();
+ await runPlanningJobs(db,{plan:async()=>({candidates:[candidate],nextCursor:1,complete:true,completedCatalogueKeys:[candidate.semantic_action_key]}),research:vi.fn(),finalize});
+ expect(finalize).toHaveBeenCalledOnce();expect(queries.advancePlanningJob).not.toHaveBeenCalled();expect(queries.refreshPlanningJob).toHaveBeenCalled();
+});
+it.each([{keys:[]},{keys:["wrong"]},{keys:[candidate.semantic_action_key,candidate.semantic_action_key]},{keys:Array.from({length:10001},(_,index)=>`action:${index}`)}])("rejects inconsistent or oversized final catalogue keys before persistence",async ({keys})=>{
+ const saved=job();queries.leasePlanningJobs.mockResolvedValue([saved]);const finalize=vi.fn();
+ await runPlanningJobs(db,{plan:async()=>({candidates:[candidate],nextCursor:1,complete:true,completedCatalogueKeys:keys}),research:vi.fn(),finalize});
+ expect(queries.saveTaskProposals).not.toHaveBeenCalled();expect(finalize).not.toHaveBeenCalled();expect(queries.advancePlanningJob).not.toHaveBeenCalled();
+ expect(queries.finishPlanningJob).toHaveBeenCalledWith(db,saved.id,expect.any(String),false,"invalid_output");
+});
 it("persists one bounded batch before atomically checkpointing an incomplete lease",async()=>{
  const saved=job(5);queries.leasePlanningJobs.mockResolvedValue([saved]);
  const plan=vi.fn().mockResolvedValue({candidates:[candidate],nextCursor:6,complete:false});

@@ -24,7 +24,6 @@ it("missing intake does not generate scoped replacement or predecessor work", as
  mocks.getProfile.mockResolvedValue({answers: {...answers, intake: null}}); mocks.listRuleVersions.mockResolvedValue([v1, version(2, {intake_from: 4053, raw_snapshot: {...raw, outcomes: {steps: [step]}}})]);
  await materializeAllTasksForUser({from: vi.fn(),rpc:vi.fn()}, "student"); expect(mocks.upsertGeneratedTasks).toHaveBeenCalledWith(expect.anything(), []);
 });
-
 import {input as offeringInput,uuid,selection} from "./offering-process.fixtures";
 it('enabled planning queues global and course proposals without any automatic task writes',async()=>{
  mocks.getPlanningSettings.mockResolvedValue({enabled:true});

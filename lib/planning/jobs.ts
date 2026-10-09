@@ -12,6 +12,7 @@ export const PlanningJobSchema = z.object({
  cursor:z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).default(0),
 }).passthrough();
 export type PlanningJob=z.infer<typeof PlanningJobSchema>;
+export type PlanningBatch={candidates:ProposalCandidate[];nextCursor:number;complete:boolean;completedCatalogueKeys?:string[]};
 const codes = ["provider_unavailable","quota","timeout","invalid_output","stale_context","persistence_failed"] as const;
 export type PlanningFailureCode=typeof codes[number];
 export function planningFailureCode(error:unknown):PlanningFailureCode {
@@ -25,8 +26,9 @@ export function planningFailureCode(error:unknown):PlanningFailureCode {
  return "provider_unavailable";
 }
 export async function runPlanningJobs(db:SupabaseClient<Database>, dependencies:{
- plan:(job:PlanningJob)=>Promise<{candidates:ProposalCandidate[];nextCursor:number;complete:boolean}>;
+ plan:(job:PlanningJob)=>Promise<PlanningBatch>;
  research:(job:PlanningJob)=>Promise<void>;
+ finalize?:(job:PlanningJob,worker:string,completedCatalogueKeys:string[])=>Promise<void>;
 }, limit=1) {
  const worker=randomUUID();
  const jobs=z.array(PlanningJobSchema).parse(await leasePlanningJobs(db,worker,limit));
@@ -35,12 +37,19 @@ export async function runPlanningJobs(db:SupabaseClient<Database>, dependencies:
    try {
      if (job.event==="research") await dependencies.research(job);
      else {
-       const batch=z.object({candidates:z.array(ProposalCandidateSchema).max(100),nextCursor:z.number().int().min(job.cursor).max(Number.MAX_SAFE_INTEGER),complete:z.boolean()}).strict()
+       const batch=z.object({candidates:z.array(ProposalCandidateSchema).max(100),nextCursor:z.number().int().min(job.cursor).max(Number.MAX_SAFE_INTEGER),complete:z.boolean(),
+         completedCatalogueKeys:z.array(z.string().min(1).max(500)).max(10000).refine(keys=>new Set(keys).size===keys.length,"Catalogue keys must be unique").optional()}).strict()
          .refine(value=>value.complete||value.nextCursor>job.cursor,"Incomplete batches must make progress")
+         .refine(value=>value.completedCatalogueKeys===undefined||value.complete,"Only a complete batch can finalize its catalogue")
+         .refine(value=>value.completedCatalogueKeys===undefined||value.candidates.every(candidate=>value.completedCatalogueKeys!.includes(candidate.semantic_action_key)),"Final batch keys must belong to its complete catalogue")
          .parse(await dependencies.plan(job));
        // A crash before the checkpoint safely replays this idempotent batch.
        // A committed checkpoint resumes at the next cursor on a fresh lease.
        await saveTaskProposals(db,job.id,worker,job.input_fingerprint,batch.candidates);
+       if(batch.completedCatalogueKeys!==undefined){
+         if(!dependencies.finalize)throw Object.assign(new Error("Missing catalogue finalizer"),{code:"persistence_failed"});
+         await dependencies.finalize(job,worker,batch.completedCatalogueKeys);
+       }
        const advanced=await advancePlanningJob(db,job.id,worker,job.cursor,batch.nextCursor,batch.complete);
        result.push({id:job.id,status:advanced?(batch.complete?"succeeded":"retry"):"lease_lost"});
        continue;

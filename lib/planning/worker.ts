@@ -15,6 +15,11 @@ import { requireFreePlannerModel } from "@/lib/ai/planner-catalog";
 import { planPreparation } from "@/lib/ai/planner";
 import { proposalsFromGeneratedTasks,proposalsFromOfferingPlan,proposalsFromOfferingRequirements,proposalsForWithdrawnApprovedActions } from "./proposals";
 import { runPlanningJobs,type PlanningJob } from "./jobs";
+import type { ProposalCandidate } from "./proposals";
+
+function orderedCatalogue(candidates:ProposalCandidate[]):ProposalCandidate[]{
+ return [...candidates].sort((a,b)=>a.semantic_action_key<b.semantic_action_key?-1:a.semantic_action_key>b.semantic_action_key?1:0);
+}
 
 export async function executePlanningBatch(db:SupabaseClient<Database>){
  const settings=await getPlanningSettings(db);
@@ -24,7 +29,7 @@ export async function executePlanningBatch(db:SupabaseClient<Database>){
   if(!application){
    const assessment=profile?evaluateAssessment(profile,await listRuleVersions(db),currentAssessmentContext()):null;
    const proposals=proposalsFromGeneratedTasks([...generateGlobalTasks(assessment?.result??null),...generateProcessTasks(assessment?.process)]);
-   return planPreparation(settings.planner_model,proposals,job.cursor);
+   return planPreparation(settings.planner_model,orderedCatalogue(proposals),job.cursor);
   }
   const course=application.courses;
   if(!course)throw Object.assign(new Error("stale_context"),{code:"stale_context"});
@@ -39,16 +44,16 @@ export async function executePlanningBatch(db:SupabaseClient<Database>){
    const candidates=[...proposalsFromOfferingPlan(application.id,application.status,offering,todayIsoBerlin()),...proposalsFromOfferingRequirements(application.id,application.status,offering)];
    const prior=await listTaskProposals(db,job.user_id);
    candidates.push(...proposalsForWithdrawnApprovedActions(prior,candidates.map(c=>c.semantic_action_key),application.id,application.offering_id));
-   // Retire only after the full current catalogue is known. Student task rows
-   // remain untouched; withdrawn approved actions receive an explicit update.
-   if(job.cursor+100>=candidates.length&&job.lease_owner)await retireMissingPlanningProposals(db,job.id,job.lease_owner,job.input_fingerprint,candidates.map(c=>c.semantic_action_key));
-   return {candidates:candidates.slice(job.cursor,job.cursor+100),nextCursor:Math.min(candidates.length,job.cursor+100),complete:job.cursor+100>=candidates.length};
+   const ordered=orderedCatalogue(candidates);
+   const complete=job.cursor+100>=ordered.length;
+   return {candidates:ordered.slice(job.cursor,job.cursor+100),nextCursor:Math.min(ordered.length,job.cursor+100),complete,
+     ...(complete?{completedCatalogueKeys:ordered.map(candidate=>candidate.semantic_action_key)}:{})};
   }
   const definitions=await listActiveCourseTaskDefinitions(db,course.id);
   const generated=generateCourseTasks([{id:application.id,status:application.status,course:{...course,task_definitions:definitions}}],todayIsoBerlin(),profile?.intake);
   const proposals=proposalsFromGeneratedTasks(generated);
   if(!proposals.length&&application.status==="planning")proposals.push({semantic_action_key:`app:${application.id}:prepare:requirements`,stage:"preliminary",title:"Prepare to verify this programme's application requirements",description:"Review the official programme page and list questions about the applicable intake, documents and application route.",reason:"Optional preparation while source research awaits review. No admission decision or official requirement is implied.",due_date:null,verbatim_due:null,evidence:[],source_version_id:null,legacy_task_key:null});
-  return planPreparation(settings.planner_model,proposals,job.cursor);
+  return planPreparation(settings.planner_model,orderedCatalogue(proposals),job.cursor);
  };
  const research=async(job:PlanningJob)=>{
   const {application}=await getPlanningJobContext(db,job);
@@ -61,5 +66,8 @@ export async function executePlanningBatch(db:SupabaseClient<Database>){
   const draft=await researchCourse(seed);
   await finishPlanningResearch(db,job.id,job.lease_owner,course.field_extraction,draft);
  };
- return runPlanningJobs(db,{plan,research});
+ const finalize=async(job:PlanningJob,worker:string,keys:string[])=>{
+  await retireMissingPlanningProposals(db,job.id,worker,job.input_fingerprint,keys);
+ };
+ return runPlanningJobs(db,{plan,research,finalize});
 }
