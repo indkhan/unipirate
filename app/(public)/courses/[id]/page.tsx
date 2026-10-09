@@ -110,6 +110,8 @@ export default async function CoursePage({
           {course.university_name ? (
             <span className={styles.university}>{course.university_name}</span>
           ) : null}
+          {reviewed.length === 0 ? (
+          <>
           <div className={styles.factRow}>
             <span className={styles.factLabel}>Location</span>
             <span className={styles.factValue}>
@@ -134,9 +136,11 @@ export default async function CoursePage({
               {tuition ?? "Not on the page"}
             </span>
           </div>
+          </>
+          ) : null}
         </section>
 
-        {course.description ? (
+        {reviewed.length === 0 && course.description ? (
           <details className={styles.descriptionDisclosure}>
             <summary className={styles.descriptionSummary}>
               <span className={styles.sectionLabel}>Description/content</span>
@@ -162,6 +166,8 @@ export default async function CoursePage({
           </div>
         </section>
 
+        {reviewed.length === 0 ? (
+        <>
         <section className={styles.card}>
           <span className={styles.sectionLabel}>Application deadlines</span>
           {deadlines.length === 0 ? (
@@ -199,6 +205,8 @@ export default async function CoursePage({
             </ul>
           )}
         </section>
+        </>
+        ) : null}
 
         <ReviewedOfferings offerings={reviewed} />
         <CourseTaskList
