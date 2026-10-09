@@ -385,7 +385,7 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
         { value: "AI", label: "Applications and Interpretation (AI)", key: "AI" },
         { value: "other", label: "Another Mathematics course", key: "other" },
       ];
-    case 'gceQualificationContext': return [{value:'uk',label:'UK GCE qualification',key:'uk'},{value:'british_international',label:'British international A-Level qualification',key:'international'},{value:'national',label:'Part of a national school-leaving system',key:'national'},{value:'unknown',label:'Not sure',key:'unknown'}];
+    case 'gceQualificationContext': return [{value:'uk',label:'UK GCE qualification',key:'uk'},{value:'british_international',label:'British international A-Level qualification',key:'british_international'},{value:'national',label:'Part of a national school-leaving system',key:'national'},{value:'unknown',label:'Not sure',key:'unknown'}];
     case 'gceQualificationType': return [{value:'al',label:'GCE Advanced Level (AL)',key:'al'},{value:'ial',label:'International Advanced Level',key:'ial'},{value:'pre_u',label:'Cambridge Pre-U',key:'pre_u'},{value:'aice',label:'AICE Diploma',key:'aice'},{value:'other',label:'Another qualification',key:'other'},{value:'unknown',label:'Not sure',key:'unknown'}];
     case 'gceEvidence': return [{value:'final',label:'Final awarding-body certificate',key:'final'},{value:'provisional',label:'Awarding-body provisional results',key:'provisional'},{value:'school',label:'School certificate only',key:'school'},{value:'unknown',label:'Not sure',key:'unknown'}];
     case "gceAwardingBody":
