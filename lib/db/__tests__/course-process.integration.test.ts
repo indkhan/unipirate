@@ -8,16 +8,16 @@ import { buildResearchDraft } from "@/lib/courses/research";
 import { resolveOfferingProcess } from "@/lib/tasks/offering-process";
 import { materializeCourseTasksForApplication } from "@/lib/tasks/materialize";
 import { buildDashboardView } from "@/lib/tasks/view";
+import { courseProcessLocalConfig } from "./course-process-local-config";
 
 // Explicit opt-in, disposable local database only. No linked project or provider I/O.
-const api = process.env.COURSE_PROCESS_LOCAL_API;
-const enabled = api === "http://127.0.0.1:55321" && !!process.env.COURSE_PROCESS_LOCAL_PUBLIC_KEY && !!process.env.COURSE_PROCESS_LOCAL_SERVICE_KEY;
+const { api, publicKey, serviceKey, enabled } = courseProcessLocalConfig(process.env);
 describe.skipIf(!enabled)("protected research publication → application planner (actual local RLS)", () => {
   it.each(["direct", "uni_assist", "vpd_then_university"] as const)("consumes the published %s producer contract and preserves personal history", async route => {
     const options = { auth: { persistSession: false, autoRefreshToken: false } };
-    const provisioner = createClient<Database>(api!, process.env.COURSE_PROCESS_LOCAL_SERVICE_KEY!, options);
-    const admin = createClient<Database>(api!, process.env.COURSE_PROCESS_LOCAL_PUBLIC_KEY!, options);
-    const student = createClient<Database>(api!, process.env.COURSE_PROCESS_LOCAL_PUBLIC_KEY!, options);
+    const provisioner = createClient<Database>(api!, serviceKey!, options);
+    const admin = createClient<Database>(api!, publicKey!, options);
+    const student = createClient<Database>(api!, publicKey!, options);
     const actors: string[] = [];
     try {
       for (const [client, role] of [[admin, "admin"], [student, "student"]] as const) {

@@ -27,7 +27,11 @@ pnpm exec vitest run lib/db/__tests__/course-process.integration.test.ts lib/tas
 Exit 0: six files, 171 tests passed. The three actual database cases used
 `COURSE_PROCESS_LOCAL_API=http://127.0.0.1:55321` and local-only public/service
 keys supplied by the coordinating agent's disposable database. The integration
-suite skips without that exact API and explicit keys. Auth-admin privileges
+suite skips without an allowlisted API and keys. It accepts exactly
+`http://127.0.0.1:54321` (CI) or `http://127.0.0.1:55321` (isolated local),
+using existing CI `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SECRET_KEY`, with explicit
+`COURSE_PROCESS_LOCAL_*` overrides when supplied. Auth-admin privileges
 only provision/delete unique fixture actors; application helpers use password
 authenticated caller clients. Each actor signs out locally and is deleted.
 Synthetic immutable catalogue/audit fixtures remain in the disposable database.
@@ -49,3 +53,20 @@ exit 0. Offline frozen dependency installation: exit 0, lockfile unchanged.
 Root owns combined main integration, full-suite/build/browser/CI review and any
 separately authorized operational publication. Synthetic fixture results make
 no academic or university procedure claims.
+
+The actual CI report-proof script was separately regression-tested before its
+correction: it incorrectly accepted a missing, empty, pending or failed course
+suite (four expected failures; exit 1). It now requires both
+`rls.integration.test.ts` and `course-process.integration.test.ts` with nonempty
+assertions and every case passed; any skip fails the gate. The final harness
+checks passed 69 tests (seven actual workflow-script report cases, thirteen
+environment allowlist cases and forty-nine offering process units). Typecheck
+and focused ESLint both exited 0. This establishes the harness contract, not a
+remote GitHub Actions run.
+
+After database serialization was released, the three actual protected
+publication cases also ran with only the standard CI environment namespace
+(all `COURSE_PROCESS_LOCAL_*` overrides removed), using the allocated local
+55321 API. Combined with the harness and offering units: four files, 72 tests,
+zero skipped, exit 0. The 54321 CI allowlist branch is verified by pure
+configuration cases; no second local database was started.
