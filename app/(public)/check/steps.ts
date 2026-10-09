@@ -511,7 +511,6 @@ export type StepId =
 export function visibleSteps(answers: PartialAnswers): StepId[] {
   const steps: StepId[] = ["targetDegree"];
   if (answers.targetDegree !== "master") steps.push("certificateCountry");
-  steps.push("nationality", "visaApplicationCountry");
   const bachelor = answers.targetDegree === "bachelor";
   if (answers.targetDegree !== "master") steps.push("curriculumType");
   if (bachelor && answers.curriculumType === "national") {
@@ -570,6 +569,7 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   if (answers.apsScopeVersion === 1 && bachelor && !steps.includes("schoolQualificationCountry")) {
     steps.push("schoolQualificationCountry", "schoolQualificationContext");
   }
+  steps.push("nationality", "visaApplicationCountry");
   // Only actual Indian national issuer context exposes JEE evidence. No hidden foreign facts.
   if (answers.jeeVersion !== undefined && bachelor && answers.curriculumType === "national" &&
       answers.schoolQualificationCountry === "in" && answers.schoolQualificationContext === "national") {

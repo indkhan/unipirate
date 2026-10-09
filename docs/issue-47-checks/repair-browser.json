@@ -1,0 +1,146 @@
+[
+  {
+    "width": 390,
+    "theme": "light",
+    "profile": {
+      "dark": false,
+      "overflow": false,
+      "fields": [
+        {
+          "label": "School attendance country",
+          "selected": "Saudi Arabia"
+        },
+        {
+          "label": "School qualification issuer country",
+          "selected": "India"
+        }
+      ]
+    },
+    "navigation": {
+      "url": "http://localhost:3047/check?degree=master",
+      "question": "Have you studied at a university or other higher education institution?",
+      "dark": false,
+      "overflow": false
+    }
+  },
+  {
+    "width": 390,
+    "theme": "dark",
+    "profile": {
+      "dark": true,
+      "overflow": false,
+      "fields": [
+        {
+          "label": "School attendance country",
+          "selected": "Saudi Arabia"
+        },
+        {
+          "label": "School qualification issuer country",
+          "selected": "India"
+        }
+      ]
+    },
+    "navigation": {
+      "url": "http://localhost:3047/check?degree=master",
+      "question": "Have you studied at a university or other higher education institution?",
+      "dark": true,
+      "overflow": false
+    }
+  },
+  {
+    "width": 768,
+    "theme": "light",
+    "profile": {
+      "dark": false,
+      "overflow": false,
+      "fields": [
+        {
+          "label": "School attendance country",
+          "selected": "Saudi Arabia"
+        },
+        {
+          "label": "School qualification issuer country",
+          "selected": "India"
+        }
+      ]
+    },
+    "navigation": {
+      "url": "http://localhost:3047/check?degree=master",
+      "question": "Have you studied at a university or other higher education institution?",
+      "dark": false,
+      "overflow": false
+    }
+  },
+  {
+    "width": 768,
+    "theme": "dark",
+    "profile": {
+      "dark": true,
+      "overflow": false,
+      "fields": [
+        {
+          "label": "School attendance country",
+          "selected": "Saudi Arabia"
+        },
+        {
+          "label": "School qualification issuer country",
+          "selected": "India"
+        }
+      ]
+    },
+    "navigation": {
+      "url": "http://localhost:3047/check?degree=master",
+      "question": "Have you studied at a university or other higher education institution?",
+      "dark": true,
+      "overflow": false
+    }
+  },
+  {
+    "width": 1440,
+    "theme": "light",
+    "profile": {
+      "dark": false,
+      "overflow": false,
+      "fields": [
+        {
+          "label": "School attendance country",
+          "selected": "Saudi Arabia"
+        },
+        {
+          "label": "School qualification issuer country",
+          "selected": "India"
+        }
+      ]
+    },
+    "navigation": {
+      "url": "http://localhost:3047/check?degree=master",
+      "question": "Have you studied at a university or other higher education institution?",
+      "dark": false,
+      "overflow": false
+    }
+  },
+  {
+    "width": 1440,
+    "theme": "dark",
+    "profile": {
+      "dark": true,
+      "overflow": false,
+      "fields": [
+        {
+          "label": "School attendance country",
+          "selected": "Saudi Arabia"
+        },
+        {
+          "label": "School qualification issuer country",
+          "selected": "India"
+        }
+      ]
+    },
+    "navigation": {
+      "url": "http://localhost:3047/check?degree=master",
+      "question": "Have you studied at a university or other higher education institution?",
+      "dark": true,
+      "overflow": false
+    }
+  }
+]

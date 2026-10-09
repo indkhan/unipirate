@@ -96,13 +96,13 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; so
   targetDegree: { question: "Which degree level are you applying for?" },
   nationality: { question: "What is your nationality?" },
   certificateCountry: {
-    question: "Where did you finish school?",
-    subtitle: "Or where you will finish it — the country of your certificate.",
+    question: "Where did you attend school?",
+    subtitle: "Choose your school's country. We ask about the qualification issuer separately.",
   },
   visaApplicationCountry: {
     question: "Where will you apply for your German visa?",
     subtitle:
-      "The country you'll file your student-visa application from — usually where you live. Academic and application requirements are assessed separately.",
+      "Choose the country where you will file your student visa application. Academic and application requirements are assessed separately.",
   },
   curriculumType: {
     question: "Which curriculum did you study?",
@@ -167,7 +167,7 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; so
   ibMathCourse: {
     question: "Which Mathematics course did you take?",
     subtitle:
-      "Analysis and Approaches or Applications and Interpretation — this decides which subjects you can be admitted to.",
+      "Analysis and Approaches or Applications and Interpretation. This helps assess your subject scope.",
   },
   targetField: { question: "What do you want to study?" },
   intake: { question: "When do you want to start?" },

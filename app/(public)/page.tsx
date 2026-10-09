@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { ThemeToggle } from "@/components/app/theme-toggle";
 
-import { COUNTRIES } from "./check/steps";
+import { buildOptions, QUESTIONS } from "./check/check-questions";
 import styles from "./home.module.css";
 
 const routeStations = ["Eligibility", "APS", "Applications", "Visa", "Germany"];
@@ -61,20 +61,20 @@ export default function HomePage() {
 
           <div className={styles.checkerCard}>
             <div className={styles.questionRow}>
-              <h2>Where did you finish school?</h2>
-              <span>Start here</span>
+              <h2>{QUESTIONS.targetDegree.question}</h2>
+              <span>Step 1</span>
             </div>
             <p className={styles.cardHint}>
-              Choose the country that issued your school certificate.
+              Choose the degree you want to study in Germany.
             </p>
             <div className={styles.countryGrid}>
-              {COUNTRIES.map((country) => (
+              {buildOptions("targetDegree", {}).map((degree) => (
                 <Link
                   className={styles.countryCard}
-                  href={`/check?country=${country.code}`}
-                  key={country.code}
+                  href={`/check?degree=${degree.key}`}
+                  key={degree.key}
                 >
-                  {country.name}
+                  {degree.label}
                   <span aria-hidden="true">›</span>
                 </Link>
               ))}

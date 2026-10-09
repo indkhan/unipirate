@@ -263,7 +263,7 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
         <div className={styles.reviewGrid}>
           {steps.map((step) => (
             <section className={styles.reviewCard} key={step}>
-              <h2 id={`${step}-label`}>{questionFor(step, answers).sourceUrl ? questionFor(step, answers).question : QUESTIONS[step]}</h2>
+              <h2 id={`${step}-label`}>{questionFor(step, answers).sourceUrl ? questionFor(step, answers).question : step === "certificateCountry" && answers.qualificationHistoryVersion === 1 ? "School attendance country" : QUESTIONS[step]}</h2>
               {questionFor(step, answers).sourceUrl && <p className={styles.subtitle}>
                 {questionFor(step, answers).subtitle} <a href={questionFor(step, answers).sourceUrl} target="_blank" rel="noreferrer">Official source guidance</a>
               </p>}

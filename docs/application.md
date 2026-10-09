@@ -156,6 +156,35 @@ server-side zod validation, audit triggers, and deterministic eligibility behavi
 
 ### 1. Eligibility check → shareable result → claim
 
+The main landing card is degree selection, labelled Step 1. Its
+`/check?degree=bachelor|master` links carry the answer through the pure,
+Zod-validated `check/entry.ts` boundary. Bachelor starts at school attendance
+country, then curriculum and qualification details. Master starts at prior
+university history and never uses a landing country as a university issuer.
+Existing `/check?country=...` entries still ask degree first and reuse the country
+only for the Bachelor attendance step. Attendance, qualification issuer and
+nationality remain separate; no issuer mapping or academic exemption is added.
+
+Answered entry questions are skipped going forward, but remain available through
+Back. Academic questions precede nationality and visa context. Session drafts
+store the current question identity as well as the legacy numeric index; recovery
+stops at newly missing evidence. Degree links use separate draft keys, so selecting
+Master cannot restore a Bachelor draft. Country edits survive under their original
+entry key. Explicit degree edits update the URL and save under the new degree's
+draft key, so refresh follows the edit while a later landing choice resumes that
+degree's own flow. Browser Back/Forward retain the edited entry URL and active draft
+while revisiting questions, so stale history URLs cannot undo a degree edit on
+refresh. Restoration runs once per entry input, and a valid current history
+position takes precedence over draft progress during a history remount. The
+checker reattaches its question metadata after Next's history commits. Profile
+editing labels the versioned school field as school attendance
+country, separately from its issuer; unversioned profiles retain the legacy
+certificate-country label. Old country/numeric drafts remain
+recoverable. Existing normalization prunes hidden answers only for new/edit flows;
+historical checks, profile rows, applications, task IDs, completion and student
+edits receive no migration or rewrite. Issues #49–#53 retain their separate
+question removals and intake work; this entry pass leaves those contracts intact.
+
 1. `/check` renders one question per screen. All flow logic —
    `visibleSteps` (branching), `withAnswer` (prunes answers whose step
    disappeared), `isAnswered` (gates Continue), `buildProfile` — is pure in
@@ -201,7 +230,8 @@ for a new evaluation; historical checks remain readable. History uses the existi
 answers JSON; no database migration is needed.
 
 The degree-level question comes first, including country landing links. Bachelor
-applicants then select school certificate country/curriculum. National-curriculum
+applicants then select school attendance country/curriculum, with actual issuer
+context collected separately. National-curriculum
 bachelor routes ask whether previous university study exists; GCE/IB do not add
 that branch. Master's applicants do not answer school country or curriculum.
 Both history branches record one relevant prior qualification, including ongoing

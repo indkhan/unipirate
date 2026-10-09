@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { ThemeToggle } from "@/components/app/theme-toggle";
 
@@ -15,6 +15,7 @@ import { questionFor, buildOptions, type Option } from "./check-questions";
 import { QualificationTextInput } from "./qualification-text-input";
 import { GceSubjectsEditor } from "./gce-subjects-editor";
 import { IbSubjectsEditor } from "./ib-subjects-editor";
+import { nextEntryStep, restoredStepIndex } from "./entry";
 import {
   NUMBER_STEPS,
   PartialAnswersSchema,
@@ -38,11 +39,13 @@ type CheckFlowProps = {
   initialAnswers?: PartialAnswers;
   initialStepIndex?: number;
   userMenu?: ReactNode;
+  entryDegree?: "bachelor" | "master";
 };
 
 const SavedCheckStateSchema = z.object({
   answers: PartialAnswersSchema,
   stepIndex: z.number().int().nonnegative().optional(),
+  stepId: z.string().min(1).max(100).optional(),
 }).strict();
 type SavedCheckState = z.infer<typeof SavedCheckStateSchema>;
 
@@ -51,57 +54,60 @@ const CHECK_STORAGE_PREFIX = "unipirate.check.v1";
 
 export function CheckFlow({
   initialAnswers = {},
-  initialStepIndex = 0,
+  initialStepIndex,
   userMenu,
+  entryDegree,
 }: CheckFlowProps) {
   const router = useRouter();
   const posthog = usePostHog();
   const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), qualificationHistoryVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1, ...pakistanAnswerVersion(initialAnswers), jeeVersion: 2 })));
-  const [stepIndex, setStepIndex] = useState(initialStepIndex);
+  const startStepIndex = initialStepIndex ?? nextEntryStep(initialAnswers);
+  const [stepIndex, setStepIndex] = useState(startStepIndex);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [restored, setRestored] = useState(false);
-  const [historyDepth, setHistoryDepth] = useState(0);
   const storageKey = `${CHECK_STORAGE_PREFIX}:${
     initialAnswers.certificateCountry ?? "none"
-  }`;
+  }${entryDegree ? `:${entryDegree}` : ""}`;
+  const activeStorageKey = useRef(storageKey);
+  const activeEntryUrl = useRef<string | null>(null);
+  const restoredEntry = useRef<string | null>(null);
 
   useEffect(() => {
     posthog.capture("check_started");
   }, [posthog]);
 
   useEffect(() => {
+    const entry = JSON.stringify([initialAnswers, startStepIndex, storageKey, entryDegree]);
+    // History traversal can deliver a new server props object for the same entry.
+    // Restore once per entry, preserving the question selected by Back/Forward.
+    if (restoredEntry.current === entry) return;
+    restoredEntry.current = entry;
+    activeStorageKey.current = storageKey;
+    activeEntryUrl.current = window.location.href;
     const safeInitial = normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), qualificationHistoryVersion: 1 as const, apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, ...pakistanAnswerVersion(initialAnswers), jeeVersion: 2 as const }));
     let nextAnswers: PartialAnswers = safeInitial;
-    let nextStepIndex = initialStepIndex;
+    let nextStepIndex = startStepIndex;
     try {
       const raw = sessionStorage.getItem(storageKey);
       if (raw) {
         const saved = SavedCheckStateSchema.parse(JSON.parse(raw));
-        const savedCountry = saved.answers?.certificateCountry;
-        if (
-          // The storage key already separates landing countries. A new master's
-          // answers intentionally contain no school certificate country.
-          (saved.answers?.targetDegree === "master" && saved.answers.qualificationHistoryVersion === 1) ||
-          !initialAnswers.certificateCountry ||
-          savedCountry === initialAnswers.certificateCountry
-        ) {
-          const recovered = normalizeAnswers(upgradeSaudiAnswers({ ...saved.answers, ...(saved.answers?.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(saved.answers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, ...pakistanAnswerVersion(saved.answers), jeeVersion: 2 as const }));
-          const savedSteps = visibleSteps(recovered);
-          const firstMissing = savedSteps.findIndex((step) => !isAnswered(recovered, step));
-          const recoveredStepIndex = Math.min(
-            Math.max(saved.stepIndex ?? initialStepIndex, 0),
-            Math.max(savedSteps.length - 1, 0),
-            // Newly added questions must not be skipped by a stored numeric index.
-            firstMissing === -1 ? savedSteps.length - 1 : firstMissing,
-          );
-          nextAnswers = recovered;
-          nextStepIndex = recoveredStepIndex;
+        // Entry keys separate drafts. Back may have changed degree or country;
+        // the URL is an initial hint, never an override of the student's edits.
+        const recovered = normalizeAnswers(upgradeSaudiAnswers({ ...saved.answers, ...(saved.answers?.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), apsScopeVersion: 1 as const, apsTransitionVersion: 1 as const, dmatVersion: 1 as const, ...(saved.answers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1 as const, ...pakistanAnswerVersion(saved.answers), jeeVersion: 2 as const }));
+        nextAnswers = recovered;
+        nextStepIndex = restoredStepIndex(recovered, saved.stepIndex ?? startStepIndex, saved.stepId);
+        const historyStep = window.history.state?.[CHECK_HISTORY_STEP_KEY];
+        if (typeof historyStep === "number" && Number.isInteger(historyStep) && historyStep >= 0) {
+          // A history remount can happen before the outgoing draft effect saves.
+          nextStepIndex = restoredStepIndex(recovered, historyStep);
+        } else if (entryDegree === recovered.targetDegree && nextStepIndex === 0) {
+          nextStepIndex = nextEntryStep(recovered);
         }
       }
     } catch {
       nextAnswers = safeInitial;
-      nextStepIndex = initialStepIndex;
+      nextStepIndex = startStepIndex;
       sessionStorage.removeItem(storageKey);
     } finally {
       window.history.replaceState(
@@ -118,7 +124,7 @@ export function CheckFlow({
         setRestored(true);
       });
     }
-  }, [initialAnswers, initialStepIndex, storageKey]);
+  }, [initialAnswers, startStepIndex, storageKey, entryDegree]);
 
   const steps = visibleSteps(answers);
   const step = steps[Math.min(stepIndex, steps.length - 1)];
@@ -135,25 +141,38 @@ export function CheckFlow({
     if (!restored) return;
     const safeStepIndex = Math.min(stepIndex, Math.max(steps.length - 1, 0));
     sessionStorage.setItem(
-      storageKey,
+      activeStorageKey.current,
       JSON.stringify({
         answers,
         stepIndex: safeStepIndex,
+        stepId: steps[safeStepIndex],
       } satisfies SavedCheckState),
     );
-  }, [answers, restored, stepIndex, steps.length, storageKey]);
+    // Next can replace custom history state while committing a traversal.
+    // Reattach the displayed question and active URL after that commit.
+    window.history.replaceState(
+      { ...(window.history.state ?? {}), [CHECK_HISTORY_STEP_KEY]: safeStepIndex },
+      "",
+      activeEntryUrl.current ?? window.location.href,
+    );
+  }, [answers, restored, stepIndex, steps, storageKey]);
 
   useEffect(() => {
     if (!restored) return;
     function onPopState(event: PopStateEvent) {
       const historyStep = event.state?.[CHECK_HISTORY_STEP_KEY];
-      if (typeof historyStep !== "number") return;
-      const safeStepIndex = Math.min(
-        Math.max(historyStep, 0),
-        Math.max(visibleSteps(answers).length - 1, 0),
-      );
+      if (typeof historyStep !== "number" || !Number.isInteger(historyStep)) return;
+      const safeStepIndex = restoredStepIndex(answers, Math.max(historyStep, 0));
+      // Older question entries can still contain the original landing degree.
+      // Keep the active edited draft and URL together across Back and Forward.
+      if (activeEntryUrl.current && window.location.href !== activeEntryUrl.current) {
+        window.history.replaceState(
+          { ...event.state, [CHECK_HISTORY_STEP_KEY]: safeStepIndex },
+          "",
+          activeEntryUrl.current,
+        );
+      }
       setError(null);
-      setHistoryDepth((depth) => Math.max(depth - 1, 0));
       setStepIndex(safeStepIndex);
     }
     window.addEventListener("popstate", onPopState);
@@ -178,6 +197,17 @@ export function CheckFlow({
 
   function select(stepId: StepId, value: unknown) {
     setError(null);
+    if (entryDegree && stepId === "targetDegree" && value !== answers.targetDegree &&
+      (value === "bachelor" || value === "master")) {
+      // A refresh follows the edited degree; a later landing choice resumes
+      // that degree's own draft. A discarded school hint cannot return as issuer.
+      const url = new URL(window.location.href);
+      url.searchParams.set("degree", value);
+      url.searchParams.delete("country");
+      activeEntryUrl.current = url.href;
+      window.history.replaceState(window.history.state, "", url);
+      activeStorageKey.current = `${CHECK_STORAGE_PREFIX}:none:${value}`;
+    }
     setAnswers((prev) =>
       withAnswer(prev, stepId, value as Answers[typeof stepId]),
     );
@@ -186,23 +216,16 @@ export function CheckFlow({
   function back() {
     setError(null);
     if (stepIndex > 0) {
-      if (
-        historyDepth > 0 &&
-        window.history.state?.[CHECK_HISTORY_STEP_KEY] === stepIndex
-      ) {
-        window.history.back();
-      } else {
-        const previousStepIndex = stepIndex - 1;
-        setStepIndex(previousStepIndex);
-        window.history.replaceState(
-          {
-            ...(window.history.state ?? {}),
-            [CHECK_HISTORY_STEP_KEY]: previousStepIndex,
-          },
-          "",
-          window.location.href,
-        );
-      }
+      const previousStepIndex = stepIndex - 1;
+      setStepIndex(previousStepIndex);
+      window.history.replaceState(
+        {
+          ...(window.history.state ?? {}),
+          [CHECK_HISTORY_STEP_KEY]: previousStepIndex,
+        },
+        "",
+        window.location.href,
+      );
     } else router.push("/");
   }
 
@@ -214,9 +237,8 @@ export function CheckFlow({
     }
     posthog.capture("step_completed", { step: stepIndex + 1, question: step });
     if (!isLast) {
-      const nextStepIndex = stepIndex + 1;
+      const nextStepIndex = nextEntryStep(answers, stepIndex);
       setStepIndex(nextStepIndex);
-      setHistoryDepth((depth) => depth + 1);
       window.history.pushState(
         {
           ...(window.history.state ?? {}),

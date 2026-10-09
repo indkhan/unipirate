@@ -8,9 +8,11 @@ describe("public home page", () => {
     const html = renderToStaticMarkup(<HomePage />);
 
     expect(html).toContain("See your path to a German public university.");
-    expect(html).toContain('href="/check?country=in"');
-    expect(html).toContain('href="/check?country=pk"');
-    expect(html).toContain('href="/check?country=sa"');
+    expect(html).toContain('href="/check?degree=bachelor"');
+    expect(html).toContain('href="/check?degree=master"');
+    expect(html).toContain("Which degree level are you applying for?");
+    expect(html).toContain("Step 1");
+    expect(html).not.toContain("Where did you finish school?");
     expect(html).toContain("Check my eligibility");
   });
 });
