@@ -94,14 +94,14 @@ export function diagnosticRequirement(expected: NonNullable<Result['diagnostics'
 export function primaryDiagnostic(result: Result): ResultDiagnostic | undefined {
   const academic = result.diagnostics?.filter(d => d.support === 'path') ?? [];
   const qualification = academic.filter(d => d.assessedChecks).sort((a, b) => a.facts.length - b.facts.length)[0];
-  return academic.find(d => d.reason === 'equal_specificity_conflict') ?? academic.find(d => d.status === 'known_route') ?? qualification ?? academic.find(d => d.followUp) ?? academic.find(d => d.status === 'source_conflict') ?? academic.find(d => d.status === 'targeted_missing_fact') ?? academic.find(d => d.status === 'known_unmet_condition') ?? academic[0];
+  return academic.find(d => d.reason === 'equal_specificity_conflict') ?? academic.find(d => d.status === 'known_route') ?? academic.find(d => d.status === 'source_conflict') ?? qualification ?? academic.find(d => d.followUp) ?? academic.find(d => d.status === 'targeted_missing_fact') ?? academic.find(d => d.status === 'known_unmet_condition') ?? academic[0];
 }
 const DIAGNOSTIC_LABELS: Record<ResultDiagnostic['status'], string> = {
   qualification_guidance: 'Your qualification checks meet the cited criteria. Full recognition still needs confirmation.',
   known_route: 'A supported route is available.',
   known_unmet_condition: 'A condition is unmet for the cited route; other qualifications may need a separate assessment.',
   targeted_missing_fact: 'Your admission assessment is missing a specific answer.',
-  source_conflict: 'Conflicting evidence leaves this admission assessment unresolved. Confirm with the cited official sources.',
+  source_conflict: 'Conflicting evidence leaves this admission assessment unresolved. Ask the recognition authority to resolve the cited conflict for your qualification.',
   unsupported: 'Your admission route still needs confirmation.',
 };
 
@@ -121,7 +121,7 @@ export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
         : result.path === "subject_restricted" && profile.qualificationHistory?.indiaStudyRouteVersion === 1 &&
         profile.targetDegree === "bachelor" && profile.curriculumType === "national" && profile.schoolQualification?.country === "in"
         ? "Your reported qualifications indicate a subject-restricted direct route. UniPirate has not independently verified your reports; the university decides programme admission."
-        : result.path === "direct" && profile.qualificationHistory?.saudiBachelorEvidence?.version === 2 ? "Your reported completed Bachelor indicates general undergraduate access to all subjects and higher education institutions. UniPirate has not independently verified your reports; the university decides programme admission. This does not establish Master's equivalence." : result.path === 'unknown' && primaryDiagnostic(result)?.assessedChecks && primaryDiagnostic(result)!.status !== 'qualification_guidance' ? 'Some qualification checks need review. Full recognition remains unconfirmed.' : result.path === 'unknown' && primaryDiagnostic(result) ? DIAGNOSTIC_LABELS[primaryDiagnostic(result)!.status] : PATH_LABELS[result.path],
+        : result.path === "direct" && profile.qualificationHistory?.saudiBachelorEvidence?.version === 2 ? "Your reported completed Bachelor indicates general undergraduate access to all subjects and higher education institutions. UniPirate has not independently verified your reports; the university decides programme admission. This does not establish Master's equivalence." : result.path === 'unknown' && primaryDiagnostic(result)?.assessedChecks && primaryDiagnostic(result)!.status !== 'qualification_guidance' && primaryDiagnostic(result)!.status !== 'source_conflict' ? 'Some qualification checks need review. Full recognition remains unconfirmed.' : result.path === 'unknown' && primaryDiagnostic(result) ? DIAGNOSTIC_LABELS[primaryDiagnostic(result)!.status] : PATH_LABELS[result.path],
       citations: citationsFor(result, "path"),
       unknown: result.path === "unknown",
     },
