@@ -30,6 +30,13 @@ import { hasResearch, readResearch, ResearchReconciliationSchema, prepareResearc
 import { getProgrammeByLegacyCourse, listCourseOfferings } from "@/lib/db/queries";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
+export async function getAdminPlannerSettings(db:Db&Pick<SupabaseClient<Database>,"rpc">){
+  if(unwrap(await db.rpc("is_admin"))!==true)throw new Error("Administrator required.");
+  return unwrap<Tables<"planning_settings">>(await db.from("planning_settings").select("*").eq("id",true).single());
+}
+export async function setAdminPlannerModel(db:Pick<SupabaseClient<Database>,"rpc">,model:string,catalogue:unknown){
+  return unwrap(await db.rpc("set_planner_model",{p_model:z.string().max(200).parse(model),p_catalogue_snapshot:catalogue as Json}));
+}
 
 export type AdminRuleFilters = {
   country?: string;
@@ -286,9 +293,17 @@ export async function updateAdminCourseTaskDefinition(
  * SQL function as jsonb, which buys atomicity while keeping one parser.
  */
 export async function syncAdminCourseTaskDefinitions(
-  db: Db,
+  caller: Db & Pick<SupabaseClient<Database>,"rpc">,
   courseId: string,
 ): Promise<void> {
+  CourseCatalogueIdSchema.parse(courseId);
+  if(unwrap(await caller.rpc("is_admin"))!==true)throw new Error("Administrator required.");
+  const setting=unwrap<Pick<Tables<"planning_settings">,"enabled">>(await caller.from("planning_settings").select("enabled").eq("id",true).single());
+  // Committed shared definition/publication events enqueue owner-only proposals.
+  // Admin sessions can never read private copies, including personally edited ones.
+  if(setting.enabled){unwrap(await caller.rpc("enqueue_course_template_planning",{p_course_id:courseId}));return;}
+  const {createBackgroundWorker}=await import("@/lib/db/server");
+  const db=createBackgroundWorker();
   const applications = unwrap(
     await db
       .from("applications")

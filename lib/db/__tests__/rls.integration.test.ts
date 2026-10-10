@@ -483,7 +483,7 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     expect(otherView).toHaveLength(0);
   });
 
-  it("admin sees definition-linked task copies but not private manual tasks", async () => {
+  it("admin sees shared definitions but no student's generated or manual task copies", async () => {
     const { data: manual, error: manualError } = await owner
       .from("tasks")
       .insert({ user_id: ownerUser.id, title: "rls private manual task" })
@@ -491,7 +491,7 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
       .single();
     expect(manualError).toBeNull();
 
-    // A definition-linked copy is what the admin course-task sync fans out.
+    // Shared definitions remain admin-visible; student state stays owner-only.
     const { data: definition, error: definitionError } = await service
       .from("course_task_definitions")
       .insert({
@@ -528,7 +528,9 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
       .from("tasks")
       .select("id")
       .eq("id", assigned!.id);
-    expect(adminCopyView).toHaveLength(1);
+    expect(adminCopyView).toHaveLength(0);
+    const { data: adminDefinitionView } = await admin.from("course_task_definitions").select("id").eq("id",definition!.id);
+    expect(adminDefinitionView).toHaveLength(1);
 
     await service.from("tasks").delete().eq("id", assigned!.id);
     await service.from("course_task_definitions").delete().eq("id", definition!.id);

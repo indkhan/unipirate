@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { responseRuleSources } from "./assistant-sources";
 import { parseMarkers } from "./markers";
+import { TaskReceiptSchema } from "@/lib/tasks/manual";
 
 export const ASSISTANT_FALLBACK = "I cannot provide a source-backed answer to this question. [[unknown]] Check DAAD as a place to find official guidance: https://www.daad.de/";
 export type AssistantEvidence = { toolName: string; output: unknown };
@@ -14,6 +15,14 @@ const WebEnvelope = z.object({
 /** Only successful executed server tool outputs from this request belong here.
  * History, personal context and provider source events never authorize citations. */
 export function guardAssistantAnswer(text: string, evidence: readonly AssistantEvidence[]): string {
+  const action=evidence.findLast(item=>item.toolName==="create_task");
+  if(action){
+    const receipt=TaskReceiptSchema.safeParse(action.output);
+    if(!receipt.success)return ASSISTANT_FALLBACK;
+    if(receipt.data.status==="failed")return receipt.data.error;
+    const {task,status}=receipt.data;
+    return `${status==="created"?"Created personal task":"Already saved personal task"}: ${task.title}.${task.due_date?` Personal reminder: ${task.due_date}.`:""}`;
+  }
   const parsed = parseMarkers(text);
   const tokens = text.match(/\[\[[\s\S]*?\]\]/g) ?? [];
   const malformed = tokens.some(token => {

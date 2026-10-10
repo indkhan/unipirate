@@ -596,6 +596,12 @@ successful live assistant evaluation; it is not guaranteed by unit tests.
   separately from guarded delivery, fails on replacement fallbacks (including
   personal answers), and counts only unreplaced unknowns. A fallback-only model
   cannot pass as healthy. Marker checks do not detect every uncited clause.
+  Optional `EVAL_ASSISTANT_EVIDENCE_PATH` must be an absolute path outside the
+  checkout, including its resolved symlink/junction target. It checkpoints private
+  evidence from the evaluator's synthetic user: raw/guarded answers, safe error
+  classes/statuses and observed SDK step starts. Provider bodies and tool context
+  are excluded; observed steps are not an exact provider request count. Interrupted
+  runs remain incomplete, and diagnostics do not relax any acceptance criterion.
   Deterministic provider-boundary tests exercise the actual SDK and route; real
   original-model, RLS, default-build, CI and browser gates remain root-owned.
 
@@ -1551,3 +1557,127 @@ is not an effective intake or a verification stamp on any offering. No academic
 rule/catalogue publication, linked database operation, seed or embedding occurs.
 Root owns actual disposable SQL/RLS/typegen, default build/CI/browser review and
 integration before merge.
+
+## AI task creation and approval-first planning (#60)
+
+Delivery is one feature PR with three internal milestones, per the owner's
+execution instruction and consolidated #61 decisions. `planning_settings.enabled`
+defaults to false; enabling deployment requires complete integrated acceptance.
+The coding-agent model is independent of the application's planner setting.
+
+Explicit chat uses the current authenticated user's last message. The pure
+`lib/tasks/manual.ts` parser authorizes a narrow literal command such as
+`Add task "Prepare my documents" by 2027-06-01 for Exact Course Name`.
+Advice, past turns and retrieved instructions cannot enable the write tool.
+Ambiguous course labels require clarification. `lib/tasks/personal.ts` sends the
+validated request through the caller-scoped query helper and
+`create_personal_task` RPC. An owner/message-derived operation UUID, immutable
+request ledger and transaction advisory lock make duplicate/concurrent retries
+durable. Distinct message IDs permit intentional duplicate titles. A retry reads
+the stored receipt before provider configuration or quota checks, including after
+task deletion; it never recreates deleted work. Receipts contain actual stored
+task values, never model promises. Personal dates are reminders, not academic
+evidence. Dashboard manual creation shares this operation and revalidation.
+
+All student task rows, generated copies, proposals and jobs are owner-only under
+RLS. Admin views read shared research and course-task definitions. Flag-off shared
+template reconciliation authenticates the admin with the caller-scoped `is_admin`
+RPC before entering the internal service shell; its existing pure TS parser and
+keep/adopt logic preserve task IDs, completion and personal edits. It returns no
+private rows to an admin view and logs no private context. Flag-on reconciliation
+queues proposals instead of changing student tasks. Historical task/application
+links remain stored; the additive composite ownership FK is `NOT VALID` for legacy
+rows, while all new or changed links must belong to the owner.
+
+`lib/planning/enqueue.ts` exports the single #58 contract:
+`enqueueResearch(db,userId,{applicationId,courseId})`, plus job list/retry helpers.
+The import owner (#57/#58) saves meaningful identity and the exact DAAD URL/full
+paste before enqueueing. `ResearchSeedSchema` keeps its 200-character paste
+boundary. A job without recoverable meaningful identity/paste fails honestly.
+An already approved course reuses its current selected reviewed offering, or queues preliminary verification for unresolved scope, without redundant research. Research uses captured official material and produces pending shared drafts; it
+does not publish facts or academic rules. Lease-scoped metadata CAS retains the
+original full paste, URL and unrelated metadata and rejects concurrent review.
+
+`planning_jobs` is the event outbox: owner, application/course, event, current
+input fingerprint, immutable source version, lease, retry state and batch cursor.
+Database fingerprints bind profile/application selection/status and current
+source/template context. Duplicate events coalesce. Meaningful profile answers,
+application selection/status and task completion
+changes enqueue jobs transactionally while planning is enabled. Each application
+uses its exact current reviewed offering when its applicant context is confirmed;
+unresolved contexts queue preliminary verification. Personal title/date edits,
+no-op updates and proposal approval inserts do not trigger planning loops.
+Worker leases use SKIP LOCKED;
+crashes expire safely, three failures produce a saved retryable failure, and
+successful bounded batches checkpoint progress before releasing the lease. A
+crash between candidate saving and checkpoint safely repeats an idempotent batch.
+No browser render or polling call invokes research or planning.
+
+Owner retries and stale worker recovery resolve the current application and
+committed source scope inside the database transaction. Obsolete contexts use the
+current reviewed scope; current preliminary template work retains its purpose.
+Reviewed research and inactive applications return an obsolete outcome without
+queuing work. The current failed job retains its cursor on retry.
+`listPlanningJobs` retains durable history for import status; Suggestions reads a
+separate owner-only actionable view matching the current fingerprint and verified
+source version, retaining current preliminary work, so a historical failure cannot
+shadow newer successful work. Current shared template preparation remains in the
+verified worker catalogue when source scope changes; it grants no factual authority.
+Research persistence locks the application/course before the job, matching retry
+ordering. It rechecks the lease against the live clock after obtaining the job
+lock, preserving metadata CAS and the original paste even after lock waits.
+
+Deployment prerequisites are `pg_cron`, `pg_net`, Supabase Vault, the service
+credential and a reachable Node route `/api/planning/worker` with a 120-second
+runtime allowance. Set `PLANNING_WORKER_SECRET` in the server environment and call
+the service-only `configure_planning_dispatch(url,secret)` RPC with the same
+credential. The URL/secret configuration is private; Vault encrypts the secret.
+No live endpoint or secret is embedded in migrations. The minute cron drains
+existing eligible events through the protected route; it never creates a daily
+planning event. Browser closure does not remove queued jobs. Missing configuration
+leaves jobs durable; deployment must prove actual dispatch and recovery. The
+worker authenticates before creating its service client and returns only counts.
+
+The admin `/admin/planner` page reads the live OpenRouter catalogue and validates
+`:free` IDs, zero applicable inference prices, native tools/tool-choice support
+and minimum context. It audits model selection. Each preliminary inference checks
+that the selected model remains free and supported; quota/unavailability preserves
+work for retry, with no paid fallback. Native structured output orders a
+deterministically context-filtered preparation catalogue. It cannot create facts,
+dates, exclusions, deadlines or eligibility authority. Prompt batches reserve
+context/output capacity and use at most 4,000 UTF-8 input bytes; every relevant
+catalogue action remains reachable through durable cursor continuation.
+
+Pure proposal policy lives in `lib/planning/proposals.ts` and `order.ts`; I/O lives
+in query helpers and the worker shell. Preliminary proposals have no reviewed
+evidence or official due date. Verified proposals come only from a committed
+protected research publication audit and exact selected offering/intake/applicant
+scope. Direct university, uni-assist and VPD stages remain distinct. Reviewed
+document/language/prerequisite proposals retain literal evidence and do not assess
+fulfilment or invent exemptions. Dates require current, explicit unambiguous
+literal wording; parsed dates sort/bucket, and the source wording stays visible.
+
+`task_proposals` stores stable semantic action/scope identity, reasons, evidence,
+revisions and approved task linkage. Material source changes create Update task
+proposals; approval edits the same row with task-revision CAS, preserving completion
+and unrelated personal edits. Concurrent student changes require renewed review.
+Approved updates replace or clear official source links only while the task still retains its last accepted source link; personal links remain. Pending updates created before source baseline tracking preserve their existing link on first approval because the prior accepted source cannot be recovered safely. Deletion is a tombstone for approval retries. Rewording alone does not reopen a
+rejection. Withdrawal produces a preliminary verification/update proposal rather
+than retaining official authority silently. Obsolete pending items require recheck.
+
+Students receive a bottom-right arrival popup and persistent `/suggestions` page
+with a dashboard/topbar count, grouped by general/course context. Closing a popup
+does not reject or delete a proposal. Individual, selected and all-shown approval
+use explicit ID/revision snapshots; arrivals cannot join an in-flight selection.
+Approval locks/checks ownership, current input/source scope, shown revision,
+publication/template gates, date freshness and the target task revision before
+writing. Batches of 100 are database transaction bounds, not a product display cap;
+partial multi-batch failure reports confirmed progress honestly. The future
+automatic generation shells and database backstop honor approval when enabled;
+explicit personal commands continue to create tasks immediately.
+
+The #47–#59 orchestrator owns DAAD identity/import UI and course-bottom manual-task
+visibility (#57/#58/#59). The feature branch owns shared operations, query helpers,
+queue/proposals, approval UI and free-model settings. Integrated course UI and the
+genuine recorded student/admin/two-account journeys remain delivery gates; a
+successful build or mocked transport test is not browser/provider evidence.

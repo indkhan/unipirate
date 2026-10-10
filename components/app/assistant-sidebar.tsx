@@ -8,6 +8,8 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { responseTaskReceipts } from "./assistant-receipts";
 
 import { reportAssistantAnswer } from "@/app/(app)/dashboard/actions";
 import { parseMarkers, stripMarkers, type Citation } from "@/lib/ai/markers";
@@ -53,6 +55,7 @@ function BotMessage({
   const { citations, unknown } = parseMarkers(text);
   const ruleCitations = citations.filter((c) => c.type === "rule");
   const webCitations = citations.filter((c) => c.type === "web");
+  const receipts = responseTaskReceipts(message.parts);
 
   async function report() {
     try {
@@ -66,6 +69,12 @@ function BotMessage({
   return (
     <div className={styles.botGroup}>
       <div className={styles.botBubble}>
+        {receipts.map((receipt,index)=>receipt.status==="failed"?<p key={index} role="alert">{receipt.error}</p>:<div key={receipt.task.id} role="status">
+          <strong>{receipt.status==="created"?"Task saved":"Task already saved"}</strong>
+          <p>{receipt.task.title}</p>
+          {receipt.task.due_date?<p>Personal reminder: {receipt.task.due_date}</p>:null}
+          <a href="/dashboard">View your task</a>
+        </div>)}
         <span className={styles.botText}>{stripMarkers(text)}</span>
 
         {ruleCitations.map((citation: Citation) => {
@@ -127,14 +136,17 @@ function BotMessage({
 }
 
 export function AssistantSidebar({ initialUsed }: { initialUsed: number }) {
+  const router=useRouter();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
-  const { messages, sendMessage, status, error } = useChat({
+  const [startingUsed] = useState(initialUsed);
+  const { messages, sendMessage, regenerate, status, error } = useChat({
     transport: new DefaultChatTransport({ api: "/api/assistant/chat" }),
+    onFinish:()=>router.refresh(),
   });
 
   const used =
-    initialUsed + messages.filter((message) => message.role === "user").length;
+    Math.max(initialUsed,startingUsed + messages.filter((message) => message.role === "user").length);
   const quotaReached = used >= DAILY_QUOTA;
   const busy = status === "submitted" || status === "streaming";
 
@@ -198,8 +210,7 @@ export function AssistantSidebar({ initialUsed }: { initialUsed: number }) {
               <div className={styles.empty}>
                 <span className={styles.emptyDot} aria-hidden />
                 <p className={styles.emptyText}>
-                  Ask about your route. Every answer cites an official source —
-                  and when we can&apos;t confirm something, we say so.
+                  Ask about your route, or add a personal task: Add task &quot;Collect transcripts&quot; for your exact course name. A personal reminder is not an official deadline.
                 </p>
                 <div className={styles.suggestions}>
                   {SUGGESTIONS.map((suggestion) => (
@@ -216,6 +227,7 @@ export function AssistantSidebar({ initialUsed }: { initialUsed: number }) {
               </div>
             ) : null}
 
+            {error?<button type="button" onClick={()=>void regenerate()}>Retry last request</button>:null}
             {messages.map((message, index) =>
               message.role === "user" ? (
                 <div key={message.id} className={styles.userBubble}>

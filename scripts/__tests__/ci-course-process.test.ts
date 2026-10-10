@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 const workflow = readFileSync(path.resolve(".github/workflows/ci.yml"), "utf8");
 const proof = /- name: Prove RLS suite actually executed\s+run: \|\s+node -e '([\s\S]*?)'\s*\n\s*- name:/.exec(workflow)![1];
 const passed = (name: string, statuses = ["passed"]) => ({ name, assertionResults: statuses.map(status => ({ title: "synthetic case", status })) });
+const featureSuites=["personal-tasks.integration.test.ts","planning.integration.test.ts","planning-cursor.integration.test.ts","planning-research.integration.test.ts","planning-events.integration.test.ts","planning-retry.integration.test.ts","reconciliation.integration.test.ts"];
+const allPassed=()=>[passed("rls.integration.test.ts"),passed("course-process.integration.test.ts"),...featureSuites.map(name=>passed(name))];
 function runProof(testResults: unknown[]) {
   const directory = mkdtempSync(path.join(tmpdir(), "course-process-ci-"));
   try {
@@ -24,7 +26,11 @@ describe("actual CI report proof rejects skipped integration", () => {
   it("preserves RLS enforcement", () => {
     expect(runProof([passed("course-process.integration.test.ts")]).status).not.toBe(0);
   });
-  it("accepts both suites only when every case passes", () => {
-    expect(runProof([passed("rls.integration.test.ts"), passed("course-process.integration.test.ts")]).status).toBe(0);
+  it("accepts every required suite only when every case passes", () => {
+    expect(runProof(allPassed()).status).toBe(0);
+  });
+  it.each(featureSuites)("rejects a skipped feature suite: %s",name=>{
+    const report=allPassed().map(suite=>suite.name===name?passed(name,["pending"]):suite);
+    expect(runProof(report).status).not.toBe(0);
   });
 });

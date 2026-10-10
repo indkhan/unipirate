@@ -73,6 +73,16 @@ jobs:
           '
 
       # Use one thread worker: the CPU-heavy immutable corpus can starve fork RPC updates.
+      - name: Configure feature disposable test aliases
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const api = process.env.NEXT_PUBLIC_SUPABASE_URL;
+            if (api !== "http://127.0.0.1:54321") throw new Error("Feature tests require disposable CI loopback");
+            fs.appendFileSync(process.env.GITHUB_ENV,
+              `AI_TASK_LOCAL_URL=${api}\nAI_TASK_LOCAL_ANON_KEY=${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}\nAI_TASK_LOCAL_SERVICE_KEY=${process.env.SUPABASE_SECRET_KEY}\nPLANNING_LOCAL_API=${api}\nPLANNING_LOCAL_PUBLIC_KEY=${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}\nPLANNING_LOCAL_SERVICE_KEY=${process.env.SUPABASE_SECRET_KEY}\n`);
+          '
+
       - name: Test (ordinary suite + JSON report)
         run: pnpm exec vitest run --pool=threads --maxWorkers=1 --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
 
@@ -82,7 +92,7 @@ jobs:
             const fs = require("node:fs");
             const path = require("node:path");
             const report = JSON.parse(fs.readFileSync(path.join(process.env.RUNNER_TEMP, "vitest.json"), "utf8"));
-            for (const suite of ["rls.integration.test.ts", "course-process.integration.test.ts"]) {
+            for (const suite of ["rls.integration.test.ts", "course-process.integration.test.ts", "personal-tasks.integration.test.ts", "planning.integration.test.ts", "planning-cursor.integration.test.ts", "planning-research.integration.test.ts", "planning-events.integration.test.ts", "planning-retry.integration.test.ts", "reconciliation.integration.test.ts"]) {
               const files = report.testResults.filter((t) => path.basename(t.name) === suite);
               if (files.length === 0) throw new Error(`${suite} absent from report: suite did not execute (honest failure, not a skip)`);
               const cases = files.flatMap((f) => f.assertionResults);
@@ -95,6 +105,9 @@ jobs:
 
       - name: Course-offerings SQL gate (disposable local DB)
         run: psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/course_offerings.sql
+
+      - name: AI planning SQL gate (disposable local DB)
+        run: psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/ai_planning.sql
 
       - name: Lint
         run: pnpm lint
