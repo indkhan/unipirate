@@ -1,7 +1,7 @@
 import {createClient} from "@supabase/supabase-js";
 import {expect, it} from "vitest";
 import type {Database} from "../database.types";
-import {getRuleVersionsByIds, insertCheck, getCheck, listRuleVersions, matchKbRuleHints, upsertGeneratedTasks} from "../queries";
+import {getRuleVersionsByIds, insertCheck, getCheck, listRuleVersions, matchKbRuleHints, upsertGeneratedTasks, listTasks} from "../queries";
 import {listAdminImpactProfiles} from "../admin-queries";
 import {evaluateAssessment} from "@/lib/rules/assessment";
 import {answers, profile, context, version} from "@/lib/rules/__tests__/assessment-fixtures";
@@ -11,6 +11,13 @@ function client(handler: (url: URL, method: string, body: unknown) => Response) 
  return {db, requests};
 }
 const response = (data: unknown, count?: number) => new Response(JSON.stringify(data), {status: 200, headers: {"Content-Type": "application/json", ...(count === undefined ? {} : {"content-range": "0-0/"+count})}});
+it("keeps personal rows visible independently of generated retirement, within the caller account", async () => {
+ const {db, requests} = client(() => response([]));
+ await listTasks(db, version(1).id);
+ expect(requests[0].url.searchParams.get("user_id")).toBe("eq." + version(1).id);
+ expect(requests[0].url.searchParams.get("or")).toBe("(generated_active.eq.true,task_key.is.null)");
+ expect(requests[0].url.searchParams.has("generated_active")).toBe(false);
+});
 it("reads selected and diagnostic IDs exactly, never newest/latest", async () => {
  const {db, requests} = client(() => response([version(1)]));
  expect(await getRuleVersionsByIds(db, [version(1).id, version(2).id])).toHaveLength(1);
