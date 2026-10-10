@@ -1,0 +1,151 @@
+{
+  "fixture": "Local-only synthetic publication; evaluateAssessment -> parseStoredAssessment -> VerdictCard; no database publication",
+  "checks": [
+    {
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "hlGuidance": true,
+      "hlIrrelevantConflict": false,
+      "slConflict": true,
+      "slAction": true,
+      "slSource": true,
+      "durationNag": false,
+      "scrollWidth": 390
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "hlGuidance": true,
+      "hlIrrelevantConflict": false,
+      "slConflict": true,
+      "slAction": true,
+      "slSource": true,
+      "durationNag": false,
+      "scrollWidth": 390
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "theme": "light",
+      "hlGuidance": true,
+      "hlIrrelevantConflict": false,
+      "slConflict": true,
+      "slAction": true,
+      "slSource": true,
+      "durationNag": false,
+      "scrollWidth": 768
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "theme": "dark",
+      "hlGuidance": true,
+      "hlIrrelevantConflict": false,
+      "slConflict": true,
+      "slAction": true,
+      "slSource": true,
+      "durationNag": false,
+      "scrollWidth": 768
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "hlGuidance": true,
+      "hlIrrelevantConflict": false,
+      "slConflict": true,
+      "slAction": true,
+      "slSource": true,
+      "durationNag": false,
+      "scrollWidth": 1440
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "hlGuidance": true,
+      "hlIrrelevantConflict": false,
+      "slConflict": true,
+      "slAction": true,
+      "slSource": true,
+      "durationNag": false,
+      "scrollWidth": 1440
+    }
+  ],
+  "legacyDraft": {
+    "restored": "Which subjects did you take?",
+    "back": "Which awarding body issued your A-Levels?",
+    "refresh": "Which awarding body issued your A-Levels?",
+    "durationAnswerRemoved": true,
+    "numericInputsAfterRefresh": 0
+  },
+  "productionBuildRead": {
+    "uuid": "ab9f611a-c9a3-434c-9622-79d579a35889",
+    "scope": "Existing real disposable IB check from prior repair; original and current render without duration prompts. No published scoped IB rules here, so this does not verify production HL/SL publication.",
+    "checks": [
+      {
+        "width": 390,
+        "height": 844,
+        "theme": "light",
+        "originalAvailable": true,
+        "currentAvailable": true,
+        "unknown": true,
+        "durationNag": false,
+        "scrollWidth": 704
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "theme": "dark",
+        "originalAvailable": true,
+        "currentAvailable": true,
+        "unknown": true,
+        "durationNag": false,
+        "scrollWidth": 704
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "theme": "light",
+        "originalAvailable": true,
+        "currentAvailable": true,
+        "unknown": true,
+        "durationNag": false,
+        "scrollWidth": 768
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "theme": "dark",
+        "originalAvailable": true,
+        "currentAvailable": true,
+        "unknown": true,
+        "durationNag": false,
+        "scrollWidth": 768
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "theme": "light",
+        "originalAvailable": true,
+        "currentAvailable": true,
+        "unknown": true,
+        "durationNag": false,
+        "scrollWidth": 1440
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "theme": "dark",
+        "originalAvailable": true,
+        "currentAvailable": true,
+        "unknown": true,
+        "durationNag": false,
+        "scrollWidth": 1440
+      }
+    ],
+    "limitation": "Existing original provenance text overflows mobile (704px at 390px); unchanged result layout remains with #54. CSS viewport Chromium checks, not native devices."
+  }
+}

@@ -137,7 +137,7 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; so
   },
   ibDocumentStatus: {question:'Which IB Diploma evidence do you have?',subtitle:'Official IBO results must confirm Diploma award. School predictions or a candidate-site screenshot alone do not establish it. A physical Diploma still pending differs from not awarded or Certificate only.',sourceUrl:'https://www.uni-assist.de/en/faqs/assemble-your-documents/'},
   ibExamSession:{question:'Which IB examination session awarded these results?',subtitle:'May or November, separate from your intended university intake. Recognised COVID substitute sessions do not require invented exam attendance.',sourceUrl:IB_SOURCE},
-  ibSchooling:{question:'Were these ascending school years in full-time schooling?',sourceUrl:IB_SOURCE},
+  ibSchooling:{question:'Was your schooling ascending and full-time?',sourceUrl:IB_SOURCE},
   ibProgramme:{question:'Was this ordinary IB or gemischtsprachiges IB (GIB)?',subtitle:'School identity alone cannot establish a GIB-only exception.',sourceUrl:IB_SOURCE},
   ibSchoolIdentity:{question:'Can you identify the exact school for a mathematics exception?',subtitle:'Use the official name, country and six-digit IB code where available. Missing identity is not evidence that your school is unlisted. Other ordinary requirements still apply.',sourceUrl:IB_SOURCE},
   ibSchoolName:{question:'What is the exact school name?',subtitle:'Copy the name shown in the current KMK annex; aliases require confirmation.',sourceUrl:IB_SOURCE},
