@@ -31,6 +31,10 @@ export async function POST(request: Request) {
   const parsed = ImportRequestSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input." }, { status: 400 });
   const { url, text, conflictsWith } = parsed.data;
+  const entry = DaadEntrySchema.safeParse(url);
+  const host = new URL(url).hostname;
+  if ((host === "daad.de" || host.endsWith(".daad.de")) && !entry.success)
+    return NextResponse.json({ error: entry.error.issues[0].message }, { status: 400 });
   const normalizedUrl = normalizeUrl(url);
   try {
     // Saved non-DAAD courses remain usable. New catalogue entries require DAAD.
@@ -47,7 +51,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ course: existing, deduped: true, applicationId });
       }
     }
-    const entry = DaadEntrySchema.safeParse(url);
     if (!entry.success) return NextResponse.json({ error: entry.error.issues[0].message }, { status: 400 });
     if (!text) {
       if (conflictsWith) return NextResponse.json({ error: recopy }, { status: 400 });

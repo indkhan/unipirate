@@ -16,6 +16,16 @@ describe("parseDaadText", () => {
     expect(parseDaadText(`${DAAD_PAGE_TEXT}\n${DAAD_PAGE_TEXT}`).name).toBe("Computer Science – Master of Science");
     expect(parseDaadText("Search\nOverview\nLeibniz University Hannover • Hannover\nDegree\nMaster of Science").name).toBeNull();
   });
+  it("does not mistake navigation or the programme for a missing identity heading", () => {
+    for (const text of [
+      "HOME BACK\nComputer Science – Master of Science\n• Hannover\nOverview",
+      "HOME BACK\nLeibniz University Hannover • Hannover\nOverview",
+      "International Programmes\nLeibniz University Hannover\n• Hannover\nOverview",
+    ]) {
+      expect(parseDaadText(text).name).toBeNull();
+      expect(parseDaadText(text).university).toBeNull();
+    }
+  });
   it("reads current DAAD period, tuition and language labels without footer leakage", () => {
     const parsed = parseDaadText(`Data Science
 RWTH Aachen University • Aachen

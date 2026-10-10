@@ -196,7 +196,7 @@ export function AddCourseSheet({
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
               />
-              {error ? <p className={dashStyles.error}>{error}</p> : null}
+              {error ? <p role="alert" className={dashStyles.error}>{error}</p> : null}
               <button className={dashStyles.submit} type="submit" disabled={busy}>
                 {busy ? "Checking…" : "Check this link"}
               </button>
@@ -220,7 +220,7 @@ export function AddCourseSheet({
                   {lookup.course.university_name ?? "University pending review"}
                 </span>
               </article>
-              {error ? <p className={dashStyles.error}>{error}</p> : null}
+              {error ? <p role="alert" className={dashStyles.error}>{error}</p> : null}
               {foundCourseOnDashboard ? (
                 <button className={dashStyles.submit} type="button" disabled>
                   Already in dashboard
@@ -268,7 +268,7 @@ export function AddCourseSheet({
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
-              {error ? <p className={dashStyles.error}>{error}</p> : null}
+              {error ? <p role="alert" className={dashStyles.error}>{error}</p> : null}
               <button className={dashStyles.submit} type="submit" disabled={busy}>
                 {busy
                   ? "Saving…"

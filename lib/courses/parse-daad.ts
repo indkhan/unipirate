@@ -150,7 +150,7 @@ export function parseDaadIdentity(text: string): { name: string | null; universi
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const headings = new Map<string, { name: string; university: string }>();
   const heading = (line: string | undefined) => line && line.length <= 240
-    && !BOUNDARIES.has(line) && !/^(DAAD|International Programmes in Germany|My favourites|Search|Back|Home)$/i.test(line)
+    && !BOUNDARIES.has(line) && !/^(DAAD|International Programmes(?: in Germany| \d{4}\/\d{4})?|My favourites|Search|Back|Home|Home Back)$/i.test(line)
     && !line.includes("\u2022");
   for (let i = 0; i < lines.length; i++) {
     const inline = lines[i].match(/^(.+) \u2022 .+$/);
@@ -159,6 +159,8 @@ export function parseDaadIdentity(text: string): { name: string | null; universi
     const university = inline ? inline[1] : lines[i - 1];
     const name = lines[i - (inline ? 1 : 2)];
     if (!heading(name) || !heading(university)) continue;
+    // shortcut: unfamiliar institution headings require recopy; extend only with captured DAAD examples.
+    if (!/university|universit(?:ät|aet)|hochschule|college|institut|akademie|academy|school|\b(?:TU|TH|FH|HAW|HTW|HWR|HHL|ESMT|BTU|KIT|RWTH|LMU)\b/i.test(university)) continue;
     headings.set(JSON.stringify([name, university]), { name, university });
   }
   return headings.size === 1 ? [...headings.values()][0] : { name: null, university: null };

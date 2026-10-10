@@ -53,6 +53,12 @@ describe("DAAD import boundary", () => {
     expect(mocks.trackCourse).toHaveBeenCalledWith(expect.anything(), "student", "legacy");
     expect(mocks.insertCourse).not.toHaveBeenCalled();
   });
+  it("rejects unapproved DAAD paths even when normalization finds an existing course", async () => {
+    mocks.getCourseByNormalizedUrl.mockResolvedValue({ id: "saved", source_url: url });
+    const response = await POST(request({ url: "https://www2.daad.de/arbitrary/detail/12345" }));
+    expect(response.status).toBe(400);
+    expect(mocks.trackCourse).not.toHaveBeenCalled();
+  });
   it("retains saved course on enqueue failure without blaming paste", async () => {
     mocks.enqueueResearch.mockRejectedValue(new Error("provider unavailable"));
     const response = await POST(request({ url, text: DAAD_PAGE_TEXT }));
