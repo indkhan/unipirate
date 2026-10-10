@@ -7,6 +7,9 @@
 // marker-presence check plus the trap questions is the honest automatable
 // version. Creates its own throwaway user (profile + tasks) and cleans up.
 
+import {lstatSync,realpathSync,writeFileSync} from "node:fs";
+import {basename,dirname,resolve} from "node:path";
+import {buildEvalEvidence,normalizeEvalError,isOutsideCheckout,type EvalCaseEvidence} from "./eval-assistant-diagnostics";
 import { createClient } from "@supabase/supabase-js";
 import { AnswersSchema } from "../app/(public)/check/steps";
 
@@ -16,6 +19,25 @@ import type { Database } from "../lib/db/database.types";
 import { getServerEnv } from "../lib/env";
 import { evalQuestions } from "./eval-questions";
 
+// Optional private artifact: use an absolute path outside the checkout (for example the OS temp directory).
+const requestedEvidencePath=process.env.EVAL_ASSISTANT_EVIDENCE_PATH;
+let evidencePath:string|undefined;
+if(requestedEvidencePath){
+  const checkout=realpathSync(process.cwd());
+  if(!isOutsideCheckout(process.cwd(),requestedEvidencePath))throw new Error("Eval evidence requires an absolute path outside the checkout");
+  // Resolve the nearest existing ancestor, including directory junctions/file symlinks.
+  // Broken symlinks and inaccessible ancestors fail closed rather than guessing their target.
+  let ancestor=resolve(requestedEvidencePath);const missing:string[]=[];
+  for(;;){
+    try{lstatSync(ancestor);break;}catch(error){
+      if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;
+      const parent=dirname(ancestor);if(parent===ancestor)throw error;
+      missing.unshift(basename(ancestor));ancestor=parent;
+    }
+  }
+  evidencePath=resolve(realpathSync(ancestor),...missing);
+  if(!isOutsideCheckout(checkout,evidencePath))throw new Error("Eval evidence resolves inside the checkout");
+}
 const env = getServerEnv();
 if (!env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is required");
 
@@ -26,6 +48,10 @@ const db = createClient<Database>(
 );
 
 async function main() {
+  const cases:EvalCaseEvidence[]=[];let runComplete=false;
+  const startedAt=new Date().toISOString();
+  const checkpoint=()=>{if(evidencePath){const evidence=buildEvalEvidence(cases,evalQuestions.length);writeFileSync(evidencePath,JSON.stringify({...evidence,status:runComplete?evidence.status:"incomplete",startedAt,updatedAt:new Date().toISOString()},null,2),{encoding:"utf8",mode:0o600});}};
+  checkpoint();
   const { data: created, error } = await db.auth.admin.createUser({
     email: `eval-assistant-${Date.now()}@example.com`,
     password: `eval-${crypto.randomUUID()}`,
@@ -63,6 +89,9 @@ async function main() {
 
   try {
     for (const question of evalQuestions) {
+      const evidence:EvalCaseEvidence={question:question.text,category:question.category,completed:false,problems:[],unknown:false,rawCompliant:true,replaced:false,completedAnswers:0,startedSteps:0,answer:null,guardedSteps:[],errors:[]};
+      cases.push(evidence);checkpoint();
+      const progress=()=>{checkpoint();console.error(`[eval] attempted ${cases.length}/${evalQuestions.length} | ${evidence.problems.length?"failed":"completed"} | observed started steps ${evidence.startedSteps} (not an exact request count) | errors ${evidence.errors.map(error=>`${error.errorClass}:${error.statusCode??"unknown"}`).join(",")||"none"}`);};
       let text: string;
       let rawCompliant = true;
       let replaced = false;
@@ -83,15 +112,29 @@ async function main() {
           tavilyApiKey: env.TAVILY_API_KEY,
           onGuardedStep: ({ rawText, text }) => {
             completedAnswers++;
+            evidence.completedAnswers=completedAnswers;
+            evidence.guardedSteps.push({rawText,text});
             const markers = parseMarkers(rawText);
             if (!markers.unknown && !markers.citations.length) rawCompliant = false;
             if (rawText !== text) replaced = true;
+            evidence.rawCompliant=rawCompliant;evidence.replaced=replaced;checkpoint();
           },
         });
-        text = await result.text;
+        // Installed SDK fullStream tees the existing stream; consuming it does not create requests.
+        // Ignore tool/context/raw parts entirely. Observe only started steps and normalized errors.
+        const observing=(async()=>{try{for await(const part of result.fullStream){
+          if(part.type==="start-step"){evidence.startedSteps++;checkpoint();}
+          if(part.type==="error"){evidence.errors.push(normalizeEvalError(part.error));checkpoint();}
+        }}catch(error){evidence.errors.push(normalizeEvalError(error));}})();
+        const outcomes=await Promise.allSettled([result.text,observing]);
+        if(outcomes[0].status==="rejected")throw outcomes[0].reason;
+        text=outcomes[0].value;
       } catch (error) {
         failures++;
-        rows.push(`✗ ERROR   [${question.category}] ${question.text} — ${String(error).slice(0, 120)}`);
+        const normalized=normalizeEvalError(error);evidence.errors.push(normalized);
+        evidence.completed=true;evidence.problems=["ERROR"];evidence.rawCompliant=rawCompliant;evidence.replaced=replaced;
+        rows.push(`✗ ERROR   [${question.category}] ${question.text} — ${normalized.errorClass} (status ${normalized.statusCode??"unknown"})`);
+        progress();
         continue;
       }
 
@@ -110,6 +153,7 @@ async function main() {
         problems.push("UNCITED");
       if (question.mustBeUnknown && !unknown) problems.push("GUESSED");
 
+      evidence.completed=true;evidence.problems=problems;evidence.unknown=unknown;evidence.rawCompliant=rawCompliant;evidence.replaced=replaced;evidence.answer=text;
       if (problems.length > 0) {
         failures++;
         rows.push(`✗ ${problems.join("+")} [${question.category}] ${question.text}`);
@@ -121,12 +165,14 @@ async function main() {
         rows.push(`✓ [${question.category}] ${question.text}`);
         rows.push(`    → ${label}`);
       }
+      progress();
     }
   } finally {
     await db.from("assistant_messages").delete().eq("user_id", userId);
     await db.auth.admin.deleteUser(userId);
   }
 
+  runComplete=true;checkpoint();
   console.log(rows.join("\n"));
   console.log(
     `\n${evalQuestions.length - failures}/${evalQuestions.length} passed · ${unknowns} honest unknowns (need ≥3)`,
@@ -141,6 +187,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
+  const normalized=normalizeEvalError(error);
+  console.error(`Eval failed: ${normalized.errorClass} (status ${normalized.statusCode??"unknown"})`);
   process.exit(1);
 });

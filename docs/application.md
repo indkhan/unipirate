@@ -596,6 +596,12 @@ successful live assistant evaluation; it is not guaranteed by unit tests.
   separately from guarded delivery, fails on replacement fallbacks (including
   personal answers), and counts only unreplaced unknowns. A fallback-only model
   cannot pass as healthy. Marker checks do not detect every uncited clause.
+  Optional `EVAL_ASSISTANT_EVIDENCE_PATH` must be an absolute path outside the
+  checkout, including its resolved symlink/junction target. It checkpoints private
+  evidence from the evaluator's synthetic user: raw/guarded answers, safe error
+  classes/statuses and observed SDK step starts. Provider bodies and tool context
+  are excluded; observed steps are not an exact provider request count. Interrupted
+  runs remain incomplete, and diagnostics do not relax any acceptance criterion.
   Deterministic provider-boundary tests exercise the actual SDK and route; real
   original-model, RLS, default-build, CI and browser gates remain root-owned.
 
