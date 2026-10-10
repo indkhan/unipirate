@@ -584,6 +584,11 @@ successful live assistant evaluation; it is not guaranteed by unit tests.
 - Trade-off: universal markers also apply to personal answers, which may now
   become a controlled unknown when the model omits markers. No personal-history
   citation type is invented.
+  The prompt requires the existing exact canonical refusal when no authorized
+  citation can support an answer; unsupported free-form prose still gets replaced
+  by the guard. Supported partial answers may retain genuine citations and mark
+  the unresolved part unknown. This aligns the prompt with the guard without
+  changing the model, evidence boundary or evaluator acceptance criteria.
 - The route now passes `request.signal` to the shared runner for cancellation.
   Aborted requests retain the logged user question/quota consumption and do not
   store a partial assistant answer. Reasoning transport is disabled with

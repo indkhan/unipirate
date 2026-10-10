@@ -36,6 +36,7 @@ export async function removeCourse(input: unknown): Promise<void> {
   await deleteApplicationForCourse(db, user.id, id);
   await removeMyCourse(db, id);
   revalidatePath("/dashboard");
+  revalidatePath("/courses", "layout");
 }
 
 const toggleTaskSchema = z.object({
@@ -49,6 +50,7 @@ export async function toggleTask(input: unknown): Promise<void> {
 
   await setTaskDone(db, user.id, id, done);
   revalidatePath("/dashboard");
+  revalidatePath("/courses", "layout");
 }
 
 const moveTaskSchema = z.object({
@@ -120,6 +122,7 @@ export async function updateCourseTask(input: unknown): Promise<void> {
     due_date: task.dueDate,
   });
   revalidatePath("/dashboard");
+  revalidatePath("/courses", "layout");
 }
 
 const courseTaskResolutionSchema = z.object({
@@ -132,6 +135,7 @@ export async function resolveCourseTaskUpdate(input: unknown): Promise<void> {
   const { db, user } = await requireUser();
   await resolveCourseTaskAssignment(db, user.id, id, resolution);
   revalidatePath("/dashboard");
+  revalidatePath("/courses", "layout");
 }
 
 const deleteTaskSchema = z.object({
@@ -144,6 +148,7 @@ export async function deleteTask(input: unknown): Promise<void> {
 
   await deleteTaskRow(db, user.id, id);
   revalidatePath("/dashboard");
+  revalidatePath("/courses", "layout");
 }
 
 const applicationStatusSchema = z.object({
@@ -158,6 +163,7 @@ export async function setApplicationStatus(input: unknown): Promise<void> {
   await updateApplicationStatus(db, id, status);
   if (status === "planning") await materializeCourseTasksForApplication(db,user.id,id);
   revalidatePath("/dashboard");
+  revalidatePath("/courses", "layout");
 }
 
 const reportAnswerSchema = z.object({
@@ -185,4 +191,5 @@ export async function selectApplicationOffering(input: unknown): Promise<void> {
   await setApplicationOfferingSelection(db,user.id,selection);
   await materializeCourseTasksForApplication(db,user.id,selection.id);
   revalidatePath("/dashboard");
+  revalidatePath("/courses", "layout");
 }

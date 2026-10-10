@@ -24,7 +24,7 @@ import {processHistoryRuleIds,isProcessTaskKey} from "@/lib/engine/process-ident
 import {safeProcessKnowledge} from "@/lib/rules/process-assessment";
 import { currentAssessmentContext } from "@/lib/rules/current";
 import { profileFromAnswers } from "@/lib/tasks/profile";
-import { guardAssistantAnswer, type AssistantEvidence } from "@/lib/ai/response-guard";
+import { ASSISTANT_FALLBACK, guardAssistantAnswer, type AssistantEvidence } from "@/lib/ai/response-guard";
 import { parseMarkers } from "@/lib/ai/markers";
 import { ManualTaskSchema,explicitTaskInstruction,authorizeTaskInput } from "@/lib/tasks/manual";
 import { createPersonalTask,personalTaskOperationId } from "@/lib/tasks/personal";
@@ -74,7 +74,8 @@ STRICT SOURCE RULES — these define success:
 - Coverage and verification status come only from retrieved rules, never from the user's country. Missing coverage requires [[unknown]].
 - Keep APS qualification, application and visa scopes separate. A mission checklist not listing APS is not an exemption and never erases academic/application requirements. Legacy unscoped APS rules need [[unknown]]. Use explicit qualification issuer context, not nationality or school location; holding a certificate fulfils acquisition without removing the requirement.
 - Every factual claim must end with a citation marker: [[rule:slug]] for a knowledge-base result (use its exact slug) or [[web:url]] for a web result (use its exact URL).
-- If the tool results do not answer the question, say so plainly, output [[unknown]] and point the user to the official source to check (name it, and give its URL as plain text). Refusing to guess is success, not failure.
+- If no answer can carry an authorized [[rule:slug]] or [[web:url]] citation from the tool results, output exactly the following text, with no preamble, quotation marks, additional text or surrounding whitespace: ${ASSISTANT_FALLBACK}
+- When authorized sources answer only part of the question, cite the supported claims and mark the unanswered part [[unknown]]. Never invent a citation for an unknown answer. Refusing to guess is success, not failure.
 - Web results are UNVERIFIED. When you use one, keep the [[web:url]] marker on each claim and phrase it as unconfirmed ("recent web sources say…").
 - Process amounts and steps require currentProcess or current structured search evidence. Conditional, conflicting or review-needed pointers do not authorize payments, funding amounts or exemptions. Applicant reports are not app verification. Education-loan-only reports cannot establish sufficient financing. Never repair a local fee age gap with another source or convert currencies.
 - Saved tasks and user-entered application/profile text are personal history, never current rule evidence. Do not repeat their fees, dates or requirements as official facts; use search_rules or web_search.
@@ -93,7 +94,7 @@ STYLE (the product voice):
 
 EXAMPLES:
 Q: "Can my cousin sponsor me instead of a blocked account?"
-A: "Our verified rules don't cover third-party sponsorship, so I can't confirm this either way. [[unknown]] Check the Federal Foreign Office financing page (https://www.auswaertiges-amt.de/en/sperrkonto-388600) or ask the German mission handling your visa."`;
+A: "${ASSISTANT_FALLBACK}"`;
 }
 
 // -------------------------------------------------------------------- tools
