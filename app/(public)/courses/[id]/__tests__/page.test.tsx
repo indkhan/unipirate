@@ -114,14 +114,16 @@ it.each(["planning", "applied", "admitted", "rejected"])("shows all linked manua
   stored.user = { id: REVIEWER_ID };
   stored.applications = [{ id: PROGRAMME_ID, course_id: COURSE_ID, status }];
   const manual = { id: OFFERING_ID, user_id: REVIEWER_ID, application_id: PROGRAMME_ID, task_key: null, course_task_definition_id: null, title: "Chat approved personal reminder", description: "My notes", done: false, source_url: "https://example.invalid/personal", source_verified_at: "2026-10-01", due_date: null, admin_change_state: "current", admin_snapshot: null };
-  stored.tasks = [manual, { ...manual, id: "done", title: "Completed personal reminder", done: true }, { ...manual, id: "general", application_id: null, title: "Unrelated general reminder" }, { ...manual, id: "other", application_id: REVIEWER_ID, title: "Other course reminder" }];
+  stored.tasks = [manual, { ...manual, id: "retained", course_task_definition_id: OFFERING_ID, title: "Personal reminder with retained definition" }, { ...manual, id: "done", title: "Completed personal reminder", done: true }, { ...manual, id: "general", application_id: null, title: "Unrelated general reminder" }, { ...manual, id: "other", application_id: REVIEWER_ID, title: "Other course reminder" }, { ...manual, id: "foreign", user_id: OFFERING_ID, title: "Another student's private reminder" }];
   const html = await renderPage();
   expect(html).toContain("Personal tasks");
   expect(html).toContain(manual.title);
+  expect(html).toContain("Personal reminder with retained definition");
   expect(html).toContain("Completed personal reminder");
   expect(html).toContain("Completed (1)");
   expect(html).not.toContain("Unrelated general reminder");
   expect(html).not.toContain("Other course reminder");
+  expect(html).not.toContain("Another student&#x27;s private reminder");
   expect(html).toContain("Personal source · unverified");
   expect(html).not.toContain("Add course to dashboard");
 });

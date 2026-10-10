@@ -75,7 +75,7 @@ it("edits, completes, undoes and deletes the same saved row through shared dashb
   // Use React's native input setter so the controlled edit state receives the event.
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(title, "My edited reminder");
   await act(() => title.dispatchEvent(new Event("input", { bubbles: true })));
-  await act(() => dialog.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  await act(async () => { dialog.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); await new Promise(resolve => setTimeout(resolve, 0)); });
   expect(mocks.updateTask).toHaveBeenCalledWith(expect.objectContaining({ id: task.id, applicationId, title: "My edited reminder" }));
   await click("Mark task done");
   expect(mocks.toggleTask).toHaveBeenLastCalledWith({ id: task.id, done: true });

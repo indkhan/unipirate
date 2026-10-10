@@ -199,7 +199,7 @@ export async function buildDashboardView(
   }
   const planningIds = new Set(applications.filter(a=>a.status==="planning").map(a=>a.id));
   const visibleRows = dbTasks.filter(task => {
-    if (task.done) return true;
+    if (task.done || task.task_key === null) return true;
     if (!isCurrentApsTask(task,result) || !isVisibleOfferingTask(task,offeringApplications)) return false;
     if (isProcessTaskKey(task.task_key,obsoleteUniAssistIds)) {
       const ruleId = /^rule:([^:]+):step:/.exec(task.task_key ?? "")?.[1];

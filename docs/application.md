@@ -125,6 +125,9 @@ uses them.
   same saved task ID as the dashboard. General and other-course tasks are
   excluded. Personal source links carry no verified evidence badge. Reads do
   not materialize or reconcile tasks; admin templates remain separate.
+  A null task key determines personal visibility and editability even when
+  retained definition metadata or an inactive generated flag remain on the row;
+  generated submission/status filters do not hide these personal reminders.
 - **KB chunk** — an embedded text rendering of a rule (or curated snippet)
   the assistant retrieves and cites.
 
