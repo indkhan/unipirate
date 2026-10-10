@@ -37,10 +37,13 @@ export async function enqueuePlanningJob(db:RpcDb,event:"research"|"preliminary"
 export async function listPlanningJobs(db:Db,userId:string){
   return unwrap(await db.from("planning_jobs").select("*").eq("user_id",z.string().uuid().parse(userId)).order("created_at",{ascending:false}));
 }
-export async function retryPlanningJob(db:Db&RpcDb,userId:string,jobId:string){
-  const job=unwrap<Tables<"planning_jobs">>(await db.from("planning_jobs").select("*").eq("id",z.string().uuid().parse(jobId)).eq("user_id",z.string().uuid().parse(userId)).single());
-  if(!job||job.state!=="failed")throw new Error("Only a failed saved job can be retried.");
-  return enqueuePlanningJob(db,job.event as "research"|"preliminary"|"verified",job.application_id,job.source_version_id);
+export async function listActionablePlanningJobs(db:RpcDb,userId:string){
+  z.string().uuid().parse(userId);return unwrap(await db.rpc("actionable_planning_jobs"));
+}
+const RetryPlanningReceiptSchema=z.object({status:z.enum(["queued","existing","obsolete"]),job_id:z.string().uuid().nullable()}).strict()
+  .refine(receipt=>(receipt.status==="obsolete")===(receipt.job_id===null),"Retry receipt must identify current work or an obsolete context");
+export async function retryPlanningJob(db:RpcDb,userId:string,jobId:string){
+  z.string().uuid().parse(userId);return RetryPlanningReceiptSchema.parse(unwrap(await db.rpc("retry_planning_job",{p_job_id:z.string().uuid().parse(jobId)})));
 }
 export async function leasePlanningJobs(db:RpcDb,worker:string,limit:number){return unwrap(await db.rpc("lease_planning_jobs",{p_worker:z.string().uuid().parse(worker),p_limit:z.number().int().min(1).max(20).parse(limit)}));}
 export async function finishPlanningJob(db:RpcDb,id:string,worker:string,success:boolean,errorCode:string|null){return unwrap(await db.rpc("finish_planning_job",{p_id:id,p_worker:worker,p_success:success,p_error_code:errorCode as string}));}

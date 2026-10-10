@@ -3,11 +3,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/database.types";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { PlanningBatch, PlanningJob } from "../jobs";
-const mocks=vi.hoisted(()=>({getPlanningSettings:vi.fn(),getPlanningJobContext:vi.fn(),listRuleVersions:vi.fn(),listActiveCourseTaskDefinitions:vi.fn(),getApplicationOfferingCatalogue:vi.fn(),finishPlanningResearch:vi.fn(),listTaskProposals:vi.fn(),retireMissingPlanningProposals:vi.fn(),resolveOfferingProcess:vi.fn(),proposalsFromGeneratedTasks:vi.fn(),proposalsFromOfferingPlan:vi.fn(),proposalsFromOfferingRequirements:vi.fn(),proposalsForWithdrawnApprovedActions:vi.fn(),planPreparation:vi.fn(),runPlanningJobs:vi.fn()}));
+const mocks=vi.hoisted(()=>({getPlanningSettings:vi.fn(),getPlanningJobContext:vi.fn(),listRuleVersions:vi.fn(),listActiveCourseTaskDefinitions:vi.fn(),getApplicationOfferingCatalogue:vi.fn(),finishPlanningResearch:vi.fn(),listTaskProposals:vi.fn(),retireMissingPlanningProposals:vi.fn(),resolveOfferingProcess:vi.fn(),proposalsFromGeneratedTasks:vi.fn(),proposalsFromSharedTemplates:vi.fn(),proposalsFromOfferingPlan:vi.fn(),proposalsFromOfferingRequirements:vi.fn(),proposalsForWithdrawnApprovedActions:vi.fn(),planPreparation:vi.fn(),runPlanningJobs:vi.fn()}));
 vi.mock("@/lib/db/queries",()=>mocks);
 vi.mock("@/lib/tasks/offering-process",()=>({resolveOfferingProcess:mocks.resolveOfferingProcess}));
 vi.mock("@/lib/ai/planner",()=>({planPreparation:mocks.planPreparation}));
 vi.mock("../proposals",()=>mocks);
+vi.mock("../templates",()=>({proposalsFromSharedTemplates:mocks.proposalsFromSharedTemplates}));
 vi.mock("../jobs",()=>({runPlanningJobs:mocks.runPlanningJobs}));
 import { executePlanningBatch } from "../worker";
 const db={} as SupabaseClient<Database>;
@@ -22,7 +23,7 @@ beforeEach(()=>{
  mocks.getApplicationOfferingCatalogue.mockResolvedValue({versions:[{id:versionId,version:1}]});mocks.resolveOfferingProcess.mockReturnValue({});
  mocks.listTaskProposals.mockResolvedValue([]);mocks.listActiveCourseTaskDefinitions.mockResolvedValue([]);
  mocks.proposalsFromOfferingPlan.mockReturnValue([candidate("z"),candidate("a")]);mocks.proposalsFromOfferingRequirements.mockReturnValue([candidate("m")]);mocks.proposalsForWithdrawnApprovedActions.mockReturnValue([]);
- mocks.proposalsFromGeneratedTasks.mockReturnValue([candidate("z"),candidate("a"),candidate("m")]);
+ mocks.proposalsFromGeneratedTasks.mockReturnValue([candidate("z"),candidate("a"),candidate("m")]);mocks.proposalsFromSharedTemplates.mockReturnValue([]);
  mocks.planPreparation.mockImplementation(async(_model,candidates,cursor)=>({candidates:candidates.slice(cursor),nextCursor:candidates.length,complete:true}));
 });
 it("keeps planning read-only and supplies the full sorted catalogue only on its final page",async()=>{
@@ -45,4 +46,13 @@ it.each(["general","course"])("sorts %s candidates before provider planning so r
  const deps=await dependencies();await deps.plan(job("preliminary",1));
  expect(mocks.planPreparation).toHaveBeenCalledWith("synthetic:free",[candidate("a"),candidate("m"),candidate("z")],1);
  expect(mocks.retireMissingPlanningProposals).not.toHaveBeenCalled();
+});
+
+it("includes safe shared-template candidates in verified catalogue and retirement identity",async()=>{
+ mocks.proposalsFromSharedTemplates.mockReturnValue([candidate("shared-template")]);
+ const deps=await dependencies();const batch=await deps.plan(job());
+ expect(batch.completedCatalogueKeys).toEqual(["a","m","shared-template","z"]);
+ expect(batch.candidates.filter(entry=>entry.semantic_action_key==="shared-template")).toEqual([candidate("shared-template")]);
+ expect(mocks.proposalsFromSharedTemplates).toHaveBeenCalledWith(expect.objectContaining({id:application.id,course:expect.objectContaining({task_definitions:[]})}),expect.any(String),undefined);
+ expect(mocks.planPreparation).not.toHaveBeenCalled();
 });

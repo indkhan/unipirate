@@ -59,3 +59,28 @@ journeys/evaluation, exact-head review/CI and the complete video remain release 
 The PR stays draft until these pass. Final PR evidence must identify its tested
 revision and genuine limitations. No live academic-rule publication, deployment
 or main merge is authorized merely to produce the demo.
+
+After merging approved #47 main `b773630`, immutable candidate `1d2644d` passed
+2,943 tests in 154 files with zero skips, lint, nonincremental typecheck, build,
+all four host checks and independent review (89 focused merge tests). Real T3
+recordings then demonstrated synthetic reviewed publication, exact student
+offering selection, successful Vault/cron/net dispatch (HTTP 200, one succeeded),
+two persisted verified proposals, an edited individual approval, selected approval
+and matching dashboard tasks. This deterministic reviewed-source path makes no
+provider inference-success claim. A historical failed-job retry/status issue found
+in that journey is being corrected before the final candidate; the earlier code
+review and checks do not approve that subsequent change.
+
+The frozen recovery follow-up passed 2,948 tests in 156 files with zero skips.
+Nine required database suites ran 46 actual cases, including current-scope retry
+and two-session research persistence. Additive migrations 012–015 preserve
+current template jobs, canonicalize stale work, retain legacy shared preparation,
+avoid retry/persistence lock inversion and revalidate leases after lock waits.
+The expiry regression failed against 014 before passing against 015; no provider
+calls or automatic task writes were used for this proof. Lint, nonincremental
+typecheck and production build passed. All seven SQL gates passed on a separate
+clean disposable instance (API57321/DB57322), applying the complete migration chain
+through 015. The existing audit gate assumes an empty journal, so it cannot run
+against the retained test/demo publications on API56321; those immutable journals
+were preserved. Final immutable-head review, provider evaluation and compatible
+import/course journeys remain separate acceptance gates.

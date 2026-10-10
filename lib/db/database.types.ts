@@ -1065,6 +1065,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      actionable_planning_jobs: {
+        Args: never
+        Returns: {
+          application_id: string | null
+          attempts: number
+          available_at: string
+          course_id: string | null
+          created_at: string
+          cursor: number
+          error_code: string | null
+          event: string
+          id: string
+          input_fingerprint: string
+          lease_owner: string | null
+          lease_until: string | null
+          source_version_id: string | null
+          state: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "planning_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       advance_planning_job: {
         Args: {
           p_complete: boolean
@@ -1125,6 +1152,10 @@ export type Database = {
       create_personal_task: {
         Args: { p_instruction: string; p_operation_id: string; p_task: Json }
         Returns: Json
+      }
+      current_planning_source_version: {
+        Args: { p_application: string; p_user: string }
+        Returns: string
       }
       dismiss_task_proposal: {
         Args: { p_id: string; p_revision: number }
@@ -1319,6 +1350,7 @@ export type Database = {
         }
         Returns: number
       }
+      retry_planning_job: { Args: { p_job_id: string }; Returns: Json }
       save_planning_research: {
         Args: {
           p_draft: Json

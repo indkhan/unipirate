@@ -1607,6 +1607,20 @@ successful bounded batches checkpoint progress before releasing the lease. A
 crash between candidate saving and checkpoint safely repeats an idempotent batch.
 No browser render or polling call invokes research or planning.
 
+Owner retries and stale worker recovery resolve the current application and
+committed source scope inside the database transaction. Obsolete contexts use the
+current reviewed scope; current preliminary template work retains its purpose.
+Reviewed research and inactive applications return an obsolete outcome without
+queuing work. The current failed job retains its cursor on retry.
+`listPlanningJobs` retains durable history for import status; Suggestions reads a
+separate owner-only actionable view matching the current fingerprint and verified
+source version, retaining current preliminary work, so a historical failure cannot
+shadow newer successful work. Current shared template preparation remains in the
+verified worker catalogue when source scope changes; it grants no factual authority.
+Research persistence locks the application/course before the job, matching retry
+ordering. It rechecks the lease against the live clock after obtaining the job
+lock, preserving metadata CAS and the original paste even after lock waits.
+
 Deployment prerequisites are `pg_cron`, `pg_net`, Supabase Vault, the service
 credential and a reachable Node route `/api/planning/worker` with a 120-second
 runtime allowance. Set `PLANNING_WORKER_SECRET` in the server environment and call

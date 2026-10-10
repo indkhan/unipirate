@@ -15,6 +15,7 @@ import { requireFreePlannerModel } from "@/lib/ai/planner-catalog";
 import { planPreparation } from "@/lib/ai/planner";
 import { proposalsFromGeneratedTasks,proposalsFromOfferingPlan,proposalsFromOfferingRequirements,proposalsForWithdrawnApprovedActions } from "./proposals";
 import { runPlanningJobs,type PlanningJob } from "./jobs";
+import {proposalsFromSharedTemplates} from "./templates";
 import type { ProposalCandidate } from "./proposals";
 
 function orderedCatalogue(candidates:ProposalCandidate[]):ProposalCandidate[]{
@@ -42,6 +43,8 @@ export async function executePlanningBatch(db:SupabaseClient<Database>){
    // no authoritative candidates, and prior actions receive recheck updates.
    if(latest?.id!==job.source_version_id)throw Object.assign(new Error("stale_context"),{code:"stale_context"});
    const candidates=[...proposalsFromOfferingPlan(application.id,application.status,offering,todayIsoBerlin()),...proposalsFromOfferingRequirements(application.id,application.status,offering)];
+   const definitions=await listActiveCourseTaskDefinitions(db,course.id);
+   candidates.push(...proposalsFromSharedTemplates({id:application.id,status:application.status,course:{...course,task_definitions:definitions}},todayIsoBerlin(),profile?.intake));
    const prior=await listTaskProposals(db,job.user_id);
    candidates.push(...proposalsForWithdrawnApprovedActions(prior,candidates.map(c=>c.semantic_action_key),application.id,application.offering_id));
    const ordered=orderedCatalogue(candidates);

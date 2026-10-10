@@ -7,11 +7,17 @@ select pg_temp.assert_true(to_regclass('public.task_proposals') is not null,'sep
 select pg_temp.assert_true((select not enabled from public.planning_settings where id),'automatic rollout defaults off');
 select pg_temp.assert_true(not has_function_privilege('authenticated','public.lease_planning_jobs(uuid,integer)','execute'),'owners cannot lease private worker queue');
 select pg_temp.assert_true(not has_function_privilege('authenticated','public.save_task_proposals(uuid,uuid,text,jsonb)','execute'),'owners cannot forge planner proposals');
+select pg_temp.assert_true(not has_function_privilege('authenticated','public.save_planning_research(uuid,uuid,jsonb,boolean,jsonb)','execute'),'owners cannot persist worker research');
+select pg_temp.assert_true(not has_function_privilege('anon','public.save_planning_research(uuid,uuid,jsonb,boolean,jsonb)','execute'),'anonymous callers cannot persist worker research');
+select pg_temp.assert_true(has_function_privilege('service_role','public.save_planning_research(uuid,uuid,jsonb,boolean,jsonb)','execute'),'service research capability remains available');
 select pg_temp.assert_true(not has_function_privilege('authenticated','public.planning_context_fingerprint(uuid,uuid)','execute'),'owners cannot hash another profile');
 select pg_temp.assert_true(not has_function_privilege('authenticated','public.enqueue_relevant_planning_scope(uuid,uuid)','execute'),'owners cannot enqueue another owner context');
 select pg_temp.assert_true(not has_function_privilege('anon','public.enqueue_relevant_planning_scope(uuid,uuid)','execute'),'anonymous callers cannot enqueue context');
 select pg_temp.assert_true(not has_function_privilege('authenticated','public.enqueue_changed_owner_planning_context()','execute'),'owners cannot invoke the event trigger helper');
 select pg_temp.assert_true(not has_function_privilege('anon','public.enqueue_changed_owner_planning_context()','execute'),'anonymous callers cannot invoke the event trigger helper');
+select pg_temp.assert_true(not has_function_privilege('authenticated','public.current_planning_source_version(uuid,uuid)','execute'),'owners cannot resolve another private planning scope');
+select pg_temp.assert_true(not has_function_privilege('anon','public.retry_planning_job(uuid)','execute'),'anonymous callers cannot retry saved jobs');
+select pg_temp.assert_true(not has_function_privilege('anon','public.actionable_planning_jobs()','execute'),'anonymous callers cannot read actionable jobs');
 select pg_temp.assert_true(not has_function_privilege('service_role','public.set_planner_model(text,jsonb)','execute'),'model writes require the actual authenticated admin');
 insert into auth.users(id,email) values
  ('00000000-0000-4000-8000-000000006001','planning-owner@example.invalid'),
