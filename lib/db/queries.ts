@@ -336,7 +336,7 @@ export async function listTasks(
       .from("tasks")
       .select()
       .eq("user_id", userId)
-      .eq("generated_active", true)
+      .or("generated_active.eq.true,task_key.is.null")
       .order("due_date", { ascending: true, nullsFirst: false }),
   );
 }
