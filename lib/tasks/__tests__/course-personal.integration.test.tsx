@@ -62,12 +62,12 @@ describe.skipIf(!api && !publicKey && !secret)("course/dashboard personal tasks 
     otherApplicationId = (await ensureApplication(clients[1], users[1].id, courses[0])).id;
     unrelatedApplicationId = (await ensureApplication(clients[0], users[0].id, courses[1])).id;
     expect(await html()).not.toContain("Add course to dashboard");
-  }, 60_000);
+  }, 120_000);
   afterAll(async () => {
     if (!service) return;
     for (const user of users) expect((await service.auth.admin.deleteUser(user.id)).error).toBeNull();
     for (const course of courses) expect((await service.from("courses").delete().eq("id", course)).error).toBeNull();
-  });
+  }, 120_000);
 
   it("preserves the same row through create/edit/complete/undo/delete/reload in every application status", async () => {
     activate(0);
