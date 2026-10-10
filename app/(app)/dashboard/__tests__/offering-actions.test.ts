@@ -9,3 +9,5 @@ it('invalid reported authority fails before auth/write',async()=>{await expect(s
 it('VPD completion writes only task done, never application status',async()=>{await toggleTask({id:uuid(50),done:true});expect(mocks.done).toHaveBeenCalledWith({},uuid(7),uuid(50),true);expect(mocks.status).not.toHaveBeenCalled();expect(mocks.revalidate).toHaveBeenCalledWith('/dashboard');});
 
 it('returning to planning materializes the explicitly selected offering even if selected while applied',async()=>{await setApplicationStatus({id:uuid(5),status:'planning'});expect(mocks.materialize).toHaveBeenCalledWith({},uuid(7),uuid(5));});
+it('completion invalidates the linked course surface',async()=>{await toggleTask({id:uuid(50),done:true});expect(mocks.revalidate).toHaveBeenCalledWith('/courses','layout');});
+it('status changes invalidate the linked course surface',async()=>{await setApplicationStatus({id:uuid(5),status:'applied'});expect(mocks.revalidate).toHaveBeenCalledWith('/courses','layout');});

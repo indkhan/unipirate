@@ -37,6 +37,19 @@ const courseTask: DashboardTask = {
 };
 
 describe("NowTask", () => {
+  it("labels a manual source as personal even if source metadata carries a verification date", () => {
+    const html = renderToStaticMarkup(<NowTask task={{ ...courseTask, kind: "manual", adminChangeState: "current", source: { url: "https://example.org/personal", verifiedAt: "2026-10-09T00:00:00Z" } }} todayIso="2026-07-10" applications={[]} onDragStart={vi.fn()} onToggle={vi.fn()} />);
+    expect(html).toContain("Personal source · unverified");
+    expect(html).not.toContain("stampSeal");
+    expect(html).not.toContain("2026-10-09");
+  });
+
+  it("preserves a generated source's verification stamp", () => {
+    const html = renderToStaticMarkup(<NowTask task={{ ...courseTask, adminChangeState: "current", source: { url: "https://example.org/official", verifiedAt: "2026-10-09T00:00:00Z" } }} todayIso="2026-07-10" applications={[]} onDragStart={vi.fn()} onToggle={vi.fn()} />);
+    expect(html).toContain("stampSeal");
+    expect(html).toContain("2026-10-09");
+  });
+
   it("uses full-size text actions for a pending admin task update", () => {
     const html = renderToStaticMarkup(
       <NowTask

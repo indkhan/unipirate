@@ -189,6 +189,7 @@ export function TaskActions({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (task.kind !== "manual" && task.kind !== "course_task") return null;
 
@@ -210,14 +211,20 @@ export function TaskActions({
           disabled={isPending}
           onClick={() => {
             startTransition(async () => {
-              await deleteTask({ id: task.id });
-              router.refresh();
+              setDeleteError(null);
+              try {
+                await deleteTask({ id: task.id });
+                router.refresh();
+              } catch (error) {
+                setDeleteError(error instanceof Error ? error.message : "The task was not deleted. Try again.");
+              }
             });
           }}
         >
           <Trash2 size={14} aria-hidden />
         </button> : null}
       </div>
+      {deleteError ? <p role="alert">{deleteError}</p> : null}
       {editing ? (
         <TaskDialog
           applications={applications}

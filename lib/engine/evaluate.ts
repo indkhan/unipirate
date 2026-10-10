@@ -19,6 +19,7 @@ import { DmatProfileSchema, type DmatProfile } from "./dmat";
 export type Term = "winter" | "summer";
 
 export type Profile = {
+  qualificationGuidanceVersion?: 1;
   pakistan?: PakistanProfile;
   targetDegree: "bachelor" | "master";
   intake?: { term: Term; year: number };
@@ -311,10 +312,11 @@ export type ResultSupport =
 
 export const ResultDiagnosticSchema = z.object({
   support: z.enum(['path', 'aps', 'aps:qualification', 'aps:application', 'aps:visa', 'testAS', 'dMAT']),
-  status: z.enum(['known_route', 'known_unmet_condition', 'targeted_missing_fact', 'source_conflict', 'unsupported']),
-  reason: z.enum(['route_established', 'condition_unmet', 'fact_missing', 'equal_specificity_conflict', 'applicability_unsupported', 'no_supported_rule']),
+  status: z.enum(['known_route', 'known_unmet_condition', 'targeted_missing_fact', 'source_conflict', 'unsupported', 'qualification_guidance']),
+  reason: z.enum(['route_established', 'condition_unmet', 'fact_missing', 'equal_specificity_conflict', 'applicability_unsupported', 'no_supported_rule', 'recognition_not_assessed']),
   ruleIds: z.array(z.string()).refine(ids => new Set(ids).size === ids.length),
   facts: z.array(z.object({key: FactKeySchema, actual: Primitive.optional(), reported: Primitive.optional(), expected: ConditionSchema}).strict()),
+  assessedChecks: z.array(z.object({key: FactKeySchema, actual: Primitive.optional(), expected: ConditionSchema, met: z.boolean()}).strict()).optional(),
   relatedUnknowns: z.array(z.string()).optional(),
   followUp: z.object({key: FactKeySchema, question: z.string().min(1)}).strict().optional(),
 }).strict();
@@ -604,6 +606,11 @@ export function deriveFacts(p: Profile): Record<string, Fact> {
     );
   }
   Object.assign(raw, derivePakistanFacts(p));
+  if (p.qualificationGuidanceVersion === 1) {
+    // Missing attendance remains missing even if a caller retains old reports.
+    delete raw.gce_school_years;
+    delete raw.ib_school_years;
+  }
   const facts: Record<string, Fact> = {};
   for (const [k, v] of Object.entries(raw)) if (v !== undefined) facts[k] = v;
   return facts;
@@ -832,7 +839,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       }
     }
   }
-  if (path === 'unknown' && profile.targetDegree === 'bachelor' && profile.curriculumType === 'gce') {
+  if (path === 'unknown' && profile.qualificationGuidanceVersion !== 1 && profile.targetDegree === 'bachelor' && profile.curriculumType === 'gce') {
     // Diagnostics reuse published criteria; no catalogue or threshold can publish
     // a path on its own. Pick the smallest failed-condition set for this target.
     const candidates = live.filter(r => positiveGce(r) && scopedGce(r) && r.conditions.target_field !== undefined && conditionPasses(facts.target_field,r.conditions.target_field));
@@ -870,7 +877,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       cite(nearest.rule,'unknowns',diagnostic);
     }
   }
-  if (path === 'unknown' && profile.targetDegree === 'bachelor' && profile.curriculumType === 'ib') {
+  if (path === 'unknown' && profile.qualificationGuidanceVersion !== 1 && profile.targetDegree === 'bachelor' && profile.curriculumType === 'ib') {
     const candidates = live.filter(r => ibPath(r) && scopedIb(r) && r.outcomes.path !== 'unknown');
     const comparisons = candidates.map(rule => ({rule, failed:Object.entries(rule.conditions).filter(([key,cond])=>!conditionPasses(facts[key],cond))})).sort((a,b)=>a.failed.length-b.failed.length);
     const nearest=comparisons[0];
@@ -996,7 +1003,13 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     const comparisons = (positiveGce(rule) && witnesses.length ? witnesses : [facts]).map(witness => ({witness, failed: Object.entries(rule.conditions).filter(([key, condition]) => !conditionPasses(witness[key], condition))})).sort((a, b) => a.failed.length - b.failed.length);
     const {witness, failed} = comparisons[0];
     if (!failed.length) continue;
-    const decisive = failed.map(([key, expected]) => ({key: key as FactKey, ...(witness[key] === undefined ? {} : {actual: witness[key]}), expected}));
+    const qualificationScope = profile.qualificationGuidanceVersion === 1 &&
+      (positiveGce(rule) || ibPath(rule)) && failed.some(([key]) => ['gce_school_years', 'ib_school_years'].includes(key));
+    const assessedChecks = qualificationScope ? Object.entries(rule.conditions)
+      .filter(([key]) => !['gce_school_years', 'ib_school_years'].includes(key))
+      .map(([key, expected]) => ({ key: key as FactKey, ...(witness[key] === undefined ? {} : { actual: witness[key] }), expected, met: conditionPasses(witness[key], expected) })) : undefined;
+    const decisive = failed.filter(([key]) => !qualificationScope || !['gce_school_years', 'ib_school_years'].includes(key))
+      .map(([key, expected]) => ({key: key as FactKey, ...(witness[key] === undefined ? {} : {actual: witness[key]}), expected}));
     // The positive derivation deliberately withholds negative completed-degree
     // reports. Retain those literal applicant reports for explanation only.
     for (const fact of decisive) {
@@ -1008,10 +1021,10 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     const conflict = decisive.some(f => f.actual === 'source_conflict' || f.key === 'pk_current_assessment' && f.actual === 'reported_contrary');
     const unsupported = decisive.some(f => !missing(f.actual) && (['intake_index', 'aps_qualification_context', 'in_class12_prior_study_country', 'in_class12_study_mode', 'pk_prior_study_country', 'pk_prior_study_completion', 'pk_study_mode', 'gce_qualification_context', 'gce_qualification_type', 'gce_evidence', 'gce_awarding_body', 'ib_evidence', 'sa_degree_context', 'sa_degree_mode'].includes(f.key) || ['other', 'outside', 'reported_official_outside', 'completed_qualification', 'discontinued', 'main_exemption', 'preparatory_rank', 'cross_year', 'unclear', 'legacy', 'invalid', 'unlisted', 'not_yet_effective', 'programme_not_covered', 'identity_conflict'].includes(String(f.actual))));
     const gap = decisive.some(f => missing(f.actual) && !('reported' in f));
-    const status = conflict ? 'source_conflict' : unsupported ? 'unsupported' : reportedNegative ? 'known_unmet_condition' : gap ? 'targeted_missing_fact' : 'known_unmet_condition';
-    diagnostics.push({support: 'path', status, reason: conflict || unsupported ? 'applicability_unsupported' : reportedNegative ? 'condition_unmet' : gap ? 'fact_missing' : 'condition_unmet', ruleIds: [rule.id], facts: decisive, relatedUnknowns: unknowns.filter(message => citations.some(c => c.ruleId === rule.id && c.claim === message) || matched.some(r => r.outcomes.path === 'unknown' && r.source_url === rule.source_url && r.outcomes.note === message && decisive.some(f => f.key.startsWith('in_class12_') && r.conditions[f.key] !== undefined)))});
+    const status = qualificationScope && !decisive.length ? 'qualification_guidance' : conflict ? 'source_conflict' : unsupported ? 'unsupported' : reportedNegative ? 'known_unmet_condition' : gap ? 'targeted_missing_fact' : 'known_unmet_condition';
+    diagnostics.push({support: 'path', status, reason: status === 'qualification_guidance' ? 'recognition_not_assessed' : conflict || unsupported ? 'applicability_unsupported' : reportedNegative ? 'condition_unmet' : gap ? 'fact_missing' : 'condition_unmet', ruleIds: [rule.id], facts: decisive, ...(assessedChecks ? {assessedChecks} : {}), relatedUnknowns: unknowns.filter(message => citations.some(c => c.ruleId === rule.id && c.claim === message) || matched.some(r => r.outcomes.path === 'unknown' && r.source_url === rule.source_url && r.outcomes.note === message && decisive.some(f => f.key.startsWith('in_class12_') && r.conditions[f.key] !== undefined)))});
     // An unmatched positive note cannot become the claimed route in a citation.
-    if (!citations.some(c => c.ruleId === rule.id)) candidateCitations.push({ruleId: rule.id, sourceUrl: rule.source_url, verifiedAt: rule.last_verified_at ?? null, status: rule.status as 'beta' | 'verified', supports: ['unknowns'], claim: 'Candidate route only: ' + decisive.map(f => diagnosticFactLabel(f.key) + (missing(f.actual) ? ' missing or uncertain' : ' does not satisfy this candidate condition')).join('; ') + '. Other supported routes remain independent.'});
+    if (!citations.some(c => c.ruleId === rule.id)) candidateCitations.push({ruleId: rule.id, sourceUrl: rule.source_url, verifiedAt: rule.last_verified_at ?? null, status: rule.status as 'beta' | 'verified', supports: ['unknowns'], claim: qualificationScope ? 'Qualification checks only; full recognition is not assessed. School attendance is not established by this qualification.' : 'Candidate route only: ' + decisive.map(f => diagnosticFactLabel(f.key) + (missing(f.actual) ? ' missing or uncertain' : ' does not satisfy this candidate condition')).join('; ') + '. Other supported routes remain independent.'});
   }
   if (!diagnostics.some(d => d.support === 'path')) diagnostics.push({support: 'path', status: 'unsupported', reason: 'no_supported_rule', ruleIds: [], facts: []});
   if (path === 'unknown' && !diagnostics.some(d => d.support === 'path' && d.status === 'source_conflict')) {

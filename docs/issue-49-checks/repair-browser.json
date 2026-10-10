@@ -1,0 +1,196 @@
+{
+  "actualDisposableJourney": {
+    "url": "http://localhost:3049/result/ab9f611a-c9a3-434c-9622-79d579a35889",
+    "server": "Default production build on localhost:3049, actual disposable DB 55321/55322",
+    "setup": "Scoped IB draft restored at intake, submitted through real server action. No synthetic rule publication.",
+    "checks": [
+      {
+        "width": 390,
+        "height": 844,
+        "theme": "light",
+        "background": "lab(100 0 0)",
+        "scrollWidth": 704,
+        "overflow": true,
+        "original": true,
+        "current": true,
+        "unknown": true,
+        "durationNag": false,
+        "falseQualificationPass": false,
+        "route": true
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "theme": "dark",
+        "background": "lab(2.75381 0 0)",
+        "scrollWidth": 704,
+        "overflow": true,
+        "original": true,
+        "current": true,
+        "unknown": true,
+        "durationNag": false,
+        "falseQualificationPass": false,
+        "route": true
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "theme": "light",
+        "background": "lab(100 0 0)",
+        "scrollWidth": 768,
+        "overflow": false,
+        "original": true,
+        "current": true,
+        "unknown": true,
+        "durationNag": false,
+        "falseQualificationPass": false,
+        "route": true
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "theme": "dark",
+        "background": "lab(2.75381 0 0)",
+        "scrollWidth": 768,
+        "overflow": false,
+        "original": true,
+        "current": true,
+        "unknown": true,
+        "durationNag": false,
+        "falseQualificationPass": false,
+        "route": true
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "theme": "light",
+        "background": "lab(100 0 0)",
+        "scrollWidth": 1440,
+        "overflow": false,
+        "original": true,
+        "current": true,
+        "unknown": true,
+        "durationNag": false,
+        "falseQualificationPass": false,
+        "route": true
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "theme": "dark",
+        "background": "lab(2.75381 0 0)",
+        "scrollWidth": 1440,
+        "overflow": false,
+        "original": true,
+        "current": true,
+        "unknown": true,
+        "durationNag": false,
+        "falseQualificationPass": false,
+        "route": true
+      }
+    ],
+    "limitation": "No published scoped IB rule in disposable DB, so actual result is unknown rather than a source-conflict verdict. Mobile provenance paragraph overflows: scrollWidth 688px for current revision and 671px when substituting prior a141 revision at 390px. Existing result provenance layout retained; broader result presentation belongs to #54."
+  },
+  "case": "IB duplicate006880",
+  "transport": "T3 collaborative Chromium",
+  "server": "localhost:3049 Next dev",
+  "fixture": "Temporary local-only in-memory evaluateAssessment fixture with sourced candidates; no DB/publication/provider calls. Removed before final build.",
+  "checks": [
+    {
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "background": "rgba(0, 0, 0, 0)",
+      "overflow": false,
+      "conflict": true,
+      "condition": true,
+      "nextAction": true,
+      "sources": [
+        "https://www.kmk.org/zab/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/aktuell/283_Vereinb_Anerkenn_Int_Baccalaureate_Diploma-2023-06-15_Liste1__2026-03-26_Liste2-2024-11-19.pdf"
+      ],
+      "durationNag": false,
+      "falseQualificationPass": false,
+      "route": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "background": "rgba(0, 0, 0, 0)",
+      "overflow": false,
+      "conflict": true,
+      "condition": true,
+      "nextAction": true,
+      "sources": [
+        "https://www.kmk.org/zab/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/aktuell/283_Vereinb_Anerkenn_Int_Baccalaureate_Diploma-2023-06-15_Liste1__2026-03-26_Liste2-2024-11-19.pdf"
+      ],
+      "durationNag": false,
+      "falseQualificationPass": false,
+      "route": true
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "theme": "light",
+      "background": "rgba(0, 0, 0, 0)",
+      "overflow": false,
+      "conflict": true,
+      "condition": true,
+      "nextAction": true,
+      "sources": [
+        "https://www.kmk.org/zab/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/aktuell/283_Vereinb_Anerkenn_Int_Baccalaureate_Diploma-2023-06-15_Liste1__2026-03-26_Liste2-2024-11-19.pdf"
+      ],
+      "durationNag": false,
+      "falseQualificationPass": false,
+      "route": true
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "theme": "dark",
+      "background": "rgba(0, 0, 0, 0)",
+      "overflow": false,
+      "conflict": true,
+      "condition": true,
+      "nextAction": true,
+      "sources": [
+        "https://www.kmk.org/zab/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/aktuell/283_Vereinb_Anerkenn_Int_Baccalaureate_Diploma-2023-06-15_Liste1__2026-03-26_Liste2-2024-11-19.pdf"
+      ],
+      "durationNag": false,
+      "falseQualificationPass": false,
+      "route": true
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "background": "rgba(0, 0, 0, 0)",
+      "overflow": false,
+      "conflict": true,
+      "condition": true,
+      "nextAction": true,
+      "sources": [
+        "https://www.kmk.org/zab/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/aktuell/283_Vereinb_Anerkenn_Int_Baccalaureate_Diploma-2023-06-15_Liste1__2026-03-26_Liste2-2024-11-19.pdf"
+      ],
+      "durationNag": false,
+      "falseQualificationPass": false,
+      "route": true
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "background": "rgba(0, 0, 0, 0)",
+      "overflow": false,
+      "conflict": true,
+      "condition": true,
+      "nextAction": true,
+      "sources": [
+        "https://www.kmk.org/zab/fileadmin/Dateien/pdf/ZAB/Hochschulzugang_Beschluesse_der_KMK/aktuell/283_Vereinb_Anerkenn_Int_Baccalaureate_Diploma-2023-06-15_Liste1__2026-03-26_Liste2-2024-11-19.pdf"
+      ],
+      "durationNag": false,
+      "falseQualificationPass": false,
+      "route": true
+    }
+  ]
+}
