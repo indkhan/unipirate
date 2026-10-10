@@ -1,0 +1,114 @@
+{
+  "formula": "SHA256(JSON.stringify(entries sorted by path))",
+  "revision": "unipirate/qualification-guidance+jee+saudi+pakistan-current-v2+process+diagnostics+assessment-v1@sha256:882cf10dbcfe8aba010bd7a6648793b8dad5a1f1b171decbb965f830dc54e446",
+  "entries": [
+    {
+      "path": "app/(public)/check/steps.ts",
+      "sha256": "a3cdd48829da5ca19f66076937eb6d60ff197633b58107c5a4dfb0f4d3579da7"
+    },
+    {
+      "path": "app/(public)/result/[id]/page.tsx",
+      "sha256": "337802dc5f7755860f2551a685efe111421455a260014822087b972ae684d808"
+    },
+    {
+      "path": "app/(public)/result/[id]/result-components.tsx",
+      "sha256": "3df5a652e29a62cd853101f35ac62efd5a15a30e419547a0ccc36fe43b1ce316"
+    },
+    {
+      "path": "app/(public)/result/[id]/result-model.ts",
+      "sha256": "e7d78ad452c86a81f5f2b315a6a9cd5f211936d0256613723aaa54a58653735b"
+    },
+    {
+      "path": "app/api/assistant/chat/route.ts",
+      "sha256": "dde29ce8c2bd85bc5736a6a9ffb619484a5d340dc74e64169434532d907654f3"
+    },
+    {
+      "path": "lib/ai/assistant-sources.ts",
+      "sha256": "ec71d9b09772b67e07040ecfa0fdb90ee659f3b05b6dda315002560f8d35f63c"
+    },
+    {
+      "path": "lib/ai/assistant.ts",
+      "sha256": "dea6c0b1218e8df49f97bbcb4c4bd0f945b0b2d94be80e5c52f9e4775579f8e9"
+    },
+    {
+      "path": "lib/ai/kb-retrieval.ts",
+      "sha256": "0a1556fdfd9f32b60b995d10b01bdf52a784f1278c02641c5f24d8e007058b58"
+    },
+    {
+      "path": "lib/ai/kb.ts",
+      "sha256": "9c19c84731a7ed9d772219ce766d3b4791d2f5260642a293c67577e346a973d5"
+    },
+    {
+      "path": "lib/ai/response-guard.ts",
+      "sha256": "05fb7195df6df125d4ff303dca1da80bf1f692383cc997d6258c705247c84b75"
+    },
+    {
+      "path": "lib/ai/versioned-kb.ts",
+      "sha256": "a7611e00e0433d5678d3009ec3887d3d27bfb18072dba29b9a212da852a5ee5e"
+    },
+    {
+      "path": "lib/engine/calendar-day.ts",
+      "sha256": "bc51a9a835b3bdfa47dd64e7c8ff5b7c1459a2d9f2ed97bb5eb79cb5d7a328c1"
+    },
+    {
+      "path": "lib/engine/dmat.ts",
+      "sha256": "64c922bbc4b5813dbe34ce92a3e7c1fa2384f630b773b643fe6e87857b25c282"
+    },
+    {
+      "path": "lib/engine/evaluate.ts",
+      "sha256": "f10a84fc557686cf89d0686d906f0d7e2d92f2c4a73dcbeb735758d88e20b2b1"
+    },
+    {
+      "path": "lib/engine/gce.ts",
+      "sha256": "b89d61712c562f319e9189e549827d9d77be2dff1bd506cd6c1f49850483619c"
+    },
+    {
+      "path": "lib/engine/ib-annexes.json",
+      "sha256": "29e3fd3f38ab781bd020c392219c08fd41e33ae3855ded76ffd579e571825b47"
+    },
+    {
+      "path": "lib/engine/ib.ts",
+      "sha256": "774e96e50a5b79ffa0d5308b773d2873b496d532f25fbe2115eda9122791d312"
+    },
+    {
+      "path": "lib/engine/jee.ts",
+      "sha256": "64c8fffb9a70e7b5b4ffffd50c672ce136dda0f27f452c498f2a9a767cd561ef"
+    },
+    {
+      "path": "lib/engine/pakistan.ts",
+      "sha256": "425ad8c2d1f234304e194e03a494dd517af538d3b88e50f4b122b68071a58f77"
+    },
+    {
+      "path": "lib/engine/process-identity.ts",
+      "sha256": "653a65b4bcd5016bc320404aa87e689d48cc3beca59a8a737ad11e7003d8046c"
+    },
+    {
+      "path": "lib/engine/process.ts",
+      "sha256": "fb3149507c4fc6e082cedc43effc5af74cc579c4567f4698ae676b5890b5248a"
+    },
+    {
+      "path": "lib/engine/saudi.ts",
+      "sha256": "288cd1aa278553db250abd908fc2559c4114ff929b9a7d9552e1e3cf3f8b8e4c"
+    },
+    {
+      "path": "lib/rules/assessment.ts",
+      "sha256": "889f5809a834f7272ec8c76ecc54313b3a18a7d0188c91e39bfbb9bcc4e2cca0"
+    },
+    {
+      "path": "lib/rules/process-assessment.ts",
+      "sha256": "b27f609d00ece72204c61161f540ec3b4499880c5c7451b9abf835929ca8d517"
+    },
+    {
+      "path": "lib/rules/versioning.ts",
+      "sha256": "27af846f5acd241bc181235dcb9373ae217c8da0decf18dafb04cbb3da2364fb"
+    },
+    {
+      "path": "lib/tasks/offering-process.ts",
+      "sha256": "81a54884a1455c93a8e98cce8341a256a185d03c562ffb4e994a21a1bcd1fc21"
+    },
+    {
+      "path": "lib/tasks/profile.ts",
+      "sha256": "070aa98154047e0c0cf2ccc2e00535a0a6a9d7dce78ebeb892a31e8b00ef15cf"
+    }
+  ]
+}
