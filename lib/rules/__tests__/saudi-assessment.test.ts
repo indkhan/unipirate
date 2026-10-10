@@ -10,7 +10,7 @@ import { raw, ruleId, version } from "./assessment-fixtures";
 
 const oldRevision = "unipirate/qualification+aps+dmat+india-study+ib+gce@bd836cc/assessment-v1";
 const priorSaudiRevision = "unipirate/jee-ordinary+saudi+assessment-v1@sha256:9ece1216013df345618b899bb6852ca00e44f1cc03fdbcdbbc7c6eedaaeddc5e";
-const newRevision = "unipirate/qualification-guidance+jee+saudi+pakistan-current-v2+process+diagnostics+assessment-v1@sha256:3db4d3f02a2bf78825519827489daba77e28f98cec276284c9bf5bb4a5b42d27";
+const newRevision = "unipirate/qualification-guidance+jee+saudi+pakistan-current-v2+process+diagnostics+assessment-v1@sha256:3c7bc0698c3bc650ddfbe951bd44b999cbcf79a87600ae9228e1d8ae61ab1284";
 
 const context = { evaluatedAt: "2026-10-08T12:00:00Z", engineRevision: ENGINE_REVISION };
 const industrialAnswers = { ...saudiAnswers, saudiCertificateSubtype: "industrial_certificate", yearsOfUniversityStudy: 0,

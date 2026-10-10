@@ -257,8 +257,13 @@ Result copy identifies qualification/subject/grade checks and states once that
 school attendance was not assessed and full recognition needs confirmation. No
 duration follow-up or repeated duration checklist is generated for this flow.
 For unresolved routes, an applicable source-conflict diagnostic takes precedence
-over ranked qualification checks. Its literal condition and selected source remain
-visible with a request for the recognition authority to resolve the conflict;
+over ranked qualification checks unless a known failed condition contradicts a passed
+comparison for the same reported fact in the closest qualification candidate.
+This data-driven applicability comparison keeps an SL-only annex conflict from
+overriding HL evidence, including incomplete grade evidence; missing applicability
+and conflicts on the reported route remain visible. Resolver conflicts retain
+priority. All engine diagnostics and citations remain intact. An applicable conflict's
+literal condition and selected source remain visible with a request for the recognition authority to resolve the conflict;
 the presence of assessed checks cannot replace that recognition limitation.
 Historical diagnostics remain readable, and protected original results are not
 recomputed. The explicit revision and its literal inputs are recorded in

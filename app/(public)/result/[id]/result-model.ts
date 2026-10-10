@@ -94,7 +94,12 @@ export function diagnosticRequirement(expected: NonNullable<Result['diagnostics'
 export function primaryDiagnostic(result: Result): ResultDiagnostic | undefined {
   const academic = result.diagnostics?.filter(d => d.support === 'path') ?? [];
   const qualification = academic.filter(d => d.assessedChecks).sort((a, b) => a.facts.length - b.facts.length)[0];
-  return academic.find(d => d.reason === 'equal_specificity_conflict') ?? academic.find(d => d.status === 'known_route') ?? academic.find(d => d.status === 'source_conflict') ?? qualification ?? academic.find(d => d.followUp) ?? academic.find(d => d.status === 'targeted_missing_fact') ?? academic.find(d => d.status === 'known_unmet_condition') ?? academic[0];
+  // Passed checks can distinguish an alternative candidate route.
+  // Compare literal rule evidence, retaining conflicts when applicability is unresolved.
+  const conflict = academic.find(d => d.status === 'source_conflict' && !d.facts.some(f =>
+    f.actual !== undefined && f.actual !== 'unknown' && f.actual !== 'source_conflict' &&
+    qualification?.assessedChecks?.some(check => check.key === f.key && check.actual === f.actual && check.met)));
+  return academic.find(d => d.reason === 'equal_specificity_conflict') ?? academic.find(d => d.status === 'known_route') ?? conflict ?? qualification ?? academic.find(d => d.followUp) ?? academic.find(d => d.status === 'targeted_missing_fact') ?? academic.find(d => d.status === 'known_unmet_condition') ?? academic[0];
 }
 const DIAGNOSTIC_LABELS: Record<ResultDiagnostic['status'], string> = {
   qualification_guidance: 'Your qualification checks meet the cited criteria. Full recognition still needs confirmation.',
