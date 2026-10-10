@@ -69,11 +69,16 @@ export function VerdictCard({
           <SourceStamp key={citation.ruleId} citation={citation} />
         ))}
         {diagnostic && diagnostic.status !== 'known_route' && <div>
+          {diagnostic.assessedChecks && <p>
+            Checked qualification evidence, subjects and grades for your selected target. School attendance was not assessed; the recognition authority makes the final decision.
+          </p>}
           {diagnostic.facts.length > 0 && <ul>{diagnostic.facts.map(fact => <li key={fact.key}>
             {diagnosticFactLabel(fact.key)}: reported {fact.reported !== undefined ? String(fact.reported) : fact.actual === undefined || fact.actual === 'unknown' ? 'missing or uncertain' : String(fact.actual)}; candidate requires {diagnosticRequirement(fact.expected)}.
           </li>)}</ul>}
           {diagnostic.followUp && <p><strong>{diagnostic.followUp.question}</strong> Other missing conditions may still need answers.</p>}
-          {[...result.citations,...result.candidateCitations ?? []].filter(c => diagnostic.ruleIds.includes(c.ruleId) && !verdicts[0].citations.some(v => v.ruleId === c.ruleId)).map(c => <SourceStamp key={c.ruleId} citation={c} />)}
+          {[...result.citations,...result.candidateCitations ?? []].filter(c => diagnostic.ruleIds.includes(c.ruleId) && !verdicts[0].citations.some(v => v.ruleId === c.ruleId)).map(c => diagnostic.assessedChecks
+            ? <a key={c.ruleId} href={c.sourceUrl} target="_blank" rel="noopener noreferrer">Source for these checks</a>
+            : <SourceStamp key={c.ruleId} citation={c} />)}
         </div>}
         {verdicts[0].citations.length === 0 && !diagnostic?.followUp && diagnostic?.status !== 'known_unmet_condition' && (
           <span className={styles.unverified}>Official confirmation needed</span>
