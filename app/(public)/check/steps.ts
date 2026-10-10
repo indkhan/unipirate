@@ -316,6 +316,7 @@ const AnswerFieldsSchema = z
     schoolQualificationContext: z.enum(["national", "international", "unknown"]).optional(),
     visaMissionContext: z.enum(["saudi_study", "other", "unknown"]).optional(),
     apsApplicationContext: z.enum(["uni_assist", "unknown"]).optional(),
+    qualificationGuidanceVersion: z.literal(1).optional(),
     qualificationHistoryVersion: z.literal(1).optional(),
     hasPriorUniversityStudy: z.boolean().optional(),
     priorQualificationType: z.enum(["bachelor", "master", "diploma", "other"]).optional(),
@@ -538,18 +539,26 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
     if (answers.jeeVersion === undefined && nationalSchoolCountry(answers) === "in") steps.push("jeeAdvanced");
   }
   if (bachelor && answers.curriculumType === "gce") {
-    steps.push('gceQualificationContext','gceQualificationType','gceEvidence','gceAwardingBody','gceSchoolYears','gceSubjects');
+    steps.push('gceQualificationContext','gceQualificationType','gceEvidence','gceAwardingBody');
+    if (answers.qualificationGuidanceVersion !== 1) steps.push('gceSchoolYears');
+    steps.push('gceSubjects');
   }
   if (bachelor && answers.curriculumType === "ib") {
     if (answers.ibVersion === 1) {
       steps.push('ibDocumentStatus');
       if (answers.ibDocumentStatus === 'awarded' || answers.ibDocumentStatus === 'official_results') {
-        steps.push('ibExamYear','ibExamSession','ibSchoolYears','ibSchooling','ibTotalPoints','ibSubjects','ibProgramme','ibSchoolIdentity');
+        steps.push('ibExamYear','ibExamSession');
+        if (answers.qualificationGuidanceVersion !== 1) steps.push('ibSchoolYears');
+        steps.push('ibSchooling','ibTotalPoints','ibSubjects','ibProgramme','ibSchoolIdentity');
         if(answers.ibSchoolIdentity==='known')steps.push('ibSchoolName','ibSchoolCountry','ibSchoolCode');
       }
     } else {
       steps.push('ibFullDiploma');
-      if(answers.ibFullDiploma)steps.push('ibExamYear','ibSchoolYears','ibTotalPoints','ibSubjects','ibMathCourse');
+      if(answers.ibFullDiploma) {
+        steps.push('ibExamYear');
+        if (answers.qualificationGuidanceVersion !== 1) steps.push('ibSchoolYears');
+        steps.push('ibTotalPoints','ibSubjects','ibMathCourse');
+      }
     }
   }
   // National bachelor routes can depend on previous university study. GCE/IB
@@ -684,7 +693,7 @@ export function withAnswer<K extends StepId>(
   field: K,
   value: Answers[K],
 ): PartialAnswers {
-  const next: PartialAnswers = { ...answers, qualificationHistoryVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, ...pakistanAnswerVersion({ ...answers, [field]: value }), [field]: value };
+  const next: PartialAnswers = { ...answers, qualificationGuidanceVersion: 1, qualificationHistoryVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, ...pakistanAnswerVersion({ ...answers, [field]: value }), [field]: value };
   if (next.targetDegree === "bachelor" && next.curriculumType === "national" && (next.certificateCountry === "sa" || next.schoolQualificationCountry === "sa")) next.saudiCertificateVersion = 2;
   if (next.targetDegree === "bachelor" && next.priorStudyCountry === "sa") next.saudiBachelorVersion = 2;
   if (next.curriculumType === 'ib' && next.targetDegree === 'bachelor') {
@@ -814,6 +823,11 @@ export function withAnswer<K extends StepId>(
 /** Preserve legacy records; versioned answers contain only reachable questions. */
 export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
   const next = { ...answers };
+  if (next.qualificationGuidanceVersion === 1) {
+    // A form upgrade removes reports; it never substitutes inferred attendance.
+    delete next.gceSchoolYears;
+    delete next.ibSchoolYears;
+  }
   if (next.qualificationHistoryVersion !== 1) return next;
   // Removing a hidden country can also hide APS, so prune to a stable result.
   let changed: boolean;
@@ -825,7 +839,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
       for (const key of [...HISTORY_STEPS, ...INDIA_STUDY_STEPS, ...SAUDI_DEGREE_STEPS]) visible.add(key);
     }
     for (const key of Object.keys(next)) {
-      if (key !== "processContext" && key !== "pkStudyEvidenceVersion" && key !== "pakistanVersion" && key !== "saudiBachelorVersion" && key !== "saudiCertificateVersion" && key !== "jeeVersion" && key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && !visible.has(key)) {
+      if (key !== "qualificationGuidanceVersion" && key !== "processContext" && key !== "pkStudyEvidenceVersion" && key !== "pakistanVersion" && key !== "saudiBachelorVersion" && key !== "saudiCertificateVersion" && key !== "jeeVersion" && key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && !visible.has(key)) {
         delete next[key as StepId];
         changed = true;
       }
@@ -900,6 +914,7 @@ export function buildProfile(answers: Answers): Profile {
     certificateCountry: qualificationCountry(answers),
     curriculumType: tertiary ? "other" : answers.curriculumType ?? "other",
     targetField: answers.targetField,
+    ...(answers.qualificationGuidanceVersion === 1 ? { qualificationGuidanceVersion: 1 } : {}),
   };
   if(answers.processContext)profile.processContext=answers.processContext;
   if (visibleSteps(answers).includes("apsProcedureStatus") && answers.apsProcedureStatus !== undefined) {
