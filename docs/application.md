@@ -182,8 +182,8 @@ country, separately from its issuer; unversioned profiles retain the legacy
 certificate-country label. Old country/numeric drafts remain
 recoverable. Existing normalization prunes hidden answers only for new/edit flows;
 historical checks, profile rows, applications, task IDs, completion and student
-edits receive no migration or rewrite. Issues #49–#53 retain their separate
-question removals and intake work; this entry pass leaves those contracts intact.
+edits receive no migration or rewrite. The qualification-guidance change below
+implements #49; issues #50–#53 retain their separate flow and intake work.
 
 1. `/check` renders one question per screen. All flow logic —
    `visibleSteps` (branching), `withAnswer` (prunes answers whose step
@@ -220,6 +220,56 @@ question removals and intake work; this entry pass leaves those contracts intact
    `/login?next=/result/[id]?claim=1`; back on the page, the `claim_check`
    DB function verifies the token hash and atomically copies the answers
    into the user's profile, then tasks are materialized.
+
+#### Qualification-based school guidance (#49)
+
+New checker forms, restored drafts and profile edits carry the independent
+`qualificationGuidanceVersion: 1` marker. They remove `gceSchoolYears` and
+`ibSchoolYears` without a replacement duration question or an inferred attendance
+fact. GCE retains the explicitly selected qualification system/type, awarding
+body, examination evidence and individual AL/AS subjects/grades. IB retains one
+award/document question (no duplicate full-Diploma question), examination session,
+subjects/levels/grades, language/continuity evidence and mathematics scope.
+Its schooling-pattern question records ascending/full-time schooling, not years.
+National board, certificate category, completion and examination evidence remain
+distinct: a board name, a transcript category or a school location does not prove
+a completed certificate. Their existing completion questions are not duplicates
+of the qualification/grade questions. No new national duration question is added.
+
+Legacy answers without this marker retain their original validation and profile
+mapping, including reported years. Opening an editable form or restoring a draft
+upgrades only that in-memory form; historical checks and profile rows are never
+backfilled. Explicit saves use existing actions/query helpers. Applications, task
+IDs, completion and student edits receive no storage or materialization change.
+
+The engine withholds attendance facts for the new marker, even if a caller retains
+old reports. Full rule matching still requires every original published condition.
+For scoped GCE/IB candidates needing removed duration evidence, diagnostics carry
+optional strict `assessedChecks`: literal conditions, actual derived facts and
+comparison results for the collected evidence. All acceptance thresholds remain
+in selected rule data. GCE comparisons use one complete full-AL witness. Only when
+every retained condition passes does `qualification_guidance` describe those
+checks as met; it never grants a path, admission documents or tasks. National-system
+GCE, provisional evidence, other awarding bodies and unsupported cases remain
+separate applicability limitations. Draft fixtures cannot authorize guidance.
+
+Result copy identifies qualification/subject/grade checks and states once that
+school attendance was not assessed and full recognition needs confirmation. No
+duration follow-up or repeated duration checklist is generated for this flow.
+For unresolved routes, an applicable source-conflict diagnostic takes precedence
+over ranked qualification checks unless a known failed condition contradicts a passed
+comparison for the same reported fact in the closest qualification candidate.
+This data-driven applicability comparison keeps an SL-only annex conflict from
+overriding HL evidence, including incomplete grade evidence; missing applicability
+and conflicts on the reported route remain visible. Resolver conflicts retain
+priority. All engine diagnostics and citations remain intact. An applicable conflict's
+literal condition and selected source remain visible with a request for the recognition authority to resolve the conflict;
+the presence of assessed checks cannot replace that recognition limitation.
+Historical diagnostics remain readable, and protected original results are not
+recomputed. The explicit revision and its literal inputs are recorded in
+[revision evidence](issue-49-checks/engine-revision.json). There is no migration,
+source-condition rewrite, live publication, seed, embedding or provider call.
+See [source review and acceptance](issue-49-checks/acceptance.md).
 
 #### Qualification-history contract
 
@@ -1165,7 +1215,7 @@ publication, embedding, migration, provider or live database operation occurs.
 
 ### Ordinary GCE witness contract (UP-ELIG-01)
 
-New GCE checker/restored/profile edits carry `gceVersion: 1` and collect actual ascending school years, qualification system (UK/British international versus national), AL/IAL or another certificate type and final/provisional/school-only evidence. No AL-to-12/13-year inference remains. Whole years 0–50 are input sanity bounds, never admission thresholds; low reports reach the exact ordinary-duration diagnostic. Legacy results remain readable with missing evidence, without invented years/context. Nationality, attendance country and visa jurisdiction stay separate.
+The original `gceVersion: 1` contract collected actual ascending school years alongside qualification system (UK/British international versus national), AL/IAL or another certificate type and final/provisional/school-only evidence. #49 removes years only in new/restored/edit forms carrying `qualificationGuidanceVersion: 1`; the original duration-dependent recognition rules remain intact. No AL-to-12/13-year inference is permitted. Legacy results retain their original reports and diagnostics without invented years/context. Nationality, attendance country and visa jurisdiction stay separate.
 
 The pure reviewed catalogue `lib/engine/gce.ts` supplies List A/B/C identities, pairwise exclusions, source URLs and body-specific Marine Science recognition. English/alias ambiguity is conservative. The evaluator enumerates complete three-full-AL witnesses and runs the existing matcher against each; grade/list/independence and all target conditions must pass on the same witness. Extra low or unused vocational subjects cannot invalidate a valid ordinary trio. Non-GCE/process matching and outcome resolution are unchanged. Unknown diagnostics compare published conditions rather than encoding acceptance thresholds in code; their citation claims describe the failed criteria, not the unmatched positive outcome.
 

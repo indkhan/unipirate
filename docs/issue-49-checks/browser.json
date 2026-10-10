@@ -1,0 +1,296 @@
+{
+  "check": [
+    {
+      "family": "gce",
+      "heading": "Which subjects did you take?",
+      "width": 390,
+      "scrollWidth": 390,
+      "dark": false,
+      "removedDuration": true
+    },
+    {
+      "family": "gce",
+      "heading": "Which subjects did you take?",
+      "width": 390,
+      "scrollWidth": 390,
+      "dark": true,
+      "removedDuration": true
+    },
+    {
+      "family": "gce",
+      "heading": "Which subjects did you take?",
+      "width": 768,
+      "scrollWidth": 768,
+      "dark": false,
+      "removedDuration": true
+    },
+    {
+      "family": "gce",
+      "heading": "Which subjects did you take?",
+      "width": 768,
+      "scrollWidth": 768,
+      "dark": true,
+      "removedDuration": true
+    },
+    {
+      "family": "gce",
+      "heading": "Which subjects did you take?",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dark": false,
+      "removedDuration": true
+    },
+    {
+      "family": "gce",
+      "heading": "Which subjects did you take?",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dark": true,
+      "removedDuration": true
+    },
+    {
+      "family": "ib",
+      "heading": "Which six subjects did you take?",
+      "width": 390,
+      "scrollWidth": 390,
+      "dark": false,
+      "removedDuration": true
+    },
+    {
+      "family": "ib",
+      "heading": "Which six subjects did you take?",
+      "width": 390,
+      "scrollWidth": 390,
+      "dark": true,
+      "removedDuration": true
+    },
+    {
+      "family": "ib",
+      "heading": "Which six subjects did you take?",
+      "width": 768,
+      "scrollWidth": 768,
+      "dark": false,
+      "removedDuration": true
+    },
+    {
+      "family": "ib",
+      "heading": "Which six subjects did you take?",
+      "width": 768,
+      "scrollWidth": 768,
+      "dark": true,
+      "removedDuration": true
+    },
+    {
+      "family": "ib",
+      "heading": "Which six subjects did you take?",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dark": false,
+      "removedDuration": true
+    },
+    {
+      "family": "ib",
+      "heading": "Which six subjects did you take?",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dark": true,
+      "removedDuration": true
+    },
+    {
+      "family": "national",
+      "heading": "Does your certificate confirm completion of twelve school grades?",
+      "width": 390,
+      "scrollWidth": 390,
+      "dark": false,
+      "removedDuration": true
+    },
+    {
+      "family": "national",
+      "heading": "Does your certificate confirm completion of twelve school grades?",
+      "width": 390,
+      "scrollWidth": 390,
+      "dark": true,
+      "removedDuration": true
+    },
+    {
+      "family": "national",
+      "heading": "Does your certificate confirm completion of twelve school grades?",
+      "width": 768,
+      "scrollWidth": 768,
+      "dark": false,
+      "removedDuration": true
+    },
+    {
+      "family": "national",
+      "heading": "Does your certificate confirm completion of twelve school grades?",
+      "width": 768,
+      "scrollWidth": 768,
+      "dark": true,
+      "removedDuration": true
+    },
+    {
+      "family": "national",
+      "heading": "Does your certificate confirm completion of twelve school grades?",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dark": false,
+      "removedDuration": true
+    },
+    {
+      "family": "national",
+      "heading": "Does your certificate confirm completion of twelve school grades?",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dark": true,
+      "removedDuration": true
+    }
+  ],
+  "gceProfile": [
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "dark": false,
+      "removedIds": [
+        false,
+        false,
+        false
+      ],
+      "subjects": 3
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "dark": true,
+      "removedIds": [
+        false,
+        false,
+        false
+      ],
+      "subjects": 3
+    },
+    {
+      "width": 768,
+      "scrollWidth": 768,
+      "dark": false,
+      "removedIds": [
+        false,
+        false,
+        false
+      ],
+      "subjects": 3
+    },
+    {
+      "width": 768,
+      "scrollWidth": 768,
+      "dark": true,
+      "removedIds": [
+        false,
+        false,
+        false
+      ],
+      "subjects": 3
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dark": false,
+      "removedIds": [
+        false,
+        false,
+        false
+      ],
+      "subjects": 3
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dark": true,
+      "removedIds": [
+        false,
+        false,
+        false
+      ],
+      "subjects": 3
+    }
+  ],
+  "ibProfile": [
+    {
+      "family": "IB profile",
+      "width": 390,
+      "scrollWidth": 390,
+      "dark": false,
+      "removedIds": [
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "family": "IB profile",
+      "width": 390,
+      "scrollWidth": 390,
+      "dark": true,
+      "removedIds": [
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "family": "IB profile",
+      "width": 768,
+      "scrollWidth": 768,
+      "dark": false,
+      "removedIds": [
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "family": "IB profile",
+      "width": 768,
+      "scrollWidth": 768,
+      "dark": true,
+      "removedIds": [
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "family": "IB profile",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dark": false,
+      "removedIds": [
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "family": "IB profile",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "dark": true,
+      "removedIds": [
+        false,
+        false,
+        false
+      ]
+    }
+  ],
+  "navigation": {
+    "cambridgeFreshFlow": true,
+    "pearsonBackAndRefresh": true,
+    "otherGce": true,
+    "ibRemovedDraftStepRecovered": true,
+    "anonymousSubmit": true,
+    "authenticatedProfileSave": true
+  },
+  "limitations": [
+    "Disposable DB had no scoped GCE/IB published rules; real result unknown, scoped wording verified by render tests using synthetic published copies.",
+    "Viewport checks use desktop Chromium CSS sizes, not native device emulators."
+  ]
+}
