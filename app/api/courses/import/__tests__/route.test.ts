@@ -36,6 +36,7 @@ describe("DAAD import boundary", () => {
   it.each(["https://example.edu/course", "https://daad.de.evil.com/en/detail/123", "https://evil-daad.de/en/detail/123", "https://www2.daad.de/arbitrary/detail/123", "https://www2.daad.de/deutschland/studienangebote/international-programmes/en/detail/123/extra", "ftp://www2.daad.de/", "https://127.0.0.1/", "https://user:pass@www2.daad.de/", "https://www2.daad.de:8080/"])("rejects new entry %s", async url => {
     expect((await POST(request({ url, text: DAAD_PAGE_TEXT }))).status).toBe(400);
     expect(mocks.insertCourse).not.toHaveBeenCalled();
+    expect(mocks.enqueueResearch).not.toHaveBeenCalled();
   });
   it.each([{ text: "short" }, { text: "x".repeat(200_001) }, { text: {} }, { identity: { name: "spoof", university: "spoof" } }, { review_status: "approved" }])("rejects malformed or spoofed input", async extra => {
     expect((await POST(request({ url, ...extra }))).status).toBe(400);
@@ -65,6 +66,26 @@ describe("DAAD import boundary", () => {
     expect(response.status).toBe(201);
     expect(await response.json()).toMatchObject({ course: { id: "course" }, researchQueued: false, researchError: expect.stringMatching(/saved.*research/i) });
   });
+  it("recovers enqueue failure on retry of the same pending course", async () => {
+    mocks.enqueueResearch.mockRejectedValueOnce(new Error("enqueue unavailable"));
+    const first = await POST(request({ url, text: DAAD_PAGE_TEXT }));
+    expect(first.status).toBe(201);
+    expect(await first.json()).toMatchObject({ course: { id: "course" }, applicationId: "application", researchQueued: false });
+    mocks.getCourseByNormalizedUrl.mockResolvedValue({ id: "course", review_status: "pending", source_url: url });
+    const response = await POST(request({ url, text: DAAD_PAGE_TEXT }));
+    expect(response.status).toBe(200);
+    expect(mocks.enqueueResearch).toHaveBeenCalledWith(expect.anything(), "student", { courseId: "course", applicationId: "application" });
+    expect(mocks.insertCourse).toHaveBeenCalledTimes(1);
+    expect(mocks.enqueueResearch).toHaveBeenCalledTimes(2);
+    expect(await response.json()).toMatchObject({ researchQueued: true, deduped: true });
+  });
+  it.each(["running", "succeeded", "failed"])("reports the actual existing %s job without another insert", async state => {
+    mocks.getCourseByNormalizedUrl.mockResolvedValue({ id: "course", review_status: "pending", source_url: url });
+    mocks.enqueueResearch.mockResolvedValue({ id: "existing-job", state });
+    const response = await POST(request({ url, text: DAAD_PAGE_TEXT }));
+    expect(await response.json()).toMatchObject({ researchJobId: "existing-job", researchState: state, researchQueued: state === "running" });
+    expect(mocks.insertCourse).not.toHaveBeenCalled();
+  });
   it("preserves update target and rejects unrelated URL", async () => {
     const conflictsWith = "00000000-0000-4000-8000-000000000001";
     mocks.getCourseById.mockResolvedValue({ id: conflictsWith, source_url: url });
@@ -87,5 +108,29 @@ describe("DAAD import boundary", () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
     expect((await POST(request({ url }))).status).toBe(401);
     expect(mocks.getCourseByNormalizedUrl).not.toHaveBeenCalled();
+  });
+  it("rejects the captured DAAD 6909 header with its programme title missing", async () => {
+    // Captured 2026-10-10: https://www2.daad.de/deutschland/studienangebote/international-programmes/en/detail/6909/
+    const text = `INTERNATIONAL PROGRAMMES 2026/2027
+©
+pagination
+HOME BACK
+FH Aachen University of Applied Sciences • Geilenkirchen
+Gallery
+Previous
+Next
+Overview
+Course details
+Costs / Requirements / Registration
+Services
+About the university
+Course location
+Geilenkirchen`;
+    const response = await POST(request({ url: url.replace("12345", "6909"), text }));
+    expect(response.status).toBe(422);
+    expect((await response.json()).error).toMatch(/Return to the DAAD course page/);
+    expect(mocks.insertCourse).not.toHaveBeenCalled();
+    expect(mocks.trackCourse).not.toHaveBeenCalled();
+    expect(mocks.enqueueResearch).not.toHaveBeenCalled();
   });
 });

@@ -8,6 +8,7 @@ import { getCourseById, getCourseByNormalizedUrl, hasApplicationForCourse, inser
 import { createClient } from "@/lib/db/server";
 import { enqueueResearch } from "@/lib/planning/enqueue";
 import { trackCourse } from "@/lib/tasks/materialize";
+import type { Tables } from "@/lib/db/database.types";
 
 const recopy = "Return to the DAAD course page and copy the full text, including the programme and university heading.";
 const DaadEntrySchema = ResearchUrlSchema.refine(value => {
@@ -20,6 +21,21 @@ const ImportRequestSchema = z.object({
   text: ResearchSeedSchema.shape.text.min(200, recopy).max(200_000, "That text is too long — paste just the full course page.").optional(),
   conflictsWith: z.string().uuid().optional(),
 }).strict();
+
+async function savedResearchResponse(db: Awaited<ReturnType<typeof createClient>>, userId: string,
+  course: Tables<"courses">, applicationId: string, status: 200 | 201, deduped = false) {
+  try {
+    const job = await enqueueResearch(db, userId, { applicationId, courseId: course.id });
+    return NextResponse.json({ course, applicationId, deduped,
+      researchQueued: job.state === "queued" || job.state === "running",
+      researchJobId: job.id, researchState: job.state,
+      ...(job.state === "failed" ? { researchError: "Course saved. Research failed; retry from the dashboard." } : {}),
+    }, { status });
+  } catch {
+    return NextResponse.json({ course, applicationId, deduped, researchQueued: false,
+      researchError: "Course saved. Research could not be queued; retry this import." }, { status });
+  }
+}
 
 export async function POST(request: Request) {
   const db = await createClient();
@@ -48,6 +64,8 @@ export async function POST(request: Request) {
       if (existing) {
         if (!text) return NextResponse.json({ course: existing, deduped: true, onDashboard: await hasApplicationForCourse(db, user.id, existing.id) });
         const applicationId = await trackCourse(db, user.id, existing.id);
+        if (existing.review_status === "pending")
+          return savedResearchResponse(db, user.id, existing, applicationId, 200, true);
         return NextResponse.json({ course: existing, deduped: true, applicationId });
       }
     }
@@ -72,13 +90,7 @@ export async function POST(request: Request) {
       extraction_method: "library", field_extraction: { core: "library", research },
     });
     const applicationId = await trackCourse(db, user.id, course.id);
-    try {
-      await enqueueResearch(db, user.id, { applicationId, courseId: course.id });
-      return NextResponse.json({ course, applicationId, researchQueued: true }, { status: 201 });
-    } catch {
-      return NextResponse.json({ course, applicationId, researchQueued: false,
-        researchError: "Course saved. Research could not be queued; try again from the dashboard." }, { status: 201 });
-    }
+    return savedResearchResponse(db, user.id, course, applicationId, 201);
   } catch (error) {
     if (error instanceof Error && error.message.includes("duplicate key"))
       return NextResponse.json({ error: "This course was already submitted and is under review." }, { status: 409 });

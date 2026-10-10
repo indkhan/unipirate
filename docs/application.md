@@ -366,7 +366,10 @@ There is no migration, DB publication, seed or KB rebuild in this change.
    owned application via `trackCourse`, then calls the single #60
    `enqueueResearch(db,userId,{applicationId,courseId})` contract. It never
    calls inference synchronously. Responses expose `applicationId` and
-   `researchQueued` for #58's separate dashboard/progress UI. An enqueue
+   `researchQueued`, `researchJobId` and the actual `researchState` for #58's
+   separate dashboard/progress UI. Retrying a pending import reuses its owned
+   course/application and reattempts the same enqueue contract; approved
+   lookup/tracking does not start redundant research. An enqueue
    failure retains the saved course/application and reports a research error,
    separately from recopy and persistence errors. Update submissions retain
    the visible same-URL `conflicts_with` target and never rewrite its tasks.

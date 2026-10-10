@@ -48,8 +48,10 @@ describe.skipIf(!config.enabled)("DAAD import real disposable database", () => {
       const app = must(await owner.from("applications").select("*").eq("id", receipt.applicationId).single());
       expect(app).toMatchObject({ user_id: users[0], course_id: stored.id });
       const task = must(await owner.from("tasks").insert({ user_id: users[0], application_id: app.id, title: "Personal edited reminder", done: true, task_key: null }).select("*").single());
+      // Own fixture only: reproduce a saved import with no durable research job.
+      expect((await service.from("planning_jobs").delete().eq("application_id", app.id).eq("event", "research")).error).toBeNull();
       const retry = await POST(request({ url, text })); expect(retry.status).toBe(200);
-      expect(await retry.json()).toMatchObject({ course: { id: stored.id }, applicationId: app.id, deduped: true });
+      expect(await retry.json()).toMatchObject({ course: { id: stored.id }, applicationId: app.id, deduped: true, researchQueued: true, researchState: "queued" });
       expect(must(await owner.from("tasks").select("*").eq("id", task.id).single())).toEqual(task);
       expect(must(await owner.from("applications").select("id").eq("course_id", stored.id))).toHaveLength(1);
       expect(must(await owner.from("planning_jobs").select("id").eq("application_id", app.id).eq("event", "research"))).toHaveLength(1);
