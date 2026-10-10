@@ -34,6 +34,17 @@ async function submit(title: string) {
   await act(() => container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
 }
 
+it.each([
+  { verbatimDue: "Applications must arrive by 15 July 2027 at 12:00 noon (local time).", dueDate: "2027-07-15" },
+  { verbatimDue: "Applications must arrive by 15 July 2027 at 12:00 noon (local time).", dueDate: null },
+  { verbatimDue: null, dueDate: "2027-07-15" },
+])("preserves literal wording independently of parsed date with an unverified source ($dueDate, $verbatimDue)", async ({ verbatimDue, dueDate }) => {
+  await render(applicationId, [{ ...task, dueDate, verbatimDue, source: { url: "https://example.invalid/personal", verifiedAt: null } }]);
+  expect(container.querySelector("article")!.textContent).toContain(verbatimDue ?? `Personal reminder date: ${dueDate}`);
+  if (verbatimDue) expect(container.querySelector("article")!.textContent).not.toContain("2027-07-15");
+  expect(container.querySelector("article a")!.textContent).toBe("Personal source · unverified");
+});
+
 it("keeps creation locked after tracking failure and until the saved application arrives", async () => {
   mocks.addCourseToDashboard.mockRejectedValueOnce(new Error("Tracking failed"));
   await render(null); await click("Add course to dashboard");

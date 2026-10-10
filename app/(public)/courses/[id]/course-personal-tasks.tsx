@@ -35,7 +35,8 @@ export function CoursePersonalTasks({ courseId, applicationId, tasks, signedIn }
         <h3>{task.title}</h3>
       </div>
       {task.description ? <p className={styles.personalNotes}>{task.description}</p> : null}
-      {task.dueDate ? <p className={styles.emptyNote}>Personal reminder date: {task.dueDate}</p> : null}
+      {task.verbatimDue ? <p className={styles.emptyNote}>{task.verbatimDue}</p>
+        : task.dueDate ? <p className={styles.emptyNote}>Personal reminder date: {task.dueDate}</p> : null}
       {task.source ? <a href={task.source.url} target="_blank" rel="noreferrer">Personal source · unverified</a> : null}
       <TaskActions task={task} applications={[]} />
     </article>;
