@@ -84,3 +84,29 @@ through 015. The existing audit gate assumes an empty journal, so it cannot run
 against the retained test/demo publications on API56321; those immutable journals
 were preserved. Final immutable-head review, provider evaluation and compatible
 import/course journeys remain separate acceptance gates.
+
+On `dcd50b3`, all four host checks and independent review passed. Live post-reset
+chat created one linked owned task and a confirmed receipt; the free preliminary
+planner succeeded through Vault/cron/net dispatch, wrote one proposal and zero
+tasks, and the actual popup approval then created its task. A genuine MP4 was
+transferred. Synthetic reviewed publication changed the closing wording from
+15 to 31 July 2027; its worker prepared an update for the existing completed task,
+whose stored date and identity stayed unchanged before approval. Admin free-model
+save and the shared-template/private-task boundary were exercised in T3 Preview.
+These clips remain partial until the compatible course UI and remaining journeys
+are recorded.
+
+The live assistant evaluation still failed: 1/20 passed, zero unreplaced unknowns,
+three raw uncited answers, eight guarded replacements, one empty answer and ten
+no-output errors. A subsequent same-model diagnostic returned HTTP429 for the
+daily free quota. Unsupported prose was withheld, but the evaluation is not a
+pass; further live inference requires quota reset. No paid fallback was used.
+T3 temporarily disconnected during recording, then reconnected and transferred
+the second clip; no complete video is claimed.
+
+The live chat also exposed stale failure feedback after a later confirmed receipt.
+A per-response receipt selector now suppresses recovered failures and deduplicates
+confirmed task IDs while retaining separate-message failures. Its mounted
+reproduction failed before the fix, then passed; independent review passed 38
+focused tests. The full follow-up suite passed 2,953 tests with zero skips, lint,
+nonincremental typecheck and production build.

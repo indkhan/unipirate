@@ -61,3 +61,17 @@ it("shows persisted retry receipts and failures honestly", async () => {
   chat.messages = [receipt({ status: "failed", error: "No task was saved" })]; await render(0);
   expect(container.querySelector('[role="alert"]')!.textContent).toBe("No task was saved"); expect(container.querySelector('[role="status"]')).toBeNull();
 });
+it("shows one confirmed task after the same message recovers from failed tool input", async () => {
+  const message = receipt({ status: "failed", error: "No task was confirmed" }, "tool-create_task");
+  message.parts.push(...receipt(saved, "tool-create_task").parts, ...receipt({ ...saved, status: "already_exists" }).parts);
+  chat.messages = [message]; await render(0); await open();
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(container.querySelectorAll('[role="status"]')).toHaveLength(1);
+  expect(container.textContent).toContain("Task saved"); expect(container.textContent).not.toContain("Task already saved");
+});
+it("keeps failures in a later message after an earlier confirmed task", async () => {
+  const failed = receipt({ status: "failed", error: "Second request was not saved" }); failed.id = "later";
+  chat.messages = [receipt(saved), failed]; await render(0); await open();
+  expect(container.querySelector('[role="status"]')!.textContent).toContain("Task saved");
+  expect(container.querySelector('[role="alert"]')!.textContent).toBe("Second request was not saved");
+});

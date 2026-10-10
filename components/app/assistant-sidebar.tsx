@@ -9,7 +9,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { TaskReceiptSchema } from "@/lib/tasks/manual";
+import { responseTaskReceipts } from "./assistant-receipts";
 
 import { reportAssistantAnswer } from "@/app/(app)/dashboard/actions";
 import { parseMarkers, stripMarkers, type Citation } from "@/lib/ai/markers";
@@ -55,12 +55,7 @@ function BotMessage({
   const { citations, unknown } = parseMarkers(text);
   const ruleCitations = citations.filter((c) => c.type === "rule");
   const webCitations = citations.filter((c) => c.type === "web");
-  const receipts=message.parts.flatMap(part=>{
-    const value=part as unknown as {type:string;state?:string;output?:unknown;data?:unknown};
-    if(value.type!=="data-task-receipt" && !(value.type==="tool-create_task"&&value.state==="output-available"))return [];
-    const receipt=TaskReceiptSchema.safeParse(value.type==="data-task-receipt"?value.data:value.output);
-    return receipt.success?[receipt.data]:[];
-  });
+  const receipts = responseTaskReceipts(message.parts);
 
   async function report() {
     try {
