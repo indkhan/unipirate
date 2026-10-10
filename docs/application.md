@@ -403,7 +403,8 @@ There is no migration, DB publication, seed or KB rebuild in this change.
    courses remain available through lookup/tracking. No separate name fields
    are requested. Pure `parseDaadIdentity` reads adjacent literal programme/
    university heading pairs (including split city bullets); repeated identical
-   pairs are allowed. Missing or competing pairs require a full recopy before
+   pairs are allowed; captured navigation/header labels cannot supply a missing
+   programme heading. Missing or competing pairs require a full recopy before
    any write. Input is Zod/byte-bounded, with a 200-character minimum and
    200,000-character maximum paste. Exact original URL and full paste survive
    in `source_url` and `field_extraction.research.paste`; identity parsing does

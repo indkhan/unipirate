@@ -2,10 +2,21 @@ import { describe, expect, it } from "vitest";
 
 import { extractCourse } from "@/lib/ai/extract-course";
 import { EMPTY_FACTS } from "../import";
-import { parseDaadText } from "../parse-daad";
+import { parseDaadIdentity, parseDaadText } from "../parse-daad";
 import { DAAD_PAGE_TEXT, GARBAGE_TEXT, NON_DAAD_PAGE_TEXT } from "./fixtures";
 
 describe("parseDaadText", () => {
+  it.each([
+    ["Data Science and Artificial Intelligence (MSc)", "Saarland University • Saarbrücken"],
+    ["Freshman Program of the FH Aachen", "FH Aachen University of Applied Sciences • Geilenkirchen"],
+  ])("rejects captured navigation when %s is missing", (name, university) => {
+    // Captured DAAD 6296/6909 headers, 2026-10-10.
+    const header = `INTERNATIONAL PROGRAMMES 2026/2027\n©\npagination\nHOME BACK\n${name}\n${university}\nGallery\nPrevious\nNext\nOverview`;
+    expect(parseDaadIdentity(header)).toEqual({ name, university: university.split(" • ")[0] });
+    for (const navigation of ["pagination\nHOME BACK", "pagination", "©", "INTERNATIONAL PROGRAMMES 2026/2027"]) {
+      expect(parseDaadIdentity(`${navigation}\n${university}\nOverview`)).toEqual({ name: null, university: null });
+    }
+  });
   it("rejects conflicting heading pairs instead of choosing the first course", () => {
     const parsed = parseDaadText(`${DAAD_PAGE_TEXT}\nAnother programme\nAnother University • Berlin\nOverview`);
     expect(parsed.name).toBeNull();

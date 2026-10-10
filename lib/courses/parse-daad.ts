@@ -150,7 +150,7 @@ export function parseDaadIdentity(text: string): { name: string | null; universi
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const headings = new Map<string, { name: string; university: string }>();
   const heading = (line: string | undefined) => line && line.length <= 240
-    && !BOUNDARIES.has(line) && !/^(DAAD|International Programmes(?: in Germany| \d{4}\/\d{4})?|My favourites|Search|Back|Home|Home Back)$/i.test(line)
+    && !BOUNDARIES.has(line) && !/^(DAAD|International Programmes(?: in Germany| \d{4}\/\d{4})?|My favourites|Search|Back|Home|Home Back|pagination|©)$/i.test(line)
     && !line.includes("\u2022");
   for (let i = 0; i < lines.length; i++) {
     const inline = lines[i].match(/^(.+) \u2022 .+$/);

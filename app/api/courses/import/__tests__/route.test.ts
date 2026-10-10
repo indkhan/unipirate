@@ -17,6 +17,19 @@ beforeEach(() => {
   mocks.enqueueResearch.mockResolvedValue({ id: "job", state: "queued" });
 });
 describe("DAAD import boundary", () => {
+  it.each([
+    ["6296", "Saarland University • Saarbrücken"],
+    ["6909", "FH Aachen University of Applied Sciences • Geilenkirchen"],
+  ])("rejects captured DAAD %s without title or HOME BACK before any write", async (id, university) => {
+    // Captured 2026-10-10; programme title and HOME BACK removed.
+    const text = `INTERNATIONAL PROGRAMMES 2026/2027\n©\npagination\n${university}\nGallery\nPrevious\nNext\nOverview\nCourse details\nCosts / Requirements / Registration\nServices\nAbout the university\nCourse location\nGeilenkirchen`;
+    const response = await POST(request({ url: url.replace("12345", id), text }));
+    expect(response.status).toBe(422);
+    expect((await response.json()).error).toMatch(/Return to the DAAD course page/);
+    expect(mocks.insertCourse).not.toHaveBeenCalled();
+    expect(mocks.trackCourse).not.toHaveBeenCalled();
+    expect(mocks.enqueueResearch).not.toHaveBeenCalled();
+  });
   it("saves exact identity/source before queueing without requirement guesses", async () => {
     const text = ` \n${DAAD_PAGE_TEXT}\n `;
     const response = await POST(request({ url, text }));
