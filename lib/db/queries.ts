@@ -68,10 +68,13 @@ export async function dismissTaskProposal(db:RpcDb,id:string,revision:number){
 }
 
 /** Worker-only context shell. Never return this to an HTTP caller or admin UI. */
-export async function getPlanningJobContext(db:Db,job:{user_id:string;application_id:string|null;course_id:string|null}){
+export async function getPlanningJobContext(db:Db & RpcDb,job:{user_id:string;application_id:string|null;course_id:string|null;input_fingerprint:string}){
  const owner=z.string().uuid().parse(job.user_id);
+ const fingerprint=z.string().regex(/^[0-9a-f]{64}$/).parse(job.input_fingerprint);
  const application=job.application_id ? await getApplicationWithCourse(db,owner,z.string().uuid().parse(job.application_id)) : null;
  if(job.application_id&&(!application||application.course_id!==job.course_id))throw Object.assign(new Error("stale_context"),{code:"stale_context"});
+ const current=unwrap(await db.rpc("planning_context_fingerprint",{p_user:owner,p_application:job.application_id as string}));
+ if(current!==fingerprint)throw Object.assign(new Error("stale_context"),{code:"stale_context"});
  return {profile:await getProfile(db,owner),application};
 }
 export async function finishPlanningResearch(db:RpcDb,jobId:string,worker:string,expected:Json|null,draft:unknown){

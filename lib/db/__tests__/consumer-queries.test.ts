@@ -1,7 +1,7 @@
 import {createClient} from "@supabase/supabase-js";
 import {expect, it} from "vitest";
 import type {Database} from "../database.types";
-import {getRuleVersionsByIds, insertCheck, getCheck, listRuleVersions, matchKbRuleHints, upsertGeneratedTasks, listTasks} from "../queries";
+import {getRuleVersionsByIds, insertCheck, getCheck, listRuleVersions, matchKbRuleHints, upsertGeneratedTasks, listTasks, getPlanningJobContext} from "../queries";
 import {listAdminImpactProfiles} from "../admin-queries";
 import {evaluateAssessment} from "@/lib/rules/assessment";
 import {answers, profile, context, version} from "@/lib/rules/__tests__/assessment-fixtures";
@@ -11,6 +11,19 @@ function client(handler: (url: URL, method: string, body: unknown) => Response) 
  return {db, requests};
 }
 const response = (data: unknown, count?: number) => new Response(JSON.stringify(data), {status: 200, headers: {"Content-Type": "application/json", ...(count === undefined ? {} : {"content-range": "0-0/"+count})}});
+it("rejects stale planning policy before reading private context or consuming provider work", async () => {
+ const {db, requests} = client(() => response("b".repeat(64)));
+ await expect(getPlanningJobContext(db, { user_id: version(1).id, application_id: null, course_id: null, input_fingerprint: "a".repeat(64) })).rejects.toMatchObject({ code: "stale_context" });
+ expect(requests).toHaveLength(1);
+ expect(requests[0].url.pathname).toContain("rpc/planning_context_fingerprint");
+ expect(requests[0].body).toEqual({p_user: version(1).id, p_application: null});
+});
+it("reads current private context only after confirming the stored planning fingerprint", async () => {
+ const fingerprint = "a".repeat(64);
+ const {db, requests} = client(url => response(url.pathname.includes("rpc/") ? fingerprint : null));
+ expect(await getPlanningJobContext(db, { user_id: version(1).id, application_id: null, course_id: null, input_fingerprint: fingerprint })).toEqual({profile: null, application: null});
+ expect(requests.map(r => r.url.pathname.split("/").at(-1))).toEqual(["planning_context_fingerprint", "profiles"]);
+});
 it("keeps personal rows visible independently of generated retirement, within the caller account", async () => {
  const {db, requests} = client(() => response([]));
  await listTasks(db, version(1).id);
