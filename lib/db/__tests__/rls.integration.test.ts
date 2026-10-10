@@ -20,17 +20,14 @@ import { currentAssessmentContext } from "@/lib/rules/current";
 import { answers as fixtureAnswers } from "@/lib/rules/__tests__/assessment-fixtures";
 import { RawRuleSchema, type RuleDraft, type RuleVersion } from "@/lib/rules/versioning";
 import { getCourseByNormalizedUrl } from "@/lib/db/queries";
+import { planningLocalConfig } from "./planning-local-config";
 
-try {
-  process.loadEnvFile(".env.local");
-} catch {
-  // no .env.local — keys may still come from the environment
-}
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-const secretKey = process.env.SUPABASE_SECRET_KEY;
-const configured = Boolean(url && publishableKey && secretKey);
+// Never implicitly load app credentials for a mutating integration suite.
+const { api: url, publicKey: publishableKey, serviceKey: secretKey, enabled: configured } = planningLocalConfig(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  process.env.SUPABASE_SECRET_KEY,
+);
 
 type Db = SupabaseClient<Database>;
 
