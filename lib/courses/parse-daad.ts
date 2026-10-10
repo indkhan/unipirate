@@ -151,6 +151,8 @@ export function parseDaadIdentity(text: string): { name: string | null; universi
   const headings = new Map<string, { name: string; university: string }>();
   const heading = (line: string | undefined) => line && line.length <= 240
     && !BOUNDARIES.has(line) && !/^(DAAD|International Programmes(?: in Germany| \d{4}\/\d{4})?|My favourites|Search|Back|Home|Home Back|pagination|©)$/i.test(line)
+    // Captured DAAD preamble controls remain navigation when the title/header is omitted.
+    && !/^(Skip to main content|Services|More info|0 0|Cookie Consent|Settings|Reject|ACCEPT|Privacy Policy)$/i.test(line)
     && !line.includes("\u2022");
   for (let i = 0; i < lines.length; i++) {
     const inline = lines[i].match(/^(.+) \u2022 .+$/);

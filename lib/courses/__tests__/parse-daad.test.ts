@@ -11,10 +11,11 @@ describe("parseDaadText", () => {
     ["Freshman Program of the FH Aachen", "FH Aachen University of Applied Sciences • Geilenkirchen"],
   ])("rejects captured navigation when %s is missing", (name, university) => {
     // Captured DAAD 6296/6909 headers, 2026-10-10.
-    const header = `INTERNATIONAL PROGRAMMES 2026/2027\n©\npagination\nHOME BACK\n${name}\n${university}\nGallery\nPrevious\nNext\nOverview`;
+    const navigation = "Skip to main content\nServices\nMore info\n0 0\nCookie Consent\nSettings\nReject\nACCEPT\nImprint\nPrivacy Policy\nINTERNATIONAL PROGRAMMES 2026/2027\n©\npagination\nHOME BACK".split("\n");
+    const header = `${navigation.join("\n")}\n${name}\n${university}\nGallery\nPrevious\nNext\nOverview`;
     expect(parseDaadIdentity(header)).toEqual({ name, university: university.split(" • ")[0] });
-    for (const navigation of ["pagination\nHOME BACK", "pagination", "©", "INTERNATIONAL PROGRAMMES 2026/2027"]) {
-      expect(parseDaadIdentity(`${navigation}\n${university}\nOverview`)).toEqual({ name: null, university: null });
+    for (let end = navigation.length; end >= 0; end--) {
+      expect(parseDaadIdentity(`${navigation.slice(0, end).join("\n")}\n${university}\nOverview`)).toEqual({ name: null, university: null });
     }
   });
   it("rejects conflicting heading pairs instead of choosing the first course", () => {

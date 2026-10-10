@@ -32,10 +32,15 @@ describe.skipIf(!config.enabled)("DAAD import real disposable database", () => {
         expect((await client.auth.signInWithPassword({ email, password })).error).toBeNull();
       }
       transport.db = owner;
-      for (const body of [{ url, text: "x".repeat(200) }, { url, text: `${text}\nOther course\nOther University • Berlin` }, { url: "https://daad.de.evil.example/course", text }]) {
+      const partialHeaders = ["Saarland University • Saarbrücken", "FH Aachen University of Applied Sciences • Geilenkirchen"].map(university => ({
+        url, text: `Privacy Policy\n${university}\nGallery\nPrevious\nNext\nOverview\nCourse details\nCosts / Requirements / Registration\nServices\nAbout the university\nCourse location\nGeilenkirchen\nIn cooperation with\nTeaching language\nEnglish`,
+      }));
+      for (const body of [{ url, text: "x".repeat(200) }, { url, text: `${text}\nOther course\nOther University • Berlin` }, { url: "https://daad.de.evil.example/course", text }, ...partialHeaders]) {
         expect([400, 422]).toContain((await POST(request(body))).status);
       }
       expect(must(await service.from("courses").select("id").eq("imported_by", users[0]))).toHaveLength(0);
+      expect(must(await service.from("applications").select("id").eq("user_id", users[0]))).toHaveLength(0);
+      expect(must(await service.from("planning_jobs").select("id").eq("user_id", users[0]))).toHaveLength(0);
       const saved = await POST(request({ url, text })); expect(saved.status).toBe(201);
       const receipt = await saved.json(); courses.push(receipt.course.id);
       expect(receipt.researchQueued).toBe(true);

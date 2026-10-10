@@ -21,14 +21,17 @@ describe("DAAD import boundary", () => {
     ["6296", "Saarland University • Saarbrücken"],
     ["6909", "FH Aachen University of Applied Sciences • Geilenkirchen"],
   ])("rejects captured DAAD %s without title or HOME BACK before any write", async (id, university) => {
-    // Captured 2026-10-10; programme title and HOME BACK removed.
-    const text = `INTERNATIONAL PROGRAMMES 2026/2027\n©\npagination\n${university}\nGallery\nPrevious\nNext\nOverview\nCourse details\nCosts / Requirements / Registration\nServices\nAbout the university\nCourse location\nGeilenkirchen`;
-    const response = await POST(request({ url: url.replace("12345", id), text }));
-    expect(response.status).toBe(422);
-    expect((await response.json()).error).toMatch(/Return to the DAAD course page/);
-    expect(mocks.insertCourse).not.toHaveBeenCalled();
-    expect(mocks.trackCourse).not.toHaveBeenCalled();
-    expect(mocks.enqueueResearch).not.toHaveBeenCalled();
+    // Captured 2026-10-10; progressively remove the title and preceding header.
+    const navigation = "Skip to main content\nServices\nMore info\n0 0\nCookie Consent\nSettings\nReject\nACCEPT\nImprint\nPrivacy Policy\nINTERNATIONAL PROGRAMMES 2026/2027\n©\npagination\nHOME BACK".split("\n");
+    for (let end = navigation.length; end >= 0; end--) {
+      const text = `${navigation.slice(0, end).join("\n")}\n${university}\nGallery\nPrevious\nNext\nOverview\nCourse details\nCosts / Requirements / Registration\nServices\nAbout the university\nCourse location\nGeilenkirchen\nIn cooperation with\nTeaching language\nEnglish`;
+      const response = await POST(request({ url: url.replace("12345", id), text }));
+      expect(response.status).toBe(422);
+      expect((await response.json()).error).toMatch(/Return to the DAAD course page/);
+      expect(mocks.insertCourse).not.toHaveBeenCalled();
+      expect(mocks.trackCourse).not.toHaveBeenCalled();
+      expect(mocks.enqueueResearch).not.toHaveBeenCalled();
+    }
   });
   it("saves exact identity/source before queueing without requirement guesses", async () => {
     const text = ` \n${DAAD_PAGE_TEXT}\n `;
