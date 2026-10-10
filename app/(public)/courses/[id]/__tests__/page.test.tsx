@@ -12,29 +12,38 @@ const stored = vi.hoisted(() => ({
   programme: null as unknown,
   offerings: [] as unknown[],
   versions: [] as unknown[],
+  user: null as unknown,
+  applications: [] as unknown[],
+  tasks: [] as unknown[],
 }));
 afterEach(() => {
   stored.course = null;
   stored.programme = null;
   stored.offerings = [];
   stored.versions = [];
+  stored.user = null;
+  stored.applications = [];
+  stored.tasks = [];
 });
 
 vi.mock("@/lib/db/server", () => ({
   createClient: async () => ({
-    auth: { getUser: async () => ({ data: { user: null } }) },
+    auth: { getUser: async () => ({ data: { user: stored.user } }) },
   }),
 }));
 vi.mock("@/lib/db/queries", () => ({
   getCourseById: async () => stored.course,
   listActiveCourseTaskDefinitions: async () => [],
-  listApplications: async () => [],
-  listTasks: async () => [],
+  listApplications: async () => stored.applications,
+  listTasks: async () => stored.tasks,
   getProgrammeByLegacyCourse: async () => stored.programme,
   listCourseOfferings: async () => stored.offerings,
   listReviewedOfferingVersions: async () => stored.versions,
 }));
 vi.mock("@/components/app/theme-toggle", () => ({ ThemeToggle: () => null }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), notFound: vi.fn() }));
+vi.mock("@/app/(app)/dashboard/actions", () => ({ createTask: vi.fn(), updateTask: vi.fn(), deleteTask: vi.fn(), toggleTask: vi.fn() }));
+vi.mock("@/app/(app)/courses/actions", () => ({ addCourseToDashboard: vi.fn() }));
 
 import CoursePage from "../page";
 
@@ -99,6 +108,31 @@ function richSetup() {
 
 const renderPage = async () =>
   renderToStaticMarkup(await CoursePage({ params: Promise.resolve({ id: COURSE_ID }) }));
+
+it.each(["planning", "applied", "admitted", "rejected"])("shows all linked manual tasks and collapsed completion for %s", async status => {
+  stored.course = baseCourse();
+  stored.user = { id: REVIEWER_ID };
+  stored.applications = [{ id: PROGRAMME_ID, course_id: COURSE_ID, status }];
+  const manual = { id: OFFERING_ID, user_id: REVIEWER_ID, application_id: PROGRAMME_ID, task_key: null, course_task_definition_id: null, title: "Chat approved personal reminder", description: "My notes", done: false, source_url: "https://example.invalid/personal", source_verified_at: "2026-10-01", due_date: null, admin_change_state: "current", admin_snapshot: null };
+  stored.tasks = [manual, { ...manual, id: "done", title: "Completed personal reminder", done: true }, { ...manual, id: "general", application_id: null, title: "Unrelated general reminder" }, { ...manual, id: "other", application_id: REVIEWER_ID, title: "Other course reminder" }];
+  const html = await renderPage();
+  expect(html).toContain("Personal tasks");
+  expect(html).toContain(manual.title);
+  expect(html).toContain("Completed personal reminder");
+  expect(html).toContain("Completed (1)");
+  expect(html).not.toContain("Unrelated general reminder");
+  expect(html).not.toContain("Other course reminder");
+  expect(html).toContain("Personal source · unverified");
+  expect(html).not.toContain("Add course to dashboard");
+});
+
+it("requires tracking before enabling personal task creation", async () => {
+  stored.course = baseCourse();
+  stored.user = { id: REVIEWER_ID };
+  const html = await renderPage();
+  expect(html).toContain("Add course to dashboard");
+  expect(html).not.toContain('aria-label="Task title"');
+});
 
 it("rich reviewed course uses ReviewedOfferings as authority without contradictory legacy empties", async () => {
   richSetup();

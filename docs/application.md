@@ -112,10 +112,19 @@ uses them.
   dashboard (`applications` row with a status: planning/applied/admitted/
   rejected).
 - **Task** — a dashboard to-do. Rule tasks and course-task assignments have
-  a non-null `task_key`; manual tasks have `task_key = null`. Every course
-  task (submission deadline, requirement, or custom reminder) starts as an
+  a non-null `task_key`; manual tasks have `task_key = null`. Generated course
+  tasks (submission deadline or requirement) start as an
   admin-managed `course_task_definitions` row and is copied to each planning
   application. Student detail edits are protected from later admin changes.
+  Personal course reminders use the owned application and the same validated
+  create operation as dashboard/chat, with durable operation receipts rather
+  than generated keys. At the course bottom, untracked courses must be added
+  first; tracked courses show an inline form without another tracking popup.
+  All application-linked manual rows remain available across application
+  statuses; completed rows are collapsed. Edit/complete/undo/delete act on the
+  same saved task ID as the dashboard. General and other-course tasks are
+  excluded. Personal source links carry no verified evidence badge. Reads do
+  not materialize or reconcile tasks; admin templates remain separate.
 - **KB chunk** — an embedded text rendering of a rule (or curated snippet)
   the assistant retrieves and cites.
 
