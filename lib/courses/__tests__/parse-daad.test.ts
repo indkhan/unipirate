@@ -6,6 +6,16 @@ import { parseDaadText } from "../parse-daad";
 import { DAAD_PAGE_TEXT, GARBAGE_TEXT, NON_DAAD_PAGE_TEXT } from "./fixtures";
 
 describe("parseDaadText", () => {
+  it("rejects conflicting heading pairs instead of choosing the first course", () => {
+    const parsed = parseDaadText(`${DAAD_PAGE_TEXT}\nAnother programme\nAnother University • Berlin\nOverview`);
+    expect(parsed.name).toBeNull();
+    expect(parsed.university).toBeNull();
+  });
+
+  it("accepts repeated identical headings and never skips a boundary to invent a name", () => {
+    expect(parseDaadText(`${DAAD_PAGE_TEXT}\n${DAAD_PAGE_TEXT}`).name).toBe("Computer Science – Master of Science");
+    expect(parseDaadText("Search\nOverview\nLeibniz University Hannover • Hannover\nDegree\nMaster of Science").name).toBeNull();
+  });
   it("reads current DAAD period, tuition and language labels without footer leakage", () => {
     const parsed = parseDaadText(`Data Science
 RWTH Aachen University • Aachen

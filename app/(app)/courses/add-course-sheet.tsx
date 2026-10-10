@@ -40,15 +40,12 @@ export function AddCourseSheet({
   const [lookup, setLookup] = useState<LookupState>({ step: "url" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [name, setName] = useState("");
-  const [university, setUniversity] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
 
   function close() {
     setOpen(false);
     setUrl("");
     setText("");
-    setName(""); setUniversity("");
     setLookup({ step: "url" });
     setError(null);
   }
@@ -64,7 +61,8 @@ export function AddCourseSheet({
       deduped?: boolean;
       course?: FoundCourse | null;
       onDashboard?: boolean;
-      researchStatus?: "draft" | "incomplete";
+      researchQueued?: boolean;
+      researchError?: string;
     };
     if (!response.ok) {
       const error = new Error(payload.error ?? "Something went wrong — try again.");
@@ -120,7 +118,6 @@ export function AddCourseSheet({
       const payload = await post({
         url,
         text,
-        identity: { name, university },
         ...(lookup.conflictsWith ? { conflictsWith: lookup.conflictsWith } : {}),
       });
       if (lookup.conflictsWith) {
@@ -133,7 +130,7 @@ export function AddCourseSheet({
         });
       }
       close();
-      setNotice(payload.researchStatus === "incomplete" ? "Course saved for review. Research is incomplete; missing facts remain unknown and the pasted source is retained." : "Research draft saved for admin review.");
+      setNotice(payload.researchError ?? "Course saved. Its details still need review.");
       router.refresh();
     } catch (e) {
       posthog.capture("course_import_failed", {
@@ -187,14 +184,15 @@ export function AddCourseSheet({
               style={{ display: "flex", flexDirection: "column", gap: 16 }}
             >
               <p className={dashStyles.sheetHint}>
-                Paste the DAAD or university course link first — we check
-                whether it&apos;s already here.
+                Paste the DAAD course-page link. We check whether it&apos;s already here.
               </p>
               <input
                 className={dashStyles.urlInput}
                 type="url"
                 required
-                placeholder="https://www.daad.de/en/study/…"
+                aria-label="DAAD course-page link"
+                maxLength={4000}
+                placeholder="https://www2.daad.de/…/en/detail/…"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
               />
@@ -255,16 +253,17 @@ export function AddCourseSheet({
               onSubmit={submitText}
               style={{ display: "flex", flexDirection: "column", gap: 16 }}
             >
-              <label>Programme name<input className={dashStyles.urlInput} required maxLength={240} value={name} onChange={e => setName(e.target.value)} /></label>
-              <label>University name<input className={dashStyles.urlInput} required maxLength={240} value={university} onChange={e => setUniversity(e.target.value)} /></label>
               <p className={dashStyles.sheetHint}>
                 {lookup.conflictsWith
-                  ? "Copy the course overview, requirements and fees into this box. On DAAD, open each relevant tab, select all (Ctrl+A), copy, and append its text here. Hidden tabs are not copied. An admin compares the update with the saved version."
-                  : "Paste the course page as a research seed. We check related official pages and PDFs for intake requirements, deadlines and fees. Missing or conflicting facts stay unresolved until an admin reviews them. On DAAD, append hidden requirements and fees tabs for manual fallback."}
+                  ? "Return to the DAAD course page and copy the full text, including the programme and university heading. An admin will review the update."
+                  : "On the DAAD course page, select all (Ctrl+A) and copy (Ctrl+C). Paste the full text here, including the programme and university heading."}
               </p>
               <textarea
                 className={dashStyles.textInput}
                 required
+                aria-label="Full DAAD course-page text"
+                minLength={200}
+                maxLength={200_000}
                 placeholder="Paste the full page text here (Ctrl+A, Ctrl+C on the course page)"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -272,7 +271,7 @@ export function AddCourseSheet({
               {error ? <p className={dashStyles.error}>{error}</p> : null}
               <button className={dashStyles.submit} type="submit" disabled={busy}>
                 {busy
-                  ? "Researching official sources…"
+                  ? "Saving…"
                   : lookup.conflictsWith
                     ? "Submit the update"
                     : "Read this page"}
