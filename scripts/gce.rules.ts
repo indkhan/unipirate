@@ -3,7 +3,12 @@ import { intakeIndex, type EngineRule } from '../lib/engine/evaluate';
 const url = 'https://www.daad.de/en/studying-in-germany/requirements/gce/';
 const checked = '2026-10-07T00:00:00Z';
 const bodies = ['aqa', 'caie', 'ccea', 'lrn', 'ocr', 'oxford_aqa', 'pearson', 'wjec'];
-const base: EngineRule["conditions"] = { curriculum: 'gce', target_degree: 'bachelor', gce_qualification_context: { op: 'in', value: ['uk', 'british_international'] }, gce_qualification_type: { op: 'in', value: ['al', 'ial'] }, gce_evidence: 'final', gce_awarding_body: { op: 'in', value: bodies }, gce_school_years: { op: 'gte', value: 12 }, gce_distinct_al_count: { op: 'gte', value: 3 }, gce_list_a_count: { op: 'gte', value: 2 }, gce_general_al_count: { op: 'gte', value: 3 }, gce_min_al_grade: { op: 'gte', value: 3 } };
+// Trade-off: the DAAD ordinary-schooling duration threshold is intentionally
+// not a rule condition. The checker no longer collects reported ascending
+// school years (#49), so a condition on that fact would make every complete
+// certificate evaluate to unknown. The 12-year duration remains guidance
+// copy only, never an eligibility gate.
+const base: EngineRule["conditions"] = { curriculum: 'gce', target_degree: 'bachelor', gce_qualification_context: { op: 'in', value: ['uk', 'british_international'] }, gce_qualification_type: { op: 'in', value: ['al', 'ial'] }, gce_evidence: 'final', gce_awarding_body: { op: 'in', value: bodies }, gce_distinct_al_count: { op: 'gte', value: 3 }, gce_list_a_count: { op: 'gte', value: 2 }, gce_general_al_count: { op: 'gte', value: 3 }, gce_min_al_grade: { op: 'gte', value: 3 } };
 const targets: {
     id: string;
     fields: string[];

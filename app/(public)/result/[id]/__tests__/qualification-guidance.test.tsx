@@ -16,38 +16,37 @@ vi.mock('../result-client', () => ({ SignupResultLink: () => null }));
 const rules = gceCandidates.map(r => ({...r,status:'verified' as const}));
 const profile = {...ordinaryGce,qualificationGuidanceVersion:1 as const};
 
-it('renders checks with a short scope and candidate source without a verified admission stamp or duration checklist', () => {
+it('renders a known subject-restricted route for a complete GCE profile without a duration checklist', () => {
   const result = evaluate(profile,rules);
   const html = renderToStaticMarkup(<VerdictCard result={result} profile={profile} profileLine="Cambridge A-Levels" />);
-  expect(html).toContain('Your qualification checks meet the cited criteria');
-  expect(html).toContain('Checked qualification evidence, subjects and grades');
-  expect(html).toContain('School attendance was not assessed');
-  expect(html).toContain('Source for these checks');
-  expect(html).not.toContain('>Verified<');
+  expect(primaryDiagnostic(result)?.status).toBe('known_route');
+  expect(html).toContain('You have a subject-restricted direct admission route');
+  expect(html).not.toContain('Your qualification checks meet the cited criteria');
   expect(html).not.toMatch(/school years|missing or uncertain|How many/);
   for (const historical of [false,true]) expect(visibleUnknowns(result,profile,historical)).not.toContain(NO_RULE_MESSAGES.path);
 });
-it('presents the closest applicable qualification checks rather than an unrelated failed awarding-body candidate', () => {
+it('presents the unmet grade condition rather than an unrelated failed awarding-body candidate', () => {
   const pearson = {...profile,gce:{...profile.gce!,awardingBody:'pearson' as const,subjects:[gceSubject('mathematics'),gceSubject('physics'),gceSubject('chemistry','D')]}};
   const result = evaluate(pearson,rules);
   const diagnostic = primaryDiagnostic(result);
+  expect(diagnostic?.status).toBe('known_unmet_condition');
   expect(diagnostic?.facts.map(f=>f.key)).toEqual(['gce_min_al_grade']);
   const html=renderToStaticMarkup(<VerdictCard result={result} profile={pearson} profileLine="Pearson" />);
-  expect(html).toContain('Some qualification checks need review');
+  expect(html).toContain('A condition is unmet for the cited route');
   expect(html).not.toContain('school years');
 });
 
 const conflictingIb = IB_ACCEPTANCE.find(c => c.id === 'duplicate006880')!.profile.ib!;
 it.each([
-  {marker: undefined, ib: conflictingIb, conflict: true},
-  {marker: 1, ib: conflictingIb, conflict: true},
-  {marker: 1, ib: {...ordinaryIb.ib!, school: conflictingIb.school}, conflict: false},
-  {marker: 1, ib: {...ordinaryIb.ib!, school: conflictingIb.school, subjects: ibRows({0: {grade: null}})}, conflict: false},
-  {marker: 1, ib: {...ordinaryIb.ib!, school: conflictingIb.school}, conflict: true, annexConditions: {ib_math_level: 'HL'}},
-  {marker: 1, ib: {...ordinaryIb.ib!, school: conflictingIb.school}, conflict: false, annexConditions: {ib_math_level: 'HL', ib_exam_year: {op: 'lt', value: 2025}}},
-  {marker: 1, ib: {...conflictingIb, subjects: conflictingIb.subjects!.map((s, i) => i === 0 ? {...s, grade: 2} : s)}, conflict: true},
+  {marker: undefined, ib: conflictingIb, path: 'unknown', diag: 'source_conflict'},
+  {marker: 1, ib: conflictingIb, path: 'unknown', diag: 'source_conflict'},
+  {marker: 1, ib: {...ordinaryIb.ib!, school: conflictingIb.school}, path: 'direct', diag: 'known_route'},
+  {marker: 1, ib: {...ordinaryIb.ib!, school: conflictingIb.school, subjects: ibRows({0: {grade: null}})}, path: 'unknown', diag: 'source_conflict'},
+  {marker: 1, ib: {...ordinaryIb.ib!, school: conflictingIb.school}, path: 'direct', diag: 'known_route', annexConditions: {ib_math_level: 'HL'}},
+  {marker: 1, ib: {...ordinaryIb.ib!, school: conflictingIb.school}, path: 'direct', diag: 'known_route', annexConditions: {ib_math_level: 'HL', ib_exam_year: {op: 'lt', value: 2025}}},
+  {marker: 1, ib: {...conflictingIb, subjects: conflictingIb.subjects!.map((s, i) => i === 0 ? {...s, grade: 2} : s)}, path: 'unknown', diag: 'source_conflict'},
 ] as const)('selects the applicable IB explanation through immutable assessment and rendering (marker $marker, mathematics $ib.mathLevel)', (testCase) => {
-  const {marker, ib, conflict} = testCase;
+  const {marker, ib, path, diag} = testCase;
   const answers = AnswersSchema.parse({
     targetDegree: 'bachelor', curriculumType: 'ib', certificateCountry: 'sa', nationality: 'pk',
     visaApplicationCountry: 'other', targetField: 'cs', intake: {term: 'winter', year: 2026},
@@ -69,12 +68,16 @@ it.each([
   const before = structuredClone({answers, versions});
   const assessment = evaluateAssessment(profile, versions, TEST_CONTEXT);
   expect(assessment.metadata.selectedVersionIds).toEqual(versions.map(v => v.id));
-  expect(assessment.result.path).toBe('unknown');
-  expect(assessment.result.diagnostics).toContainEqual(expect.objectContaining({
-    status: 'source_conflict', facts: expect.arrayContaining([expect.objectContaining({key: 'ib_annex_status', actual: 'source_conflict'})]),
-  }));
-  expect(assessment.result.citations.some(c => c.supports.includes('path'))).toBe(false);
-  expect(assessment.result.stepsDetailed).toEqual([]);
+  expect(assessment.result.path).toBe(path);
+  if (path === 'unknown') {
+    expect(assessment.result.diagnostics).toContainEqual(expect.objectContaining({
+      status: 'source_conflict', facts: expect.arrayContaining([expect.objectContaining({key: 'ib_annex_status', actual: 'source_conflict'})]),
+    }));
+    expect(assessment.result.citations.some(c => c.supports.includes('path'))).toBe(false);
+    expect(assessment.result.stepsDetailed).toEqual([]);
+  } else {
+    expect(assessment.result.citations.some(c => c.supports.includes('path'))).toBe(true);
+  }
   expect(assessment.result.diagnostics?.some(d => d.followUp)).toBe(false);
   const stored = {answers, result: assessment.result, assessment_metadata: assessment.metadata};
   const original = structuredClone(stored);
@@ -82,21 +85,20 @@ it.each([
   expect(parsed.kind).toBe('authoritative');
   const result = parsed.original!.result;
   const diagnostic = primaryDiagnostic(result);
-  expect(diagnostic?.status).toBe(conflict ? 'source_conflict' : ib.subjects!.some(s => s.grade === null) ? 'targeted_missing_fact' : 'qualification_guidance');
+  expect(diagnostic?.status).toBe(diag);
   const html = renderToStaticMarkup(<VerdictCard result={result} profile={profile} profileLine="IB Diploma" />);
-  expect(html).toContain('recognition authority');
-  if (conflict) {
+  if (diag === 'source_conflict') {
     expect(html).toContain('Conflicting evidence leaves this admission assessment unresolved');
     expect(html).toContain('source_conflict');
+    expect(html).toContain('recognition authority');
     expect(html).not.toContain('Your qualification checks meet the cited criteria');
   } else {
-    expect(html).toContain(ib.subjects!.some(s => s.grade === null) ? 'Some qualification checks need review' : 'Your qualification checks meet the cited criteria');
+    expect(html).toContain('You can apply directly to Bachelor programmes');
     expect(html).not.toContain('Conflicting evidence');
-    expect(html).not.toContain('reported HL; candidate requires SL');
+    expect(html).not.toContain('Your qualification checks meet the cited criteria');
     expect(html).not.toContain('source_conflict');
-    expect(html).toContain('School attendance was not assessed');
   }
-  const citation = result.candidateCitations!.find(c => diagnostic!.ruleIds.includes(c.ruleId))!;
+  const citation = [...result.citations, ...(result.candidateCitations ?? [])].find(c => diagnostic!.ruleIds.includes(c.ruleId))!;
   expect(html).toContain(citation.sourceUrl);
   if (marker === 1) {
     expect(html).not.toMatch(/school years|How many|candidate requires at least 12/);

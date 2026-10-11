@@ -44,10 +44,10 @@ export const SOCIAL_CASES: {id: string; kind: string; evidence: string; profile:
   {id:'social-no-science-math',kind:'negative',evidence:'known-unmet',profile:gceCase(['economics','history','geography'],'economics'),path:'unknown'},
   {id:'social-no-social-economics',kind:'negative',evidence:'known-unmet',profile:{...ordinaryGce,targetField:'economics'},path:'unknown'},
   {id:'social-mathematics-AS',kind:'negative',evidence:'known-unmet',profile:{...socialEconomics,gce:{...socialEconomics.gce!,subjects:[gceSubject('economics'),gceSubject('mathematics','C','AS'),gceSubject('history')]}},path:'unknown'},
-  {id:'social-school-years-missing',kind:'missing',evidence:'missing',profile:{...socialEconomics,gce:{...socialEconomics.gce!,schoolYears:undefined}},path:'unknown'},
+  {id:'social-school-years-missing',kind:'positive',evidence:'supported',profile:{...socialEconomics,gce:{...socialEconomics.gce!,schoolYears:undefined}},path:'subject_restricted'},
   {id:'social-context-missing',kind:'missing',evidence:'missing',profile:{...socialEconomics,gce:{...socialEconomics.gce!,qualificationContext:undefined}},path:'unknown'},
   {id:'social-intake-missing',kind:'missing',evidence:'missing',profile:{...socialEconomics,intake:undefined},path:'unknown'},
-  {id:'social-eleven-years',kind:'boundary',evidence:'known-unmet',profile:{...socialEconomics,gce:{...socialEconomics.gce!,schoolYears:11}},path:'unknown'},
+  {id:'social-eleven-years',kind:'positive',evidence:'supported',profile:{...socialEconomics,gce:{...socialEconomics.gce!,schoolYears:11}},path:'subject_restricted'},
   {id:'social-national-context',kind:'exception',evidence:'intentional-hold',profile:{...socialEconomics,gce:{...socialEconomics.gce!,qualificationContext:'national'}},path:'unknown'},
   ...(['school','provisional'] as const).map(evidence=>({id:'social-'+evidence,kind:'exception',evidence:'intentional-hold',profile:{...socialEconomics,gce:{...socialEconomics.gce!,evidence}},path:'unknown' as const})),
   ...(['aice','pre_u'] as const).map(qualificationType=>({id:'social-'+qualificationType,kind:'exception',evidence:'intentional-hold',profile:{...socialEconomics,gce:{...socialEconomics.gce!,qualificationType}},path:'unknown' as const})),
@@ -469,9 +469,18 @@ export const GCE_SHARED_CONTROLS: {id:string;sourceIds:string[];fact: {key:strin
 for (const [route,id] of GCE_ROUTE_POSITIVES) {
   const p=REVIEWED_CASES.find(c=>c.universe==='GCE'&&c.id===id)!.profile;
   const sourceIds=['gce-'+route+'-subject-restricted','gce-'+route+'-subject-restricted-cambridge'];
+  // Trade-off (#49): reported school years are no longer collected, so the
+  // duration variants no longer gate the route — they evaluate to the same
+  // positive path as the base witness and share its winning sources.
+  for(const [label,change] of [
+    ['years11',{schoolYears:11}],
+    ['years-missing',{schoolYears:undefined}],
+  ] as const) {
+    const caseId='GCE-'+id+'-'+label;
+    REVIEWED_CASES.push({id:caseId,universe:'GCE',reviewedIn:contract3,profile:{...p,gce:{...p.gce!,...change}},path:'subject_restricted'});
+    WINNING_PATH_SOURCES.GCE![caseId]=[...sourceIds];
+  }
   for(const [label,change,fact,status,reason] of [
-    ['years11',{schoolYears:11},{key:'gce_school_years',actual:11,expected:{op:'gte',value:12}},'known_unmet_condition','condition_unmet'],
-    ['years-missing',{schoolYears:undefined},{key:'gce_school_years',expected:{op:'gte',value:12}},'targeted_missing_fact','fact_missing'],
     ['national',{qualificationContext:'national' as const},{key:'gce_qualification_context',actual:'national',expected:{op:'in',value:['uk','british_international']}},'unsupported','applicability_unsupported'],
     ['gradeD',{subjects:p.gce!.subjects.map((subject,i)=>i===p.gce!.subjects.length-1?{...subject,grade:'D' as const}:subject)},{key:'gce_min_al_grade',actual:2,expected:{op:'gte',value:3}},'known_unmet_condition','condition_unmet'],
   ] as const) {
@@ -486,10 +495,17 @@ REVIEWED_CASES.push(
  {id:'GCE-Pearson-current',universe:'GCE',reviewedIn:'gce.test.ts + '+contract3,profile:{...ordinaryGce,gce:{...ordinaryGce.gce!,awardingBody:'pearson'}},path:'subject_restricted'},
  {id:'India-school-only-low',universe:'India',reviewedIn:contract3,profile:{...indianStudyProfile,schoolGradePercent:69.99,apsProcedure:{status:'pending',submissionConfirmation:'confirmed',submissionDate:'2026-03-16'},qualificationHistory:{hasPriorUniversityStudy:false}},path:'insufficient'},
  {id:'India-school-only-missing',universe:'India',reviewedIn:contract3,profile:{...indianStudyProfile,schoolGradePercent:undefined,qualificationHistory:{hasPriorUniversityStudy:false}},path:'unknown'},
- {id:'IB-SL-school-years11',universe:'IB',reviewedIn:contract3,profile:{...IB_ACCEPTANCE.find(c=>c.id==='2024-SL-scienceHL')!.profile,ib:{...IB_ACCEPTANCE.find(c=>c.id==='2024-SL-scienceHL')!.profile.ib!,schoolYears:11}},path:'unknown'},
+ // Trade-off (#49): school years no longer gate the IB route either.
+ {id:'IB-SL-school-years11',universe:'IB',reviewedIn:contract3,profile:{...IB_ACCEPTANCE.find(c=>c.id==='2024-SL-scienceHL')!.profile,ib:{...IB_ACCEPTANCE.find(c=>c.id==='2024-SL-scienceHL')!.profile.ib!,schoolYears:11}},path:'subject_restricted'},
 );
 WINNING_PATH_SOURCES.GCE!['GCE-Pearson-current']=['gce-technical-subject-restricted'];
+WINNING_PATH_SOURCES.GCE!['missing-years']=['gce-technical-subject-restricted','gce-technical-subject-restricted-cambridge'];
+WINNING_PATH_SOURCES.GCE!['eleven-years']=['gce-technical-subject-restricted','gce-technical-subject-restricted-cambridge'];
+WINNING_PATH_SOURCES.GCE!['social-school-years-missing']=['gce-social-economics-subject-restricted','gce-social-economics-subject-restricted-cambridge'];
+WINNING_PATH_SOURCES.GCE!['social-eleven-years']=['gce-social-economics-subject-restricted','gce-social-economics-subject-restricted-cambridge'];
 WINNING_PATH_SOURCES.India!['India-school-only-low']=['aps-transition-current'];
+WINNING_PATH_SOURCES.IB!['IB-SL-school-years11']=['ib-reviewed-2021-2024-math-sl-subject-scope-ordinary-grades'];
+WINNING_PATH_SOURCES.IB!['eleven-school-years']=['ib-reviewed-2025-math-hl-ordinary-grades'];
 export const PK_PREP_CONTROLS: {id:string;sourceId:string;key:string;actual?:number|string;expected:object;status:string;reason:string}[]=[];
 for(const [group,outside,allowed] of [
  ['science','economics',['medicine','natural_sciences','technology']],
@@ -628,7 +644,6 @@ export const APS_SUPPORT: Record<string,{qualification:string[];application:stri
 
 // Literal meaningful diagnostic subsets from contract3. Other independent facts may coexist.
 export const DIAGNOSTIC_CONTROLS: {universe:Universe;id:string;sourceId:string;status:string;reason:string;facts:object[];omittedActualKeys?:string[]}[] = [
- ['IB','eleven-school-years','ib-reviewed-2025-math-hl-ordinary-grades','known_unmet_condition','condition_unmet',[{key:'ib_school_years',actual:11,expected:{op:'gte',value:12}}]],
  ['IB','missing-schooling','ib-reviewed-2025-math-hl-ordinary-grades','targeted_missing_fact','fact_missing',[{key:'ib_schooling',expected:'ascending_full_time'}]],
  ['IB','missing-continuity','ib-reviewed-2025-math-hl-ordinary-grades','targeted_missing_fact','fact_missing',[{key:'ib_continuity',expected:true}]],
  ['IB','low-grade-1','ib-reviewed-2025-math-hl-ordinary-grades','known_unmet_condition','condition_unmet',[{key:'ib_min_subject_grade',actual:1,expected:{op:'gte',value:4}}]],
@@ -669,7 +684,7 @@ export const DIAGNOSTIC_CONTROLS: {universe:Universe;id:string;sourceId:string;s
 ] .map(([universe,id,sourceId,status,reason,facts])=>({universe:universe as Universe,id:id as string,sourceId:sourceId as string,status:status as string,reason:reason as string,facts:facts as object[]}));
 
 export const POSITIVE_FACTS: {universe:Universe;id:string;facts:object[]}[] = [
- {universe:'GCE',id:'ordinary-trio',facts:[{key:'gce_school_years',actual:12,expected:{op:'gte',value:12}},{key:'gce_distinct_al_count',actual:3,expected:{op:'gte',value:3}},{key:'gce_general_al_count',actual:3,expected:{op:'gte',value:3}},{key:'gce_min_al_grade',actual:3,expected:{op:'gte',value:3}},{key:'gce_list_a_count',actual:3,expected:{op:'gte',value:2}},{key:'gce_has_math_al',actual:true,expected:true},{key:'gce_has_technical_support_al',actual:true,expected:true}]},
+ {universe:'GCE',id:'ordinary-trio',facts:[{key:'gce_distinct_al_count',actual:3,expected:{op:'gte',value:3}},{key:'gce_general_al_count',actual:3,expected:{op:'gte',value:3}},{key:'gce_min_al_grade',actual:3,expected:{op:'gte',value:3}},{key:'gce_list_a_count',actual:3,expected:{op:'gte',value:2}},{key:'gce_has_math_al',actual:true,expected:true},{key:'gce_has_technical_support_al',actual:true,expected:true}]},
  {universe:'GCE',id:'science',facts:[{key:'gce_science_or_math_count',actual:2,expected:{op:'gte',value:2}}]},
  {universe:'GCE',id:'medicine',facts:[{key:'gce_science_or_math_count',actual:3,expected:{op:'gte',value:3}}]},
  {universe:'GCE',id:'humanities-CAIE-marine',facts:[{key:'gce_has_humanities_al',actual:true,expected:true}]},

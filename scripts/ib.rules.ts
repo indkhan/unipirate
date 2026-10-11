@@ -1,7 +1,12 @@
 // Reviewed candidates only; seed preserves drafts. No runtime bootstrap import.
 import { type EngineRule } from '../lib/engine/evaluate';
 import { IB_SOURCE, IB_HISTORICAL_SOURCE, IB_GUIDANCE } from '../lib/engine/ib';
-const base:EngineRule['conditions']={curriculum:'ib',target_degree:'bachelor',ib_evidence:'v1',ib_document_status:{op:'in',value:['awarded','official_results']},ib_exam_session:{op:'in',value:['may','november']},ib_school_years:{op:'gte',value:12},ib_schooling:'ascending_full_time',ib_subject_count:6,ib_independent_subjects:true,ib_continuity:true,ib_all_subjects_recognized:true,ib_hl_count:{op:'gte',value:3},ib_language_count:{op:'gte',value:2},ib_has_continued_foreign:true,ib_has_social_science:true,ib_has_natural_science:true,ib_math_conflict:false,ib_total_points:{op:'gte',value:24},intake_index:{op:'gte',value:4051}};
+// Trade-off: the ordinary 12-year schooling duration threshold is not a rule
+// condition. The checker no longer collects reported school years (#49), so a
+// condition on that fact would make every complete IB diploma evaluate to
+// unknown. Duration stays guidance copy only; `ib_schooling` (full-time
+// ascending schooling type) remains a reviewed condition.
+const base:EngineRule['conditions']={curriculum:'ib',target_degree:'bachelor',ib_evidence:'v1',ib_document_status:{op:'in',value:['awarded','official_results']},ib_exam_session:{op:'in',value:['may','november']},ib_schooling:'ascending_full_time',ib_subject_count:6,ib_independent_subjects:true,ib_continuity:true,ib_all_subjects_recognized:true,ib_hl_count:{op:'gte',value:3},ib_language_count:{op:'gte',value:2},ib_has_continued_foreign:true,ib_has_social_science:true,ib_has_natural_science:true,ib_math_conflict:false,ib_total_points:{op:'gte',value:24},intake_index:{op:'gte',value:4051}};
 // Trade-off: automated intake coverage begins with this checker's 2025 horizon,
 // not a claimed KMK effective intake. Older intakes require separate review.
 const grades:{id:string;conditions:EngineRule['conditions'];quote:string}[]=[

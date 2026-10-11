@@ -279,7 +279,6 @@ describe('root-adopted contract3 decisive unknown witnesses',()=>{
    expect(d).toMatchObject({support:'path',status:c.status,reason:c.reason});
    expect(d!.facts).toContainEqual(c.fact);
   }
-  if(c.id.endsWith('years-missing'))expect(a.result.diagnostics?.filter(d=>d.followUp).map(d=>d.followUp)).toEqual([{key:'gce_school_years',question:'How many ascending school years did you complete?'}]);
  });
  it.each(PK_PREP_CONTROLS)('Pakistan group control $id',c=>{
   const profile=REVIEWED_CASES.find(row=>row.universe==='Pakistan'&&row.id===c.id)!.profile;
