@@ -22,7 +22,6 @@ import { currentAssessmentContext } from "@/lib/rules/current";
 import {
   generateCourseTasks,
   generateGlobalTasks,
-  generateProcessTasks,
   newGeneratedTaskRows,
   type ApplicationForTaskGeneration,
   type TargetIntake,
@@ -134,7 +133,7 @@ export async function materializeAllTasksForUser(
     db,
     userId,
     "rule:",
-    [...generateGlobalTasks(result),...generateProcessTasks(current?.process)],
+    generateGlobalTasks(result),
   );
 
   const applications = await listApplicationsWithCourses(db, userId);
