@@ -541,14 +541,20 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
       .eq("id", pendingCourseId);
     expect(data).toHaveLength(1);
 
-    // update is filtered by RLS (no update policy for non-admins) → 0 rows
-    const { data: updated, error } = await owner
+    // Promotion is rejected: the refresh policy's WITH CHECK keeps the row
+    // pending (PostgREST surfaces this as 42501). Either way no row changes.
+    const { data: updated } = await owner
       .from("courses")
       .update({ review_status: "approved" })
       .eq("id", pendingCourseId)
       .select("id");
-    expect(error).toBeNull();
-    expect(updated).toHaveLength(0);
+    expect(updated ?? []).toHaveLength(0);
+    const stored = await service
+      .from("courses")
+      .select("review_status")
+      .eq("id", pendingCourseId)
+      .single();
+    expect(stored.data?.review_status).toBe("pending");
   });
 
   it("owner refreshes research on own pending course but nobody else can", async () => {
@@ -561,14 +567,15 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     expect(error).toBeNull();
     expect(updated).toHaveLength(1);
 
+    // Denied writes change nothing whether PostgREST reports them as empty
+    // (RLS filter) or 42501 (missing grant): the row must be untouched.
     for (const client of [other, anon]) {
       const denied = await client
         .from("courses")
         .update({ description: "forged research" })
         .eq("id", pendingCourseId)
         .select("id");
-      expect(denied.error).toBeNull();
-      expect(denied.data).toHaveLength(0);
+      expect(denied.data ?? []).toHaveLength(0);
     }
 
     const stored = await service
