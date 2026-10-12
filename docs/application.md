@@ -168,7 +168,14 @@ nationality remain separate; no issuer mapping or academic exemption is added.
 Answered entry questions are skipped going forward, but remain available through
 Back. Academic questions precede visa context. Nationality (#50), the uni-assist
 filing route (#51) and the Saudi mission checklist (#52) are no longer asked;
-saved values round-trip unchanged through normalizeAnswers exclusions.
+saved values round-trip unchanged through normalizeAnswers exclusions. Intake
+options are computed from one server-provided current instant in the Berlin
+timezone against typical July 15 / January 15 planning cutoffs — old terms stop
+being suggested without a yearly code edit, while saved earlier intakes stay
+valid answers. Suggestions are labelled typical planning seasons, never official
+dates; a reviewed course-specific deadline stays authoritative for that course.
+The optional visa/funding context form is removed from the checker and profile
+review for this sprint (#53); stored process context still round-trips.
 Session drafts
 store the current question identity as well as the legacy numeric index; recovery
 stops at newly missing evidence. Degree links use separate draft keys, so selecting

@@ -6,7 +6,6 @@ import { useState, type ReactNode } from "react";
 
 import { ThemeToggle } from "@/components/app/theme-toggle";
 
-import {ProcessContextEditor} from "./process-context-editor";
 import { submitCheck } from "./actions";
 import styles from "./check.module.css";
 import { buildOptions, questionFor, type Option } from "./check-questions";
@@ -35,6 +34,8 @@ import {
 type ProfileReviewProps = {
   initialAnswers: PartialAnswers;
   userMenu?: ReactNode;
+  /** One server-provided current instant for date-based suggestions. */
+  todayIso?: string;
 };
 
 const QUESTIONS: Record<StepId, string> = {
@@ -108,7 +109,7 @@ const QUESTIONS: Record<StepId, string> = {
   intake: "Intake",
 };
 
-export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) {
+export function ProfileReview({ initialAnswers, userMenu, todayIso }: ProfileReviewProps) {
   const router = useRouter();
   const posthog = usePostHog();
   const [answers, setAnswers] = useState<PartialAnswers>(() => normalizeAnswers(upgradeSaudiAnswers({ ...PartialAnswersSchema.parse(initialAnswers), ...(initialAnswers.curriculumType === "gce" ? {gceVersion: 1 as const} : {}), qualificationGuidanceVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, ...(initialAnswers.curriculumType === 'ib' ? {ibVersion:1 as const} : {}), indiaStudyRouteVersion: 1, ...pakistanAnswerVersion(initialAnswers), jeeVersion: 2 })));
@@ -119,7 +120,7 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
 
   // One options source with the checker (the local copy predated the IB steps
   // and silently rendered them optionless).
-  const optionsFor = (stepId: StepId): Option[] => buildOptions(stepId, answers);
+  const optionsFor = (stepId: StepId): Option[] => buildOptions(stepId, answers, todayIso);
 
   function currentKey(stepId: StepId): string | undefined {
     const value = answers[stepId];
@@ -275,7 +276,6 @@ export function ProfileReview({ initialAnswers, userMenu }: ProfileReviewProps) 
           ))}
         </div>
 
-        <ProcessContextEditor answers={answers} onChange={setAnswers}/>
         {error ? <div className={styles.error}>{error}</div> : null}
 
         <button
