@@ -166,7 +166,10 @@ only for the Bachelor attendance step. Attendance, qualification issuer and
 nationality remain separate; no issuer mapping or academic exemption is added.
 
 Answered entry questions are skipped going forward, but remain available through
-Back. Academic questions precede nationality and visa context. Session drafts
+Back. Academic questions precede visa context. Nationality (#50), the uni-assist
+filing route (#51) and the Saudi mission checklist (#52) are no longer asked;
+saved values round-trip unchanged through normalizeAnswers exclusions.
+Session drafts
 store the current question identity as well as the legacy numeric index; recovery
 stops at newly missing evidence. Degree links use separate draft keys, so selecting
 Master cannot restore a Bachelor draft. Country edits survive under their original
@@ -922,8 +925,11 @@ unscoped rows cannot establish requirements or any global exemption. Old
 free-text APS documents/steps are suppressed until admin scope review.
 
 New checker flows use `apsScopeVersion: 1` and explicitly ask bachelor issuing
-qualification country/context, confirmed uni-assist application context and, for
-Saudi filing, whether the responsible mission's study checklist applies. Neither
+qualification country/context. The uni-assist filing route (#51) and the Saudi
+mission checklist (#52) are not asked: application scope keys only on the
+Indian national qualification, Saudi visa scope keys only on the Saudi issuer
+(checklist omission, never an exemption), and Indian visa scope keys on the
+Indian national qualification per the APS India FAQ. Neither
 citizenship, school attendance country, board nor visa country infers an issuer.
 Master's facts use only the merged `tertiaryQualification` issuer/country/context.
 Missing, international or unknown context stays unknown under these candidates.
@@ -1215,7 +1221,7 @@ publication, embedding, migration, provider or live database operation occurs.
 
 ### Ordinary GCE witness contract (UP-ELIG-01)
 
-The original `gceVersion: 1` contract collected actual ascending school years alongside qualification system (UK/British international versus national), AL/IAL or another certificate type and final/provisional/school-only evidence. #49 removes years only in new/restored/edit forms carrying `qualificationGuidanceVersion: 1`; the original duration-dependent recognition rules remain intact. No AL-to-12/13-year inference is permitted. Legacy results retain their original reports and diagnostics without invented years/context. Nationality, attendance country and visa jurisdiction stay separate.
+The original `gceVersion: 1` contract collected actual ascending school years alongside qualification system (UK/British international versus national), AL/IAL or another certificate type and final/provisional/school-only evidence. #49 removes years from new/restored/edit forms carrying `qualificationGuidanceVersion: 1`; the 12-year duration threshold was then removed from the GCE/IB draft candidates so complete certificates resolve to their reviewed paths again (subject-restricted/direct) instead of unknown. Duration remains guidance copy only, never an eligibility gate; the `qualificationScope` engine machinery is retained for legacy published rules that still condition on school years. No AL-to-12/13-year inference is permitted. Legacy results retain their original reports and diagnostics without invented years/context. Nationality is no longer asked (#50); attendance country and visa jurisdiction stay separate.
 
 The pure reviewed catalogue `lib/engine/gce.ts` supplies List A/B/C identities, pairwise exclusions, source URLs and body-specific Marine Science recognition. English/alias ambiguity is conservative. The evaluator enumerates complete three-full-AL witnesses and runs the existing matcher against each; grade/list/independence and all target conditions must pass on the same witness. Extra low or unused vocational subjects cannot invalidate a valid ordinary trio. Non-GCE/process matching and outcome resolution are unchanged. Unknown diagnostics compare published conditions rather than encoding acceptance thresholds in code; their citation claims describe the failed criteria, not the unmatched positive outcome.
 
