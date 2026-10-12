@@ -1,5 +1,4 @@
 "use client";
-import {ProcessContextEditor} from "./process-context-editor";
 
 import { z } from "zod";
 
@@ -40,6 +39,8 @@ type CheckFlowProps = {
   initialStepIndex?: number;
   userMenu?: ReactNode;
   entryDegree?: "bachelor" | "master";
+  /** One server-provided current instant for date-based suggestions. */
+  todayIso?: string;
 };
 
 const SavedCheckStateSchema = z.object({
@@ -57,6 +58,7 @@ export function CheckFlow({
   initialStepIndex,
   userMenu,
   entryDegree,
+  todayIso,
 }: CheckFlowProps) {
   const router = useRouter();
   const posthog = usePostHog();
@@ -180,7 +182,7 @@ export function CheckFlow({
   }, [answers, restored]);
 
   function optionsFor(stepId: StepId): Option[] {
-    return buildOptions(stepId, answers);
+    return buildOptions(stepId, answers, todayIso);
   }
 
   function currentKey(stepId: StepId): string | undefined {
@@ -387,7 +389,6 @@ export function CheckFlow({
           </div>
         )}
 
-        {isLast&&<ProcessContextEditor answers={answers} onChange={setAnswers}/>}
         {error && <div className={styles.error}>{error}</div>}
 
         <button

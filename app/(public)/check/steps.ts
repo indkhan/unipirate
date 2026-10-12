@@ -86,11 +86,57 @@ export const BOARDS = [
   { id: "private_school", label: "Private-school certificate", country: "sa" },
 ] as const;
 
-export const INTAKE_OPTIONS = [
-  { term: "winter", year: 2026, label: "Winter 2026/27" },
-  { term: "summer", year: 2027, label: "Summer 2027" },
-  { term: "winter", year: 2027, label: "Winter 2027/28" },
-] as const;
+export type IntakeTerm = "winter" | "summer";
+export type IntakeSuggestion = { term: IntakeTerm; year: number; label: string };
+
+export function intakeLabel(term: IntakeTerm, year: number): string {
+  return term === "winter" ? `Winter ${year}/${String(year + 1).slice(2)}` : `Summer ${year}`;
+}
+
+// Typical planning cutoffs behind intake suggestions: winter applications are
+// typically due around July 15, summer ones around January 15. These seasons
+// are planning hints, never official opening/closing dates — a reviewed,
+// applicable course-specific deadline stays authoritative for that course.
+const INTAKE_CUTOFF: Record<IntakeTerm, { month: number; day: number }> = {
+  summer: { month: 1, day: 15 },
+  winter: { month: 7, day: 15 },
+};
+
+function berlinYearMonthDay(iso: string): { year: number; month: number; day: number } {
+  const instant = new Date(iso);
+  if (Number.isNaN(instant.getTime())) throw new Error("suggestIntakes needs a valid current instant");
+  const [year, month, day] = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(instant).split("-").map(Number);
+  return { year, month, day };
+}
+
+/**
+ * Next `count` upcoming intakes after one server-provided current instant,
+ * using the application's Berlin timezone. An intake is suggested while its
+ * typical cutoff has not passed; saved earlier intakes stay valid answers,
+ * they are just no longer suggested for new applications.
+ */
+export function suggestIntakes(todayIso: string, count = 3): IntakeSuggestion[] {
+  const today = berlinYearMonthDay(todayIso);
+  const suggestions: IntakeSuggestion[] = [];
+  let term: IntakeTerm = "summer";
+  let year = today.year;
+  for (;;) {
+    const cutoff = INTAKE_CUTOFF[term];
+    const upcoming = year > today.year ||
+      (today.month < cutoff.month || (today.month === cutoff.month && today.day <= cutoff.day));
+    if (upcoming) {
+      suggestions.push({ term, year, label: intakeLabel(term, year) });
+      if (suggestions.length >= count) return suggestions;
+    }
+    if (term === "summer") term = "winter";
+    else { term = "summer"; year += 1; }
+  }
+}
 
 // ------------------------------------------------------------------- answers
 

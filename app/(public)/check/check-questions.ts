@@ -3,7 +3,7 @@ import {
   BOARDS,
   nationalSchoolCountry,
   COUNTRIES,
-  INTAKE_OPTIONS,
+  suggestIntakes,
   TARGET_FIELDS,
   isIndiaStudyBranch, isSaudiStudyBranch, isSaudiDegreeBranch, isPakistanBranch,
   type PartialAnswers,
@@ -170,7 +170,7 @@ export const QUESTIONS: Record<StepId, { question: string; subtitle?: string; so
       "Analysis and Approaches or Applications and Interpretation. This helps assess your subject scope.",
   },
   targetField: { question: "What do you want to study?" },
-  intake: { question: "When do you want to start?" },
+  intake: { question: "When do you want to start?", subtitle: "Suggested terms are typical planning seasons, not official deadlines. The university's course page carries the binding dates for your course." },
 };
 
 const countryOptions = COUNTRIES.map((c) => ({
@@ -180,8 +180,9 @@ const countryOptions = COUNTRIES.map((c) => ({
 }));
 
 /** The selectable options for a single-choice step. Grade/subject steps render
- * their own bespoke inputs and return []. */
-export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] {
+ * their own bespoke inputs and return []. `todayIso` is the one server-provided
+ * current instant (Berlin timezone inside); it defaults to now for tests. */
+export function buildOptions(stepId: StepId, answers: PartialAnswers, todayIso: string = new Date().toISOString()): Option[] {
   const options=(entries:readonly (readonly [string,string])[])=>entries.map(([value,label])=>({value,key:value,label}));
   switch (stepId) {
     case "saudiNationalCategory": return [["general_certificate","General Secondary Education Certificate"],["general_transcript","General Secondary Education Transcript"],["graduation_certificate","Secondary School Graduation Certificate"],["unknown","Cannot confirm this documentary category"]].map(([value,label])=>({value,key:value,label}));
@@ -402,7 +403,7 @@ export function buildOptions(stepId: StepId, answers: PartialAnswers): Option[] 
       }));
     case "intake":
       return [
-        ...INTAKE_OPTIONS.map((o) => ({
+        ...suggestIntakes(todayIso).map((o) => ({
           value: { term: o.term, year: o.year },
           label: o.label,
           key: `${o.term}-${o.year}`,

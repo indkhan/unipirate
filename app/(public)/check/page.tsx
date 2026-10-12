@@ -35,6 +35,7 @@ export default async function CheckPage({
       initialAnswers={initialAnswers}
       entryDegree={initialAnswers.targetDegree}
       userMenu={userMenu}
+      todayIso={new Date().toISOString()}
     />
   );
 }
