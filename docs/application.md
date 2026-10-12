@@ -395,18 +395,36 @@ There is no migration, DB publication, seed or KB rebuild in this change.
 
 ### 2. Course import & review
 
-1. A user pastes a course URL, programme/university identity and the page's
-   Ctrl+A text into the add-course sheet → `POST /api/courses/import`.
-   DAAD's hidden tabs are not included by Ctrl+A: the sheet instructs users
-   to append the overview, requirements and fees tabs. The deterministic
-   parser supports both legacy and current labels, preserves complete
-   source sections, and stops at contact/footer boundaries.
+1. New imports accept an HTTPS DAAD International Programmes detail URL and
+   the full Ctrl+A page text only → `POST /api/courses/import`. The URL uses
+   the exact `www2.daad.de`, `www.daad.de` or `daad.de` host and
+   `/deutschland/studienangebote/international-programmes/en|de/detail/<id>`
+   path; lookalikes and arbitrary paths cannot create entries. Saved non-DAAD
+   courses remain available through lookup/tracking. No separate name fields
+   are requested. Pure `parseDaadIdentity` reads adjacent literal programme/
+   university heading pairs (including split city bullets); repeated identical
+   pairs are allowed; captured navigation/header labels cannot supply a missing
+   programme heading. Missing or competing pairs require a full recopy before
+   any write. Input is Zod/byte-bounded, with a 200-character minimum and
+   200,000-character maximum paste. Exact original URL and full paste survive
+   in `source_url` and `field_extraction.research.paste`; identity parsing does
+   not infer requirements, fees or deadlines.
 2. `normalizeUrl` canonicalizes DAAD language variants to one URL for
    dedupe. An existing course is linked to the user's dashboard instead of
    re-imported; a colliding pending import from another user surfaces as
    409 via the unique index.
-3. Research runs even for a completely parsed paste. The DAAD parser provides
-   manual fallback, never a completeness decision. `lib/ai/research-course.ts`
+3. The import adapter saves meaningful pending identity/source, establishes an
+   owned application via `trackCourse`, then calls the single #60
+   `enqueueResearch(db,userId,{applicationId,courseId})` contract. It never
+   calls inference synchronously. Responses expose `applicationId` and
+   `researchQueued`, `researchJobId` and the actual `researchState` for #58's
+   separate dashboard/progress UI. Retrying a pending import reuses its owned
+   course/application and reattempts the same enqueue contract; approved
+   lookup/tracking does not start redundant research. An enqueue
+   failure retains the saved course/application and reports a research error,
+   separately from recopy and persistence errors. Update submissions retain
+   the visible same-URL `conflicts_with` target and never rewrite its tasks.
+   The worker performs research even for a complete paste. `lib/ai/research-course.ts`
    uses the existing Tavily HTTP API and configured OpenRouter extraction model
    in a fixed workflow (three searches, at most three extraction batches, one
    structured generation, no retries, 90-second total abort). Search begins on
