@@ -217,12 +217,12 @@ implements #49; issues #50–#53 retain their separate flow and intake work.
    are materialized immediately.
 4. `/result/[id]` is public to anyone holding the UUID. `get_shared_check`
    returns only that UUID's shareable columns; table collection reads and
-   browser writes are forbidden. The page validates stored answers and
-   displays the original protected server assessment with exact immutable inputs.
-   A separate current reassessment uses the same validated saved answers and a new
-   server instant. NULL/malformed provenance or missing exact references yields
-   original provenance unavailable; legacy verdict JSON is never promoted. Original
-   answers/result/history are never rewritten. Sharing still exposes answers to UUID holders; consent,
+   browser writes are forbidden. The page validates stored answers and shows
+   only the current assessment evaluated from them at a new server instant —
+   no original/comparison panels, raw engine metadata, ISO assessment dumps or
+   visa/funding guidance (#54). Original answers/result/history stay stored on
+   the check row as audit provenance and are never rewritten or rendered.
+   Sharing still exposes answers to UUID holders; consent,
    expiry and revocation remain backlog work. The `result_viewer`
    DB function tells the page whether the request is the anonymous owner,
    the claimed owner, or the public; the page adapts its banners and CTA.
