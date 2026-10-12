@@ -598,9 +598,9 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   // scope keys only on the Indian national qualification, so the filing route
   // is never an eligibility gate. Saved apsApplicationContext values are kept
   // out of normalizeAnswers so legacy checks round-trip unchanged.
-  if (answers.apsScopeVersion === 1) {
-    if (answers.visaApplicationCountry === "sa") steps.push("visaMissionContext");
-  }
+  // Trade-off: the Saudi mission-filing question is not asked (#52). Saudi
+  // visa scope keys on the qualification issuer; saved visaMissionContext
+  // values round-trip unchanged out of normalizeAnswers.
   if (isSaudiDegreeBranch(answers)) steps.push("priorQualificationContext");
   if ((isIndiaStudyBranch(answers) || isSaudiStudyBranch(answers) || isSaudiDegreeBranch(answers)) && answers.hasPriorUniversityStudy === true && answers.priorQualificationType === "bachelor") {
     steps.push("priorStudyMode", "priorStudyRecognition");

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { EngineRuleSchema } from '../evaluate';
 import { evaluateAssessment, parseStoredAssessment, compareAssessments } from '@/lib/rules/assessment';
 import { RuleVersionSchema, RawRuleSchema } from '@/lib/rules/versioning';
-import { RULE_UNIVERSES, REVIEWED_CASES, SOCIAL_CASES, APS_PROFILES, socialEconomics, WINNING_PATH_SOURCES, ROUTE_CERTIFICATE_UNKNOWN, ROUTE_CERTIFICATE_MISSING, ROUTE_CERTIFICATE_HELD, INDIA_FLAGS, APS_INVENTORY, APS_ADDITIONAL, APS_SUPPORT, DMAT_SUPPORT, GCE_SHARED_CONTROLS, PK_PREP_CONTROLS, DIAGNOSTIC_CONTROLS, POSITIVE_FACTS, ROUTE_MEMBERSHIP, NEGATIVE_REPORT_MEMBERSHIP } from './up-test-01.assessment-cases.fixture';
+import { RULE_UNIVERSES, REVIEWED_CASES, SOCIAL_CASES, APS_PROFILES, socialEconomics, WINNING_PATH_SOURCES, ROUTE_CERTIFICATE_UNKNOWN, ROUTE_CERTIFICATE_MISSING, ROUTE_CERTIFICATE_HELD, INDIA_FLAGS, INDIA_FLAGS_INDIAN_ISSUER, APS_INVENTORY, APS_ADDITIONAL, APS_SUPPORT, DMAT_SUPPORT, GCE_SHARED_CONTROLS, PK_PREP_CONTROLS, DIAGNOSTIC_CONTROLS, POSITIVE_FACTS, ROUTE_MEMBERSHIP, NEGATIVE_REPORT_MEMBERSHIP } from './up-test-01.assessment-cases.fixture';
 import { simulatedPublication, publicationIdentity, originalIdentity, selectedRule, TEST_CONTEXT, TEST_PUBLICATION_AT, TEST_REVIEWER, FINAL_BASE_SHA } from './up-test-01.publication.fixture';
 import { REVIEWED_SOURCES, LOGICAL_SOURCES, UNIVERSE_LOGICAL_IDS, LEGACY_SOURCES, IB_ACADEMIC_CANDIDATES, UNKNOWN_REVIEW_PATH_IDS, UNKNOWN_REVIEW_PATH_SOURCES } from './up-test-01.sources.fixture';
 import { indianStudyProfile, historyChange } from './india-study.fixture';
@@ -67,15 +67,20 @@ describe('UP-TEST-01 final immutable activation on base53e (TEST ONLY publicatio
     const versions=simulatedPublication(rules);
     const before=JSON.stringify({profile:c.profile,rules,versions});
     const a=evaluateAssessment(c.profile,versions,TEST_CONTEXT);
-    const flags=c.universe==='India'?INDIA_FLAGS:c.profile.hasExistingApsCertificate===true?ROUTE_CERTIFICATE_HELD:c.profile.hasExistingApsCertificate===false?ROUTE_CERTIFICATE_MISSING:ROUTE_CERTIFICATE_UNKNOWN;
+    const indianIssuer = c.profile.schoolQualification?.country==='in' && c.profile.schoolQualification?.context==='national';
+    const flags=c.universe==='India'?(indianIssuer?INDIA_FLAGS_INDIAN_ISSUER:INDIA_FLAGS):c.profile.hasExistingApsCertificate===true?ROUTE_CERTIFICATE_HELD:c.profile.hasExistingApsCertificate===false?ROUTE_CERTIFICATE_MISSING:ROUTE_CERTIFICATE_UNKNOWN;
     expect(a.result,c.id).toMatchObject({...flags,dMAT:c.dMAT??'unknown'});
     expect(a.result.institutionRestriction).toBe(c.fh?'fachhochschule':undefined);
     expect(ids(a.result.apsRuleIds??[])).toEqual(c.universe==='India'?[...APS_INVENTORY].sort():[]);
     if(c.universe==='India') {
-      expect(ids(a.result.citations.filter(x=>x.supports.includes('aps:qualification')).map(x=>x.ruleId))).toEqual(['aps-scoped-qualification']);
-      expect(a.result.citations.filter(x=>x.supports.includes('aps:application')||x.supports.includes('aps:visa'))).toEqual([]);
+      expect(ids(a.result.citations.filter(x=>x.supports.includes('aps:qualification')).map(x=>x.ruleId))).toEqual(indianIssuer?['aps-scoped-qualification']:[]);
+      expect(a.result.citations.filter(x=>x.supports.includes('aps:application')||x.supports.includes('aps:visa'))).toEqual(indianIssuer?expect.any(Array):[]);
+      if (indianIssuer) {
+        expect(a.result.citations.some(x=>x.supports.includes('aps:application'))).toBe(true);
+        expect(a.result.citations.some(x=>x.supports.includes('aps:visa'))).toBe(true);
+      }
       expect(a.result.documents).toContain('APS India certificate');
-      expect(a.result.stepsDetailed.some(s=>s.acquisition)).toBe(false);
+      expect(a.result.stepsDetailed.some(s=>s.acquisition)).toBe(indianIssuer);
     }
     if(c.path!==undefined)expect(a.result.path,c.reviewedIn).toBe(c.path);
     if(c.path==='unknown') {

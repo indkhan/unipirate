@@ -92,7 +92,11 @@ export const ruleData: RuleRecord[] = [
   },
   {
     id: "aps-scoped-visa-sa", country: "sa",
-    conditions: { visa_application_country: "sa", visa_mission_context: "saudi_study" },
+    // Trade-off: Saudi visa scope keys on the qualification issuer (#52), not
+    // on the mission-filing question. APS is not listed on the Saudi study
+    // checklist as an observation, never an exemption; the mission may still
+    // request additional documents.
+    conditions: { aps_issuer_country: "sa" },
     outcomes: { aps_scopes: { visa: { value: "not_listed" } }, note: "Reviewed the complete Prepare your application checklist and following insurance/translation notes on 2026-10-07: APS is not listed. This omission is our checklist observation, not an official exemption statement. The mission may request additional documents." },
     status: "draft", source_url: "https://saudiarabien.diplo.de/ksa-en/visa-service/study-preparatory-courses-2195208",
     source_quote: "high school graduation certificate and, if applicable, Bachelor/Master certificates with detailed transcript of grades [...] request additional documents",
@@ -107,6 +111,14 @@ export const ruleData: RuleRecord[] = [
     status: "draft", source_url: "https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/",
     source_quote: "your APS certificate [...] Upload the digitally sealed APS certificate as an unchanged, original file to your MyAssist account.",
     last_verified_at: "2026-10-07T00:00:00Z",
+  },
+  {
+    id: "aps-scoped-visa-in", country: "in",
+    conditions: { aps_issuer_country: "in", aps_qualification_context: "national" },
+    outcomes: { aps_scopes: { visa: { value: "required", documents: ["APS India certificate"] } } },
+    status: "draft", source_url: "https://aps-india.de/faqs/",
+    source_quote: "The APS certificate is generally required as part of the documentation for the German student visa procedure.",
+    last_verified_at: "2026-10-12T00:00:00Z",
   },
   // ---------------------------------------------------------------- India
   {

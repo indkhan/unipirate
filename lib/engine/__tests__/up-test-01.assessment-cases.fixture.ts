@@ -99,12 +99,12 @@ for (const [schoolGradePercent,path] of [[69.99,'insufficient'],[70,'unknown'],[
 REVIEWED_CASES.push({id:'APS-confirmation-missing',universe:'transition',reviewedIn:'aps-transition.test.ts',profile:transition,path:'unknown'});
 // Full process flags remain separately asserted below; no admission fact inferred.
 export const APS_PROFILES = [
-  {id:'Indian-qualification-Saudi-visa',profile:officialIndianProfile,scopes:{qualification:'required',application:'required',visa:'not_listed'},certificate:'missing'},
-  {id:'held',profile:{...officialIndianProfile,hasExistingApsCertificate:true},scopes:{qualification:'required',application:'required',visa:'not_listed'},certificate:'held'},
-  {id:'certificate-unknown',profile:{...officialIndianProfile,hasExistingApsCertificate:undefined},scopes:{qualification:'required',application:'required',visa:'not_listed'},certificate:'unknown'},
-  {id:'mission-missing',profile:{...officialIndianProfile,visaMissionContext:undefined},scopes:{qualification:'required',application:'required',visa:'unknown'},certificate:'missing'},
-  {id:'issuer-missing',profile:{...officialIndianProfile,schoolQualification:undefined},scopes:{qualification:'unknown',application:'unknown',visa:'not_listed'},certificate:'missing'},
-  {id:'international',profile:{...officialIndianProfile,schoolQualification:{country:'in',context:'international' as const}},scopes:{qualification:'unknown',application:'unknown',visa:'not_listed'},certificate:'missing'},
+  {id:'Indian-qualification-Saudi-visa',profile:officialIndianProfile,scopes:{qualification:'required',application:'required',visa:'required'},certificate:'missing'},
+  {id:'held',profile:{...officialIndianProfile,hasExistingApsCertificate:true},scopes:{qualification:'required',application:'required',visa:'required'},certificate:'held'},
+  {id:'certificate-unknown',profile:{...officialIndianProfile,hasExistingApsCertificate:undefined},scopes:{qualification:'required',application:'required',visa:'required'},certificate:'unknown'},
+  {id:'mission-missing',profile:{...officialIndianProfile,visaMissionContext:undefined},scopes:{qualification:'required',application:'required',visa:'required'},certificate:'missing'},
+  {id:'issuer-missing',profile:{...officialIndianProfile,schoolQualification:undefined},scopes:{qualification:'unknown',application:'unknown',visa:'unknown'},certificate:'missing'},
+  {id:'international',profile:{...officialIndianProfile,schoolQualification:{country:'in',context:'international' as const}},scopes:{qualification:'unknown',application:'unknown',visa:'unknown'},certificate:'missing'},
 ] as const;
 // dMAT dedicated dates, semesters and exemptions; exact published literals.
 for (const event of ['registration','dispatch'] as const) for (const [date,dMAT] of [['2026-06-28','not_required'],['2026-06-29','required'],['2026-06-30','required']] as const)
@@ -455,7 +455,8 @@ export const ROUTE_CERTIFICATE_UNKNOWN = {aps:'unknown',apsScopes:{qualification
 export const ROUTE_CERTIFICATE_MISSING = {...ROUTE_CERTIFICATE_UNKNOWN,apsCertificate:'missing'} as const;
 export const ROUTE_CERTIFICATE_HELD = {...ROUTE_CERTIFICATE_UNKNOWN,apsCertificate:'held'} as const;
 export const INDIA_FLAGS = {...ROUTE_CERTIFICATE_MISSING,aps:'required',apsScopes:{qualification:'required',application:'unknown',visa:'unknown'}} as const;
-export const APS_INVENTORY = ['aps-scoped-qualification','aps-scoped-application','aps-scoped-visa-sa','aps-scoped-acquisition'];
+export const INDIA_FLAGS_INDIAN_ISSUER = {...ROUTE_CERTIFICATE_MISSING,aps:'required',apsScopes:{qualification:'required',application:'required',visa:'required'}} as const;
+export const APS_INVENTORY = ['aps-scoped-qualification','aps-scoped-application','aps-scoped-visa-sa','aps-scoped-visa-in','aps-scoped-acquisition'];
 export const ORIGINAL_REVIEWED_CASE_COUNT = 316;
 
 // Bounded witnesses approved in expected-contract3; never a criteria-derived oracle.
@@ -624,22 +625,22 @@ for(const event of ['registration','dispatch'] as const) {
 }
 REVIEWED_CASES.push(...dmatVariants.map(c=>({...c,universe:'dMAT' as const,reviewedIn:'dmat.test.ts + '+contract3})));
 export const APS_ADDITIONAL = [
- {id:'master-Indian',profile:{...officialIndianProfile,targetDegree:'master',schoolQualification:undefined,tertiaryQualification:{issuer:'Indian university',country:'in',context:'national'}},scopes:{qualification:'unknown',application:'required',visa:'not_listed'},certificate:'missing',aps:'required'},
- {id:'master-Saudi',profile:{...officialIndianProfile,targetDegree:'master',tertiaryQualification:{issuer:'Saudi university',country:'sa',context:'national'}},scopes:{qualification:'unknown',application:'unknown',visa:'not_listed'},certificate:'missing',aps:'unknown'},
- {id:'school-Saudi',profile:{...officialIndianProfile,nationality:'in',schoolQualification:{country:'sa',context:'national'}},scopes:{qualification:'unknown',application:'unknown',visa:'not_listed'},certificate:'missing',aps:'unknown'},
- {id:'context-unknown',profile:{...officialIndianProfile,schoolQualification:{country:'in',context:'unknown'}},scopes:{qualification:'unknown',application:'unknown',visa:'not_listed'},certificate:'missing',aps:'unknown'},
+  {id:'master-Indian',profile:{...officialIndianProfile,targetDegree:'master',schoolQualification:undefined,tertiaryQualification:{issuer:'Indian university',country:'in',context:'national'}},scopes:{qualification:'unknown',application:'required',visa:'required'},certificate:'missing',aps:'required'},
+  {id:'master-Saudi',profile:{...officialIndianProfile,targetDegree:'master',tertiaryQualification:{issuer:'Saudi university',country:'sa',context:'national'}},scopes:{qualification:'unknown',application:'unknown',visa:'not_listed'},certificate:'missing',aps:'unknown'},
+  {id:'school-Saudi',profile:{...officialIndianProfile,nationality:'in',schoolQualification:{country:'sa',context:'national'}},scopes:{qualification:'unknown',application:'unknown',visa:'not_listed'},certificate:'missing',aps:'unknown'},
+  {id:'context-unknown',profile:{...officialIndianProfile,schoolQualification:{country:'in',context:'unknown'}},scopes:{qualification:'unknown',application:'unknown',visa:'unknown'},certificate:'missing',aps:'unknown'},
 ] as const;
 export const APS_SUPPORT: Record<string,{qualification:string[];application:string[];visa:string[];aps:'required'|'unknown';documents:string[];acquisition:boolean}>={
- 'Indian-qualification-Saudi-visa':{qualification:['aps-scoped-qualification'],application:['aps-scoped-application','aps-scoped-acquisition'],visa:['aps-scoped-visa-sa'],aps:'required',documents:['APS India certificate'],acquisition:true},
- 'held':{qualification:['aps-scoped-qualification'],application:['aps-scoped-application','aps-scoped-acquisition'],visa:['aps-scoped-visa-sa'],aps:'required',documents:['APS India certificate'],acquisition:false},
- 'certificate-unknown':{qualification:['aps-scoped-qualification'],application:['aps-scoped-application','aps-scoped-acquisition'],visa:['aps-scoped-visa-sa'],aps:'required',documents:['APS India certificate'],acquisition:false},
- 'mission-missing':{qualification:['aps-scoped-qualification'],application:['aps-scoped-application','aps-scoped-acquisition'],visa:[],aps:'required',documents:['APS India certificate'],acquisition:true},
- 'issuer-missing':{qualification:[],application:[],visa:['aps-scoped-visa-sa'],aps:'unknown',documents:[],acquisition:false},
- 'international':{qualification:[],application:[],visa:['aps-scoped-visa-sa'],aps:'unknown',documents:[],acquisition:false},
- 'master-Indian':{qualification:[],application:['aps-scoped-application','aps-scoped-acquisition'],visa:['aps-scoped-visa-sa'],aps:'required',documents:['APS India certificate'],acquisition:true},
+ 'Indian-qualification-Saudi-visa':{qualification:['aps-scoped-qualification'],application:['aps-scoped-application','aps-scoped-acquisition'],visa:['aps-scoped-visa-in'],aps:'required',documents:['APS India certificate'],acquisition:true},
+ 'held':{qualification:['aps-scoped-qualification'],application:['aps-scoped-application','aps-scoped-acquisition'],visa:['aps-scoped-visa-in'],aps:'required',documents:['APS India certificate'],acquisition:false},
+ 'certificate-unknown':{qualification:['aps-scoped-qualification'],application:['aps-scoped-application','aps-scoped-acquisition'],visa:['aps-scoped-visa-in'],aps:'required',documents:['APS India certificate'],acquisition:false},
+ 'mission-missing':{qualification:['aps-scoped-qualification'],application:['aps-scoped-application','aps-scoped-acquisition'],visa:['aps-scoped-visa-in'],aps:'required',documents:['APS India certificate'],acquisition:true},
+ 'issuer-missing':{qualification:[],application:[],visa:[],aps:'unknown',documents:[],acquisition:false},
+ 'international':{qualification:[],application:[],visa:[],aps:'unknown',documents:[],acquisition:false},
+ 'master-Indian':{qualification:[],application:['aps-scoped-application','aps-scoped-acquisition'],visa:['aps-scoped-visa-in'],aps:'required',documents:['APS India certificate'],acquisition:true},
  'master-Saudi':{qualification:[],application:[],visa:['aps-scoped-visa-sa'],aps:'unknown',documents:[],acquisition:false},
  'school-Saudi':{qualification:[],application:[],visa:['aps-scoped-visa-sa'],aps:'unknown',documents:[],acquisition:false},
- 'context-unknown':{qualification:[],application:[],visa:['aps-scoped-visa-sa'],aps:'unknown',documents:[],acquisition:false},
+ 'context-unknown':{qualification:[],application:[],visa:[],aps:'unknown',documents:[],acquisition:false},
 };
 
 // Literal meaningful diagnostic subsets from contract3. Other independent facts may coexist.

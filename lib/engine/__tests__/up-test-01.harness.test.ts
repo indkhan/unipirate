@@ -98,9 +98,9 @@ describe(`UP-TEST-01 harness ${HARNESS_VERSION}`, () => {
 
   it("UP-ELIG-05 activates official scoped APS expectations on draft copies only", () => {
     const r = evaluate(officialIndianProfile, officialApsRules());
-    expect(r.apsScopes).toEqual({qualification: "required", application: "required", visa: "not_listed"});
+    expect(r.apsScopes).toEqual({qualification: "required", application: "required", visa: "required"});
     expect(evaluate({...officialIndianProfile, schoolQualification: undefined}, officialApsRules()).apsScopes?.application).toBe("unknown");
-    expect(evaluate({...officialIndianProfile, visaMissionContext: undefined}, officialApsRules()).apsScopes?.visa).toBe("unknown");
+    expect(evaluate({...officialIndianProfile, visaMissionContext: undefined}, officialApsRules()).apsScopes?.visa).toBe("required");
   });
 
   it("version, cited sources, and future-spec index", () => {
