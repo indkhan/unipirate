@@ -594,8 +594,11 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   ) {
     steps.push("hasExistingApsCertificate");
   }
+  // Trade-off: the uni-assist/VPD question is not asked (#51). APS application
+  // scope keys only on the Indian national qualification, so the filing route
+  // is never an eligibility gate. Saved apsApplicationContext values are kept
+  // out of normalizeAnswers so legacy checks round-trip unchanged.
   if (answers.apsScopeVersion === 1) {
-    steps.push("apsApplicationContext");
     if (answers.visaApplicationCountry === "sa") steps.push("visaMissionContext");
   }
   if (isSaudiDegreeBranch(answers)) steps.push("priorQualificationContext");
@@ -839,7 +842,7 @@ export function normalizeAnswers<T extends PartialAnswers>(answers: T): T {
       for (const key of [...HISTORY_STEPS, ...INDIA_STUDY_STEPS, ...SAUDI_DEGREE_STEPS]) visible.add(key);
     }
     for (const key of Object.keys(next)) {
-      if (key !== "qualificationGuidanceVersion" && key !== "processContext" && key !== "pkStudyEvidenceVersion" && key !== "pakistanVersion" && key !== "saudiBachelorVersion" && key !== "saudiCertificateVersion" && key !== "jeeVersion" && key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && !visible.has(key)) {
+      if (key !== "qualificationGuidanceVersion" && key !== "processContext" && key !== "pkStudyEvidenceVersion" && key !== "pakistanVersion" && key !== "saudiBachelorVersion" && key !== "saudiCertificateVersion" && key !== "jeeVersion" && key !== "qualificationHistoryVersion" && key !== "apsScopeVersion" && key !== "apsTransitionVersion" && key !== "dmatVersion" && key !== "indiaStudyRouteVersion" && key !== "gceVersion" && key !== "ibVersion" && key !== "nationality" && key !== "apsApplicationContext" && key !== "visaMissionContext" && !visible.has(key)) {
         delete next[key as StepId];
         changed = true;
       }

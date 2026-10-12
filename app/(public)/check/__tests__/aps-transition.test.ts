@@ -16,6 +16,12 @@ describe("APS transition input contract", () => {
     if (!parsed.success) return;
     expect(deriveFacts(buildProfile(parsed.data)).aps_confirmed_submission_day).toBe(20260314);
   });
+  it("never asks the uni-assist filing-route question", () => {
+    expect(visibleSteps(current as PartialAnswers)).not.toContain("apsApplicationContext");
+    const withoutRoute = {...current} as PartialAnswers;
+    delete withoutRoute.apsApplicationContext;
+    expect(visibleSteps(withoutRoute)).not.toContain("apsApplicationContext");
+  });
   it("asks only applicable progressive questions", () => {
     expect(visibleSteps(current as PartialAnswers)).toContain("apsSubmissionDate");
     expect(visibleSteps({...current, apsSubmissionConfirmation: "unknown"} as PartialAnswers)).not.toContain("apsSubmissionDate");

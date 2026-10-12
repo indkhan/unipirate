@@ -79,7 +79,12 @@ export const ruleData: RuleRecord[] = [
   },
   {
     id: "aps-scoped-application", country: "in",
-    conditions: { aps_issuer_country: "in", aps_qualification_context: "national", aps_application_context: "uni_assist" },
+    // Trade-off: APS application scope is keyed only on the Indian national
+    // qualification, not on a uni-assist/VPD filing route (#51). The APS India
+    // certificate is required as part of the German student visa procedure for
+    // Indian nationals regardless of the admissions platform, so the filing-
+    // route question is never an eligibility gate.
+    conditions: { aps_issuer_country: "in", aps_qualification_context: "national" },
     outcomes: { aps_scopes: { application: { value: "required", documents: ["APS India certificate"] } } },
     status: "draft", source_url: "https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/",
     source_quote: "your APS certificate (from the Academic Evaluation Centre, https://aps-india.de/)",
@@ -95,7 +100,9 @@ export const ruleData: RuleRecord[] = [
   },
   {
     id: "aps-scoped-acquisition", country: "in",
-    conditions: { aps_issuer_country: "in", aps_qualification_context: "national", aps_application_context: "uni_assist" },
+    // Trade-off: keyed only on the Indian national qualification, not on a
+    // uni-assist/VPD filing route (#51); see aps-scoped-application.
+    conditions: { aps_issuer_country: "in", aps_qualification_context: "national" },
     outcomes: { aps_scopes: { application: { value: "required", steps: [{ order: 10, text: "Obtain your APS certificate for your uni-assist application; preserve the digitally sealed certificate as an unchanged, original file.", acquisition: true }] } } },
     status: "draft", source_url: "https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/",
     source_quote: "your APS certificate [...] Upload the digitally sealed APS certificate as an unchanged, original file to your MyAssist account.",

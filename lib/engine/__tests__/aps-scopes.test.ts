@@ -20,6 +20,12 @@ describe("UP-ELIG-05 official scoped APS acceptance", () => {
     expect(result.citations.some(c => c.supports.includes("aps:application") && c.sourceUrl.includes("uni-assist.de"))).toBe(true);
     expect(generateGlobalTasks(result).map(t => t.key)).toContain("rule:aps-scoped-acquisition:step:10");
   });
+  it("requires APS application for Indian national qualifications without a uni-assist answer", () => {
+    const withoutRoute = {...officialIndianProfile, apsApplicationContext: undefined};
+    const result = evaluate(withoutRoute, officialApsRules());
+    expect(result.apsScopes?.application).toBe("required");
+    expect(result.citations.some(c => c.supports.includes("aps:application"))).toBe(true);
+  });
   it("never infers an Indian issuer from nationality, school location, or board", () => {
     for (const profile of [
       { ...officialIndianProfile, nationality: "in", schoolQualification: undefined, certificateCountry: "in", board: "cbse" },
