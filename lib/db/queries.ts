@@ -100,6 +100,31 @@ export async function removeMyCourse(
   unwrap(await db.rpc("remove_my_course", { course_id: id }));
 }
 
+/**
+ * Refresh research facts on the importer's own pending course after a
+ * save-first import (#58). Identity, ownership and review state are never
+ * touched here; RLS additionally limits writes to own pending rows.
+ */
+export async function updateCourseResearch(
+  db: Db,
+  courseId: string,
+  userId: string,
+  patch: Pick<
+    Tables<"courses">,
+    "location" | "degree" | "language" | "description" | "deadlines" | "requirements" | "tuition" | "extraction_method" | "field_extraction"
+  >,
+): Promise<void> {
+  unwrap(
+    await db
+      .from("courses")
+      .update(patch)
+      .eq("id", courseId)
+      .eq("imported_by", userId)
+      .select("id")
+      .single(),
+  );
+}
+
 // ----------------------------------------------------------------- profile
 
 export async function getProfile(

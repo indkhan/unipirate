@@ -1,7 +1,7 @@
 import {createClient} from "@supabase/supabase-js";
 import {expect, it} from "vitest";
 import type {Database} from "../database.types";
-import {getRuleVersionsByIds, insertCheck, getCheck, listRuleVersions, matchKbRuleHints, upsertGeneratedTasks, deleteGeneratedTasksByKeys} from "../queries";
+import {getRuleVersionsByIds, insertCheck, getCheck, listRuleVersions, matchKbRuleHints, upsertGeneratedTasks, deleteGeneratedTasksByKeys, updateCourseResearch} from "../queries";
 import {listAdminImpactProfiles} from "../admin-queries";
 import {evaluateAssessment} from "@/lib/rules/assessment";
 import {answers, profile, context, version} from "@/lib/rules/__tests__/assessment-fixtures";
@@ -62,6 +62,14 @@ it("process cleanup deletes exact owner keys and performs no I/O without keys", 
  expect(requests).toHaveLength(1); expect(requests[0].method).toBe("DELETE");
  expect(requests[0].url.searchParams.get("user_id")).toBe("eq.user-1");
  expect(requests[0].url.searchParams.get("task_key")).toContain("rule:visa-appointment-in:step:44");
+});
+it("course research refresh scopes the PATCH to the importer's own row", async () => {
+ const {db, requests} = client(() => response([{id: "course"}]));
+ await updateCourseResearch(db, "course", "user-1", {location: null, degree: null, language: null, description: "Refreshed", deadlines: [], requirements: [], tuition: null, extraction_method: "library", field_extraction: {}});
+ expect(requests).toHaveLength(1); expect(requests[0].method).toBe("PATCH");
+ expect(requests[0].url.searchParams.get("id")).toBe("eq.course");
+ expect(requests[0].url.searchParams.get("imported_by")).toBe("eq.user-1");
+ expect(requests[0].body).toMatchObject({description: "Refreshed"});
 });
 
 it("share query projects only public payload even if an unexpected response carries account data", async () => {

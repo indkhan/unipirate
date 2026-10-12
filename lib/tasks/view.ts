@@ -24,6 +24,7 @@ import {
 } from "@/lib/tasks/generate";
 import { profileFromAnswers } from "@/lib/tasks/profile";
 import { todayIsoBerlin } from "@/lib/tasks/dates";
+import { courseResearchStatus } from "@/lib/courses/import";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
@@ -56,6 +57,8 @@ export type RailApplication = {
   detail: string;
   sourceUrl: string;
   nextDeadline: { iso: string | null; verbatim: string | null };
+  reviewStatus: string;
+  researchStatus: "draft" | "incomplete" | null;
   offeringProcess?: {plan:OfferingProcessPlan;offerings:Awaited<ReturnType<typeof getApplicationOfferingCatalogue>>["offerings"];selection:{offering_id:string|null;applicant_context:unknown}};
 };
 
@@ -131,9 +134,11 @@ function railApplication(
     courseId: course.id,
     courseName: course.name ?? "Untitled course",
     universityName: course.university_name ?? "University pending review",
-    detail: [course.location, course.degree].filter(Boolean).join(" \u00b7 "),
+    detail: [course.location, course.degree].filter(Boolean).join(" · "),
     sourceUrl: course.source_url,
     nextDeadline: {iso:null,verbatim:null},
+    reviewStatus: course.review_status,
+    researchStatus: courseResearchStatus(course),
   };
 }
 

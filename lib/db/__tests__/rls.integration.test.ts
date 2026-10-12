@@ -551,6 +551,34 @@ describe.skipIf(!suiteReady)("RLS: anon vs owner vs admin", () => {
     expect(updated).toHaveLength(0);
   });
 
+  it("owner refreshes research on own pending course but nobody else can", async () => {
+    const description = `rls test research ${randomUUID()}`;
+    const { data: updated, error } = await owner
+      .from("courses")
+      .update({ description })
+      .eq("id", pendingCourseId)
+      .select("id");
+    expect(error).toBeNull();
+    expect(updated).toHaveLength(1);
+
+    for (const client of [other, anon]) {
+      const denied = await client
+        .from("courses")
+        .update({ description: "forged research" })
+        .eq("id", pendingCourseId)
+        .select("id");
+      expect(denied.error).toBeNull();
+      expect(denied.data).toHaveLength(0);
+    }
+
+    const stored = await service
+      .from("courses")
+      .select("description")
+      .eq("id", pendingCourseId)
+      .single();
+    expect(stored.data?.description).toBe(description);
+  });
+
   it("owner removes own course but not another user's course", async () => {
     const { data: course, error: insertError } = await owner
       .from("courses")

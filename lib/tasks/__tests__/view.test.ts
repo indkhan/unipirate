@@ -95,3 +95,9 @@ it('latest unresolved hides old pending stage and never restores legacy cross-in
 it('hides saved process tasks without hiding manual reminders or deleting rows',async()=>{
  mocks.listApplicationsWithCourses.mockResolvedValue([]);const legacy={...task,task_key:'rule:uni-assist-vpd-process:step:20',course_task_definition_id:null,application_id:null,title:'Personal edit'};const rows=[legacy,{...legacy,id:'done',done:true},{...legacy,id:'visa',task_key:'rule:visa-appointment-in:step:44'},{...legacy,id:'manual',task_key:null}];const before=structuredClone(rows);mocks.listTasks.mockResolvedValue(rows);const v=await buildDashboardView({from:vi.fn()},uuid(7));expect([...v.buckets.now,...v.buckets.next,...v.buckets.later].map(t=>t.id)).toEqual(['manual']);expect(v.doneTasks).toEqual([]);expect(rows).toEqual(before);
 });
+it('pending rail cards carry persisted review and research states',async()=>{
+ mocks.listApplicationsWithCourses.mockResolvedValue([{id:'application',status:'planning',course_id:'course',courses:{id:'course',name:'Course',university_name:'University',location:null,degree:null,source_url:'https://example.invalid/course',review_status:'pending',field_extraction:{research:{status:'incomplete'}}}}]);
+ mocks.getApplicationOfferingCatalogue.mockResolvedValue({programme:null,offerings:[],versions:[]});mocks.listCourseSubmissionDefinitionIds.mockResolvedValue([]);mocks.listTasks.mockResolvedValue([]);
+ const v=await buildDashboardView({from:vi.fn()},'student');expect(v.rail).toHaveLength(1);
+ expect(v.rail[0]).toMatchObject({reviewStatus:'pending',researchStatus:'incomplete'});
+});
