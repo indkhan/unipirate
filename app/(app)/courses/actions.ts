@@ -11,6 +11,6 @@ export async function addCourseToDashboard(courseId: string): Promise<void> {
   const { db, user } = await requireUser("/courses");
 
   await trackCourse(db, user.id, id);
-  revalidatePath("/courses");
+  revalidatePath("/courses", "layout");
   revalidatePath("/dashboard");
 }
