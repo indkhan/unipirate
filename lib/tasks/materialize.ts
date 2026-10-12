@@ -8,6 +8,7 @@ import {
   getApplicationOfferingCatalogue,
   getApplicationWithCourse,
   getProfile,
+  deleteGeneratedTasksByKeys,
   listRuleVersions,
   listApplicationsWithCourses,
   listActiveCourseTaskDefinitions,
@@ -15,6 +16,7 @@ import {
   upsertGeneratedTasks,
   type ApplicationWithCourse,
 } from "@/lib/db/queries";
+import { isProcessTaskKey, processHistoryRuleIds } from "@/lib/engine/process-identity";
 import type { Database } from "@/lib/db/database.types";
 import type { Profile } from "@/lib/engine/evaluate";
 import { evaluateAssessment, type Assessment } from "@/lib/rules/assessment";
@@ -22,7 +24,6 @@ import { currentAssessmentContext } from "@/lib/rules/current";
 import {
   generateCourseTasks,
   generateGlobalTasks,
-  generateProcessTasks,
   newGeneratedTaskRows,
   type ApplicationForTaskGeneration,
   type TargetIntake,
@@ -67,6 +68,17 @@ async function materializeGeneratedPrefix(
 ): Promise<void> {
   const existing = await listGeneratedTasksByPrefix(db, userId, prefix);
   await upsertGeneratedTasks(db, newGeneratedTaskRows(userId, desired, existing));
+}
+
+/** #56: visa/funding process generation is deferred — remove previously generated process rows. Manual rows carry null keys and are never matched. */
+async function removeProcessTasksForUser(db: Db, userId: string): Promise<void> {
+  const ids = processHistoryRuleIds(await listRuleVersions(db));
+  const existing = await listGeneratedTasksByPrefix(db, userId, "rule:");
+  await deleteGeneratedTasksByKeys(
+    db,
+    userId,
+    existing.map(task => task.task_key).filter((key): key is string => isProcessTaskKey(key, ids)),
+  );
 }
 
 async function materializeCourseTasksForApplicationRow(
@@ -134,8 +146,9 @@ export async function materializeAllTasksForUser(
     db,
     userId,
     "rule:",
-    [...generateGlobalTasks(result),...generateProcessTasks(current?.process)],
+    generateGlobalTasks(result),
   );
+  await removeProcessTasksForUser(db, userId);
 
   const applications = await listApplicationsWithCourses(db, userId);
   for (const application of applications) {

@@ -14,7 +14,6 @@ import {
 } from "@/lib/db/queries";
 import type { Database, Tables } from "@/lib/db/database.types";
 import {processHistoryRuleIds,isProcessTaskKey} from "@/lib/engine/process-identity";
-import type {ProcessAssessment} from "@/lib/rules/process-assessment";
 import type { Result } from "@/lib/engine/evaluate";
 import { evaluateAssessment } from "@/lib/rules/assessment";
 import { currentAssessmentContext } from "@/lib/rules/current";
@@ -82,7 +81,6 @@ export type DashboardView = {
   checkedAt: string;
   assessmentEvaluatedAt: string;
   result: Result | null;
-  process?: ProcessAssessment;
 };
 
 function preferredBucket(
@@ -183,23 +181,11 @@ export async function buildDashboardView(
     const submissionIds = catalogue.programme ? await listCourseSubmissionDefinitionIds(db,application.course_id) : [];
     return {id:application.id,status:application.status,plan,catalogue,selection,submissionIds};
   }));
-  // Actual identity only: editable titles and unrelated PROC02 visa reminders do not participate.
-  const obsoleteUniAssistIds = new Set(["uni-assist-vpd-process"]);
-  for (const version of versions) {
-    const raw = version.raw_snapshot;
-    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-      const identity = raw as Record<string,unknown>;
-      if (identity.id === "uni-assist-vpd-process" || identity.slug === "uni-assist-vpd-process" || typeof identity.notes === "string" && identity.notes.startsWith("Bootstrap candidate: uni-assist-vpd-process.")) obsoleteUniAssistIds.add(version.rule_id);
-    }
-  }
   const planningIds = new Set(applications.filter(a=>a.status==="planning").map(a=>a.id));
   const visibleRows = dbTasks.filter(task => {
+    if (isProcessTaskKey(task.task_key,processIds)) return false;
     if (task.done) return true;
     if (!isCurrentApsTask(task,result) || !isVisibleOfferingTask(task,offeringApplications)) return false;
-    if (isProcessTaskKey(task.task_key,obsoleteUniAssistIds)) {
-      const ruleId = /^rule:([^:]+):step:/.exec(task.task_key ?? "")?.[1];
-      if (ruleId && obsoleteUniAssistIds.has(ruleId)) return false;
-    }
     const application = offeringApplications.find(a=>a.id===task.application_id);
     if (task.course_task_definition_id && application?.submissionIds.includes(task.course_task_definition_id)) return false;
     return task.course_task_definition_id === null || planningIds.has(task.application_id ?? "");
@@ -265,6 +251,5 @@ export async function buildDashboardView(
     checkedAt: todayIso,
     assessmentEvaluatedAt: context.evaluatedAt,
     result,
-    process:assessment?.process,
   };
 }
