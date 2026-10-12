@@ -329,7 +329,7 @@ const AnswerFieldsSchema = z
     yearsOfUniversityStudy: z.number().finite().min(0).max(50).nullable().optional(),
     priorStudyCompletion: z.enum(["completed", "in_progress", "discontinued"]).optional(),
     targetDegree: z.enum(["bachelor", "master"]),
-    nationality: z.string().min(2),
+    nationality: z.string().min(2).optional(),
     certificateCountry: z.string().min(2).optional(),
     // country of the German mission the visa is filed with; "other" = elsewhere
     visaApplicationCountry: z.string().min(2).optional(),
@@ -575,10 +575,14 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
       }
     }
   }
-  if (answers.apsScopeVersion === 1 && bachelor && !steps.includes("schoolQualificationCountry")) {
+  // Trade-off: the issuer-country backfill skips GCE/IB (#50). Those curricula
+  // carry their own awarding-body identity; a separate issuer-country prompt
+  // is redundant. The backfill remains for national/other where APS scoping
+  // needs an explicit issuer answer.
+  if (answers.apsScopeVersion === 1 && bachelor && !steps.includes("schoolQualificationCountry") && answers.curriculumType !== "gce" && answers.curriculumType !== "ib") {
     steps.push("schoolQualificationCountry", "schoolQualificationContext");
   }
-  steps.push("nationality", "visaApplicationCountry");
+  steps.push("visaApplicationCountry");
   // Only actual Indian national issuer context exposes JEE evidence. No hidden foreign facts.
   if (answers.jeeVersion !== undefined && bachelor && answers.curriculumType === "national" &&
       answers.schoolQualificationCountry === "in" && answers.schoolQualificationContext === "national") {

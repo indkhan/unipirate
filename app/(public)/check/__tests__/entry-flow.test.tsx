@@ -90,7 +90,7 @@ it("starts Master at university history and prunes school answers when switching
   expect(question()).toBe("Where did you attend school?");
 });
 
-it("puts academic entry before nationality and visa and never adds school questions to Master", () => {
+it("puts academic entry before visa and never adds school questions to Master", () => {
   expect(visibleSteps({ targetDegree: "bachelor" }).slice(0, 3)).toEqual(["targetDegree", "certificateCountry", "curriculumType"]);
   const master = visibleSteps({ targetDegree: "master" });
   expect(master.slice(0, 2)).toEqual(["targetDegree", "hasPriorUniversityStudy"]);
