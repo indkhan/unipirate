@@ -48,6 +48,14 @@ export function firstDeadline(deadlines: unknown): string | null {
   return typeof line === "string" ? line.replace(/^[:\s]+/, "") : null;
 }
 
+// Persisted research stage of a saved course row. "draft" means background
+// research completed; anything else means it is still pending or incomplete.
+// Used by the import route and the dashboard card from the same stored row.
+export function courseResearchStatus(row: { field_extraction: unknown }): "draft" | "incomplete" | null {
+  const status = (row.field_extraction as { research?: { status?: unknown } } | null)?.research?.status;
+  return status === "draft" || status === "incomplete" ? status : null;
+}
+
 // Dedupe key: lowercase host, no hash, no tracking params, no trailing slash.
 export function normalizeUrl(url: string): string {
   const u = new URL(url);

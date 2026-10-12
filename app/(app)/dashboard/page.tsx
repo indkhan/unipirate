@@ -52,7 +52,11 @@ function routeDots(stations: DashboardRouteStation[]) {
   );
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ saved?: string }>;
+} = {}) {
   const { db, user } = await requireUser();
 
   const view = await buildDashboardView(db, user.id);
@@ -90,6 +94,11 @@ export default async function DashboardPage() {
             <Link className={styles.profilePrompt} href="/check">
               Finish your academic check to see your study eligibility.
             </Link>
+          ) : null}
+          {(await searchParams)?.saved === "1" ? (
+            <p role="status" className={styles.savedBanner}>
+              ✓ Course saved. Research continues in the background; each course card shows its review state.
+            </p>
           ) : null}
         </header>
 
@@ -147,6 +156,11 @@ export default async function DashboardPage() {
                       {[application.courseName, application.detail]
                         .filter(Boolean)
                         .join(" · ")}
+                      {application.reviewStatus === "pending" ? (
+                        <span className={styles.reviewChip}>
+                          {application.researchStatus === "draft" ? "Awaiting admin review" : "Saved · research incomplete"}
+                        </span>
+                      ) : null}
                     </span>
                     <StatusSelect
                       applicationId={application.id}

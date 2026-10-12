@@ -440,12 +440,18 @@ There is no migration, DB publication, seed or KB rebuild in this change.
    invalid combinations retain incomplete manual recovery rather than being repaired.
    Model reviewer/status/date metadata is rejected. Web/AI failure retains manual
    values and a visible incomplete status; no error bodies or credentials are logged.
-5. The draft lives under `courses.field_extraction.research` with format
-   `up-course-01/v1`, alongside legacy provenance. Import uses only the caller's
-   course insert permission; catalogue writes remain admin-only. Saving legacy
-   manual edits preserves research. Both old approve and keep-update paths reject
-   research drafts (including malformed captures); approved research courses cannot
-   acquire new assertions through the legacy edit helper.
+ 5. The draft lives under `courses.field_extraction.research` with format
+    `up-course-01/v1`, alongside legacy provenance. Import uses only the caller's
+    course insert permission; catalogue writes remain admin-only. The import saves
+    the course/application first and returns immediately (#58): research runs
+    after the response and refreshes the importer's own pending row through the
+    owner-refresh policy — never another user's row, never review state. A saved
+    course navigates to the dashboard with a save confirmation; the rail card
+    shows the persisted review/research state (awaiting review vs saved with
+    incomplete research). Saving legacy
+    manual edits preserves research. Both old approve and keep-update paths reject
+    research drafts (including malformed captures); approved research courses cannot
+    acquire new assertions through the legacy edit helper.
 6. Minimal review in the admin queue shows wording, applicability, retrieval time,
    official URL, conflicts and gaps. The reviewer explicitly checks current primary
    sources and selects accepted supported facts. Unselected/conflicting facts remain

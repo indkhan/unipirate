@@ -42,7 +42,6 @@ export function AddCourseSheet({
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
   const [university, setUniversity] = useState("");
-  const [notice, setNotice] = useState<string | null>(null);
 
   function close() {
     setOpen(false);
@@ -64,7 +63,8 @@ export function AddCourseSheet({
       deduped?: boolean;
       course?: FoundCourse | null;
       onDashboard?: boolean;
-      researchStatus?: "draft" | "incomplete";
+      applicationId?: string;
+      researchPending?: boolean;
     };
     if (!response.ok) {
       const error = new Error(payload.error ?? "Something went wrong — try again.");
@@ -133,8 +133,9 @@ export function AddCourseSheet({
         });
       }
       close();
-      setNotice(payload.researchStatus === "incomplete" ? "Course saved for review. Research is incomplete; missing facts remain unknown and the pasted source is retained." : "Research draft saved for admin review.");
-      router.refresh();
+      // The save confirmation lives on the dashboard (?saved=1): "saved"
+      // confirms the database save only, never verified facts (#58).
+      router.push("/dashboard?saved=1");
     } catch (e) {
       posthog.capture("course_import_failed", {
         status: e instanceof Error ? (e as Error & { status?: number }).status : undefined,
@@ -155,7 +156,7 @@ export function AddCourseSheet({
     </button>
   );
 
-  if (!open) return <>{trigger}{notice ? <p role="status">{notice}</p> : null}</>;
+  if (!open) return <>{trigger}</>;
 
   const foundCourseOnDashboard = lookup.step === "found" && lookup.onDashboard;
 
