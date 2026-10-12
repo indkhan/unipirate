@@ -1,5 +1,5 @@
 import {beforeEach, expect, it, vi} from "vitest";
-const mocks = vi.hoisted(() => ({getProfile: vi.fn(), listRuleVersions: vi.fn(), listGeneratedTasksByPrefix: vi.fn(), upsertGeneratedTasks: vi.fn(), listApplicationsWithCourses: vi.fn(), getApplicationOfferingCatalogue:vi.fn(),listActiveCourseTaskDefinitions:vi.fn()}));
+const mocks = vi.hoisted(() => ({getProfile: vi.fn(), listRuleVersions: vi.fn(), listGeneratedTasksByPrefix: vi.fn(), upsertGeneratedTasks: vi.fn(), deleteGeneratedTasksByKeys: vi.fn(), listApplicationsWithCourses: vi.fn(), getApplicationOfferingCatalogue:vi.fn(),listActiveCourseTaskDefinitions:vi.fn()}));
 vi.mock("@/lib/db/queries", () => mocks);
 import {materializeAllTasksForUser} from "../materialize";
 import {answers, profile, context, raw, version, ruleId} from "@/lib/rules/__tests__/assessment-fixtures";
@@ -31,6 +31,11 @@ it("does not materialize current visa process steps", async () => {
  const current=evaluateAssessment({...profile,visaApplicationCountry:"in",processContext:{purpose:"study",missionConfirmed:true,exception:"none"}},[processVersion],context);
  await materializeAllTasksForUser({from:vi.fn()},"student",current);
  expect(mocks.upsertGeneratedTasks).toHaveBeenCalledWith(expect.anything(),[]);
+});
+it("removes previously generated process rows while keeping other generated keys", async () => {
+ mocks.listGeneratedTasksByPrefix.mockResolvedValue([{task_key:"rule:visa-appointment-in:step:44"},{task_key:"rule:"+ruleId+":step:1"}]);
+ await materializeAllTasksForUser({from:vi.fn()},"student");
+ expect(mocks.deleteGeneratedTasksByKeys).toHaveBeenCalledWith(expect.anything(),"student",["rule:visa-appointment-in:step:44"]);
 });
 
 import {input as offeringInput,uuid,selection} from "./offering-process.fixtures";

@@ -1421,7 +1421,7 @@ Optional version-1 process reports live inside answers/profile JSON. Checker and
 
 Result pages may display current process evidence separately from academic decisions. The dashboard does not display visa/funding guidance. Only current guidance on supported surfaces displays literal amounts, currency, period, source annotation, quote, alternatives, additional documents and steps. Noncurrent observations retain official pointers and review reasons without actionable amounts or raw quote/advice rendering. No amounts are parsed, converted, summed or inferred from article dates. `processRuleIds` is inventory including wrong-jurisdiction/stale/conflicting records, never task authorization.
 
-Visa/funding process tasks are no longer materialized for the dashboard. Existing process task rows remain stored but are hidden there by stable rule identity; manual reminders and course tasks remain visible under their existing rules. Dashboard reads do not write or delete task rows.
+Visa/funding process tasks are no longer materialized for the dashboard. Previously generated process rows are removed by event-time cleanup matched on stable rule identity; manual reminders and course tasks remain visible under their existing rules. Dashboard reads do not write task rows.
 
 Assistant search reconstructs process chunks from selected immutable sources through the same profile/context/freshness/conflict projection before rendering. search_rules and get_user_context share one captured instant and cached profile/version read within a tool session. Raw hints, fallback chunks and unversioned curated snippets cannot leak noncurrent process quotes or numbers. Saved reminders are explicitly untrusted personal history; recognized keyed process reminders withhold stored title/quote prose from model tools while preserving database history. Provider/model configuration is unchanged; deterministic mock tool tests are not real provider integration evidence.
 
@@ -1595,7 +1595,7 @@ rows/keys/completed history and manual/requirement tasks remain. Unmapped legacy
 course definitions retain existing generation; their rail separately requests
 reviewed context. Obsolete global uni-assist pending rows are hidden by exact known
 slug/bootstrap provenance mapped to immutable logical UUID, never editable title.
-The dashboard no longer generates or displays PROC02 visa/funding reminders; existing stored rows are retained but hidden. Existing APS projection remains unchanged.
+The dashboard no longer generates or displays PROC02 visa/funding reminders; previously stored generated rows are removed by event-time cleanup. Existing APS projection remains unchanged.
 
 The historical bootstrap uni-assist candidate is now DRAFT; the current engine's
 legacy identity quarantine remains intact. This is repository retirement intent,

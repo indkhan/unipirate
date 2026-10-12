@@ -1,4 +1,4 @@
-import {ProcessGuidanceCard} from "./process-guidance";
+import {ProcessGuidanceCard} from "@/components/app/process-guidance";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";

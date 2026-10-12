@@ -499,6 +499,16 @@ export async function upsertGeneratedTasks(
   unwrap(await db.from("tasks").upsert(rows, { onConflict: "user_id,task_key", ignoreDuplicates: true }));
 }
 
+/** Remove previously generated rows by exact key, scoped to the owner. Manual rows carry a null key and are never matched. */
+export async function deleteGeneratedTasksByKeys(
+  db: Db,
+  userId: string,
+  keys: readonly string[],
+): Promise<void> {
+  if (keys.length === 0) return;
+  unwrap(await db.from("tasks").delete().eq("user_id", userId).in("task_key", [...keys]));
+}
+
 // ------------------------------------------------------------------- checks
 
 /** Anonymous eligibility check record; returns the shareable id. */
