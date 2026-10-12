@@ -3,7 +3,7 @@ import { evaluate, EngineRuleSchema } from "../evaluate";
 import { buildVerdicts, buildRoute } from "@/app/(public)/result/[id]/result-model";
 import { generateGlobalTasks } from "@/lib/tasks/generate";
 import { ruleData } from "@/scripts/rules.bootstrap";
-import { buildProfile, visibleSteps, withAnswer, type PartialAnswers } from "@/app/(public)/check/steps";
+import { AnswersSchema, buildProfile, visibleSteps, withAnswer, type PartialAnswers } from "@/app/(public)/check/steps";
 
 import { legacyPublishedAps } from "./aps-legacy-published.fixture";
 import { officialApsRules, officialIndianProfile } from "./aps-scopes.fixture";
@@ -133,5 +133,38 @@ describe("UP-ELIG-05 official scoped APS acceptance", () => {
     const result = evaluate(officialIndianProfile, [legacy]);
     expect(result.aps).toBe("unknown");
     expect(result.apsScopes).toEqual({ qualification: "unknown", application: "unknown", visa: "unknown" });
+  });
+});
+
+describe("issue #55 acceptance personas (source-backed yes/no, honest unknown)", () => {
+  const gceAnswers = (country: "in" | "sa") => AnswersSchema.parse({
+    targetDegree: "bachelor", certificateCountry: country, visaApplicationCountry: country,
+    curriculumType: "gce", gceVersion: 1, gceSchoolYears: 12,
+    gceQualificationContext: "british_international", gceQualificationType: "ial",
+    gceEvidence: "final", gceAwardingBody: "caie",
+    gceSubjects: [{ subjectId: "mathematics", level: "AL", grade: "A" }],
+    hasExistingApsCertificate: false, targetField: "cs", intake: null,
+  });
+  it("Saudi resident with Indian national qualification gets a sourced required answer, never an exemption", () => {
+    const result = evaluate(officialIndianProfile, officialApsRules());
+    expect(result.apsScopes?.application).toBe("required");
+    const verdict = buildVerdicts(result, officialIndianProfile).find(v => v.key === "aps:application")!;
+    expect(verdict.label).toContain("is required");
+    expect(verdict.unknown).toBe(false);
+    expect(verdict.citations.length).toBeGreaterThan(0);
+    expect(verdict.citations.every(c => c.sourceUrl.startsWith("https://"))).toBe(true);
+  });
+  it.each(["in", "sa"] as const)("British international A-levels in %s stay unknown with no tasks and no exemption", (country) => {
+    const profile = buildProfile(gceAnswers(country));
+    expect(profile.schoolQualification).toBeUndefined();
+    const result = evaluate(profile, officialApsRules());
+    expect(result.apsScopes).toEqual({ qualification: "unknown", application: "unknown", visa: "unknown" });
+    expect(result.aps).toBe("unknown");
+    expect(result.documents).not.toContain("APS India certificate");
+    expect(generateGlobalTasks(result).some(t => t.key.includes("aps"))).toBe(false);
+    const verdicts = buildVerdicts(result, profile).filter(v => v.key.startsWith("aps:"));
+    expect(verdicts.length).toBeGreaterThan(0);
+    expect(verdicts.every(v => v.unknown)).toBe(true);
+    expect(verdicts.every(v => v.label.includes("Confirm whether"))).toBe(true);
   });
 });
