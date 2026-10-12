@@ -1,4 +1,3 @@
-import {ProcessGuidanceCard} from "@/components/app/process-guidance";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,9 +7,9 @@ import { ThemeToggle } from "@/components/app/theme-toggle";
 import { UserMenu } from "@/components/app/user-menu";
 import { isAdminRole } from "@/lib/auth/roles";
 import { hashOwnerToken, ownerCookieName } from "@/lib/checks/ownership";
-import { getCheck, listRuleVersions, getRuleVersionsByIds, getResultViewer } from "@/lib/db/queries";
+import { getCheck, listRuleVersions, getResultViewer } from "@/lib/db/queries";
 import { createClient } from "@/lib/db/server";
-import { AssessmentMetadataSchema, compareAssessments, evaluateAssessment, parseStoredAssessment } from "@/lib/rules/assessment";
+import { evaluateAssessment } from "@/lib/rules/assessment";
 import { currentAssessmentContext } from "@/lib/rules/current";
 
 import { AnswersSchema, buildProfile } from "@/app/(public)/check/steps";
@@ -67,18 +66,15 @@ export default async function ResultPage({
   const check = await getCheck(db, parsedId.data);
   if (!check) notFound();
 
-  // answers is the stored source of truth; the profile is derived, never stored
+  // answers is the stored source of truth; the profile is derived, never stored.
+  // Only the current assessment is shown. Original evaluations stay stored on
+  // the check row as audit provenance; they are never rendered here (#54).
   const answers = AnswersSchema.safeParse(check.answers);
   if (!answers.success) return <main className={styles.page}><h1>Assessment unavailable</h1><p>The saved answers are invalid. Original provenance and a current reassessment are unavailable.</p><Link href="/check">Start a new check</Link></main>;
   const profile = buildProfile(answers.data);
-  const metadata = AssessmentMetadataSchema.safeParse(check.assessment_metadata);
-  const exactIds = metadata.success ? [...metadata.data.selectedVersionIds, ...metadata.data.selectionIssues.map(issue => issue.versionId)] : [];
-  const exact = await getRuleVersionsByIds(db, exactIds).catch(() => []);
-  const history = parseStoredAssessment(check, exact);
   const context = currentAssessmentContext();
   const current = await listRuleVersions(db).then(versions => evaluateAssessment(profile, versions, context)).catch(() => null);
   const result = current?.result;
-  const comparison = history.original && current ? compareAssessments(history.original, current) : null;
   const viewer = await viewerFor(parsedId.data);
   const resultDate = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -126,28 +122,6 @@ export default async function ResultPage({
           </div>
         )}
 
-        <section aria-label="Assessment history">
-          <h2>Original assessment</h2>
-          {history.original ? <>
-            <p>Evaluated at {history.original.metadata.evaluatedAt} · {history.original.metadata.engineRevision}</p>
-            <VerdictCard result={history.original.result} profile={profile} profileLine={profileSummary(profile)} />
-            <RouteCard result={history.original.result} />
-            <DocumentsCard result={history.original.result} viewer={viewer} />
-            <UnknownsCard unknowns={visibleUnknowns(history.original.result, profile, true)} />
-            <details><summary>Original immutable rule evidence</summary>
-              {[...history.original.selectedVersions, ...history.original.diagnosticVersions].map(version => <div key={version.id}>
-                <p>Rule {version.rule_id} · Version {version.id} · {version.provenance}</p>
-                <pre style={{whiteSpace: "pre-wrap", overflowWrap: "anywhere"}}>{JSON.stringify(version.raw_snapshot, null, 2)}</pre>
-              </div>)}
-              {history.original.metadata.selectionIssues.map(issue => <p key={issue.ruleId}>Unresolved scope: {issue.reason}</p>)}
-            </details>
-          </> : <p>Original assessment provenance unavailable. Saved answers: {check.created_at}. Current assessment below is a new evaluation.</p>}
-          <h2>Current reassessment</h2>
-          <p>Evaluated at {context.evaluatedAt}</p>
-          {comparison && <p>{comparison.policyChanged ? "Policy or assessment changed." : "Policy and assessment unchanged."} {comparison.explanationChanged ? "Source or explanation changed." : "Source and explanation unchanged."} {comparison.newCoverage ? "New coverage is available." : ""} {!comparison.processDecisionComparisonAvailable?"No originally saved process decision is recorded. Current process guidance is shown separately.":comparison.processChanged?"Process guidance or its source context changed; this is separate from academic eligibility.":""}</p>}
-          {current?.metadata.selectionIssues.map(issue => <p key={issue.ruleId}>Current scope unresolved: {issue.reason}</p>)}
-        </section>
-        <ProcessGuidanceCard process={current?.process}/>
         {!current && <p>Current rule knowledge unavailable. Confirm your requirements with <a href="https://www.uni-assist.de/en/how-to-apply/get-information/">the official application source</a>.</p>}
         {result && <div className={styles.grid}>
           <div className={styles.primary}>
