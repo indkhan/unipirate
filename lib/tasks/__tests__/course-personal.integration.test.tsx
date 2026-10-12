@@ -21,7 +21,11 @@ import { buildDashboardView, coursePersonalTasks } from "../view";
 const api = process.env.AI_TASK_LOCAL_URL;
 const publicKey = process.env.AI_TASK_LOCAL_ANON_KEY;
 const secret = process.env.AI_TASK_LOCAL_SERVICE_KEY;
-if (api && api !== "http://127.0.0.1:56321") throw new Error("#59 requires the coordinated disposable 56321 instance");
+if (api) {
+  const parsed = new URL(api);
+  if (parsed.protocol !== "http:" || !["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname) || !["54321", "55321", "56321"].includes(parsed.port))
+    throw new Error("#59 requires a dedicated disposable loopback instance");
+}
 
 describe.skipIf(!api && !publicKey && !secret)("course/dashboard personal tasks (actual local DB, RLS and action writes)", () => {
   let service: SupabaseClient<Database>;
