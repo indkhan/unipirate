@@ -46,7 +46,7 @@ export type TaskProposalView = {
 
 export type ApproveEdit = { title: string; description: string | null; dueDate: string | null };
 export type ApproveSelectionItem = { id: string; revision: number; edit?: ApproveEdit };
-export type ConfirmSelectionItem = { id: string; revision: number; title: string; dueDate: string | null };
+export type ConfirmSelectionItem = { id: string; revision: number; title: string; dueDate: string | null; context?: string | null };
 
 export type SuggestionsListProps = {
   proposals: TaskProposalView[];
@@ -167,6 +167,7 @@ export function ConfirmApprovalDialog({
           {selection.map((s) => (
             <li key={s.id} className={styles.confirmItem}>
               <strong>{s.title}</strong>
+              {s.context ? <span>{s.context}</span> : null}
               <span>{s.dueDate ? `Personal reminder: ${s.dueDate}` : "No date — personal reminder only"}</span>
             </li>
           ))}
@@ -334,7 +335,7 @@ export function SuggestionsList({ proposals, applicationNames, approve, reject }
     for (const e of entries) {
       const p = byId.get(e.id);
       if (!p || p.status !== "pending" || p.revision !== e.revision) continue;
-      items.push({ id: p.id, revision: p.revision, title: e.edit?.title ?? p.title, dueDate: e.edit ? e.edit.dueDate : p.due_date });
+      items.push({ id: p.id, revision: p.revision, title: e.edit?.title ?? p.title, dueDate: e.edit ? e.edit.dueDate : p.due_date, context: groupLabel(groupKey(p), applicationNames, pending) });
       if (e.edit) edits.set(p.id, e.edit);
     }
     if (!items.length) return;

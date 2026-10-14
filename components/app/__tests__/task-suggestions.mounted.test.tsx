@@ -126,3 +126,15 @@ it.each(["selected", "all shown"])("snapshots exact %s IDs and revisions before 
   await click(button("Confirm approval"));
   expect(approve).toHaveBeenCalledExactlyOnceWith((mode === "selected" ? original.slice(0, 1) : original).map(p => ({ id: p.id, revision: p.revision })));
 });
+it("labels identical bulk titles with their course context in the confirmation", async () => {
+  const approve = vi.fn().mockResolvedValue(undefined);
+  const names = { "app-a": "Alpha Course", "app-b": "Beta Course" };
+  const same = (id: string, application_id: string): TaskProposalView =>
+    ({ ...proposal(id), title: "Prepare to verify this programme's application requirements", application_id, course_id: null, semantic_action_key: `${application_id}:${id}` });
+  const proposals = [same("p1", "app-a"), same("p2", "app-b")];
+  await act(async () => root.render(<SuggestionsList proposals={proposals} applicationNames={names} approve={approve} reject={vi.fn()} />));
+  await click(button("Approve all shown (2)"));
+  const text = dialog().textContent ?? "";
+  expect(text).toContain("Alpha Course");
+  expect(text).toContain("Beta Course");
+});
