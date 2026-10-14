@@ -63,6 +63,8 @@ export async function moveTaskToBucket(input: unknown): Promise<void> {
   const { db, user } = await requireUser();
 
   await setTaskPreferredBucket(db, user.id, id, bucket);
+  revalidatePath("/dashboard");
+  revalidatePath("/courses", "layout");
 }
 
 const taskSchema = ManualTaskSchema;

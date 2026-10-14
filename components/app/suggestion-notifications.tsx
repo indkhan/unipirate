@@ -53,7 +53,9 @@ export function SuggestionNotifications({full=false,popup=true,initialProposals=
   }
   const pending=proposals.filter(p=>p.status==="pending");
   if(full)return <>{error?<p role="status">{error}</p>:null}
-    {jobs.filter(job=>job.state==="failed"&&job.event!=="research").map(job=><p key={job.id} role="status">Suggestions for {job.application_id?names[job.application_id]??"your course":"your application"} could not be prepared. Your tasks stay saved. <button type="button" disabled={retrying!==null} onClick={()=>void retry(job.id)}>{retrying===job.id?"Retrying…":"Retry planning"}</button></p>)}
+    {jobs.filter(job=>job.state==="failed").map(job=>job.event==="research"
+      ?<p key={job.id} role="status">Course research could not be completed. Your saved course stays. <button type="button" disabled={retrying!==null} onClick={()=>void retry(job.id)}>{retrying===job.id?"Retrying…":"Retry research"}</button></p>
+      :<p key={job.id} role="status">Suggestions for {job.application_id?names[job.application_id]??"your course":"your application"} could not be prepared. Your tasks stay saved. <button type="button" disabled={retrying!==null} onClick={()=>void retry(job.id)}>{retrying===job.id?"Retrying…":"Retry planning"}</button></p>)}
     <SuggestionsList proposals={proposals} applicationNames={names} approve={approve} reject={reject}/></>;
   const arrivals=pending.filter(p=>!closed.includes(revisionKey(p)));
   return <><Link href="/suggestions">Suggestions{pending.length?` (${pending.length})`:""}</Link>

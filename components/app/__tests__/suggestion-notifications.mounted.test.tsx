@@ -46,10 +46,12 @@ it("polls saved arrivals only while visible and refreshes on visibility change",
   Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
   await act(async () => document.dispatchEvent(new Event("visibilitychange"))); expect(fetchMock).toHaveBeenCalledTimes(calls + 1);
 });
-it("shows failed planning jobs only on the full page and excludes research jobs", async () => {
+it("shows failed planning and research jobs on the full page with distinct retry", async () => {
   envelope.jobs = [{ id: id(301), application_id: null, event: "preliminary", state: "failed" }, { id: id(302), application_id: null, event: "verified", state: "failed" }, { id: id(303), application_id: null, event: "research", state: "failed" }];
-  await mount(false); expect(container.textContent).not.toContain("Retry planning");
+  await mount(false); expect(container.textContent).not.toContain("Retry planning"); expect(container.textContent).not.toContain("Retry research");
   await mount(); expect(Array.from(container.querySelectorAll("button")).filter(b => b.textContent === "Retry planning")).toHaveLength(2);
+  expect(button("Retry research").textContent).toBe("Retry research");
+  expect(container.textContent).toContain("Course research could not be completed. Your saved course stays.");
 });
 it("guards duplicate retry actions then refreshes persisted job state", async () => {
   const job: Job = { id: id(301), application_id: null, event: "preliminary", state: "failed" }; envelope.jobs = [job];
