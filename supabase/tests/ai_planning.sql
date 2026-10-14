@@ -41,6 +41,16 @@ end $$;
 reset role;
 select set_config('request.jwt.claims','{}',true);
 select public.lease_planning_jobs('00000000-0000-4000-8000-000000006030',1);
+do $$ begin
+ begin perform public.lease_planning_jobs('00000000-0000-4000-8000-000000006030',null);raise exception 'null lease limit accepted';exception when check_violation then null;end;
+end $$;
+select pg_temp.assert_true(pg_get_functiondef('public.lease_planning_jobs(uuid,integer)'::regprocedure) like '%clock_timestamp()%','worker lease uses the live clock');
+select pg_temp.assert_true(pg_get_functiondef('public.finish_planning_job(uuid,uuid,boolean,text)'::regprocedure) like '%clock_timestamp()%','job finish validates the live lease');
+select pg_temp.assert_true(pg_get_functiondef('public.save_task_proposals(uuid,uuid,text,jsonb)'::regprocedure) like '%clock_timestamp()%','proposal persistence validates the live lease');
+select pg_temp.assert_true(pg_get_functiondef('public.advance_planning_job(uuid,uuid,bigint,bigint,boolean)'::regprocedure) like '%clock_timestamp()%','cursor finalization validates the live lease');
+select pg_temp.assert_true(pg_get_functiondef('public.refresh_planning_job(uuid,uuid)'::regprocedure) like '%clock_timestamp()%','stale refresh validates the live lease');
+select pg_temp.assert_true(pg_get_functiondef('public.enqueue_published_offering_planning()'::regprocedure) like '%confirmed%','verified fan-out requires a confirmed selection');
+select pg_temp.assert_true(pg_get_functiondef('public.enqueue_published_offering_planning()'::regprocedure) like '%legacy_course_id%','verified fan-out requires the exact programme');
 select public.save_task_proposals(j.id,'00000000-0000-4000-8000-000000006030',j.input_fingerprint,'[{"semantic_action_key":"verify:procedure","stage":"preliminary","title":"Confirm application instructions","description":null,"reason":"No reviewed applicable procedure","due_date":null,"verbatim_due":null,"evidence":[],"source_version_id":null,"legacy_task_key":null}]') from public.planning_jobs j where j.user_id='00000000-0000-4000-8000-000000006001';
 select pg_temp.assert_true((select count(*)=0 from public.tasks where user_id='00000000-0000-4000-8000-000000006001'),'automatic planning creates no task row');
 set local role authenticated;

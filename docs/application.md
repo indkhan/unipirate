@@ -1731,6 +1731,17 @@ Research persistence locks the application/course before the job, matching retry
 ordering. It rechecks the lease against the live clock after obtaining the job
 lock, preserving metadata CAS and the original paste even after lock waits.
 
+Lease hardening (`20261012000200`) extends the live-clock rule to every worker
+lease check (lease, finish, save, advance, retire, refresh, dispatch scan):
+`now()` remains only for audit timestamps. A null worker batch limit is
+rejected instead of bypassing the SQL bound. The save-path deadline check uses
+the approval-path Europe/Berlin date so a proposal cannot save and then fail
+approval around midnight. Publication fan-out queues verified jobs only for the
+exact programme, applicant group and confirmed selection; unconfirmed or
+programme-mismatched applications keep preliminary planning. Flag-off keeps
+legacy direct generation while flag-on reroutes automatic candidates through
+approval-first proposals; the database backstop suppresses only when enabled.
+
 Deployment prerequisites are `pg_cron`, `pg_net`, Supabase Vault, the service
 credential and a reachable Node route `/api/planning/worker` with a 120-second
 runtime allowance. Set `PLANNING_WORKER_SECRET` in the server environment and call
