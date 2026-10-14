@@ -118,6 +118,8 @@ export const ruleData: RuleRecord[] = [
     outcomes: { aps_scopes: { visa: { value: "required", documents: ["APS India certificate"] } } },
     status: "draft", source_url: "https://aps-india.de/faqs/",
     source_quote: "The APS certificate is generally required as part of the documentation for the German student visa procedure.",
+    // Re-verified verbatim against the live FAQ 2026-10-12 (issuer-based scope:
+    // nationality is not decisive; international qualifications may not need APS).
     last_verified_at: "2026-10-12T00:00:00Z",
   },
   // ---------------------------------------------------------------- India
