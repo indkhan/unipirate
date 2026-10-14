@@ -3,7 +3,7 @@ import { evaluate, EngineRuleSchema } from "../evaluate";
 import { buildVerdicts, buildRoute } from "@/app/(public)/result/[id]/result-model";
 import { generateGlobalTasks } from "@/lib/tasks/generate";
 import { ruleData } from "@/scripts/rules.bootstrap";
-import { buildProfile, visibleSteps, withAnswer, type PartialAnswers } from "@/app/(public)/check/steps";
+import { AnswersSchema, buildProfile, visibleSteps, withAnswer, type PartialAnswers } from "@/app/(public)/check/steps";
 
 import { legacyPublishedAps } from "./aps-legacy-published.fixture";
 import { officialApsRules, officialIndianProfile } from "./aps-scopes.fixture";
@@ -11,14 +11,26 @@ import { officialApsRules, officialIndianProfile } from "./aps-scopes.fixture";
 describe("UP-ELIG-05 official scoped APS acceptance", () => {
   it("retains application/recognition APS when the Saudi checklist omits it", () => {
     const result = evaluate(officialIndianProfile, officialApsRules());
-    expect(result.apsScopes).toEqual({ qualification: "required", application: "required", visa: "not_listed" });
+    expect(result.apsScopes).toEqual({ qualification: "required", application: "required", visa: "required" });
     expect(result.aps).toBe("required");
     const verdicts = buildVerdicts(result, officialIndianProfile);
-    expect(verdicts.find(v => v.key === "aps:visa")?.label).toContain("not an exemption");
+    expect(verdicts.find(v => v.key === "aps:visa")?.label).toContain("is required");
     expect(verdicts.find(v => v.key === "aps:application")?.citations.length).toBeGreaterThan(0);
     expect(result.documents.filter(d => d === "APS India certificate")).toHaveLength(1);
     expect(result.citations.some(c => c.supports.includes("aps:application") && c.sourceUrl.includes("uni-assist.de"))).toBe(true);
     expect(generateGlobalTasks(result).map(t => t.key)).toContain("rule:aps-scoped-acquisition:step:10");
+  });
+  it("requires APS application for Indian national qualifications without a uni-assist answer", () => {
+    const withoutRoute = {...officialIndianProfile, apsApplicationContext: undefined};
+    const result = evaluate(withoutRoute, officialApsRules());
+    expect(result.apsScopes?.application).toBe("required");
+    expect(result.citations.some(c => c.supports.includes("aps:application"))).toBe(true);
+  });
+  it("marks Saudi-issuer visa scope as not listed without calling it an exemption", () => {
+    const saudiIssuer = {...officialIndianProfile, schoolQualification: {country: "sa", context: "national" as const}};
+    const result = evaluate(saudiIssuer, officialApsRules());
+    expect(result.apsScopes?.visa).toBe("not_listed");
+    expect(buildVerdicts(result, saudiIssuer).find(v => v.key === "aps:visa")?.label).toContain("not an exemption");
   });
   it("never infers an Indian issuer from nationality, school location, or board", () => {
     for (const profile of [
@@ -38,7 +50,7 @@ describe("UP-ELIG-05 official scoped APS acceptance", () => {
       tertiaryQualification: { issuer: "Saudi university", country: "sa", context: "national" } }, officialApsRules()).apsScopes?.application).toBe("unknown");
   });
   it("keeps missing mission, missing published rules, and drafts honest", () => {
-    expect(evaluate({ ...officialIndianProfile, visaMissionContext: undefined }, officialApsRules()).apsScopes?.visa).toBe("unknown");
+    expect(evaluate({ ...officialIndianProfile, visaMissionContext: undefined }, officialApsRules()).apsScopes?.visa).toBe("required");
     expect(evaluate(officialIndianProfile, []).apsScopes?.application).toBe("unknown");
     expect(evaluate(officialIndianProfile, ruleData).apsScopes?.application).toBe("unknown");
   });
@@ -87,7 +99,7 @@ describe("UP-ELIG-05 official scoped APS acceptance", () => {
     const answers: PartialAnswers = {apsScopeVersion: 1, targetDegree: "bachelor", curriculumType: "national", certificateCountry: "sa", schoolQualificationCountry: "in", schoolQualificationContext: "national", visaApplicationCountry: "sa"};
     const steps = visibleSteps(answers);
     expect(steps.indexOf("schoolQualificationCountry")).toBeLessThan(steps.indexOf("hasExistingApsCertificate"));
-    expect(steps).toContain("visaMissionContext");
+    expect(steps).not.toContain("visaMissionContext");
     const profile = buildProfile(answers as Parameters<typeof buildProfile>[0]);
     expect(profile.schoolQualification).toEqual({country: "in", context: "national"});
     expect(profile.visaMissionContext).toBeUndefined();
@@ -121,5 +133,38 @@ describe("UP-ELIG-05 official scoped APS acceptance", () => {
     const result = evaluate(officialIndianProfile, [legacy]);
     expect(result.aps).toBe("unknown");
     expect(result.apsScopes).toEqual({ qualification: "unknown", application: "unknown", visa: "unknown" });
+  });
+});
+
+describe("issue #55 acceptance personas (source-backed yes/no, honest unknown)", () => {
+  const gceAnswers = (country: "in" | "sa") => AnswersSchema.parse({
+    targetDegree: "bachelor", certificateCountry: country, visaApplicationCountry: country,
+    curriculumType: "gce", gceVersion: 1, gceSchoolYears: 12,
+    gceQualificationContext: "british_international", gceQualificationType: "ial",
+    gceEvidence: "final", gceAwardingBody: "caie",
+    gceSubjects: [{ subjectId: "mathematics", level: "AL", grade: "A" }],
+    hasExistingApsCertificate: false, targetField: "cs", intake: null,
+  });
+  it("Saudi resident with Indian national qualification gets a sourced required answer, never an exemption", () => {
+    const result = evaluate(officialIndianProfile, officialApsRules());
+    expect(result.apsScopes?.application).toBe("required");
+    const verdict = buildVerdicts(result, officialIndianProfile).find(v => v.key === "aps:application")!;
+    expect(verdict.label).toContain("is required");
+    expect(verdict.unknown).toBe(false);
+    expect(verdict.citations.length).toBeGreaterThan(0);
+    expect(verdict.citations.every(c => c.sourceUrl.startsWith("https://"))).toBe(true);
+  });
+  it.each(["in", "sa"] as const)("British international A-levels in %s stay unknown with no tasks and no exemption", (country) => {
+    const profile = buildProfile(gceAnswers(country));
+    expect(profile.schoolQualification).toBeUndefined();
+    const result = evaluate(profile, officialApsRules());
+    expect(result.apsScopes).toEqual({ qualification: "unknown", application: "unknown", visa: "unknown" });
+    expect(result.aps).toBe("unknown");
+    expect(result.documents).not.toContain("APS India certificate");
+    expect(generateGlobalTasks(result).some(t => t.key.includes("aps"))).toBe(false);
+    const verdicts = buildVerdicts(result, profile).filter(v => v.key.startsWith("aps:"));
+    expect(verdicts.length).toBeGreaterThan(0);
+    expect(verdicts.every(v => v.unknown)).toBe(true);
+    expect(verdicts.every(v => v.label.includes("Confirm whether"))).toBe(true);
   });
 });

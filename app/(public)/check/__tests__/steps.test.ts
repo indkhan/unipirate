@@ -12,6 +12,7 @@ import {
   buildProfile,
   hasDuplicateSubjects,
   isAnswered,
+  normalizeAnswers,
   visibleSteps,
   withAnswer,
   type Answers,
@@ -188,7 +189,6 @@ describe("visibleSteps", () => {
       "schoolGradePercent",
       "jeeAdvanced",
       "hasPriorUniversityStudy",
-      "nationality",
       "visaApplicationCountry",
       "hasExistingApsCertificate",
       "targetField",
@@ -204,7 +204,6 @@ describe("visibleSteps", () => {
       "gceQualificationContext", "gceQualificationType", "gceEvidence",
       "gceAwardingBody", "gceSchoolYears",
       "gceSubjects",
-      "nationality",
       "visaApplicationCountry",
       "targetField",
       "intake",
@@ -298,5 +297,19 @@ describe("visibleSteps", () => {
       AnswersSchema.safeParse({ ...p11Answers, gceSubjects: duplicateSubjects })
         .success,
     ).toBe(false);
+  });
+
+  it("never asks nationality but preserves saved values", () => {
+    expect(visibleSteps(p1Answers)).not.toContain("nationality");
+    expect(visibleSteps(p11Answers)).not.toContain("nationality");
+    expect(normalizeAnswers({...p1Answers, nationality: "in"}).nationality).toBe("in");
+    expect(AnswersSchema.safeParse({...p1Answers, nationality: undefined}).success).toBe(true);
+  });
+
+  it("skips the issuer-country backfill for GCE/IB but keeps it for other", () => {
+    const base = {targetDegree: "bachelor", apsScopeVersion: 1} as const;
+    expect(visibleSteps({...base, curriculumType: "gce"})).not.toContain("schoolQualificationCountry");
+    expect(visibleSteps({...base, curriculumType: "ib"})).not.toContain("schoolQualificationCountry");
+    expect(visibleSteps({...base, curriculumType: "other"})).toContain("schoolQualificationCountry");
   });
 });

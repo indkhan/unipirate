@@ -1,8 +1,9 @@
 import {beforeEach, expect, it, vi} from "vitest";
-const mocks = vi.hoisted(() => ({getPlanningSettings:vi.fn(),enqueuePlanningJob:vi.fn(),ensureApplication:vi.fn(),getApplicationWithCourse:vi.fn(),getProfile: vi.fn(), listRuleVersions: vi.fn(), listGeneratedTasksByPrefix: vi.fn(), upsertGeneratedTasks: vi.fn(), listApplicationsWithCourses: vi.fn(), getApplicationOfferingCatalogue:vi.fn(),listActiveCourseTaskDefinitions:vi.fn()}));
+const mocks = vi.hoisted(() => ({getPlanningSettings:vi.fn(),enqueuePlanningJob:vi.fn(),ensureApplication:vi.fn(),getApplicationWithCourse:vi.fn(),getProfile: vi.fn(), listRuleVersions: vi.fn(), listGeneratedTasksByPrefix: vi.fn(), upsertGeneratedTasks: vi.fn(), deleteGeneratedTasksByKeys: vi.fn(), listApplicationsWithCourses: vi.fn(), getApplicationOfferingCatalogue:vi.fn(),listActiveCourseTaskDefinitions:vi.fn()}));
 vi.mock("@/lib/db/queries", () => mocks);
 import {materializeAllTasksForUser,trackCourse} from "../materialize";
-import {answers, raw, version, ruleId} from "@/lib/rules/__tests__/assessment-fixtures";
+import {answers, profile, context, raw, version, ruleId} from "@/lib/rules/__tests__/assessment-fixtures";
+import {evaluateAssessment} from "@/lib/rules/assessment";
 const step = {order: 1, text: " Synthetic current step "};
 const v1 = version(1, {raw_snapshot: {...raw, outcomes: {path: "direct", steps: [step]}}});
 beforeEach(() => {vi.resetAllMocks(); mocks.getPlanningSettings.mockResolvedValue({enabled:false}); mocks.listActiveCourseTaskDefinitions.mockResolvedValue([]); mocks.getProfile.mockResolvedValue({answers}); mocks.listRuleVersions.mockResolvedValue([v1]); mocks.listGeneratedTasksByPrefix.mockResolvedValue([]); mocks.listApplicationsWithCourses.mockResolvedValue([]);});
@@ -24,6 +25,19 @@ it("missing intake does not generate scoped replacement or predecessor work", as
  mocks.getProfile.mockResolvedValue({answers: {...answers, intake: null}}); mocks.listRuleVersions.mockResolvedValue([v1, version(2, {intake_from: 4053, raw_snapshot: {...raw, outcomes: {steps: [step]}}})]);
  await materializeAllTasksForUser({from: vi.fn(),rpc:vi.fn()}, "student"); expect(mocks.upsertGeneratedTasks).toHaveBeenCalledWith(expect.anything(), []);
 });
+it("does not materialize current visa process steps", async () => {
+ const process={kind:"appointment",fact_key:"portal",jurisdiction:"in",purposes:["study"],amounts:[],alternatives:[],additional:[],source_date_annotation:null,effective:{from:null,through:null,intake_indices:null},review_due:"2026-11-01T00:00:00Z",steps:[{order:44,text:"Visa appointment"}],editorial_advice:[]};
+ const processVersion=version(1,{raw_snapshot:{...raw,outcomes:{process}}});
+ const current=evaluateAssessment({...profile,visaApplicationCountry:"in",processContext:{purpose:"study",missionConfirmed:true,exception:"none"}},[processVersion],context);
+  await materializeAllTasksForUser({from:vi.fn(),rpc:vi.fn()},"student",current);
+ expect(mocks.upsertGeneratedTasks).toHaveBeenCalledWith(expect.anything(),[]);
+});
+it("removes previously generated process rows while keeping other generated keys", async () => {
+ mocks.listGeneratedTasksByPrefix.mockResolvedValue([{task_key:"rule:visa-appointment-in:step:44"},{task_key:"rule:"+ruleId+":step:1"}]);
+  await materializeAllTasksForUser({from:vi.fn(),rpc:vi.fn()},"student");
+ expect(mocks.deleteGeneratedTasksByKeys).toHaveBeenCalledWith(expect.anything(),"student",["rule:visa-appointment-in:step:44"]);
+});
+
 import {input as offeringInput,uuid,selection} from "./offering-process.fixtures";
 it('enabled planning queues global and course proposals without any automatic task writes',async()=>{
  mocks.getPlanningSettings.mockResolvedValue({enabled:true});

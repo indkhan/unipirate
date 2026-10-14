@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { boundedJson } from "@/lib/ai/research-course";
 import { ResearchDraftSchema, ResearchSeedSchema, ResearchUrlSchema } from "@/lib/courses/research";

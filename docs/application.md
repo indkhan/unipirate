@@ -178,7 +178,17 @@ only for the Bachelor attendance step. Attendance, qualification issuer and
 nationality remain separate; no issuer mapping or academic exemption is added.
 
 Answered entry questions are skipped going forward, but remain available through
-Back. Academic questions precede nationality and visa context. Session drafts
+Back. Academic questions precede visa context. Nationality (#50), the uni-assist
+filing route (#51) and the Saudi mission checklist (#52) are no longer asked;
+saved values round-trip unchanged through normalizeAnswers exclusions. Intake
+options are computed from one server-provided current instant in the Berlin
+timezone against typical July 15 / January 15 planning cutoffs — old terms stop
+being suggested without a yearly code edit, while saved earlier intakes stay
+valid answers. Suggestions are labelled typical planning seasons, never official
+dates; a reviewed course-specific deadline stays authoritative for that course.
+The optional visa/funding context form is removed from the checker and profile
+review for this sprint (#53); stored process context still round-trips.
+Session drafts
 store the current question identity as well as the legacy numeric index; recovery
 stops at newly missing evidence. Degree links use separate draft keys, so selecting
 Master cannot restore a Bachelor draft. Country edits survive under their original
@@ -219,12 +229,12 @@ implements #49; issues #50–#53 retain their separate flow and intake work.
    are materialized immediately.
 4. `/result/[id]` is public to anyone holding the UUID. `get_shared_check`
    returns only that UUID's shareable columns; table collection reads and
-   browser writes are forbidden. The page validates stored answers and
-   displays the original protected server assessment with exact immutable inputs.
-   A separate current reassessment uses the same validated saved answers and a new
-   server instant. NULL/malformed provenance or missing exact references yields
-   original provenance unavailable; legacy verdict JSON is never promoted. Original
-   answers/result/history are never rewritten. Sharing still exposes answers to UUID holders; consent,
+   browser writes are forbidden. The page validates stored answers and shows
+   only the current assessment evaluated from them at a new server instant —
+   no original/comparison panels, raw engine metadata, ISO assessment dumps or
+   visa/funding guidance (#54). Original answers/result/history stay stored on
+   the check row as audit provenance and are never rewritten or rendered.
+   Sharing still exposes answers to UUID holders; consent,
    expiry and revocation remain backlog work. The `result_viewer`
    DB function tells the page whether the request is the anonymous owner,
    the claimed owner, or the public; the page adapts its banners and CTA.
@@ -460,12 +470,18 @@ There is no migration, DB publication, seed or KB rebuild in this change.
    invalid combinations retain incomplete manual recovery rather than being repaired.
    Model reviewer/status/date metadata is rejected. Web/AI failure retains manual
    values and a visible incomplete status; no error bodies or credentials are logged.
-5. The draft lives under `courses.field_extraction.research` with format
-   `up-course-01/v1`, alongside legacy provenance. Import uses only the caller's
-   course insert permission; catalogue writes remain admin-only. Saving legacy
-   manual edits preserves research. Both old approve and keep-update paths reject
-   research drafts (including malformed captures); approved research courses cannot
-   acquire new assertions through the legacy edit helper.
+ 5. The draft lives under `courses.field_extraction.research` with format
+    `up-course-01/v1`, alongside legacy provenance. Import uses only the caller's
+    course insert permission; catalogue writes remain admin-only. The import saves
+    the course/application first and returns immediately (#58): research runs
+    after the response and refreshes the importer's own pending row through the
+    owner-refresh policy — never another user's row, never review state. A saved
+    course navigates to the dashboard with a save confirmation; the rail card
+    shows the persisted review/research state (awaiting review vs saved with
+    incomplete research). Saving legacy
+    manual edits preserves research. Both old approve and keep-update paths reject
+    research drafts (including malformed captures); approved research courses cannot
+    acquire new assertions through the legacy edit helper.
 6. Minimal review in the admin queue shows wording, applicability, retrieval time,
    official URL, conflicts and gaps. The reviewer explicitly checks current primary
    sources and selects accepted supported facts. Unselected/conflicting facts remain
@@ -963,8 +979,11 @@ unscoped rows cannot establish requirements or any global exemption. Old
 free-text APS documents/steps are suppressed until admin scope review.
 
 New checker flows use `apsScopeVersion: 1` and explicitly ask bachelor issuing
-qualification country/context, confirmed uni-assist application context and, for
-Saudi filing, whether the responsible mission's study checklist applies. Neither
+qualification country/context. The uni-assist filing route (#51) and the Saudi
+mission checklist (#52) are not asked: application scope keys only on the
+Indian national qualification, Saudi visa scope keys only on the Saudi issuer
+(checklist omission, never an exemption), and Indian visa scope keys on the
+Indian national qualification per the APS India FAQ. Neither
 citizenship, school attendance country, board nor visa country infers an issuer.
 Master's facts use only the merged `tertiaryQualification` issuer/country/context.
 Missing, international or unknown context stays unknown under these candidates.
@@ -1256,7 +1275,7 @@ publication, embedding, migration, provider or live database operation occurs.
 
 ### Ordinary GCE witness contract (UP-ELIG-01)
 
-The original `gceVersion: 1` contract collected actual ascending school years alongside qualification system (UK/British international versus national), AL/IAL or another certificate type and final/provisional/school-only evidence. #49 removes years only in new/restored/edit forms carrying `qualificationGuidanceVersion: 1`; the original duration-dependent recognition rules remain intact. No AL-to-12/13-year inference is permitted. Legacy results retain their original reports and diagnostics without invented years/context. Nationality, attendance country and visa jurisdiction stay separate.
+The original `gceVersion: 1` contract collected actual ascending school years alongside qualification system (UK/British international versus national), AL/IAL or another certificate type and final/provisional/school-only evidence. #49 removes years from new/restored/edit forms carrying `qualificationGuidanceVersion: 1`; the 12-year duration threshold was then removed from the GCE/IB draft candidates so complete certificates resolve to their reviewed paths again (subject-restricted/direct) instead of unknown. Duration remains guidance copy only, never an eligibility gate; the `qualificationScope` engine machinery is retained for legacy published rules that still condition on school years. No AL-to-12/13-year inference is permitted. Legacy results retain their original reports and diagnostics without invented years/context. Nationality is no longer asked (#50); attendance country and visa jurisdiction stay separate.
 
 The pure reviewed catalogue `lib/engine/gce.ts` supplies List A/B/C identities, pairwise exclusions, source URLs and body-specific Marine Science recognition. English/alias ambiguity is conservative. The evaluator enumerates complete three-full-AL witnesses and runs the existing matcher against each; grade/list/independence and all target conditions must pass on the same witness. Extra low or unused vocational subjects cannot invalidate a valid ordinary trio. Non-GCE/process matching and outcome resolution are unchanged. Unknown diagnostics compare published conditions rather than encoding acceptance thresholds in code; their citation claims describe the failed criteria, not the unmatched positive outcome.
 
@@ -1454,11 +1473,11 @@ One injected instant governs source review and process applicability. Publicatio
 
 Optional version-1 process reports live inside answers/profile JSON. Checker and profile review ask the needed guide kind, purpose, named mission, reported mission applicability, age bracket, funding method and fee/funding exception uncertainty. They are applicant reports, never app-certified responsibility, qualification or waiver. Unknown/other remain valid. Editing process scope prunes dependent process reports without upgrading academic versions or erasing academic/history/APS/visa evidence. Appointment context has no financial prerequisite. Reviewed programme route/payer authority remains the separate UP-PROC-01/Course dependency; there is no applicant-controlled production uni-assist payment authorization.
 
-Result and dashboard display current process evidence separately from academic decisions and personal reminders. Only current guidance displays literal amounts, currency, period, source annotation, quote, alternatives, additional documents and steps. Noncurrent observations retain official pointers and review reasons without actionable amounts or raw quote/advice rendering. No amounts are parsed, converted, summed or inferred from article dates. `processRuleIds` is inventory including wrong-jurisdiction/stale/conflicting records, never task authorization.
+Result pages may display current process evidence separately from academic decisions. The dashboard does not display visa/funding guidance. Only current guidance on supported surfaces displays literal amounts, currency, period, source annotation, quote, alternatives, additional documents and steps. Noncurrent observations retain official pointers and review reasons without actionable amounts or raw quote/advice rendering. No amounts are parsed, converted, summed or inferred from article dates. `processRuleIds` is inventory including wrong-jurisdiction/stale/conflicting records, never task authorization.
 
-`generateProcessTasks` consumes only current steps and uses logical `rule:<id>:step:<order>` keys. Event-time materialization reuses existing missing-key insertion guards. Reads do not write, regenerate, rewrite or reactivate rows. Retained inactive keys suppress new process duplicates on IN→SA→IN. Edited/done/manual/course history and applications are preserved. Saved process reminders receive a personal-history source label instead of a verified payable badge. Existing course-assignment Remove regeneration is outside this deletion contract; no universal deletion suppression is claimed.
+Visa/funding process tasks are no longer materialized for the dashboard. Previously generated process rows are removed by event-time cleanup matched on stable rule identity; manual reminders and course tasks remain visible under their existing rules. Dashboard reads do not write task rows.
 
-Assistant search reconstructs process chunks from selected immutable sources through the same profile/context/freshness/conflict projection before rendering. search_rules and get_user_context share one captured instant and cached profile/version read within a tool session. Raw hints, fallback chunks and unversioned curated snippets cannot leak noncurrent process quotes or numbers. Saved reminders are explicitly untrusted personal history; recognized keyed process reminders withhold stored title/quote prose from model tools while preserving database and dashboard history. Provider/model configuration is unchanged; deterministic mock tool tests are not real provider integration evidence.
+Assistant search reconstructs process chunks from selected immutable sources through the same profile/context/freshness/conflict projection before rendering. search_rules and get_user_context share one captured instant and cached profile/version read within a tool session. Raw hints, fallback chunks and unversioned curated snippets cannot leak noncurrent process quotes or numbers. Saved reminders are explicitly untrusted personal history; recognized keyed process reminders withhold stored title/quote prose from model tools while preserving database history. Provider/model configuration is unchanged; deterministic mock tool tests are not real provider integration evidence.
 
 Source-reviewed additions in `scripts/process.rules.ts` remain draft bootstrap candidates. No seed, embedding, publication or live data operation is implied. See [source verification](up-proc-02-source-verification.md) and [acceptance matrix](up-proc-02-acceptance.md). Root owns independent review, exact combined gates, disposable RLS, browser/clean CI and separately authorized operational provider evaluation before any merge.
 ### Saudi certificate evidence (UP-ELIG-09)
@@ -1630,7 +1649,7 @@ rows/keys/completed history and manual/requirement tasks remain. Unmapped legacy
 course definitions retain existing generation; their rail separately requests
 reviewed context. Obsolete global uni-assist pending rows are hidden by exact known
 slug/bootstrap provenance mapped to immutable logical UUID, never editable title.
-PROC02 visa/funding reminders and existing APS projection remain unchanged.
+The dashboard no longer generates or displays PROC02 visa/funding reminders; previously stored generated rows are removed by event-time cleanup. Existing APS projection remains unchanged.
 
 The historical bootstrap uni-assist candidate is now DRAFT; the current engine's
 legacy identity quarantine remains intact. This is repository retirement intent,

@@ -3,8 +3,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { DAAD_PAGE_TEXT } from "@/lib/courses/__tests__/fixtures";
-const mocks = vi.hoisted(() => ({ refresh: vi.fn(), add: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
+const mocks = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn(), add: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }) }));
 vi.mock("posthog-js/react", () => ({ usePostHog: () => ({ capture: vi.fn() }) }));
 vi.mock("../actions", () => ({ addCourseToDashboard: mocks.add }));
 import { AddCourseSheet } from "../add-course-sheet";
@@ -46,7 +46,8 @@ it("has only link/full paste inputs and submits their exact values", async () =>
   const text = ` \n${DAAD_PAGE_TEXT}\n `;
   await enter("textarea", text); await submit();
   expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ url, text });
-  expect(mocks.refresh).toHaveBeenCalled(); expect(host.textContent).toContain("Course saved.");
+  // Save-first (#58): sheet redirects; dashboard ?saved=1 confirms the save.
+  expect(mocks.push).toHaveBeenCalledWith("/dashboard?saved=1");
 });
 it.each([
   [422, "Return to the DAAD course page and copy the full text."],
@@ -56,7 +57,7 @@ it.each([
   fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error }), { status }));
   await submit();
   expect(host.textContent).toContain(error); expect(host.querySelector("textarea")!.value).toBe(DAAD_PAGE_TEXT);
-  expect(host.querySelectorAll("input")).toHaveLength(0); expect(mocks.refresh).not.toHaveBeenCalled();
+  expect(host.querySelectorAll("input")).toHaveLength(0); expect(mocks.push).not.toHaveBeenCalled();
 });
 it("shows an invalid-host error at the URL step", async () => {
   fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Use the DAAD International Programmes course-page link." }), { status: 400 }));

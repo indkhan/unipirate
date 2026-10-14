@@ -58,7 +58,7 @@ export const IB_ACCEPTANCE: {id:string;profile:Profile;path:Result['path'];reaso
  {id:'missing-math',profile:ibCase({subjects:ibRows({4:{subjectId:'music'}})}),path:'unknown',reason:/mathemat/i},
  {id:'conflicting-math-summary',profile:ibCase({mathLevel:'SL'}),path:'unknown',reason:/conflict|mathemat/i},
  {id:'missing-schooling',profile:ibCase({schooling:undefined}),path:'unknown',reason:/school/i},
- {id:'eleven-school-years',profile:ibCase({schoolYears:11}),path:'unknown',reason:/school/i},
+ {id:'eleven-school-years',profile:ibCase({schoolYears:11}),path:'direct'},
  {id:'missing-intake',profile:{...ibCase(),intake:undefined},path:'unknown',reason:/intake/i},
  {id:'missing-exam-year',profile:ibCase({examYear:undefined}),path:'unknown',reason:/exam/i},
  {id:'missing-level',profile:ibCase({subjects:ibRows({4:{level:'unknown'}})}),path:'unknown'},

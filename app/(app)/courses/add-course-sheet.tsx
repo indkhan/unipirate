@@ -40,7 +40,6 @@ export function AddCourseSheet({
   const [lookup, setLookup] = useState<LookupState>({ step: "url" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
 
   function close() {
     setOpen(false);
@@ -61,8 +60,12 @@ export function AddCourseSheet({
       deduped?: boolean;
       course?: FoundCourse | null;
       onDashboard?: boolean;
+      applicationId?: string;
       researchQueued?: boolean;
+      researchJobId?: string;
+      researchState?: string;
       researchError?: string;
+      researchPending?: boolean;
     };
     if (!response.ok) {
       const error = new Error(payload.error ?? "Something went wrong — try again.");
@@ -130,8 +133,9 @@ export function AddCourseSheet({
         });
       }
       close();
-      setNotice(payload.researchError ?? "Course saved. Its details still need review.");
-      router.refresh();
+      // Save-first (#58): confirmation lives on the dashboard (?saved=1).
+      // "Saved" confirms the database save only, never verified facts.
+      router.push("/dashboard?saved=1");
     } catch (e) {
       posthog.capture("course_import_failed", {
         status: e instanceof Error ? (e as Error & { status?: number }).status : undefined,
@@ -152,7 +156,7 @@ export function AddCourseSheet({
     </button>
   );
 
-  if (!open) return <>{trigger}{notice ? <p role="status">{notice}</p> : null}</>;
+  if (!open) return <>{trigger}</>;
 
   const foundCourseOnDashboard = lookup.step === "found" && lookup.onDashboard;
 

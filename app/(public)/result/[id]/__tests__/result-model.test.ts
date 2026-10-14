@@ -82,6 +82,15 @@ describe("result page model", () => {
     ).toEqual([NO_RULE_MESSAGES.aps, "other gap"]);
   });
 
+  it("collapses repeated identical unknowns while keeping different items", () => {
+    expect(
+      visibleUnknowns(
+        { ...result, unknowns: ["gap one", "gap one", "gap two"] },
+        bachelorProfile,
+      ),
+    ).toEqual(["gap one", "gap two"]);
+  });
+
   it("personalizes route stations from evaluated outcomes", () => {
     expect(buildRoute(result).map((station) => station.label)).toEqual([
       "Eligibility",

@@ -156,6 +156,31 @@ export async function removeMyCourse(
   unwrap(await db.rpc("remove_my_course", { course_id: id }));
 }
 
+/**
+ * Refresh research facts on the importer's own pending course after a
+ * save-first import (#58). Identity, ownership and review state are never
+ * touched here; RLS additionally limits writes to own pending rows.
+ */
+export async function updateCourseResearch(
+  db: Db,
+  courseId: string,
+  userId: string,
+  patch: Pick<
+    Tables<"courses">,
+    "location" | "degree" | "language" | "description" | "deadlines" | "requirements" | "tuition" | "extraction_method" | "field_extraction"
+  >,
+): Promise<void> {
+  unwrap(
+    await db
+      .from("courses")
+      .update(patch)
+      .eq("id", courseId)
+      .eq("imported_by", userId)
+      .select("id")
+      .single(),
+  );
+}
+
 // ----------------------------------------------------------------- profile
 
 export async function getProfile(
@@ -567,6 +592,16 @@ export async function upsertGeneratedTasks(
 ): Promise<void> {
   if (rows.length === 0) return;
   unwrap(await db.from("tasks").upsert(rows, { onConflict: "user_id,task_key", ignoreDuplicates: true }));
+}
+
+/** Remove previously generated rows by exact key, scoped to the owner. Manual rows carry a null key and are never matched. */
+export async function deleteGeneratedTasksByKeys(
+  db: Db,
+  userId: string,
+  keys: readonly string[],
+): Promise<void> {
+  if (keys.length === 0) return;
+  unwrap(await db.from("tasks").delete().eq("user_id", userId).in("task_key", [...keys]));
 }
 
 // ------------------------------------------------------------------- checks

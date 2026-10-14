@@ -248,7 +248,7 @@ export const REVIEWED_SOURCES: Record<string, {url: string; quote: string; verif
     "quote": "your APS certificate (from the Academic Evaluation Centre, https://aps-india.de/)",
     "verifiedAt": "2026-10-06T00:00:00Z",
     "file": "scripts/rules.bootstrap.ts",
-    "applicability": "Indian national issuer, reported uni-assist application"
+    "applicability": "Indian national issuer; filing route never gates"
   },
   "APS-ACQUISITION": {
     "url": "https://www.uni-assist.de/en/tools/info-country-by-country/details-country/country/in/",
@@ -263,6 +263,13 @@ export const REVIEWED_SOURCES: Record<string, {url: string; quote: string; verif
     "verifiedAt": "2026-10-07T00:00:00Z",
     "file": "scripts/rules.bootstrap.ts",
     "applicability": "Reviewed checklist omission; not_listed not exemption"
+  },
+  "APS-IN-VISA": {
+    "url": "https://aps-india.de/faqs/",
+    "quote": "The APS certificate is generally required as part of the documentation for the German student visa procedure.",
+    "verifiedAt": "2026-10-12T00:00:00Z",
+    "file": "scripts/rules.bootstrap.ts",
+    "applicability": "Indian national qualification visa scope"
   },
   "DMAT-INTAKE": {
     "url": "https://aps-india.de/dmat/",
@@ -407,6 +414,7 @@ export const LOGICAL_SOURCES: Record<string, string> = {
   "aps-scoped-application": "APS-APPLICATION",
   "aps-scoped-acquisition": "APS-ACQUISITION",
   "aps-scoped-visa-sa": "APS-SA-VISA",
+  "aps-scoped-visa-in": "APS-IN-VISA",
   "dmat-bachelor-not-required": "DMAT-BACHELOR",
   "dmat-reviewed-before-intake": "DMAT-INTAKE",
   "dmat-reviewed-review": "DMAT-INTAKE",
@@ -507,6 +515,7 @@ export const UNIVERSE_LOGICAL_IDS = {
     "aps-scoped-qualification",
     "aps-scoped-application",
     "aps-scoped-visa-sa",
+    "aps-scoped-visa-in",
     "aps-scoped-acquisition"
   ],
   "JEE": [
@@ -545,6 +554,7 @@ export const UNIVERSE_LOGICAL_IDS = {
     "aps-scoped-qualification",
     "aps-scoped-application",
     "aps-scoped-visa-sa",
+    "aps-scoped-visa-in",
     "aps-scoped-acquisition"
   ],
   "transition": [

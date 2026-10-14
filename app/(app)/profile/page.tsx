@@ -25,6 +25,7 @@ export default async function ProfilePage() {
   return (
     <ProfileReview
       initialAnswers={answers.data}
+      todayIso={new Date().toISOString()}
       userMenu={
         <UserMenu
           email={user.email ?? null}

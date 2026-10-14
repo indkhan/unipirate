@@ -152,10 +152,10 @@ export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
   ];
 }
 
-/** Drops "confirm whether X applies" gaps for flags the profile never needs. */
+/** Drops "confirm whether X applies" gaps for flags the profile never needs. Repeated identical items collapse; genuinely different items stay. */
 export function visibleUnknowns(result: Result, profile: Profile, historical = false): string[] {
   const diagnostic = primaryDiagnostic(result);
-  return result.unknowns.filter((unknown) => {
+  const items = result.unknowns.filter((unknown) => {
     if (unknown === NO_RULE_MESSAGES.path && diagnostic?.assessedChecks) return false;
     if (unknown === NO_RULE_MESSAGES.path && !historical && (diagnostic?.assessedChecks || diagnostic?.followUp || diagnostic?.status === 'known_unmet_condition')) return false;
     if (unknown === NO_RULE_MESSAGES.testas)
@@ -165,6 +165,7 @@ export function visibleUnknowns(result: Result, profile: Profile, historical = f
     return true;
   }).map(message => !historical && (diagnostic?.followUp || diagnostic?.status === 'known_unmet_condition') && diagnostic.relatedUnknowns?.includes(message)
     ? message.replace(/\.? Confirm with (?:the university|https?:\/\/\S+)\.?$/, '') : message);
+  return [...new Set(items)];
 }
 
 export function buildRoute(result: Result): RouteStation[] {
