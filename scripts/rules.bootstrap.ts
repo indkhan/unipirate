@@ -81,8 +81,8 @@ export const ruleData: RuleRecord[] = [
     id: "aps-scoped-application", country: "in",
     // Trade-off: APS application scope is keyed only on the Indian national
     // qualification, not on a uni-assist/VPD filing route (#51). The APS India
-    // certificate is required as part of the German student visa procedure for
-    // Indian nationals regardless of the admissions platform, so the filing-
+    // certificate is required for Indian-issued national qualifications
+    // regardless of the admissions platform, so the filing-
     // route question is never an eligibility gate.
     conditions: { aps_issuer_country: "in", aps_qualification_context: "national" },
     outcomes: { aps_scopes: { application: { value: "required", documents: ["APS India certificate"] } } },
