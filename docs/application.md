@@ -957,9 +957,9 @@ The real rule UUID is extracted from the stable task key, independent of editabl
 titles; no removed source-rule column is assumed. No saved task,
 personal edit, application or completion row is rewritten or deleted.
 
-Four source-backed candidates remain drafts in bootstrap data. Human admin
+Five source-backed candidates remain drafts in bootstrap data. Human admin
 review/publication is required; no seed, KB rebuild or live publication runs in
-this change. Source verification dates 2026-10-06/07 are not intake boundaries.
+this change. Source verification dates 2026-10-06/07/12 are not intake boundaries.
 KMK's 2006 resolution as amended 2015 supports first-study recognition only;
 uni-assist India supports both application requirement and certificate preparation
 candidates. The Saudi candidate preserves an academic checklist excerpt and an
