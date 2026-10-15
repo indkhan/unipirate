@@ -4,6 +4,11 @@ import { resolveOfferingProcess } from "@/lib/tasks/offering-process";
 import { input, uuid, fact, version } from "@/lib/tasks/__tests__/offering-process.fixtures";
 const candidate = { semantic_action_key: "verify:procedure", stage: "preliminary", title: "Confirm the application procedure", description: null, reason: "No applicable reviewed procedure", due_date: null, verbatim_due: null, evidence: [], source_version_id: null, legacy_task_key: null };
 describe("approval-first planning", () => {
+  it("collapses erased course templates per application while retaining global and process-specific action identities",()=>{
+    const task={title:"Unsafe source claim",dueDate:null,verbatimDue:null,order:0,ruleId:null,courseTaskDefinitionId:null,adminSnapshot:null,source:null};
+    const keys=["app:a:course-task:one","app:a:course-task:two","app:b:course-task:one","app:a:process:vpd_request","app:a:process:unknown_stage","rule:one:step:1","rule:two:step:1"];
+    expect(proposalsFromGeneratedTasks(keys.map(key=>({...task,key,applicationId:key.startsWith("app:a")?"a":key.startsWith("app:b")?"b":null}))).map(p=>p.semantic_action_key)).toEqual(["app:a:prepare:requirements","app:b:prepare:requirements","app:a:process:vpd_request","app:a:process:unknown_stage","rule:one:step:1","rule:two:step:1"]);
+  });
   it("withdrawn approved facts create a safe same-key date-clearing Update only for the exact offering",()=>{
     const key=`app:${uuid(5)}:offering:${uuid(3)}:process:university_submission`;
     const saved={application_id:uuid(5),offering_id:uuid(3),semantic_action_key:key,approved_task_id:uuid(20),title:"Review university instructions",description:"Existing review guidance",legacy_task_key:key,status:"approved" as const};

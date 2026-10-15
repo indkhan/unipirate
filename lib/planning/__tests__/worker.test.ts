@@ -56,3 +56,9 @@ it("includes safe shared-template candidates in verified catalogue and retiremen
  expect(mocks.proposalsFromSharedTemplates).toHaveBeenCalledWith(expect.objectContaining({id:application.id,course:expect.objectContaining({task_definitions:[]})}),expect.any(String),undefined);
  expect(mocks.planPreparation).not.toHaveBeenCalled();
 });
+it("uses shared optional preparation in preliminary jobs and collapses duplicate action keys before cursor slicing",async()=>{
+ mocks.proposalsFromSharedTemplates.mockReturnValue([candidate("a"),candidate("copies"),candidate("questions")]);
+ const deps=await dependencies();await deps.plan(job("preliminary",1));
+ expect(mocks.planPreparation).toHaveBeenCalledWith("synthetic:free",[candidate("a"),candidate("copies"),candidate("m"),candidate("questions"),candidate("z")],1);
+ expect(mocks.proposalsFromSharedTemplates).toHaveBeenCalled();
+});

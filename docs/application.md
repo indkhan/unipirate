@@ -611,7 +611,11 @@ strict direction of data flow:
   Admin edits fan out separately through `syncAdminCourseTaskDefinitions`,
   using the same intake-aware generator. Untouched copies update immediately;
   student-edited copies keep their values and become an explicit “use admin /
-  keep mine” decision. Never touches `done` or `preferred_bucket`. That sync
+  keep mine” decision. Never touches `done` or `preferred_bucket`. Because the
+  read can be stale by write time, rows absent at read are insert-only
+  (ignore duplicates) and rows present are update-only with
+  `has_personal_edits` re-checked in the WHERE clause, so a concurrent student
+  edit is not overwritten and a concurrent delete is not resurrected. That sync
   is deliberately non-transactional — every write is idempotent and keyed, so
   a partial failure converges on the next admin save; the deadline parsing
   must not be duplicated into SQL.
@@ -1765,7 +1769,13 @@ catalogue action remains reachable through durable cursor continuation.
 
 Pure proposal policy lives in `lib/planning/proposals.ts` and `order.ts`; I/O lives
 in query helpers and the worker shell. Preliminary proposals have no reviewed
-evidence or official due date. Verified proposals come only from a committed
+evidence or official due date. A closed set of source-free personal preparation
+actions retains distinct titles; other unsupported shared templates collapse to
+one application-level verification action before cursor batching, so a bulk
+approval never shows several indistinguishable generic rows. Trade-off: proposals
+saved under the older per-definition keys are not migrated or superseded in SQL;
+planning has stayed flagged off in deployed environments, so only local/demo
+history can hold them. Verified proposals come only from a committed
 protected research publication audit and exact selected offering/intake/applicant
 scope. Direct university, uni-assist and VPD stages remain distinct. Reviewed
 document/language/prerequisite proposals retain literal evidence and do not assess

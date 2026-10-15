@@ -35,8 +35,17 @@ export function reconcileProposal(existing: {status:string;material_fingerprint:
   return "pending";
 }
 // Legacy candidates are preparation ONLY. Their date/source fields cannot certify an offering.
-export function proposalsFromGeneratedTasks(tasks: GeneratedTask[]): ProposalCandidate[] {
-  return tasks.map(t=> {
+export const personalPreparationTitles={document_copies:"Organise copies of my application documents",admissions_questions:"Write my questions for the admissions office"} as const;
+export type PersonalPreparationAction=keyof typeof personalPreparationTitles;
+export function personalPreparationAction(title:string):PersonalPreparationAction|null {
+  const statement=title.trim().toLowerCase().replace(/\s+/g," ").replace(/\.$/,"");
+  if (/^organi[sz]e (?:copies of (?:my |the )?application documents|(?:my |the )?application document copies)$/.test(statement)) return "document_copies";
+  if (/^(?:write|list|draft) (?:my |the )?questions for (?:the )?admissions office$/.test(statement)) return "admissions_questions";
+  return null;
+}
+export function proposalsFromGeneratedTasks(tasks: GeneratedTask[],safeActions:ReadonlyMap<string,PersonalPreparationAction>=new Map()): ProposalCandidate[] {
+  const proposals=tasks.map(t=> {
+    const action=safeActions.get(t.key);
     const title=t.key.endsWith(":vpd_request") ? "Confirm whether a VPD is needed and prepare questions" :
       t.key.endsWith(":uni_assist_submission") ? "Confirm whether uni-assist applies to this application" :
       t.key.endsWith(":university_submission") ? "Confirm university application instructions" :
@@ -44,8 +53,10 @@ export function proposalsFromGeneratedTasks(tasks: GeneratedTask[]): ProposalCan
       t.applicationId ? "Prepare to verify this programme's application requirements" : "Prepare to verify the applicable qualification requirements";
     const url=sourceUrl.safeParse(t.source?.url);
     const pointer=url.success?`Review the official source and confirm whether these instructions apply: ${url.data}`:null;
-    return ProposalCandidateSchema.parse({semantic_action_key:t.key,stage:"preliminary",title,description:pointer && pointer.length<=2000?pointer:null,reason:"Preparation suggestion; confirm current requirements with the official source before acting.",due_date:null,verbatim_due:null,evidence:[],source_version_id:null,legacy_task_key:t.key});
+    const generic=t.applicationId && !action && t.key.startsWith(`app:${t.applicationId}:course-task:`);
+    return ProposalCandidateSchema.parse({semantic_action_key:generic?`app:${t.applicationId}:prepare:requirements`:t.key,stage:"preliminary",title:action?personalPreparationTitles[action]:title,description:action?null:pointer && pointer.length<=2000?pointer:null,reason:"Preparation suggestion; confirm current requirements with the official source before acting.",due_date:null,verbatim_due:null,evidence:[],source_version_id:null,legacy_task_key:generic?null:t.key});
   });
+  return proposals.filter((p,index)=>proposals.findIndex(other=>other.semantic_action_key===p.semantic_action_key)===index);
 }
 export function proposalsFromOfferingPlan(applicationId:string,status:string,plan:OfferingProcessPlan,today:string):ProposalCandidate[] {
   CalendarDateSchema.parse(today);

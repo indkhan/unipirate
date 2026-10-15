@@ -44,6 +44,35 @@ it("queues approval-first template reconciliation without reading or mutating pr
   expect(worker.create).not.toHaveBeenCalled();
 });
 
+it("flag-off sync never overwrites a concurrently edited copy nor resurrects a concurrently deleted one", async () => {
+  const otherDefinition = "66666666-6666-4666-8666-666666666666";
+  const definition = (id: string) => ({ id, course_id: courseId, kind: "custom", source_key: null, title_template: "Shared task", description: null,
+    source_url: null, due_mode: "none", due_date: null, sort_order: 10, source_snapshot: null, retired_at: null });
+  const untouched = { id: taskId, user_id: userId, application_id: applicationId, task_key: `app:${applicationId}:course-task:${definitionId}`,
+    course_task_definition_id: definitionId, title: "Old shared task", description: null, source_url: null, due_date: null, verbatim_due: null,
+    sort_order: 10, source_verified_at: null, done: false, has_personal_edits: false, generated_active: true, admin_change_state: "current", admin_snapshot: null };
+  const writes: { method: string; search: string; prefer: string | null; body: unknown }[] = [];
+  worker.create.mockReturnValue(createClient<Database>("http://127.0.0.1:56321", "synthetic", { auth: { persistSession: false }, global: { fetch: async (input, init) => {
+    const url = new URL(String(input)), method = init?.method ?? "GET";
+    if (url.pathname.endsWith("applications")) return json([{ id: applicationId, user_id: userId, status: "planning", courses: { id: courseId, name: "Course", university_name: "University", review_status: "approved", source_url: "https://example.com", created_at: "2026-01-01T00:00:00Z" } }]);
+    if (url.pathname.endsWith("profiles")) return json([]);
+    if (url.pathname.endsWith("course_task_definitions")) return json([definition(definitionId), definition(otherDefinition)]);
+    if (url.pathname.endsWith("tasks") && method === "GET") return json([untouched]);
+    writes.push({ method, search: decodeURIComponent(url.search), prefer: new Headers(init?.headers).get("Prefer"), body: init?.body ? JSON.parse(String(init.body)) : null });
+    return json(null);
+  } } }));
+  const caller = client(path => path.endsWith("is_admin") ? json(true) : json({ enabled: false }));
+  await syncAdminCourseTaskDefinitions(caller, courseId);
+  // Present at read time: update-only, re-checking the edit flag at write time.
+  const update = writes.find(w => w.method === "PATCH" && w.search.includes(`task_key=eq.app:${applicationId}:course-task:${definitionId}`));
+  expect(update?.search).toContain("has_personal_edits=eq.false");
+  expect(update?.body).not.toHaveProperty("user_id");
+  // Absent at read time: insert-only, never overwriting a row created meanwhile.
+  const insert = writes.find(w => w.method === "POST");
+  expect(insert?.prefer).toContain("resolution=ignore-duplicates");
+  expect(insert?.body).toEqual([expect.objectContaining({ task_key: `app:${applicationId}:course-task:${otherDefinition}` })]);
+});
+
 it.each(["keep", "adopt"] as const)("shared-template sync followed by student %s retains task identity/completion and protects edits until explicit adoption", async resolution => {
   const previous = { title: "Original template", description: "Original description", source_url: "https://example.com/old", due_date: "2028-01-01", verbatim_due: "2028-01-01", sort_order: 30 };
   let task: Record<string, unknown> = { id: taskId, user_id: userId, application_id: applicationId,

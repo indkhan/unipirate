@@ -362,8 +362,27 @@ export async function syncAdminCourseTaskDefinitions(
 
   // task_key embeds the application uuid, so the key sets are globally unique;
   // the user_id filters are kept so the planner uses the (user_id, task_key) index.
-  if (upsertRows.length > 0) {
-    unwrap(await db.from("tasks").upsert(upsertRows, { onConflict: "user_id,task_key" }));
+  // The read above can be stale by write time: a student may edit, convert or
+  // delete a copy meanwhile. Rows absent at read time are insert-only (never
+  // overwrite a concurrent row); rows present are update-only and re-check
+  // has_personal_edits in the WHERE clause (never resurrect a deleted row).
+  const readKeys = new Set(tasks.map((task) => `${task.user_id}:${task.task_key}`));
+  const newRows = upsertRows.filter((row) => !readKeys.has(`${row.user_id}:${row.task_key}`));
+  const existingRows = upsertRows.filter((row) => readKeys.has(`${row.user_id}:${row.task_key}`));
+  if (newRows.length > 0) {
+    unwrap(await db.from("tasks").upsert(newRows, { onConflict: "user_id,task_key", ignoreDuplicates: true }));
+  }
+  // Trade-off: one guarded update per untouched copy (PostgREST upsert has no
+  // WHERE). Same ~50-trackers-per-course ceiling as the personal updates below.
+  for (const { user_id, task_key, ...values } of existingRows) {
+    unwrap(
+      await db
+        .from("tasks")
+        .update(values)
+        .eq("user_id", user_id)
+        .eq("task_key", task_key)
+        .eq("has_personal_edits", false),
+    );
   }
   if (deactivateKeys.length > 0) {
     unwrap(
@@ -371,7 +390,8 @@ export async function syncAdminCourseTaskDefinitions(
         .from("tasks")
         .update({ generated_active: false })
         .in("user_id", userIds)
-        .in("task_key", deactivateKeys),
+        .in("task_key", deactivateKeys)
+        .eq("has_personal_edits", false),
     );
   }
   if (removalPendingKeys.length > 0) {
@@ -380,7 +400,8 @@ export async function syncAdminCourseTaskDefinitions(
         .from("tasks")
         .update({ admin_change_state: "removal_pending" })
         .in("user_id", userIds)
-        .in("task_key", removalPendingKeys),
+        .in("task_key", removalPendingKeys)
+        .eq("has_personal_edits", true),
     );
   }
   // ponytail: one update per personalized copy — each carries a distinct

@@ -19,7 +19,7 @@ import {proposalsFromSharedTemplates} from "./templates";
 import type { ProposalCandidate } from "./proposals";
 
 function orderedCatalogue(candidates:ProposalCandidate[]):ProposalCandidate[]{
- return [...candidates].sort((a,b)=>a.semantic_action_key<b.semantic_action_key?-1:a.semantic_action_key>b.semantic_action_key?1:0);
+ return [...new Map(candidates.map(candidate=>[candidate.semantic_action_key,candidate])).values()].sort((a,b)=>a.semantic_action_key<b.semantic_action_key?-1:a.semantic_action_key>b.semantic_action_key?1:0);
 }
 
 export async function executePlanningBatch(db:SupabaseClient<Database>){
@@ -53,8 +53,8 @@ export async function executePlanningBatch(db:SupabaseClient<Database>){
      ...(complete?{completedCatalogueKeys:ordered.map(candidate=>candidate.semantic_action_key)}:{})};
   }
   const definitions=await listActiveCourseTaskDefinitions(db,course.id);
-  const generated=generateCourseTasks([{id:application.id,status:application.status,course:{...course,task_definitions:definitions}}],todayIsoBerlin(),profile?.intake);
-  const proposals=proposalsFromGeneratedTasks(generated);
+  const generated=generateCourseTasks([{id:application.id,status:application.status,course:{...course,task_definitions:definitions.filter(definition=>definition.kind==="submission")}}],todayIsoBerlin(),profile?.intake);
+  const proposals=[...proposalsFromGeneratedTasks(generated),...proposalsFromSharedTemplates({id:application.id,status:application.status,course:{...course,task_definitions:definitions}},todayIsoBerlin(),profile?.intake)];
   if(!proposals.length&&application.status==="planning")proposals.push({semantic_action_key:`app:${application.id}:prepare:requirements`,stage:"preliminary",title:"Prepare to verify this programme's application requirements",description:"Review the official programme page and list questions about the applicable intake, documents and application route.",reason:"Optional preparation while source research awaits review. No admission decision or official requirement is implied.",due_date:null,verbatim_due:null,evidence:[],source_version_id:null,legacy_task_key:null});
   return planPreparation(settings.planner_model,orderedCatalogue(proposals),job.cursor);
  };
