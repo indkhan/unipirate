@@ -18,8 +18,9 @@ function sourceHost(url: string): string {
   }
 }
 
-function Stamp({ source }: { source: DashboardTask["source"] }) {
+function Stamp({ source, personal }: { source: DashboardTask["source"]; personal: boolean }) {
   if (!source) return null;
+  if (personal) return <a className={styles.stamp} href={source.url} target="_blank" rel="noreferrer">Personal source · unverified · {sourceHost(source.url)}</a>;
   const verified = source.verifiedAt ? source.verifiedAt.slice(0, 10) : "confirm";
   return (
     <a className={styles.stamp} href={source.url} target="_blank" rel="noreferrer">
@@ -153,7 +154,7 @@ export function NowTask({
           </span>
           <span className={styles.taskDue}>{taskDetail}</span>
         </div>
-        {task.processEvidence?<p>Saved personal reminder; its text and amounts are not current evidence. Review current process guidance separately.</p>:<Stamp source={task.source} />}
+        {task.processEvidence?<p>Saved personal reminder; its text and amounts are not current evidence. Review current process guidance separately.</p>:<Stamp source={task.source} personal={task.kind === "manual"} />}
         <TaskActions task={task} applications={applications} />
         <CourseTaskChange task={task} />
       </div>

@@ -74,6 +74,18 @@ import {input as offeringInput,uuid,selection,offering,version as offeringVersio
 import {resolveOfferingProcess,generateOfferingProcessTasks} from "../offering-process";
 const offeringApplication=()=>({id:uuid(5),course_id:uuid(2),status:'planning',offering_id:selection.offering_id,offering_applicant_context:selection.applicant_context,courses:{id:uuid(2),name:'Course',university_name:'University',review_status:'approved',source_url:'https://example.invalid/course',deadlines:['Winter deadline 15 July 2000']}});
 const offeringRow=()=>{const generated=generateOfferingProcessTasks(uuid(5),'planning',resolveOfferingProcess(offeringInput()));return generated.map((g,i)=>({...task,id:uuid(50+i),task_key:g.key,title:g.title,application_id:uuid(5),course_task_definition_id:null,due_date:g.dueDate,verbatim_due:g.verbatimDue,admin_snapshot:g.adminSnapshot,source_url:g.source?.url,source_verified_at:g.source?.verifiedAt}));};
+it.each(['planning','applied','admitted','rejected'])('retained definition metadata never hides a manual task for %s', async status => {
+  mocks.listApplicationsWithCourses.mockResolvedValue([{...offeringApplication(),status}]);
+  mocks.getApplicationOfferingCatalogue.mockResolvedValue(offeringInput());
+  mocks.listCourseSubmissionDefinitionIds.mockResolvedValue(['definition']);
+  const manual = {...task,id:'manual-retained-definition',task_key:null,application_id:uuid(5),source_url:'https://example.invalid/personal',source_verified_at:'2026-10-01'};
+  const before = structuredClone(manual);
+  mocks.listTasks.mockResolvedValue([manual]);
+  const view = await buildDashboardView({from:vi.fn()},uuid(7));
+  const saved = [...view.buckets.now,...view.buckets.next,...view.buckets.later].find(t=>t.id===manual.id);
+  expect(saved).toMatchObject({kind:'manual',source:{url:manual.source_url,verifiedAt:null}});
+  expect(manual).toEqual(before);
+});
 it('offering rail/calendar share selected stages and hide duplicate legacy submission, preserving manual/requirement/history',async()=>{
  mocks.listApplicationsWithCourses.mockResolvedValue([offeringApplication()]);mocks.getApplicationOfferingCatalogue.mockResolvedValue(offeringInput());mocks.listCourseSubmissionDefinitionIds.mockResolvedValue(['definition']);
  const rows=[...offeringRow(),{...task,id:'legacy',application_id:uuid(5)},{...task,id:'legacy-done',done:true,application_id:uuid(5)},{...task,id:'manual',task_key:null,course_task_definition_id:null,application_id:uuid(5),due_date:null},{...task,id:'requirement',task_key:'app:'+uuid(5)+':course-task:requirement',course_task_definition_id:'requirement',application_id:uuid(5)}];const before=JSON.stringify(rows);mocks.listTasks.mockResolvedValue(rows);

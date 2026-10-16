@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildSystemPrompt, CHAT_MODEL } from "../assistant";
 import { COURSE_EXTRACTION_MODEL } from "../extract-course";
 import { parseMarkers, stripMarkers } from "../markers";
+import { ASSISTANT_FALLBACK, guardAssistantAnswer } from "../response-guard";
 
 describe("buildSystemPrompt", () => {
   it("requires India coverage to come from retrieved rules", () => {
@@ -31,6 +32,13 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("[[web:url]]");
     expect(prompt).toContain("[[unknown]]");
     expect(prompt).toContain("Refusing to guess is success");
+  });
+
+  it("gives a citation-free refusal example that the guard preserves unchanged", () => {
+    const example = buildSystemPrompt("in").match(/\nA: "([^\n]*)"$/)?.[1];
+    expect(example).toBeDefined();
+    expect(guardAssistantAnswer(example!, [])).toBe(example);
+    expect(example).toBe(ASSISTANT_FALLBACK);
   });
 
   it("contains no hard-coded financial claims or date reformatting instructions", () => {

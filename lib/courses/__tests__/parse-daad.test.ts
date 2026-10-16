@@ -2,10 +2,42 @@ import { describe, expect, it } from "vitest";
 
 import { extractCourse } from "@/lib/ai/extract-course";
 import { EMPTY_FACTS } from "../import";
-import { parseDaadText } from "../parse-daad";
+import { parseDaadIdentity, parseDaadText } from "../parse-daad";
 import { DAAD_PAGE_TEXT, GARBAGE_TEXT, NON_DAAD_PAGE_TEXT } from "./fixtures";
 
 describe("parseDaadText", () => {
+  it.each([
+    ["Data Science and Artificial Intelligence (MSc)", "Saarland University • Saarbrücken"],
+    ["Freshman Program of the FH Aachen", "FH Aachen University of Applied Sciences • Geilenkirchen"],
+  ])("rejects captured navigation when %s is missing", (name, university) => {
+    // Captured DAAD 6296/6909 headers, 2026-10-10.
+    const navigation = "Skip to main content\nServices\nMore info\n0 0\nCookie Consent\nSettings\nReject\nACCEPT\nImprint\nPrivacy Policy\nINTERNATIONAL PROGRAMMES 2026/2027\n©\npagination\nHOME BACK".split("\n");
+    const header = `${navigation.join("\n")}\n${name}\n${university}\nGallery\nPrevious\nNext\nOverview`;
+    expect(parseDaadIdentity(header)).toEqual({ name, university: university.split(" • ")[0] });
+    for (let end = navigation.length; end >= 0; end--) {
+      expect(parseDaadIdentity(`${navigation.slice(0, end).join("\n")}\n${university}\nOverview`)).toEqual({ name: null, university: null });
+    }
+  });
+  it("rejects conflicting heading pairs instead of choosing the first course", () => {
+    const parsed = parseDaadText(`${DAAD_PAGE_TEXT}\nAnother programme\nAnother University • Berlin\nOverview`);
+    expect(parsed.name).toBeNull();
+    expect(parsed.university).toBeNull();
+  });
+
+  it("accepts repeated identical headings and never skips a boundary to invent a name", () => {
+    expect(parseDaadText(`${DAAD_PAGE_TEXT}\n${DAAD_PAGE_TEXT}`).name).toBe("Computer Science – Master of Science");
+    expect(parseDaadText("Search\nOverview\nLeibniz University Hannover • Hannover\nDegree\nMaster of Science").name).toBeNull();
+  });
+  it("does not mistake navigation or the programme for a missing identity heading", () => {
+    for (const text of [
+      "HOME BACK\nComputer Science – Master of Science\n• Hannover\nOverview",
+      "HOME BACK\nLeibniz University Hannover • Hannover\nOverview",
+      "International Programmes\nLeibniz University Hannover\n• Hannover\nOverview",
+    ]) {
+      expect(parseDaadText(text).name).toBeNull();
+      expect(parseDaadText(text).university).toBeNull();
+    }
+  });
   it("reads current DAAD period, tuition and language labels without footer leakage", () => {
     const parsed = parseDaadText(`Data Science
 RWTH Aachen University • Aachen

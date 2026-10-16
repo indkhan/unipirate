@@ -5,12 +5,14 @@ import { AssistantSidebar } from "./assistant-sidebar";
 import styles from "./authenticated-topbar.module.css";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
+import { SuggestionNotifications } from "./suggestion-notifications";
 
 type AuthenticatedTopbarProps = {
   email: string | null;
   isAdmin?: boolean;
   initialAssistantUsed: number;
   children?: ReactNode;
+  hideSuggestionPopup?:boolean;
 };
 
 export function AuthenticatedTopbar({
@@ -18,6 +20,7 @@ export function AuthenticatedTopbar({
   isAdmin = false,
   initialAssistantUsed,
   children,
+  hideSuggestionPopup=false,
 }: AuthenticatedTopbarProps) {
   return (
     <div className={styles.topbar}>
@@ -26,6 +29,7 @@ export function AuthenticatedTopbar({
       </Link>
       <div className={styles.actions}>
         {children}
+        {email&&!isAdmin?<SuggestionNotifications popup={!hideSuggestionPopup}/>:null}
         <AssistantSidebar initialUsed={initialAssistantUsed} />
         <ThemeToggle />
         <UserMenu email={email} isAdmin={isAdmin} />

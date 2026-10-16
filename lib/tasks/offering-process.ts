@@ -99,7 +99,7 @@ export function resolveOfferingProcess(input: {
   return plan;
 }
 
-function literalDeadlineDate(fact: ProcessFact | null): string | null {
+export function literalDeadlineDate(fact: ProcessFact | null): string | null {
   if (!fact?.verbatim || !fact.key.startsWith("deadline:")) return null;
   // Trade-off: only one explicit full date in supported literal wording sorts.
   // Ranges, multiple years and undated statements need official confirmation.

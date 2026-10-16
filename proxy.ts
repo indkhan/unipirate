@@ -68,5 +68,5 @@ export default async function proxy(request: NextRequest) {
 
 // Only the signed-in surfaces. /courses is exact — /courses/[id] is public.
 export const config = {
-  matcher: ["/dashboard/:path*", "/profile/:path*", "/courses", "/admin/:path*"],
+  matcher: ["/dashboard/:path*", "/profile/:path*", "/suggestions/:path*", "/courses", "/admin/:path*"],
 };

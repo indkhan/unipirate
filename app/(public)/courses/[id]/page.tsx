@@ -16,6 +16,8 @@ import { createClient } from "@/lib/db/server";
 
 import styles from "./course.module.css";
 import { CourseTaskList } from "./course-task-list";
+import { CoursePersonalTasks } from "./course-personal-tasks";
+import { coursePersonalTasks, type DashboardTask } from "@/lib/tasks/view";
 import { ReviewedOfferings } from "./reviewed-offerings";
 import { hasResearch, readResearch } from "@/lib/courses/research";
 
@@ -73,12 +75,17 @@ export default async function CoursePage({
   catch { researchIncomplete = hasResearch(course.field_extraction); }
   const { data: auth } = await db.auth.getUser();
   let myTasks: Awaited<ReturnType<typeof listTasks>> | null = null;
+  let applicationId: string | null = null;
+  let personalTasks: DashboardTask[] = [];
   if (auth.user) {
     const applications = await listApplications(db, auth.user.id);
     const application = applications.find((item) => item.course_id === course.id);
     if (application) {
-      myTasks = (await listTasks(db, auth.user.id)).filter(
-        (task) => task.application_id === application.id && task.course_task_definition_id !== null,
+      applicationId = application.id;
+      const tasks = await listTasks(db, auth.user.id);
+      personalTasks = coursePersonalTasks(tasks, auth.user.id, application.id);
+      myTasks = tasks.filter(
+        (task) => task.application_id === application.id && task.course_task_definition_id !== null && task.task_key !== null,
       );
     }
   }
@@ -215,6 +222,7 @@ export default async function CoursePage({
           courseLabel={course.university_name ?? course.name ?? "this university"}
           styles={styles}
         />
+        <CoursePersonalTasks courseId={course.id} applicationId={applicationId} tasks={personalTasks} signedIn={!!auth.user} />
       </div>
     </div>
   );

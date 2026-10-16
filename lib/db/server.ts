@@ -18,6 +18,15 @@ export function createCheckWriter() {
   );
 }
 
+/** Internal queue/reconciliation I/O only. Never pass this client to chat,
+ * student request operations or rendered admin views. Callers must validate
+ * worker credentials or an admin-scoped RPC before entering this shell. */
+export function createBackgroundWorker() {
+  const env=getServerEnv();
+  return createSupabaseClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL,env.SUPABASE_SECRET_KEY,
+    {auth:{persistSession:false,autoRefreshToken:false}});
+}
+
 export async function createClient() {
   const env = getClientEnv();
   const cookieStore = await cookies();

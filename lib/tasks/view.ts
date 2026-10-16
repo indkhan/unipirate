@@ -100,7 +100,7 @@ function displayTasks(dbTasks: Tables<"tasks">[],processIds:Set<string>): Dashbo
     return {
       id: task.id,
       key: task.task_key ?? `manual:${task.id}`,
-      kind: courseTask ? "course_task" : generated ? "generated" : "manual",
+      kind: !generated ? "manual" : courseTask ? "course_task" : "generated",
       title: task.title,
       description: task.description,
       done: task.done,
@@ -111,7 +111,7 @@ function displayTasks(dbTasks: Tables<"tasks">[],processIds:Set<string>): Dashbo
       applicationId: task.application_id,
       processEvidence: (isProcessTaskKey(task.task_key,processIds)||isOfferingProcessKey(task.task_key))?"personal_history":undefined,
       source: task.source_url
-        ? { url: task.source_url, verifiedAt: task.source_verified_at }
+        ? { url: task.source_url, verifiedAt: generated ? task.source_verified_at : null }
         : null,
       scope: task.application_id ? "university" : "global",
       adminChangeState: task.admin_change_state,
@@ -121,6 +121,11 @@ function displayTasks(dbTasks: Tables<"tasks">[],processIds:Set<string>): Dashbo
           : null,
     };
   });
+}
+
+/** Personal rows share dashboard identity and remain visible after applying. */
+export function coursePersonalTasks(rows: Tables<"tasks">[], userId: string, applicationId: string): DashboardTask[] {
+  return displayTasks(rows.filter(task => task.user_id === userId && task.application_id === applicationId && task.task_key === null), new Set());
 }
 
 function railApplication(
@@ -188,6 +193,7 @@ export async function buildDashboardView(
   }));
   const planningIds = new Set(applications.filter(a=>a.status==="planning").map(a=>a.id));
   const visibleRows = dbTasks.filter(task => {
+    if (task.task_key === null) return true;
     if (isProcessTaskKey(task.task_key,processIds)) return false;
     if (task.done) return true;
     if (!isCurrentApsTask(task,result) || !isVisibleOfferingTask(task,offeringApplications)) return false;

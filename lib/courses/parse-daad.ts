@@ -124,27 +124,7 @@ export function parseDaadText(text: string): CourseFacts {
     }
   }
 
-  // Course heading sits just above the university line, which is either
-  // "University Name • City" on one line or the city bulleted on its own line
-  // ("University Name" \n "• City") depending on how the browser copies it.
-  let name: string | null = null;
-  let university: string | null = null;
-  const previous = (from: number): string | null => {
-    for (let j = from; j >= 0; j--) {
-      if (lines[j] && !BOUNDARIES.has(lines[j])) return lines[j];
-    }
-    return null;
-  };
-  const inline = lines.findIndex((l) => /^.{3,} • .+$/.test(l));
-  const bullet = lines.findIndex((l) => /^• .+$/.test(l));
-  if (inline !== -1) {
-    university = lines[inline].split(" • ")[0];
-    name = previous(inline - 1);
-  } else if (bullet !== -1) {
-    university = previous(bullet - 1);
-    const uniIndex = university ? lines.lastIndexOf(university, bullet - 1) : -1;
-    name = uniIndex > 0 ? previous(uniIndex - 1) : null;
-  }
+  const { name, university } = parseDaadIdentity(text);
 
   // DAAD renders some blocks twice (mobile + desktop) — drop repeated lines.
   const uniq = (values: string[]) => [...new Set(values)];
@@ -162,4 +142,28 @@ export function parseDaadText(text: string): CourseFacts {
     requirements: uniq(captured.requirements),
     tuition: captured.tuition.length ? uniq(captured.tuition).join(" ") : null,
   };
+}
+
+// Only literal adjacent heading pairs identify a programme; repeated responsive
+// headings are harmless, but competing pairs must be recopied.
+export function parseDaadIdentity(text: string): { name: string | null; university: string | null } {
+  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const headings = new Map<string, { name: string; university: string }>();
+  const heading = (line: string | undefined) => line && line.length <= 240
+    && !BOUNDARIES.has(line) && !/^(DAAD|International Programmes(?: in Germany| \d{4}\/\d{4})?|My favourites|Search|Back|Home|Home Back|pagination|©)$/i.test(line)
+    // Captured DAAD preamble controls remain navigation when the title/header is omitted.
+    && !/^(Skip to main content|Services|More info|0 0|Cookie Consent|Settings|Reject|ACCEPT|Privacy Policy)$/i.test(line)
+    && !line.includes("\u2022");
+  for (let i = 0; i < lines.length; i++) {
+    const inline = lines[i].match(/^(.+) \u2022 .+$/);
+    const split = /^\u2022 .+$/.test(lines[i]);
+    if (!inline && !split) continue;
+    const university = inline ? inline[1] : lines[i - 1];
+    const name = lines[i - (inline ? 1 : 2)];
+    if (!heading(name) || !heading(university)) continue;
+    // shortcut: unfamiliar institution headings require recopy; extend only with captured DAAD examples.
+    if (!/university|universit(?:ät|aet)|hochschule|college|institut|akademie|academy|school|\b(?:TU|TH|FH|HAW|HTW|HWR|HHL|ESMT|BTU|KIT|RWTH|LMU)\b/i.test(university)) continue;
+    headings.set(JSON.stringify([name, university]), { name, university });
+  }
+  return headings.size === 1 ? [...headings.values()][0] : { name: null, university: null };
 }

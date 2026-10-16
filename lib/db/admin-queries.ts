@@ -30,6 +30,13 @@ import { hasResearch, readResearch, ResearchReconciliationSchema, prepareResearc
 import { getProgrammeByLegacyCourse, listCourseOfferings } from "@/lib/db/queries";
 
 type Db = Pick<SupabaseClient<Database>, "from">;
+export async function getAdminPlannerSettings(db:Db&Pick<SupabaseClient<Database>,"rpc">){
+  if(unwrap(await db.rpc("is_admin"))!==true)throw new Error("Administrator required.");
+  return unwrap<Tables<"planning_settings">>(await db.from("planning_settings").select("*").eq("id",true).single());
+}
+export async function setAdminPlannerModel(db:Pick<SupabaseClient<Database>,"rpc">,model:string,catalogue:unknown){
+  return unwrap(await db.rpc("set_planner_model",{p_model:z.string().max(200).parse(model),p_catalogue_snapshot:catalogue as Json}));
+}
 
 export type AdminRuleFilters = {
   country?: string;
@@ -286,9 +293,17 @@ export async function updateAdminCourseTaskDefinition(
  * SQL function as jsonb, which buys atomicity while keeping one parser.
  */
 export async function syncAdminCourseTaskDefinitions(
-  db: Db,
+  caller: Db & Pick<SupabaseClient<Database>,"rpc">,
   courseId: string,
 ): Promise<void> {
+  CourseCatalogueIdSchema.parse(courseId);
+  if(unwrap(await caller.rpc("is_admin"))!==true)throw new Error("Administrator required.");
+  const setting=unwrap<Pick<Tables<"planning_settings">,"enabled">>(await caller.from("planning_settings").select("enabled").eq("id",true).single());
+  // Committed shared definition/publication events enqueue owner-only proposals.
+  // Admin sessions can never read private copies, including personally edited ones.
+  if(setting.enabled){unwrap(await caller.rpc("enqueue_course_template_planning",{p_course_id:courseId}));return;}
+  const {createBackgroundWorker}=await import("@/lib/db/server");
+  const db=createBackgroundWorker();
   const applications = unwrap(
     await db
       .from("applications")
@@ -347,8 +362,27 @@ export async function syncAdminCourseTaskDefinitions(
 
   // task_key embeds the application uuid, so the key sets are globally unique;
   // the user_id filters are kept so the planner uses the (user_id, task_key) index.
-  if (upsertRows.length > 0) {
-    unwrap(await db.from("tasks").upsert(upsertRows, { onConflict: "user_id,task_key" }));
+  // The read above can be stale by write time: a student may edit, convert or
+  // delete a copy meanwhile. Rows absent at read time are insert-only (never
+  // overwrite a concurrent row); rows present are update-only and re-check
+  // has_personal_edits in the WHERE clause (never resurrect a deleted row).
+  const readKeys = new Set(tasks.map((task) => `${task.user_id}:${task.task_key}`));
+  const newRows = upsertRows.filter((row) => !readKeys.has(`${row.user_id}:${row.task_key}`));
+  const existingRows = upsertRows.filter((row) => readKeys.has(`${row.user_id}:${row.task_key}`));
+  if (newRows.length > 0) {
+    unwrap(await db.from("tasks").upsert(newRows, { onConflict: "user_id,task_key", ignoreDuplicates: true }));
+  }
+  // Trade-off: one guarded update per untouched copy (PostgREST upsert has no
+  // WHERE). Same ~50-trackers-per-course ceiling as the personal updates below.
+  for (const { user_id, task_key, ...values } of existingRows) {
+    unwrap(
+      await db
+        .from("tasks")
+        .update(values)
+        .eq("user_id", user_id)
+        .eq("task_key", task_key)
+        .eq("has_personal_edits", false),
+    );
   }
   if (deactivateKeys.length > 0) {
     unwrap(
@@ -356,7 +390,8 @@ export async function syncAdminCourseTaskDefinitions(
         .from("tasks")
         .update({ generated_active: false })
         .in("user_id", userIds)
-        .in("task_key", deactivateKeys),
+        .in("task_key", deactivateKeys)
+        .eq("has_personal_edits", false),
     );
   }
   if (removalPendingKeys.length > 0) {
@@ -365,7 +400,8 @@ export async function syncAdminCourseTaskDefinitions(
         .from("tasks")
         .update({ admin_change_state: "removal_pending" })
         .in("user_id", userIds)
-        .in("task_key", removalPendingKeys),
+        .in("task_key", removalPendingKeys)
+        .eq("has_personal_edits", true),
     );
   }
   // ponytail: one update per personalized copy — each carries a distinct

@@ -14,6 +14,7 @@ const serverSchema = clientSchema.extend({
   SUPABASE_SECRET_KEY: z.string().startsWith("sb_secret_"),
   OPENROUTER_API_KEY: z.string().min(1).optional(),
   TAVILY_API_KEY: z.string().min(1).optional(),
+  PLANNING_WORKER_SECRET:z.string().min(32).optional(),
 });
 
 // NEXT_PUBLIC_ vars must be referenced literally so Next.js inlines them
@@ -27,6 +28,7 @@ const runtimeEnv = {
   SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
   TAVILY_API_KEY: process.env.TAVILY_API_KEY,
+  PLANNING_WORKER_SECRET:process.env.PLANNING_WORKER_SECRET,
 };
 
 export type ClientEnv = z.infer<typeof clientSchema>;

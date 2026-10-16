@@ -274,3 +274,100 @@
   font: var(--text-body-sm);
   color: var(--ink-secondary);
 }
+
+.personalHeading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+}
+
+.personalForm, .personalForm label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  font: var(--text-body-sm);
+}
+
+.personalForm {
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+
+.personalForm label span {
+  color: var(--ink-muted);
+}
+
+.personalForm input, .personalForm textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--text-body-sm);
+}
+
+.personalForm textarea {
+  resize: vertical;
+}
+
+.personalFields {
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .personalFields { grid-template-columns: 1fr 1fr; }
+}
+
+.personalButton {
+  min-height: var(--tap-min);
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--route-blue);
+  color: var(--ink-inverse);
+  font: var(--text-body-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.personalButton:disabled, .personalToggle:disabled { opacity: .6; cursor: wait; }
+
+.personalTask {
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+  overflow-wrap: anywhere;
+  font: var(--text-body-sm);
+}
+
+.personalTaskHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.personalTaskHead h3 {
+  margin: 0;
+  font: var(--text-body);
+  font-weight: 600;
+}
+
+.personalToggle {
+  flex: none;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.personalNotes { white-space: pre-wrap; }
+.personalCompleted summary { min-height: var(--tap-min); cursor: pointer; font: var(--text-body-sm); }

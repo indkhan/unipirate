@@ -10,7 +10,7 @@ describe("bounded research shell (synthetic providers)", () => {
     const pdf = "https://uni-example.de/computing/regulations.pdf";
     const nav = "https://uni-example.de/home";
     const fetched: string[] = [];
-    const generate = vi.fn(async (_seed, _observations, _signal) => output);
+    const generate = vi.fn<NonNullable<NonNullable<Parameters<typeof researchCourse>[1]>["generate"]>>(async () => output);
     const draft = await researchCourse(seed, { tavilyKey: "synthetic", generate, fetcher: async (url, init) => {
       const body = JSON.parse(String(init?.body));
       if (String(url).endsWith("search")) return Response.json({ results: [{ url: `${seed.url}/` }, { url: "https://www.daad.de/different" }] });

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), getServerEnv: vi.fn(), countTodayAssistantQuestions: vi.fn(),
   insertAssistantMessage: vi.fn(), getProfile: vi.fn(), runAssistant: vi.fn(),
+  getPersonalTaskReceipt: vi.fn(),
 }));
 vi.mock("@/lib/db/server", () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser } }) }));
 vi.mock("@/lib/env", () => ({ getServerEnv: mocks.getServerEnv }));
@@ -22,10 +23,41 @@ beforeEach(() => {
   mocks.getServerEnv.mockReturnValue({ OPENROUTER_API_KEY: "test" });
   mocks.countTodayAssistantQuestions.mockResolvedValue(0);
   mocks.getProfile.mockResolvedValue(null);
+  mocks.getPersonalTaskReceipt.mockResolvedValue(null);
   mocks.runAssistant.mockResolvedValue({ stream: new ReadableStream({ start(controller) { controller.close(); } }) });
 });
 
 describe("POST /api/assistant/chat", () => {
+  const instruction = "Create a task to translate my diploma";
+  const taskRequest = () => request({ messages: [{ id: "durable-command", role: "user", parts: [{ type: "text", text: instruction }] }] });
+  it("recovers a committed receipt before provider configuration or exhausted quota", async () => {
+    const receipt = { status: "already_exists", task: { id: "receipt-task", title: "Translate diploma", description: null, due_date: null, source_url: null, application_id: null } };
+    mocks.getPersonalTaskReceipt.mockResolvedValue(receipt);
+    mocks.getServerEnv.mockImplementation(() => { throw new Error("Provider unavailable"); });
+    mocks.countTodayAssistantQuestions.mockResolvedValue(20);
+    const response = await POST(taskRequest());
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('"data-task-receipt"');
+    expect(mocks.getPersonalTaskReceipt).toHaveBeenCalledWith(expect.anything(), "student", expect.any(String), instruction);
+    expect(mocks.getServerEnv).not.toHaveBeenCalled();
+    expect(mocks.countTodayAssistantQuestions).not.toHaveBeenCalled();
+    expect(mocks.insertAssistantMessage).not.toHaveBeenCalled();
+    expect(mocks.runAssistant).not.toHaveBeenCalled();
+  });
+  it("returns 409 for a durable operation reused with a different instruction", async () => {
+    mocks.getPersonalTaskReceipt.mockRejectedValue(new Error("Operation ID already belongs to a different request"));
+    expect((await POST(taskRequest())).status).toBe(409);
+    expect(mocks.getServerEnv).not.toHaveBeenCalled();
+    expect(mocks.runAssistant).not.toHaveBeenCalled();
+    expect(mocks.insertAssistantMessage).not.toHaveBeenCalled();
+  });
+  it("replays a receipt after its task was deleted without invoking creation again", async () => {
+    mocks.getPersonalTaskReceipt.mockResolvedValue({ status: "already_exists", task: { id: "deleted-task", title: "Translate diploma", description: null, due_date: null, source_url: null, application_id: null } });
+    const response = await POST(taskRequest());
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("deleted-task");
+    expect(mocks.runAssistant).not.toHaveBeenCalled();
+  });
   it("returns 401 when user is not signed in", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
     expect((await POST(request())).status).toBe(401);
