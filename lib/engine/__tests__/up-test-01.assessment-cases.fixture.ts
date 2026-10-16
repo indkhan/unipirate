@@ -456,7 +456,7 @@ export const ROUTE_CERTIFICATE_MISSING = {...ROUTE_CERTIFICATE_UNKNOWN,apsCertif
 export const ROUTE_CERTIFICATE_HELD = {...ROUTE_CERTIFICATE_UNKNOWN,apsCertificate:'held'} as const;
 export const INDIA_FLAGS = {...ROUTE_CERTIFICATE_MISSING,aps:'required',apsScopes:{qualification:'required',application:'unknown',visa:'unknown'}} as const;
 export const INDIA_FLAGS_INDIAN_ISSUER = {...ROUTE_CERTIFICATE_MISSING,aps:'required',apsScopes:{qualification:'required',application:'required',visa:'required'}} as const;
-export const APS_INVENTORY = ['aps-scoped-qualification','aps-scoped-application','aps-scoped-visa-sa','aps-scoped-visa-in','aps-scoped-acquisition'];
+export const APS_INVENTORY = ['aps-scoped-qualification','aps-scoped-application','aps-scoped-visa-sa','aps-scoped-visa-in','aps-scoped-acquisition','aps-scoped-qualification-non-aps-issuer'];
 export const ORIGINAL_REVIEWED_CASE_COUNT = 316;
 
 // Bounded witnesses approved in expected-contract3; never a criteria-derived oracle.
@@ -627,7 +627,7 @@ REVIEWED_CASES.push(...dmatVariants.map(c=>({...c,universe:'dMAT' as const,revie
 export const APS_ADDITIONAL = [
   {id:'master-Indian',profile:{...officialIndianProfile,targetDegree:'master',schoolQualification:undefined,tertiaryQualification:{issuer:'Indian university',country:'in',context:'national'}},scopes:{qualification:'unknown',application:'required',visa:'required'},certificate:'missing',aps:'required'},
   {id:'master-Saudi',profile:{...officialIndianProfile,targetDegree:'master',tertiaryQualification:{issuer:'Saudi university',country:'sa',context:'national'}},scopes:{qualification:'unknown',application:'unknown',visa:'not_listed'},certificate:'missing',aps:'unknown'},
-  {id:'school-Saudi',profile:{...officialIndianProfile,nationality:'in',schoolQualification:{country:'sa',context:'national'}},scopes:{qualification:'unknown',application:'unknown',visa:'not_listed'},certificate:'missing',aps:'unknown'},
+  {id:'school-Saudi',profile:{...officialIndianProfile,nationality:'in',schoolQualification:{country:'sa',context:'national'}},scopes:{qualification:'not_required',application:'unknown',visa:'not_listed'},certificate:'missing',aps:'unknown'},
   {id:'context-unknown',profile:{...officialIndianProfile,schoolQualification:{country:'in',context:'unknown'}},scopes:{qualification:'unknown',application:'unknown',visa:'unknown'},certificate:'missing',aps:'unknown'},
 ] as const;
 export const APS_SUPPORT: Record<string,{qualification:string[];application:string[];visa:string[];aps:'required'|'unknown';documents:string[];acquisition:boolean}>={
@@ -639,7 +639,7 @@ export const APS_SUPPORT: Record<string,{qualification:string[];application:stri
  'international':{qualification:[],application:[],visa:[],aps:'unknown',documents:[],acquisition:false},
  'master-Indian':{qualification:[],application:['aps-scoped-application','aps-scoped-acquisition'],visa:['aps-scoped-visa-in'],aps:'required',documents:['APS India certificate'],acquisition:true},
  'master-Saudi':{qualification:[],application:[],visa:['aps-scoped-visa-sa'],aps:'unknown',documents:[],acquisition:false},
- 'school-Saudi':{qualification:[],application:[],visa:['aps-scoped-visa-sa'],aps:'unknown',documents:[],acquisition:false},
+ 'school-Saudi':{qualification:['aps-scoped-qualification-non-aps-issuer'],application:[],visa:['aps-scoped-visa-sa'],aps:'unknown',documents:[],acquisition:false},
  'context-unknown':{qualification:[],application:[],visa:[],aps:'unknown',documents:[],acquisition:false},
 };
 

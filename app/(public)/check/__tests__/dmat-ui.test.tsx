@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { ProfileReview } from "../profile-review";
 import { CheckFlow } from "../check-flow";
-import { visibleSteps } from "../steps";
+import { questionSteps } from "../steps";
 import { dmatAnswers } from "./dmat.fixture";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("posthog-js/react", () => ({ usePostHog: () => ({ capture: vi.fn() }) }));
@@ -13,7 +13,7 @@ vi.mock("@/components/app/theme-toggle", () => ({ ThemeToggle: () => null }));
 it("upgrades restored master's inputs and exposes the new questions", () => {
   const initial = { ...dmatAnswers, dmatVersion: undefined };
   const html = renderToStaticMarkup(React.createElement(CheckFlow, { initialAnswers: initial,
-    initialStepIndex: visibleSteps(dmatAnswers).indexOf("dmatQualificationScope") }));
+    initialStepIndex: questionSteps(dmatAnswers).indexOf("dmatQualificationScope") }));
   expect(html).toContain("Can this dMAT assessment use one relevant previous qualification?");
 });
 it("renders classification provenance and reported dates without conflating March submission", () => {

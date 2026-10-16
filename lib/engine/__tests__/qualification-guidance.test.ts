@@ -43,6 +43,14 @@ it('still assesses every non-duration check for a legacy published rule that con
   expect(diagnostic?.assessedChecks?.find(c => c.key === 'gce_min_al_grade')?.met).toBe(true);
   expect(diagnostic?.facts).toEqual([]);
   expect(result.unknowns.join(' ')).not.toMatch(/requires.*12|how many|actual ascending school years/i);
+  // #75: the rule's own route travels with the guidance, conditional only on duration.
+  expect(diagnostic?.conditionalPath).toBe(legacySchoolYearsRule.outcomes.path);
+});
+it('never offers a conditional route when another check fails', () => {
+  const profile = current(ordinaryGce);
+  profile.gce!.subjects = [gceSubject('mathematics'), gceSubject('physics'), gceSubject('chemistry', 'D')];
+  const result = evaluate(profile, [legacySchoolYearsRule]);
+  expect(result.diagnostics?.some(d => d.conditionalPath !== undefined)).toBe(false);
 });
 it('never promotes a mixed or low-grade trio even with every other check met', () => {
   const profile = current(ordinaryGce);

@@ -319,6 +319,9 @@ export const ResultDiagnosticSchema = z.object({
   assessedChecks: z.array(z.object({key: FactKeySchema, actual: Primitive.optional(), expected: ConditionSchema, met: z.boolean()}).strict()).optional(),
   relatedUnknowns: z.array(z.string()).optional(),
   followUp: z.object({key: FactKeySchema, question: z.string().min(1)}).strict().optional(),
+  // qualification_guidance only: the reviewed rule's route, conditional on the
+  // withheld school-duration condition. Never promoted to Result.path.
+  conditionalPath: z.enum(['direct', 'subject_restricted', 'studienkolleg']).optional(),
 }).strict();
 export type ResultDiagnostic = z.infer<typeof ResultDiagnosticSchema>;
 
@@ -823,8 +826,13 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
       if (jee.context && jee.context !== "ordinary") {
         unknowns.push("JEE " + jee.context + " needs individual assessment by uni-assist/the university. Main exemptions/foreign entry, preparatory ranks and cross-year or unclear results have no verified German exception here. Confirm with " + JEE_SOURCE + " and https://jeeadv.ac.in/foreign.html");
       } else {
+        // Main not passed already excludes the JEE route (both are required), so an
+        // unasked Advanced result is not a gap. A route decided by another rule makes
+        // the exclusion informational rather than an open question.
+        const mainExcluded = jee.main === "not_passed" || jee.main === "no_result";
         for (const [exam, status] of [["Main", jee.main], ["Advanced", jee.advanced]]) {
-          if (status === "not_passed" || status === "no_result") unknowns.push("JEE " + exam + " qualifying passage is not satisfied by the reported " + status + "; this excludes only the ordinary JEE route and does not establish Studienkolleg. Confirm with " + JEE_SOURCE);
+          if (exam === "Advanced" && mainExcluded && status === undefined) continue;
+          if (status === "not_passed" || status === "no_result") { if (path === "unknown") unknowns.push("JEE " + exam + " qualifying passage is not satisfied by the reported " + status + "; this excludes only the ordinary JEE route and does not establish Studienkolleg. Confirm with " + JEE_SOURCE); }
           else if (status !== "passed") unknowns.push("Establish JEE " + exam + " qualifying passage from official results; a percentile, score, rank/result possession or legacy boolean alone cannot confirm it. Confirm with " + JEE_SOURCE);
         }
         if (jee.main === "passed" && jee.advanced === "passed" && !jee.context) unknowns.push("Confirm whether JEE evidence is ordinary qualifying passage or needs individual assessment (Main exemption, preparatory rank, cross-year or unclear results): " + JEE_SOURCE);
@@ -1022,7 +1030,7 @@ export function evaluate(profile: Profile, rules: unknown[]): Result {
     const unsupported = decisive.some(f => !missing(f.actual) && (['intake_index', 'aps_qualification_context', 'in_class12_prior_study_country', 'in_class12_study_mode', 'pk_prior_study_country', 'pk_prior_study_completion', 'pk_study_mode', 'gce_qualification_context', 'gce_qualification_type', 'gce_evidence', 'gce_awarding_body', 'ib_evidence', 'sa_degree_context', 'sa_degree_mode'].includes(f.key) || ['other', 'outside', 'reported_official_outside', 'completed_qualification', 'discontinued', 'main_exemption', 'preparatory_rank', 'cross_year', 'unclear', 'legacy', 'invalid', 'unlisted', 'not_yet_effective', 'programme_not_covered', 'identity_conflict'].includes(String(f.actual))));
     const gap = decisive.some(f => missing(f.actual) && !('reported' in f));
     const status = qualificationScope && !decisive.length ? 'qualification_guidance' : conflict ? 'source_conflict' : unsupported ? 'unsupported' : reportedNegative ? 'known_unmet_condition' : gap ? 'targeted_missing_fact' : 'known_unmet_condition';
-    diagnostics.push({support: 'path', status, reason: status === 'qualification_guidance' ? 'recognition_not_assessed' : conflict || unsupported ? 'applicability_unsupported' : reportedNegative ? 'condition_unmet' : gap ? 'fact_missing' : 'condition_unmet', ruleIds: [rule.id], facts: decisive, ...(assessedChecks ? {assessedChecks} : {}), relatedUnknowns: unknowns.filter(message => citations.some(c => c.ruleId === rule.id && c.claim === message) || matched.some(r => r.outcomes.path === 'unknown' && r.source_url === rule.source_url && r.outcomes.note === message && decisive.some(f => f.key.startsWith('in_class12_') && r.conditions[f.key] !== undefined)))});
+    diagnostics.push({support: 'path', status, reason: status === 'qualification_guidance' ? 'recognition_not_assessed' : conflict || unsupported ? 'applicability_unsupported' : reportedNegative ? 'condition_unmet' : gap ? 'fact_missing' : 'condition_unmet', ruleIds: [rule.id], facts: decisive, ...(assessedChecks ? {assessedChecks} : {}), ...(status === 'qualification_guidance' && (rule.outcomes.path === 'direct' || rule.outcomes.path === 'subject_restricted' || rule.outcomes.path === 'studienkolleg') ? {conditionalPath: rule.outcomes.path} : {}), relatedUnknowns: unknowns.filter(message => citations.some(c => c.ruleId === rule.id && c.claim === message) || matched.some(r => r.outcomes.path === 'unknown' && r.source_url === rule.source_url && r.outcomes.note === message && decisive.some(f => f.key.startsWith('in_class12_') && r.conditions[f.key] !== undefined)))});
     // An unmatched positive note cannot become the claimed route in a citation.
     if (!citations.some(c => c.ruleId === rule.id)) candidateCitations.push({ruleId: rule.id, sourceUrl: rule.source_url, verifiedAt: rule.last_verified_at ?? null, status: rule.status as 'beta' | 'verified', supports: ['unknowns'], claim: qualificationScope ? 'Qualification checks only; full recognition is not assessed. School attendance is not established by this qualification.' : 'Candidate route only: ' + decisive.map(f => diagnosticFactLabel(f.key) + (missing(f.actual) ? ' missing or uncertain' : ' does not satisfy this candidate condition')).join('; ') + '. Other supported routes remain independent.'});
   }

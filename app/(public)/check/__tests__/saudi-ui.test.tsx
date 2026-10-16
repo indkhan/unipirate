@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { CheckFlow } from "../check-flow";
 import { ProfileReview } from "../profile-review";
-import { visibleSteps, upgradeSaudiAnswers, withAnswer, isSaudiDegreeBranch, isSaudiStudyBranch, type PartialAnswers } from "../steps";
+import { visibleSteps, questionSteps, upgradeSaudiAnswers, withAnswer, isSaudiDegreeBranch, isSaudiStudyBranch, type PartialAnswers } from "../steps";
 import { buildOptions, questionFor } from "../check-questions";
 import { SAUDI_ANABIN } from "@/lib/engine/saudi";
 import { currentPakistanAnswers } from "./pakistan-current.fixture";
@@ -22,7 +22,7 @@ describe("Saudi forms", () => {
   expect(upgradeSaudiAnswers(legacy)).not.toHaveProperty("saudiCertificateSubtype", "private_school");
  });
  it("renders Saudi official source and reported evidence rather than APS guidance", () => {
-  const html = renderToStaticMarkup(<CheckFlow initialAnswers={saudiAnswers} initialStepIndex={visibleSteps(saudiAnswers).indexOf("priorStudyRecognition")} />);
+  const html = renderToStaticMarkup(<CheckFlow initialAnswers={saudiAnswers} initialStepIndex={questionSteps(saudiAnswers).indexOf("priorStudyRecognition")} />);
   expect(html).toContain("uni-assist.de"); expect(html).not.toContain("aps-india.de");
   expect(html).toContain("does not independently verify");
   const review = renderToStaticMarkup(<ProfileReview initialAnswers={saudiAnswers} />);
@@ -41,7 +41,7 @@ it("offers selectable CBSE in fresh and edited Saudi v2 India flows without a pr
  for (const initial of [{ targetDegree: "bachelor", certificateCountry: "sa", curriculumType: "national", saudiCertificateVersion: 2 } as const, saudiAnswers]) {
   const answers = indiaIssuer(initial);
   expect(answers.board).toBeUndefined();
-  const html = renderToStaticMarkup(<CheckFlow initialAnswers={answers} initialStepIndex={visibleSteps(answers).indexOf("board")} />);
+  const html = renderToStaticMarkup(<CheckFlow initialAnswers={answers} initialStepIndex={questionSteps(answers).indexOf("board")} />);
   expect(html).toContain("CBSE"); expect(html).toContain("CISCE"); expect(html).not.toContain("Tawjihiyah");
   const review = renderToStaticMarkup(<ProfileReview initialAnswers={answers} />);
   const board = review.split('id="board-label"')[1]?.split("</section>")[0];
@@ -62,7 +62,7 @@ it.each([{ saudiCertificateSubtype: "unknown" }, { saudiCertificateSubtype: "oth
   const question = questionFor(step, answers);
   expect(question.sourceUrl).toBe(SAUDI_ANABIN);
   expect(question.subtitle).not.toMatch(/APS|Class XII/);
-  const html = renderToStaticMarkup(<CheckFlow initialAnswers={answers} initialStepIndex={visibleSteps(answers).indexOf(step)} />);
+  const html = renderToStaticMarkup(<CheckFlow initialAnswers={answers} initialStepIndex={questionSteps(answers).indexOf(step)} />);
   expect(html).toContain(SAUDI_ANABIN); expect(html).not.toContain("aps-india.de");
  }
  const review = renderToStaticMarkup(<ProfileReview initialAnswers={answers} />);
@@ -86,7 +86,7 @@ it("actual Saudi/Pakistan issuer edits expose each source branch once and clear 
  for (const [answers, step, hidden] of [[pk, "pkCertificate", "saudiCertificateSubtype"], [sa, "saudiCertificateSubtype", "pkCertificate"]] as const) {
   const steps = visibleSteps(answers);
   expect(new Set(steps).size).toBe(steps.length); expect(steps).toContain(step); expect(steps).not.toContain(hidden);
-  for (const html of [renderToStaticMarkup(<CheckFlow initialAnswers={answers} initialStepIndex={steps.indexOf(step)} />), renderToStaticMarkup(<ProfileReview initialAnswers={answers} />)]) expect(html).toContain(questionFor(step, answers).question);
+  for (const html of [renderToStaticMarkup(<CheckFlow initialAnswers={answers} initialStepIndex={questionSteps(answers).indexOf(step)} />), renderToStaticMarkup(<ProfileReview initialAnswers={answers} />)]) expect(html).toContain(questionFor(step, answers).question);
  }
  expect(pk.saudiSubjectAssessmentReference).toBeUndefined(); expect(pk.priorStudyRecognitionReference).toBeUndefined();
  expect(sa.pkCurrentAssessmentReference).toBeUndefined(); expect(sa.pkRecognitionReference).toBeUndefined();

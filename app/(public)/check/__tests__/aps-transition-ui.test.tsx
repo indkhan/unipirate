@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { ProfileReview } from "../profile-review";
 import { CheckFlow } from "../check-flow";
-import { visibleSteps } from "../steps";
+import { questionSteps } from "../steps";
 import { QUESTIONS } from "../check-questions";
 vi.mock("next/navigation", () => ({useRouter: () => ({push: vi.fn()})}));
 vi.mock("posthog-js/react", () => ({usePostHog: () => ({capture: vi.fn()})}));
@@ -24,7 +24,7 @@ it("shows the exact assessed-qualification scope when editing a completed-degree
   expect(saved.hasExistingApsCertificate).toBe(true);
 });
 it("renders the reported ISO date and source-backed confirmation in both edit surfaces", () => {
-  const checker = renderToStaticMarkup(React.createElement(CheckFlow, {initialAnswers: answers, initialStepIndex: visibleSteps(answers).indexOf("apsSubmissionDate")}));
+  const checker = renderToStaticMarkup(React.createElement(CheckFlow, {initialAnswers: answers, initialStepIndex: questionSteps(answers).indexOf("apsSubmissionDate")}));
   const review = renderToStaticMarkup(React.createElement(ProfileReview, {initialAnswers: answers}));
   for (const html of [checker, review]) {
     expect(html).toContain('value="2026-03-14"');

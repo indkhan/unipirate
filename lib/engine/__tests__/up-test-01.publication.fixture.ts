@@ -129,7 +129,8 @@ const assignments: Record<string, string> = {
   "dmat-bachelor-not-required": "000000000076",
   // Synthetic APS resolver control only; never an official candidate.
   "up-test-01-synthetic-aps-application-conflict": "000000000077",
-  "aps-scoped-visa-in": "000000000078"
+  "aps-scoped-visa-in": "000000000078",
+  "aps-scoped-qualification-non-aps-issuer": "000000000079"
 };
 export const publicationIdentity = (id: string) => {
   const suffix = assignments[id];

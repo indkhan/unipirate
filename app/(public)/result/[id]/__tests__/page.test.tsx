@@ -64,7 +64,9 @@ it.each([undefined, 1] as const)("renders current Saudi bachelor result with his
   const snapshot = structuredClone(stored.answers);
   const html = await renderPage();
   expect(html).toContain("Your admission route still needs confirmation.");
-  expect(html).toContain("Confirm whether APS for application applies");
+  // Undecided application/visa scopes collapse into one APS answer (#75).
+  expect(html).toContain("Confirm whether APS for qualification recognition applies");
+  expect(html).not.toContain("Confirm whether APS for application applies");
   expect(html).not.toContain("Original assessment");
   expect(stored.answers).toEqual(snapshot);
 });

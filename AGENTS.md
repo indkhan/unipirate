@@ -13,6 +13,7 @@ German public university. Full architecture and flow documentation:
 - `pnpm db:types` — regenerate `lib/db/database.types.ts` after migrations
 - `pnpm kb:embed` — rebuild the assistant knowledge base after rule changes
 - `pnpm eval:assistant` — 20-question adversarial assistant eval
+- `pnpm audit:checker` — read-only persona audit: questions asked and "Not confirmed" verdicts against live rules
 
 ## Product rules (non-negotiable)
 

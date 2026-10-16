@@ -1516,6 +1516,39 @@ Legacy reads remain unchanged. Passport/visa edits preserve academic reports.
 The explicit current revision adds pakistan-current-v2; protected old assessment
 revisions, immutable source versions and captured UTC instants are never rewritten.
 
+### Fewest questions, fewest "Not confirmed" (#75)
+
+`pnpm audit:checker` (`scripts/audit-checker.ts`) replays typical-student personas
+(`scripts/audit-checker.personas.ts`, pure and unit-tested) through the real step logic
+and the live published rule versions, using the anonymous key, and counts the questions
+asked and the verdicts the result page shows as unconfirmed. It never writes a check.
+`--assume-republished` is a what-if that treats legacy-captured versions as reviewed.
+
+- **Derived steps.** `questionSteps()` is `visibleSteps()` minus answers implied by
+  earlier ones (`isDerivedStep`). The check flow and entry navigation use it, while
+  validation, pruning and profiles keep the full list. A national curriculum with an
+  explicit issuer country fills `schoolQualificationContext = national` in `withAnswer`.
+  An `other` curriculum still asks, because international is possible there.
+- **JEE gating.** uni-assist: JEE counts only when Main AND Advanced are passed.
+  Advanced is asked only after a passed/unknown Main, and evidence context only when
+  both are passed or unknown. Route-exclusion lines are not reported as unknowns when
+  another rule already decides the path.
+- **Conditional route.** A `qualification_guidance` diagnostic (every reviewed GCE/IB
+  check met except the withheld school-duration condition) carries the rule's
+  `conditionalPath`. The result page shows that route "provided you completed at least
+  12 years of ascending school attendance" (DAAD). `Result.path` stays `unknown`, and
+  no duration question or fact is reintroduced.
+- **One APS answer.** Visa guidance is deferred (#55) and the application route is not
+  asked (#51), so undecided application/visa scopes are not separate verdicts. They
+  appear only when a reviewed rule decided them, or as a single qualification verdict
+  when nothing did. Unknown TestAS reads as set by each university (testas.de).
+- **Data, not code.** Many remaining unknowns come from published rule versions with
+  `provenance = legacy_capture`, which `selectRuleVersions` excludes as
+  `legacy_scope_unknown` (for example `dmat-bachelor-not-required`, `aps-india-national`
+  and the Saudi university rules). These need admin re-publication. The draft
+  `aps-scoped-qualification-non-aps-issuer` (Pakistani/Saudi national issuers, uni-assist
+  APS glossary) also awaits /admin review.
+
 ### Structured result diagnostics (UP-ELIG-10)
 
 New evaluations add optional strict diagnostics to Result: known_route,

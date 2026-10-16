@@ -264,6 +264,13 @@ export const REVIEWED_SOURCES: Record<string, {url: string; quote: string; verif
     "file": "scripts/rules.bootstrap.ts",
     "applicability": "Reviewed checklist omission; not_listed not exemption"
   },
+  "APS-NON-APS-ISSUER": {
+    "url": "https://www.uni-assist.de/en/tools/glossary-of-terms/description/term/akademische-pruefstelle-aps/",
+    "quote": "It exists in China, Vietnam and India. For these countries, the APS certificate is a requirement for applying to a German university.",
+    "verifiedAt": "2026-10-16T00:00:00Z",
+    "file": "scripts/rules.bootstrap.ts",
+    "applicability": "Pakistani/Saudi national school issuer only; GCE/IB and residence never exempt"
+  },
   "APS-IN-VISA": {
     "url": "https://aps-india.de/faqs/",
     "quote": "The APS certificate is generally required as part of the documentation for the German student visa procedure.",
@@ -415,6 +422,7 @@ export const LOGICAL_SOURCES: Record<string, string> = {
   "aps-scoped-acquisition": "APS-ACQUISITION",
   "aps-scoped-visa-sa": "APS-SA-VISA",
   "aps-scoped-visa-in": "APS-IN-VISA",
+  "aps-scoped-qualification-non-aps-issuer": "APS-NON-APS-ISSUER",
   "dmat-bachelor-not-required": "DMAT-BACHELOR",
   "dmat-reviewed-before-intake": "DMAT-INTAKE",
   "dmat-reviewed-review": "DMAT-INTAKE",
@@ -516,7 +524,8 @@ export const UNIVERSE_LOGICAL_IDS = {
     "aps-scoped-application",
     "aps-scoped-visa-sa",
     "aps-scoped-visa-in",
-    "aps-scoped-acquisition"
+    "aps-scoped-acquisition",
+    "aps-scoped-qualification-non-aps-issuer"
   ],
   "JEE": [
     "in-jee-qualifying-pass-review"
@@ -555,7 +564,8 @@ export const UNIVERSE_LOGICAL_IDS = {
     "aps-scoped-application",
     "aps-scoped-visa-sa",
     "aps-scoped-visa-in",
-    "aps-scoped-acquisition"
+    "aps-scoped-acquisition",
+    "aps-scoped-qualification-non-aps-issuer"
   ],
   "transition": [
     "aps-transition-before",

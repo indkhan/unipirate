@@ -633,8 +633,12 @@ export function visibleSteps(answers: PartialAnswers): StepId[] {
   if (answers.jeeVersion !== undefined && bachelor && answers.curriculumType === "national" &&
       answers.schoolQualificationCountry === "in" && answers.schoolQualificationContext === "national") {
     if (answers.jeeVersion === 2) steps.push("jeeSchoolCertificate");
-    steps.push("jeeMainStatus", "jeeAdvancedStatus");
-    if ([answers.jeeMainStatus, answers.jeeAdvancedStatus].some(s => s === "passed" || s === "unknown")) steps.push("jeeEvidenceContext");
+    // uni-assist: "JEE results are only relevant if you have successfuly passed the
+    // JEE Main AND Advanced." Advanced/context are asked only while both can still pass.
+    steps.push("jeeMainStatus");
+    const relevant = (s: string | undefined) => s === "passed" || s === "unknown";
+    if (relevant(answers.jeeMainStatus)) steps.push("jeeAdvancedStatus");
+    if (relevant(answers.jeeMainStatus) && relevant(answers.jeeAdvancedStatus)) steps.push("jeeEvidenceContext");
   }
   // Certificate fulfilment is independent of visa filing. Existing answers
   // remain reachable when only the visa changes, including legacy records.
@@ -870,7 +874,24 @@ export function withAnswer<K extends StepId>(
     }
     if (field === "apsSubmissionConfirmation") delete next.apsSubmissionDate;
   }
+  // A national curriculum with an explicit issuer country is that country's
+  // national system; asking "national or international?" again is redundant.
+  if (isDerivableNationalContext(next) && next.schoolQualificationContext === undefined) next.schoolQualificationContext = "national";
   return normalizeAnswers(next);
+}
+
+function isDerivableNationalContext(a: PartialAnswers): boolean {
+  return a.targetDegree === "bachelor" && a.curriculumType === "national" && a.schoolQualificationCountry !== undefined && usesNationalIssuerQuestions(a);
+}
+
+/** Visible steps whose answer is implied by earlier answers; kept in data, never asked. */
+export function isDerivedStep(a: PartialAnswers, step: StepId): boolean {
+  return step === "schoolQualificationContext" && isDerivableNationalContext(a) && a.schoolQualificationContext === "national";
+}
+
+/** The questions a student actually sees, in order. */
+export function questionSteps(answers: PartialAnswers): StepId[] {
+  return visibleSteps(answers).filter(step => !isDerivedStep(answers, step));
 }
 
 /** Preserve legacy records; versioned answers contain only reachable questions. */
