@@ -6,8 +6,11 @@ import { indiaAnswers } from "./india-study.fixture";
 it("actual Indian issuer on a Saudi landing uses JEE v2 once with reachable independent history", () => {
   const a = withAnswer(withAnswer(saudiAnswers, "schoolQualificationCountry", "in"), "schoolQualificationContext", "national");
   const steps = visibleSteps(a);
-  for (const key of ["schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent", "hasPriorUniversityStudy", "priorStudyInstitution", "yearsOfUniversityStudy", "jeeSchoolCertificate", "jeeMainStatus", "jeeAdvancedStatus"] as const) expect(steps.filter(s => s === key), key).toHaveLength(1);
+  for (const key of ["schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent", "hasPriorUniversityStudy", "priorStudyInstitution", "yearsOfUniversityStudy", "jeeSchoolCertificate", "jeeMainStatus"] as const) expect(steps.filter(s => s === key), key).toHaveLength(1);
   expect(steps).not.toContain("jeeAdvanced");
+  // Advanced is asked once, and only after Main is passed or unknown (#75).
+  expect(steps).not.toContain("jeeAdvancedStatus");
+  expect(visibleSteps(withAnswer(a, "jeeMainStatus", "passed")).filter(s => s === "jeeAdvancedStatus")).toHaveLength(1);
   expect(steps).not.toContain("saudiCertificateSubtype");
   expect(a.priorStudyInstitution).toBe(saudiAnswers.priorStudyInstitution);
   expect(a.priorStudyRecognitionReference).toBeUndefined();

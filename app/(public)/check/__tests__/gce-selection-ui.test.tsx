@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { CheckFlow } from "../check-flow";
 import { ProfileReview } from "../profile-review";
-import { visibleSteps, type PartialAnswers } from "../steps";
+import { questionSteps, type PartialAnswers } from "../steps";
 
 // Mock only external I/O; React state, effects, DOM and event dispatch are real.
 const posthog = vi.hoisted(() => ({ capture: vi.fn() }));
@@ -37,7 +37,7 @@ async function click(target: HTMLButtonElement) {
 }
 async function mountChecker() {
   await act(async () => root.render(<CheckFlow initialAnswers={initialAnswers}
-    initialStepIndex={visibleSteps(initialAnswers).indexOf("gceQualificationContext")} />));
+    initialStepIndex={questionSteps(initialAnswers).indexOf("gceQualificationContext")} />));
 }
 function selected(name: string, scope: ParentNode = container) {
   expect(button(name, scope).getAttribute("aria-pressed")).toBe("true");

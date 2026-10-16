@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { CheckFlow } from "../check-flow";
 import { ProfileReview } from "../profile-review";
-import { visibleSteps } from "../steps";
+import { questionSteps } from "../steps";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("posthog-js/react", () => ({ usePostHog: () => ({ capture: vi.fn() }) }));
 vi.mock("../actions", () => ({ submitCheck: vi.fn() }));
@@ -21,7 +21,7 @@ describe("history UI", () => {
     expect(saved).toMatchObject({ certificateCountry: "sa", schoolQualificationCountry: "in" });
   });
   it("renders editable text history in checker and review", () => {
-    const html = renderToStaticMarkup(React.createElement(CheckFlow, { initialAnswers: answers, initialStepIndex: visibleSteps({ ...answers, apsScopeVersion: 1 }).indexOf("priorStudyInstitution") }));
+    const html = renderToStaticMarkup(React.createElement(CheckFlow, { initialAnswers: answers, initialStepIndex: questionSteps({ ...answers, apsScopeVersion: 1 }).indexOf("priorStudyInstitution") }));
     expect(html).toContain('value="Example University"');
     expect(html).toContain('type="text"');
     const review = renderToStaticMarkup(React.createElement(ProfileReview, { initialAnswers: answers }));
@@ -39,7 +39,7 @@ describe("history UI", () => {
     expect(review).not.toContain("Curriculum");
   });
   it("shows awarding-country choices without a school-country or code prompt for masters", () => {
-    const html = renderToStaticMarkup(React.createElement(CheckFlow, { initialAnswers: answers, initialStepIndex: visibleSteps({ ...answers, apsScopeVersion: 1 }).indexOf("priorStudyCountry") }));
+    const html = renderToStaticMarkup(React.createElement(CheckFlow, { initialAnswers: answers, initialStepIndex: questionSteps({ ...answers, apsScopeVersion: 1 }).indexOf("priorStudyCountry") }));
     expect(html).toContain("India");
     expect(html).toContain("Another country");
     expect(html).not.toContain("two-letter");

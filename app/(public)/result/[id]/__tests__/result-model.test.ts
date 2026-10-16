@@ -44,7 +44,19 @@ describe("result page model", () => {
     const verdicts = buildVerdicts(result, bachelorProfile);
     expect(verdicts[0].citations).toHaveLength(1);
     expect(verdicts[1].citations).toHaveLength(0);
-    expect(verdicts[2]).toEqual(expect.objectContaining({ unknown: true }));
+    // TestAS without a rule is a programme-level requirement, not an open question (#75).
+    expect(verdicts[2]).toEqual(expect.objectContaining({ key: "testAS", unknown: false, label: expect.stringContaining("set by each university") }));
+  });
+
+  it("shows a reviewed route conditional only on school duration as a route, not an open question", () => {
+    const guidance = { ...result, path: "unknown" as const, diagnostics: [{ support: "path" as const, status: "qualification_guidance" as const, reason: "recognition_not_assessed" as const, ruleIds: ["path"], facts: [], assessedChecks: [], conditionalPath: "subject_restricted" as const }] };
+    const path = buildVerdicts(guidance, bachelorProfile)[0];
+    expect(path.unknown).toBe(false);
+    expect(path.label).toContain("subject-restricted direct admission route");
+    expect(path.label).toContain("provided you completed at least 12 years of ascending school attendance");
+    // Without the engine's conditional route the honest unknown stays.
+    const plain = buildVerdicts({ ...guidance, diagnostics: [{ ...guidance.diagnostics[0], conditionalPath: undefined }] }, bachelorProfile)[0];
+    expect(plain.unknown).toBe(true);
   });
 
   it("hides dMAT for bachelor's applicants and TestAS for master's", () => {

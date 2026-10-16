@@ -33,6 +33,17 @@ const PATH_LABELS: Record<Result["path"], string> = {
   unknown: "Your admission route still needs confirmation.",
 };
 
+// DAAD GCE/IB guidance: "As a rule, at least 12 years of ascending school attendance
+// are required for the assessment." The checker no longer asks duration (#49), so a
+// route whose every other reviewed check passed is shown with that condition named.
+const SCHOOL_DURATION_CONDITION = "provided you completed at least 12 years of ascending school attendance. Your qualification, subject and grade checks meet the cited criteria; the university or recognition office confirms recognition.";
+
+/** A reviewed route conditional only on withheld school duration, or undefined. */
+export function conditionalRoute(result: Result): ResultDiagnostic["conditionalPath"] {
+  const primary = primaryDiagnostic(result);
+  return result.path === "unknown" && primary?.status === "qualification_guidance" ? primary.conditionalPath : undefined;
+}
+
 const BOARD_LABELS: Record<string, string> = Object.fromEntries(
   BOARDS.map((board) => [board.id, board.label]),
 );
@@ -126,11 +137,11 @@ export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
         : result.path === "subject_restricted" && profile.qualificationHistory?.indiaStudyRouteVersion === 1 &&
         profile.targetDegree === "bachelor" && profile.curriculumType === "national" && profile.schoolQualification?.country === "in"
         ? "Your reported qualifications indicate a subject-restricted direct route. UniPirate has not independently verified your reports; the university decides programme admission."
-        : result.path === "direct" && profile.qualificationHistory?.saudiBachelorEvidence?.version === 2 ? "Your reported completed Bachelor indicates general undergraduate access to all subjects and higher education institutions. UniPirate has not independently verified your reports; the university decides programme admission. This does not establish Master's equivalence." : result.path === 'unknown' && primaryDiagnostic(result)?.assessedChecks && primaryDiagnostic(result)!.status !== 'qualification_guidance' && primaryDiagnostic(result)!.status !== 'source_conflict' ? 'Some qualification checks need review. Full recognition remains unconfirmed.' : result.path === 'unknown' && primaryDiagnostic(result) ? DIAGNOSTIC_LABELS[primaryDiagnostic(result)!.status] : PATH_LABELS[result.path],
+        : result.path === "direct" && profile.qualificationHistory?.saudiBachelorEvidence?.version === 2 ? "Your reported completed Bachelor indicates general undergraduate access to all subjects and higher education institutions. UniPirate has not independently verified your reports; the university decides programme admission. This does not establish Master's equivalence." : result.path === 'unknown' && primaryDiagnostic(result)?.assessedChecks && primaryDiagnostic(result)!.status !== 'qualification_guidance' && primaryDiagnostic(result)!.status !== 'source_conflict' ? 'Some qualification checks need review. Full recognition remains unconfirmed.' : conditionalRoute(result) ? PATH_LABELS[conditionalRoute(result)!].replace(/\.$/, "") + ", " + SCHOOL_DURATION_CONDITION : result.path === 'unknown' && primaryDiagnostic(result) ? DIAGNOSTIC_LABELS[primaryDiagnostic(result)!.status] : PATH_LABELS[result.path],
       citations: citationsFor(result, "path"),
-      unknown: result.path === "unknown",
+      unknown: result.path === "unknown" && !conditionalRoute(result),
     },
-    ...(result.apsScopes ? APS_SCOPES.map(scope => {
+    ...(result.apsScopes ? apsScopesShown(result).map(scope => {
       const value = result.apsScopes![scope];
       const name = `APS for ${scope === "qualification" ? "qualification recognition" : scope}`;
       const verdict = value === "not_listed"
@@ -141,7 +152,7 @@ export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
     ...flags
       .filter(([key]) => flagRelevant(key, result, profile))
       .map(([key, name, value]) => {
-        const verdict = flagLabel(name, value);
+        const verdict = key === "testAS" && value === "unknown" ? TESTAS_BY_UNIVERSITY : flagLabel(name, value);
         return {
           key,
           label: verdict.label,
@@ -150,6 +161,20 @@ export function buildVerdicts(result: Result, profile: Profile): Verdict[] {
         };
       }),
   ];
+}
+
+// testas.de: TestAS "is used at many universities in Germany" and a good result
+// "can strengthen your application or even be a prerequisite": the programme decides.
+const TESTAS_BY_UNIVERSITY = { label: "TestAS is set by each university: some programmes require or reward it, so check each programme's admission page (testas.de)", unknown: false };
+
+/**
+ * One APS answer instead of three open questions. Visa guidance is deferred (#55)
+ * and the application route is not asked (#51): those scopes show only when a
+ * reviewed rule decided them, or when nothing decided qualification either.
+ */
+function apsScopesShown(result: Result): readonly (typeof APS_SCOPES)[number][] {
+  const decided = APS_SCOPES.filter(scope => result.apsScopes![scope] !== "unknown");
+  return decided.length ? decided : ["qualification"];
 }
 
 /** Drops "confirm whether X applies" gaps for flags the profile never needs. Repeated identical items collapse; genuinely different items stay. */

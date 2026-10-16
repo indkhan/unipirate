@@ -91,6 +91,18 @@ export const ruleData: RuleRecord[] = [
     last_verified_at: "2026-10-06T00:00:00Z",
   },
   {
+    id: "aps-scoped-qualification-non-aps-issuer", country: null,
+    // #75: APS exists only for China, Vietnam and India. A Pakistani or Saudi
+    // national school qualification is not issued in an APS country, so no APS
+    // procedure exists for it. Keyed on the explicit issuer, never residence or
+    // nationality; GCE/IB stay unconfirmed (APS India only says IB holders "may not need" APS).
+    conditions: { aps_issuer_country: { op: "in", value: ["pk", "sa"] }, aps_qualification_context: "national", target_degree: "bachelor" },
+    outcomes: { aps_scopes: { qualification: { value: "not_required" } }, note: "APS verification exists only for qualifications from China, Vietnam and India; your national school qualification is issued elsewhere." },
+    status: "draft", source_url: "https://www.uni-assist.de/en/tools/glossary-of-terms/description/term/akademische-pruefstelle-aps/",
+    source_quote: "It exists in China, Vietnam and India. For these countries, the APS certificate is a requirement for applying to a German university.",
+    last_verified_at: "2026-10-16T00:00:00Z",
+  },
+  {
     id: "aps-scoped-visa-sa", country: "sa",
     // Trade-off: Saudi visa scope keys on the qualification issuer (#52), not
     // on the mission-filing question. APS is not listed on the Saudi study

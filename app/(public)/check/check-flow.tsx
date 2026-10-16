@@ -27,7 +27,7 @@ import {
   isIndiaStudyBranch,
   isPakistanBranch,
   isTextStep,
-  visibleSteps,
+  questionSteps,
   withAnswer,
   type Answers,
   type PartialAnswers,
@@ -128,7 +128,7 @@ export function CheckFlow({
     }
   }, [initialAnswers, startStepIndex, storageKey, entryDegree]);
 
-  const steps = visibleSteps(answers);
+  const steps = questionSteps(answers);
   const step = steps[Math.min(stepIndex, steps.length - 1)];
   const isLast = stepIndex >= steps.length - 1;
   const canContinue = isAnswered(answers, step);

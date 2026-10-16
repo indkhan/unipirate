@@ -11,7 +11,7 @@ import { reviewedIndiaStudyRules } from "@/lib/engine/__tests__/india-study.fixt
 import { saudiAnswers } from "./saudi.fixture";
 import { indiaAnswers } from "./india-study.fixture";
 import { dmatAnswers } from "./dmat.fixture";
-import { AnswersSchema, PartialAnswersSchema, visibleSteps, withAnswer, isAnswered, type Answers, type PartialAnswers } from "../steps";
+import { AnswersSchema, PartialAnswersSchema, visibleSteps, questionSteps, withAnswer, isAnswered, type Answers, type PartialAnswers } from "../steps";
 
 const captured = vi.hoisted(() => ({ effects: [] as (() => void)[], values: [] as unknown[], initial: [] as unknown[] }));
 vi.mock("react", async (original) => {
@@ -41,7 +41,7 @@ it("restores a master's saved edits under its landing-country key and stops at n
     captured.effects[1]();
     expect(captured.values[0]).toMatchObject({ priorStudyInstitution: "Saved University", priorStudyField: "Saved field", priorStudyCountry: "in" });
     // The newly required context question precedes the already-answered final intake.
-    expect(captured.values[1]).toBe(visibleSteps(captured.values[0] as PartialAnswers).indexOf("priorQualificationContext"));
+    expect(captured.values[1]).toBe(questionSteps(captured.values[0] as PartialAnswers).indexOf("priorQualificationContext"));
   } finally { vi.unstubAllGlobals(); }
 });
 
@@ -64,7 +64,7 @@ it("restores the new dMAT version and stops at its first newly missing question"
   const legacyDraft = Object.fromEntries(Object.entries(dmatAnswers).filter(([key]) => !key.startsWith("dmat")));
   const result = recover(JSON.stringify({ answers: legacyDraft, stepIndex: 99 }));
   expect(result.answers).toMatchObject({ dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, priorStudyCountry: "in", priorStudyField: "Mechanical Engineering" });
-  expect(result.stepIndex).toBe(visibleSteps({ ...dmatAnswers, dmatQualificationScope: undefined }).indexOf("dmatQualificationScope"));
+  expect(result.stepIndex).toBe(questionSteps({ ...dmatAnswers, dmatQualificationScope: undefined }).indexOf("dmatQualificationScope"));
   expect(legacyDraft).not.toHaveProperty("dmatVersion");
 });
 
@@ -90,7 +90,7 @@ it("resets wrong-shaped storage and invalid step indices but keeps valid partial
   }
   const incomplete = recover(JSON.stringify({ answers: { qualificationHistoryVersion: 1, targetDegree: "master", nationality: "pk" }, stepIndex: 99 }));
   expect(incomplete.answers).toEqual({ qualificationHistoryVersion: 1, qualificationGuidanceVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2, targetDegree: "master", nationality: "pk" });
-  expect(incomplete.stepIndex).toBe(visibleSteps(incomplete.answers as PartialAnswers).indexOf("hasPriorUniversityStudy"));
+  expect(incomplete.stepIndex).toBe(questionSteps(incomplete.answers as PartialAnswers).indexOf("hasPriorUniversityStudy"));
   expect(incomplete.removeItem).not.toHaveBeenCalled();
 });
 
@@ -115,7 +115,7 @@ it("keeps an unfinished text draft and stops at its empty required answer", () =
   const unfinished = { ...draft, priorStudyInstitution: "" };
   const result = recover(JSON.stringify({ answers: unfinished, stepIndex: 99 }));
   expect(result.answers).toEqual({ ...unfinished, qualificationGuidanceVersion: 1, apsScopeVersion: 1, apsTransitionVersion: 1, dmatVersion: 1, indiaStudyRouteVersion: 1, jeeVersion: 2 });
-  expect(result.stepIndex).toBe(visibleSteps(result.answers as PartialAnswers).indexOf("priorStudyInstitution"));
+  expect(result.stepIndex).toBe(questionSteps(result.answers as PartialAnswers).indexOf("priorStudyInstitution"));
   expect(result.removeItem).not.toHaveBeenCalled();
 });
 
@@ -123,7 +123,7 @@ it.each([6.5, -1, 101, undefined, 0, 6, 100])("restores semester draft %s withou
   const seed = { ...dmatAnswers, priorStudyCompletion: "in_progress", yearsOfUniversityStudy: 3,
     dmatProcedure: "unknown", dmatFieldBasis: "unknown", dmatPartnershipStatus: "none",
     dmatSemesterStatus: "known", dmatCompletedSemesters } as const;
-  const stepIndex = visibleSteps(seed).indexOf("dmatCompletedSemesters");
+  const stepIndex = questionSteps(seed).indexOf("dmatCompletedSemesters");
   const raw = JSON.stringify({ answers: seed, stepIndex });
   const result = recover(raw);
   const restored = result.answers as PartialAnswers;
@@ -144,12 +144,12 @@ it.each([6.5, -1, 101, undefined, 0, 6, 100])("restores semester draft %s withou
 });
 
 it('restores finite unfinished Indian successful-years and assessment drafts without losing history',()=>{
- for(const yearsOfUniversityStudy of [-1,50.1]) {const input={...indiaAnswers,yearsOfUniversityStudy};const restored=recover(JSON.stringify({answers:input,stepIndex:99}), "in");expect(restored.answers).toMatchObject({priorStudyInstitution:input.priorStudyInstitution,yearsOfUniversityStudy});expect(restored.removeItem).not.toHaveBeenCalled();expect(restored.stepIndex).toBe(visibleSteps(input).indexOf('yearsOfUniversityStudy'));expect(AnswersSchema.safeParse(input).success).toBe(false);}
- const empty={...indiaAnswers,priorStudyRecognitionReference:''};const restored=recover(JSON.stringify({answers:empty,stepIndex:99}), "in");expect(restored.removeItem).not.toHaveBeenCalled();expect(restored.answers).toMatchObject({priorStudyRecognitionReference:'',priorStudyInstitution:empty.priorStudyInstitution});expect(restored.stepIndex).toBe(visibleSteps(empty).indexOf('priorStudyRecognitionReference'));
+ for(const yearsOfUniversityStudy of [-1,50.1]) {const input={...indiaAnswers,yearsOfUniversityStudy};const restored=recover(JSON.stringify({answers:input,stepIndex:99}), "in");expect(restored.answers).toMatchObject({priorStudyInstitution:input.priorStudyInstitution,yearsOfUniversityStudy});expect(restored.removeItem).not.toHaveBeenCalled();expect(restored.stepIndex).toBe(questionSteps(input).indexOf('yearsOfUniversityStudy'));expect(AnswersSchema.safeParse(input).success).toBe(false);}
+ const empty={...indiaAnswers,priorStudyRecognitionReference:''};const restored=recover(JSON.stringify({answers:empty,stepIndex:99}), "in");expect(restored.removeItem).not.toHaveBeenCalled();expect(restored.answers).toMatchObject({priorStudyRecognitionReference:'',priorStudyInstitution:empty.priorStudyInstitution});expect(restored.stepIndex).toBe(questionSteps(empty).indexOf('priorStudyRecognitionReference'));
 });
 it('upgrades a saved India history and reaches missing assessments rather than skipping them',()=>{
  const saved=Object.fromEntries(Object.entries(indiaAnswers).filter(([key])=>key!=='indiaStudyRouteVersion'&&!['priorStudyMode','priorStudyRecognition','priorStudyRecognitionReference','priorStudyTargetRelation','priorStudyTargetRelationReference'].includes(key)));
- const restored=recover(JSON.stringify({answers:saved,stepIndex:99}), "in");expect(restored.answers).toMatchObject({indiaStudyRouteVersion:1,priorStudyInstitution:indiaAnswers.priorStudyInstitution});expect(restored.stepIndex).toBe(visibleSteps(indiaAnswers).indexOf('priorStudyMode'));expect(restored.removeItem).not.toHaveBeenCalled();
+ const restored=recover(JSON.stringify({answers:saved,stepIndex:99}), "in");expect(restored.answers).toMatchObject({indiaStudyRouteVersion:1,priorStudyInstitution:indiaAnswers.priorStudyInstitution});expect(restored.stepIndex).toBe(questionSteps(indiaAnswers).indexOf('priorStudyMode'));expect(restored.removeItem).not.toHaveBeenCalled();
 });
 
 it("restores an academic edit at its missing assessment and completes with fresh APS timing", () => {
@@ -158,7 +158,7 @@ it("restores an academic edit at its missing assessment and completes with fresh
   let answers = recovered.answers as PartialAnswers;
   expect(recovered.removeItem).not.toHaveBeenCalled();
   expect(answers.apsProcedureStatus).toBeUndefined();
-  expect(recovered.stepIndex).toBe(visibleSteps(answers).indexOf("priorStudyRecognition"));
+  expect(recovered.stepIndex).toBe(questionSteps(answers).indexOf("priorStudyRecognition"));
   for (let index = recovered.stepIndex as number; index < visibleSteps(answers).length; index++) {
     const step = visibleSteps(answers)[index];
     if (!isAnswered(answers, step)) answers = withAnswer(answers, step, indiaAnswers[step as keyof typeof indiaAnswers] as Answers[typeof step]);
@@ -196,7 +196,7 @@ it("restores Saudi edits at the new explicit subtype without guessing or droppin
   const restored = recover(JSON.stringify({ answers: saved, stepIndex: 99 }));
   expect(restored.answers).toMatchObject({ saudiCertificateVersion: 2, priorStudyInstitution: saved.priorStudyInstitution, priorStudyRecognitionReference: saved.priorStudyRecognitionReference });
   expect(restored.answers).not.toHaveProperty("saudiCertificateSubtype");
-  expect(restored.stepIndex).toBe(visibleSteps(restored.answers as PartialAnswers).indexOf("saudiCertificateSubtype"));
+  expect(restored.stepIndex).toBe(questionSteps(restored.answers as PartialAnswers).indexOf("saudiCertificateSubtype"));
   expect(restored.removeItem).not.toHaveBeenCalled();
   expect(saved.saudiCertificateVersion).toBeUndefined();
 });
@@ -211,8 +211,11 @@ it("restores a Saudi-to-India issuer edit with visible core history and missing 
   expect(visibleSteps(a)).toContain("yearsOfUniversityStudy");
   expect(a.priorStudyInstitution).toBe(saudiAnswers.priorStudyInstitution);
   expect(a.priorStudyRecognitionReference).toBeUndefined();
-  expect(a.priorStudyMode).toBeUndefined();
-  expect(result.stepIndex).toBe(visibleSteps(a).indexOf("priorStudyMode"));
+  // Study mode describes the same prior university study, so the derived national
+  // context (#75) keeps it; issuer-dependent recognition is still re-asked.
+  expect(a.priorStudyMode).toBe(saudiAnswers.priorStudyMode);
+  expect(a.priorStudyRecognition).toBeUndefined();
+  expect(result.stepIndex).toBe(questionSteps(a).indexOf("priorStudyRecognition"));
   for (const key of ["schoolQualificationCountry", "schoolQualificationContext", "board", "schoolGradePercent"]) expect(visibleSteps(a).filter(s => s === key)).toHaveLength(1);
 });
 it("restores India-to-Saudi at missing subtype then exposes core history after explicit choice", () => {
@@ -220,7 +223,7 @@ it("restores India-to-Saudi at missing subtype then exposes core history after e
   const result = recover(JSON.stringify({ answers: edited, stepIndex: 99 }), "in");
   const a = result.answers as PartialAnswers;
   expect(result.removeItem).not.toHaveBeenCalled();
-  expect(result.stepIndex).toBe(visibleSteps(a).indexOf("saudiCertificateSubtype"));
+  expect(result.stepIndex).toBe(questionSteps(a).indexOf("saudiCertificateSubtype"));
   expect(visibleSteps(a)).not.toContain("hasPriorUniversityStudy");
   const chosen = withAnswer(a, "saudiCertificateSubtype", "industrial_certificate");
   expect(visibleSteps(chosen)).toContain("hasPriorUniversityStudy");
@@ -236,7 +239,7 @@ it("does not restore stale foreign degree detail through a missing Saudi subtype
 it('upgrades saved Pakistan drafts and stops at the exact certificate without aliasing FSc',()=>{
  const saved={qualificationHistoryVersion:1,targetDegree:'bachelor',nationality:'pk',certificateCountry:'pk',visaApplicationCountry:'pk',curriculumType:'national',board:'fsc',schoolGradePercent:78,schoolQualificationCountry:'pk',schoolQualificationContext:'national',hasPriorUniversityStudy:false,targetField:'cs',intake:null,apsApplicationContext:'unknown'};
  const restored=recover(JSON.stringify({answers:saved,stepIndex:99}),'pk');const a=restored.answers as PartialAnswers;
- expect(a.pakistanVersion).toBe(1);expect(a.pkCertificate).toBeUndefined();expect(a.board).toBeUndefined();expect(restored.stepIndex).toBe(visibleSteps(a).indexOf('pkCertificate'));expect(restored.removeItem).not.toHaveBeenCalled();
+ expect(a.pakistanVersion).toBe(1);expect(a.pkCertificate).toBeUndefined();expect(a.board).toBeUndefined();expect(restored.stepIndex).toBe(questionSteps(a).indexOf('pkCertificate'));expect(restored.removeItem).not.toHaveBeenCalled();
 });
 it('Pakistan account edits upgrade legacy records and require explicit certificate/group evidence',()=>{
  captured.initial=[];renderToStaticMarkup(React.createElement(ProfileReview,{initialAnswers:{qualificationHistoryVersion:1,targetDegree:'bachelor',nationality:'pk',certificateCountry:'pk',curriculumType:'national',board:'fsc'}}));expect(captured.initial[0]).toMatchObject({pakistanVersion:1});expect(captured.initial[0]).not.toHaveProperty('pkCertificate');
@@ -265,7 +268,7 @@ it("restores legacy JEE drafts at Main without inventing passage or losing unive
   expect(restored).toMatchObject({ jeeVersion: 2, priorStudyInstitution: indiaAnswers.priorStudyInstitution });
   expect(restored.jeeMainStatus).toBeUndefined();
   expect(restored.jeeAdvancedStatus).toBeUndefined();
-  expect(result.stepIndex).toBe(visibleSteps(restored).indexOf("jeeMainStatus"));
+  expect(result.stepIndex).toBe(questionSteps(restored).indexOf("jeeMainStatus"));
   expect(buildProfile(restored as Answers).jeeAdvanced).toBeUndefined();
   expect(result.removeItem).not.toHaveBeenCalled();
 });
@@ -275,7 +278,7 @@ it("restores uncertain JEE passage at its missing evidence-context question", ()
   const result = recover(JSON.stringify({ answers: saved, stepIndex: 99 }), "in");
   const restored = result.answers as PartialAnswers;
   expect(restored).toMatchObject({ jeeMainStatus: "unknown", jeeAdvancedStatus: "passed" });
-  expect(result.stepIndex).toBe(visibleSteps(restored).indexOf("jeeEvidenceContext"));
+  expect(result.stepIndex).toBe(questionSteps(restored).indexOf("jeeEvidenceContext"));
 });
 
 
@@ -295,7 +298,7 @@ it("restores Saudi v2 actual India issuer with selectable Indian boards before a
  const recovered = recover(JSON.stringify({ answers: edited, stepIndex: 99 }));
  const answers = recovered.answers as PartialAnswers;
  expect(recovered.removeItem).not.toHaveBeenCalled(); expect(answers.saudiCertificateVersion).toBe(2); expect(answers.board).toBeUndefined();
- expect(recovered.stepIndex).toBe(visibleSteps(answers).indexOf("board"));
+ expect(recovered.stepIndex).toBe(questionSteps(answers).indexOf("board"));
  expect(buildOptions("board", answers).map(o => o.value)).toEqual(expect.arrayContaining(["cbse", "cisce", "state_board"]));
  const html = renderToStaticMarkup(<CheckFlow initialAnswers={answers} initialStepIndex={recovered.stepIndex as number} />);
  expect(html).toContain("CBSE"); expect(html).not.toContain("Tawjihiyah");
@@ -303,7 +306,7 @@ it("restores Saudi v2 actual India issuer with selectable Indian boards before a
 it('restores old Pakistan study reports without inventing current assessment evidence',()=>{
  const saved={...currentPakistanAnswers,pkStudyEvidenceVersion:undefined,pkCurrentAssessment:undefined,pkCurrentAssessmentReference:undefined};
  const restored=recover(JSON.stringify({answers:saved,stepIndex:99}),'pk');const answers=restored.answers as PartialAnswers;
- expect(answers.pkStudyEvidenceVersion).toBe(2);expect(answers.pkCurrentAssessment).toBeUndefined();expect(restored.stepIndex).toBe(visibleSteps(answers).indexOf('pkCurrentAssessment'));expect(AnswersSchema.safeParse(answers).success).toBe(false);
+ expect(answers.pkStudyEvidenceVersion).toBe(2);expect(answers.pkCurrentAssessment).toBeUndefined();expect(restored.stepIndex).toBe(questionSteps(answers).indexOf('pkCurrentAssessment'));expect(AnswersSchema.safeParse(answers).success).toBe(false);
 });
 it('fresh current Pakistan study flow reaches assessment after first intake and completes actual direct mapping',()=>{
  let answers:PartialAnswers={qualificationHistoryVersion:1,apsScopeVersion:1,indiaStudyRouteVersion:1};
@@ -312,7 +315,7 @@ it('fresh current Pakistan study flow reaches assessment after first intake and 
 });
 
 it('new/current Pakistan flow and profile edits show orientation and the official link without blanket denial',()=>{
- const initialStepIndex=visibleSteps(currentPakistanAnswers).indexOf('pkCurrentAssessment');
+ const initialStepIndex=questionSteps(currentPakistanAnswers).indexOf('pkCurrentAssessment');
  for(const html of [renderToStaticMarkup(<CheckFlow initialAnswers={currentPakistanAnswers} initialStepIndex={initialStepIndex}/>),renderToStaticMarkup(<ProfileReview initialAnswers={currentPakistanAnswers}/>)]){
   expect(html).toContain('bounded one-year subject-restricted');
   expect(html).toContain('regional brochure still says two years');

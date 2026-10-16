@@ -4,7 +4,8 @@ import { saudiAnswers } from "./saudi.fixture";
 import { indiaAnswers } from "./india-study.fixture";
 const core: StepId[] = ["hasPriorUniversityStudy", "priorQualificationType", "priorStudyInstitution", "priorStudyCountry", "priorStudyField", "priorDegreeYears", "yearsOfUniversityStudy", "priorStudyCompletion"];
 const issuer: StepId[] = ["schoolQualificationCountry", "schoolQualificationContext"];
-const indianSchool: StepId[] = ["board", "schoolGradePercent", "jeeSchoolCertificate", "jeeMainStatus", "jeeAdvancedStatus"];
+// JEE Advanced follows only a passed/unknown Main (#75), so it is not a fixed school step.
+const indianSchool: StepId[] = ["board", "schoolGradePercent", "jeeSchoolCertificate", "jeeMainStatus"];
 const actualIndia = { ...indiaAnswers, certificateCountry: "sa", saudiCertificateVersion: 1, visaApplicationCountry: "sa", visaMissionContext: "unknown" } as const;
 function once(a: PartialAnswers, keys: StepId[]) {
   const steps = visibleSteps(a);
