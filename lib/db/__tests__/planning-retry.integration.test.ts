@@ -78,11 +78,12 @@ describe.skipIf(!config.enabled)("current planning retry/status (real source sco
    expect(await executePlanningBatch(service)).toMatchObject([{id:changedJob.id,status:"succeeded"}]);
    const currentProposals=must(await owner.from("task_proposals").select("*").eq("application_id",app.id));
    const definition=must(await admin.from("course_task_definitions").select("id").eq("course_id",course.id).eq("title_template","Synthetic shared preparation").single());
-   const custom=currentProposals.filter(p=>p.legacy_task_key?.includes(definition.id));expect(custom).toHaveLength(1);
-   expect(custom[0]).toMatchObject({stage:"preliminary",source_version_id:null,due_date:null,verbatim_due:null,evidence:[]});
+   // Unrecognized shared templates collapse to one generic verification action (no copied wording/claims).
+   const generic=currentProposals.filter(p=>p.semantic_action_key===`app:${app.id}:prepare:requirements`);expect(generic).toHaveLength(1);
+   expect(generic[0]).toMatchObject({stage:"preliminary",source_version_id:null,due_date:null,verbatim_due:null,evidence:[],legacy_task_key:null});
    expect(currentProposals.some(p=>p.stage==="verified"&&p.source_version_id===v2.id)).toBe(true);
    const legacyDefinition=must(await admin.from("course_task_definitions").select("id").eq("course_id",course.id).eq("source_key","requirement:Synthetic legacy document").single());
-   expect(currentProposals.filter(p=>p.legacy_task_key?.includes(legacyDefinition.id))).toHaveLength(1);
+   expect(currentProposals.filter(p=>p.legacy_task_key?.includes(definition.id)||p.legacy_task_key?.includes(legacyDefinition.id))).toHaveLength(0);
 
 
    expect(must(await other.rpc("actionable_planning_jobs"))).toHaveLength(0);expect(must(await admin.rpc("actionable_planning_jobs"))).toHaveLength(0);
